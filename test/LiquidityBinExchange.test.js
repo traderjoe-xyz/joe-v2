@@ -40,26 +40,26 @@ describe.only("Liquidity Bin Exchange", function () {
   });
 
   it("Should return the right bin price range", async function () {
-    await expect(this.lbe.getBinId("192")).to.be.revertedWith(
-      "LBE: Id too low"
+    await expect(this.lbe.getBinPrice("192")).to.be.revertedWith(
+      "LBE: Price too low"
     );
 
     await expect(
-      this.lbe.getBinId(
+      this.lbe.getBinPrice(
         "5192296858534827628530496329220096000000000000000000000000000000000000"
       )
-    ).to.be.revertedWith("LBE: Id too high");
+    ).to.be.revertedWith("LBE: Price too high");
 
     expect(
-      await this.lbe.getBinId(ethers.utils.parseUnits("9.23422312", 40))
+      await this.lbe.getBinPrice(ethers.utils.parseUnits("9.23422312", 40))
     ).to.be.equal(ethers.utils.parseUnits("9.2342", 40));
 
     expect(
-      await this.lbe.getBinId(ethers.utils.parseEther("1"))
+      await this.lbe.getBinPrice(ethers.utils.parseEther("1"))
     ).to.be.equal(ethers.utils.parseEther("1"));
 
     expect(
-      await this.lbe.getBinId(ethers.utils.parseUnits("1", 4))
+      await this.lbe.getBinPrice(ethers.utils.parseUnits("1", 4))
     ).to.be.equal(10000);
   });
 

@@ -24,18 +24,19 @@ contract LiquidityBinExchange {
         /// Total reserve of token1 inside the bins
         uint128 reserve1;
         /// The current id or price (y / x)
-        uint256 currentId;
+        uint256 currentPrice;
         /// The last bin id
-        uint256 lastId;
+        uint256 lastPrice;
         /// The first bin id
-        uint256 firstId;
+        uint256 firstPrice;
     }
 
     IERC20Metadata public immutable token0;
     IERC20Metadata public immutable token1;
     uint256 public immutable fee;
-    uint256 public constant BIN_PRECISION = 1e4; // @note there will be (9 * BIN_PRECISION) number of elt with the same binStep
-    // @note thus, the total number of bin (uint112) will be (9 * BIN_PRECISION * (34 - decimalsPrecision ?)) //TODO false
+    uint256 private constant BIN_PRECISION_DECIMALS = 4; // @note there will be (9 * BIN_PRECISION) number of elt with the same binStep
+    uint256 public constant BIN_PRECISION = 10**BIN_PRECISION_DECIMALS; // @note there will be (9 * BIN_PRECISION) number of elt with the same binStep
+    // @note thus, the total number of bin will be lower than 65 * 90_000 + 100_000 = 5_950_000
     uint256 public constant PRICE_PRECISION = 1e36;
     uint256 public constant BP_PRECISION = 10_000;
 
@@ -45,20 +46,22 @@ contract LiquidityBinExchange {
 
     mapping(uint256 => Bin) private bins;
 
+    mapping(uint256 => uint256) private binEmpty;
+
     constructor(
         IERC20Metadata _token0,
         IERC20Metadata _token1,
         uint256 _fee,
-        uint256 _id
+        uint256 _price
     ) {
         token0 = _token0;
         token1 = _token1;
 
         fee = BP_PRECISION - _fee;
-        uint256 id = _getBinId(_id);
-        global.currentId = id;
-        global.firstId = id;
-        global.lastId = id;
+        uint256 price = _getBinPrice(_price);
+        global.currentPrice = price;
+        global.firstPrice = price;
+        global.lastPrice = price;
         // uint256 _fee_helper;
         // if (BP_PRECISION + (_fee % BP_PRECISION) == 0) {
         //     _fee_helper = (BP_PRECISION * BP_PRECISION) / (BP_PRECISION + _fee);
@@ -69,6 +72,7 @@ contract LiquidityBinExchange {
     }
 
     function swap(uint112 _amount0, uint112 _amount1) external {
+        // @note change to `uint amount0Out, uint amount1Out, address to, bytes calldata data` for compatibility
         GlobalInfo memory _global = global;
         uint256 sent0 = token0.balanceOf(address(this)) - _global.reserve0;
         uint256 sent1 = token1.balanceOf(address(this)) - _global.reserve1;
@@ -99,20 +103,20 @@ contract LiquidityBinExchange {
                 }
             }
         }
-        require(_amount0 == 0 || _amount1 == 0, "LBE: Wrong amounts"); // If this is wrong, then we're sure the amounts are wrong
+        require(_amount0 == 0 || _amount1 == 0, "LBE: Wrong amounts"); // If this is wrong, then we're sure the amounts sent are wrong
 
         while (
-            _global.firstId <= _global.currentId &&
-            _global.currentId <= _global.lastId // to make sure this loop stops
+            _global.firstPrice <= _global.currentPrice &&
+            _global.currentPrice <= _global.lastPrice // to make sure this loop stops
         ) {
-            Bin memory _bin = bins[_global.currentId];
+            Bin memory _bin = bins[_global.currentPrice];
             if (_bin.reserve0 != 0 || _bin.reserve1 != 0) {
                 if (_amount0 != 0) {
                     if (_amount0 <= _bin.reserve0) {
                         // the bin can cover the swap
                         _bin.reserve0 -= _amount0;
                         _global.reserve0 -= _amount0;
-                        uint256 sent1ToBin = _global.currentId.mulDiv(
+                        uint256 sent1ToBin = _global.currentPrice.mulDiv(
                             _amount0 * BP_PRECISION,
                             PRICE_PRECISION * fee
                         );
@@ -123,7 +127,7 @@ contract LiquidityBinExchange {
                         _amount0 = 0;
                     } else {
                         // the swap will empty current bin
-                        uint256 sent1ToBin = _global.currentId.mulDiv(
+                        uint256 sent1ToBin = _global.currentPrice.mulDiv(
                             _bin.reserve0 * BP_PRECISION,
                             PRICE_PRECISION * fee
                         );
@@ -143,7 +147,7 @@ contract LiquidityBinExchange {
                         _global.reserve1 -= _amount1;
                         uint256 sent0ToBin = PRICE_PRECISION.mulDiv(
                             _amount1 * BP_PRECISION,
-                            _global.currentId * fee
+                            _global.currentPrice * fee
                         );
                         sent0 -= sent0ToBin;
                         _bin.reserve0 += _safe112(sent0ToBin);
@@ -155,7 +159,7 @@ contract LiquidityBinExchange {
                         uint256 sent0ToBin = _safe112(
                             PRICE_PRECISION.mulDiv(
                                 _bin.reserve1 * BP_PRECISION,
-                                _global.currentId * fee
+                                _global.currentPrice * fee
                             )
                         );
                         sent0 -= sent0ToBin;
@@ -167,27 +171,29 @@ contract LiquidityBinExchange {
                         _bin.reserve1 = 0;
                     }
                 }
-                uint256 l = _global.currentId.mulDiv(
+                uint256 l = _global.currentPrice.mulDiv(
                     _bin.reserve0,
                     PRICE_PRECISION
                 ) + _bin.reserve1;
                 require(_bin.l <= l, "LBE: Constant liquidity not respected"); // not sure this is even needed as this checks is forced thanks to the fees added
                 _bin.l = l;
 
-                bins[_global.currentId] = _bin;
+                bins[_global.currentPrice] = _bin;
             }
 
             if (_amount0 == 0 && _amount1 == 0) {
                 break;
             } else if (_amount0 != 0) {
-                uint256 binStep = _getBinStep(_global.currentId);
-                if ((_global.currentId - binStep) / binStep >= BIN_PRECISION) {
-                    _global.currentId -= binStep;
+                uint256 binStep = _getBinStep(_global.currentPrice);
+                if (
+                    (_global.currentPrice - binStep) / binStep >= BIN_PRECISION
+                ) {
+                    _global.currentPrice -= binStep;
                 } else {
-                    _global.currentId -= binStep / 10; // @note won't work if precision is not a multiple of 10.
+                    _global.currentPrice -= binStep / 10; // @note won't work if precision is not a multiple of 10.
                 }
             } else if (_amount1 != 0) {
-                _global.currentId += _getBinStep(_global.currentId);
+                _global.currentPrice += _getBinStep(_global.currentPrice);
             }
         }
         global = _global;
@@ -196,11 +202,11 @@ contract LiquidityBinExchange {
 
     function addLiquidity(
         // only seed
-        uint256[] calldata ids,
+        uint256[] calldata prices,
         uint112[] calldata amounts0,
         uint112[] calldata amounts1
     ) external {
-        uint256 _len = ids.length;
+        uint256 _len = prices.length;
         require(
             _len == amounts0.length && amounts0.length == amounts1.length,
             "LBE: Wrong lengths"
@@ -216,20 +222,20 @@ contract LiquidityBinExchange {
             uint112 amount0 = amounts0[i];
             uint112 amount1 = amounts1[i];
             if (amount0 != 0 || amount1 != 0) {
-                uint256 id = _getBinId(ids[i]);
-                Bin storage bin = bins[id];
-                if (_global.lastId < id) {
-                    _global.lastId = id;
+                uint256 price = _getBinPrice(prices[i]);
+                Bin storage bin = bins[price];
+                if (_global.lastPrice < price) {
+                    _global.lastPrice = price;
                 }
-                if (_global.firstId > id) {
-                    _global.firstId = id;
+                if (_global.firstPrice > price) {
+                    _global.firstPrice = price;
                 }
-                if (id < _global.currentId) {
+                if (price < _global.currentPrice) {
                     require(amount0 != 0 && amount1 == 0, "LBE: Forbidden");
                     _maxAmount0 -= amount0; // revert if too much
                     bin.reserve0 += amount0;
                     _global.reserve0 += amount0;
-                } else if (id > _global.currentId) {
+                } else if (price > _global.currentPrice) {
                     require(amount1 != 0 && amount0 == 0, "LBE: Forbidden");
                     _maxAmount1 -= amount1; // revert if too much
                     bin.reserve1 += amount1;
@@ -240,12 +246,12 @@ contract LiquidityBinExchange {
                         require(
                             (amount1 * bin.reserve0) / bin.reserve1 == amount0,
                             "LBE: Forbidden"
-                        ); // @audit question -> how add liquidity as id moves, hard to add to the exact f
+                        ); // @audit question -> how add liquidity as price moves, hard to add to the exact f
                     } else {
                         require(
                             amount1 == 0 || bin.reserve0 == 0,
                             "LBE: Forbidden"
-                        ); // @audit question -> how add liquidity as id moves, hard to add to the exact f
+                        ); // @audit question -> how add liquidity as price moves, hard to add to the exact f
                     }
                     _maxAmount0 -= amount0; // revert if too much
                     _maxAmount1 -= amount1; // revert if too much
@@ -256,52 +262,51 @@ contract LiquidityBinExchange {
                     _global.reserve0 += amount0;
                     _global.reserve1 += amount1;
                 }
-                bin.l += (id * amount0) / PRICE_PRECISION + amount1;
+                bin.l += (price * amount0) / PRICE_PRECISION + amount1;
             }
         }
         global = _global;
     }
 
-    function getBin(uint256 id) external view returns (Bin memory) {
-        return bins[_getBinId(id)];
+    function getBin(uint256 price) external view returns (Bin memory) {
+        return bins[_getBinPrice(price)];
     }
 
-    function getBinStep(uint256 id) external pure returns (uint256) {
-        return _getBinStep(id);
+    function getBinStep(uint256 price) external pure returns (uint256) {
+        return _getBinStep(price);
     }
 
-    function getBinId(uint256 id) external pure returns (uint256) {
-        return _getBinId(id);
+    function getBinPrice(uint256 price) external pure returns (uint256) {
+        return _getBinPrice(price);
     }
 
     function getDecimals(uint256 x) external pure returns (uint256) {
         return _getDecimals(x);
     }
 
-    function _getBinId(uint256 id) private pure returns (uint256) {
+    function _getBinPrice(uint256 price) private pure returns (uint256) {
         /// 1e36 / 2**112 = 192.59..
-        require(id > 192, "LBE: Id too low");
+        require(price >= 192, "LBE: Price too low");
         /// 2 ** 112 * 1e36 = 5192296858534827628530496329220096000000000000000000000000000000000000
         require(
-            id <
+            price <
                 5192296858534827628530496329220096000000000000000000000000000000000000,
-            "LBE: Id too high"
+            "LBE: Price too high"
         );
-        if (id < BIN_PRECISION) {
-            return id;
+        if (price < BIN_PRECISION) {
+            return price;
         }
-        uint256 binStep = _getBinStep(id);
-        return (id / binStep) * binStep;
+        uint256 binStep = _getBinStep(price);
+        return (price / binStep) * binStep;
     }
 
-    function _getBinStep(uint256 id) private pure returns (uint256) {
-        uint256 decimals = _getDecimals(id);
+    function _getBinStep(uint256 price) private pure returns (uint256) {
+        uint256 decimals = _getDecimals(price);
         return 10**decimals / BIN_PRECISION;
-    }
+    } // 1.00000000 -> [1.0001 - 1.0002[
 
-    function _getDecimals(uint256 x) private pure returns (uint256) {
+    function _getDecimals(uint256 x) private pure returns (uint256 decimals) {
         unchecked {
-            uint256 decimals;
             if (x >= 1e38) {
                 x /= 1e38;
                 decimals += 38;
@@ -332,7 +337,91 @@ contract LiquidityBinExchange {
                 decimals += 2;
             }
 
-            return x >= 10 ? decimals + 1 : decimals;
+            if (x >= 1e1) {
+                decimals += 1;
+            }
+
+            return decimals;
+        }
+    }
+
+    function _mostSignificantBit(uint256 x) internal pure returns (uint256 msb) {
+        unchecked {
+            if (x >= 1 << 128) {
+                x >>= 128;
+                msb += 128;
+            }
+            if (x >= 1 << 64) {
+                x >>= 64;
+                msb += 64;
+            }
+            if (x >= 1 << 32) {
+                x >>= 32;
+                msb += 32;
+            }
+            if (x >= 1 << 16) {
+                x >>= 16;
+                msb += 16;
+            }
+            if (x >= 1 << 8) {
+                x >>= 8;
+                msb += 8;
+            }
+            if (x >= 1 << 4) {
+                x >>= 4;
+                msb += 4;
+            }
+            if (x >= 1 << 2) {
+                x >>= 2;
+                msb += 2;
+            }
+            if (x >= 1 << 1) {
+                msb += 1;
+            }
+
+            return msb;
+        }
+    }
+
+    function _leastSignificantBit(uint256 x)
+        internal
+        pure
+        returns (uint256 lsb)
+    {
+        unchecked {
+            if (x << 128 != 0) {
+                x <<= 128;
+                lsb += 128;
+            }
+            if (x << 64 != 0) {
+                x <<= 64;
+                lsb += 64;
+            }
+            if (x << 32 != 0) {
+                x <<= 32;
+                lsb += 32;
+            }
+            if (x << 16 != 0) {
+                x <<= 16;
+                lsb += 16;
+            }
+            if (x << 8 != 0) {
+                x <<= 8;
+                lsb += 8;
+            }
+            if (x << 4 != 0) {
+                x <<= 4;
+                lsb += 4;
+            }
+            if (x << 2 != 0) {
+                x <<= 2;
+                lsb += 2;
+            }
+            if (x << 1 != 0) {
+                lsb += 1;
+            }
+
+            return 256 - lsb;
         }
     }
 

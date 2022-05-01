@@ -34,8 +34,8 @@ contract LiquidityBinExchange {
     IERC20Metadata public immutable token0;
     IERC20Metadata public immutable token1;
     uint256 public immutable fee;
-    uint256 private constant BIN_PRECISION_DECIMALS = 4; // @note there will be (9 * BIN_PRECISION) number of elt with the same binStep
-    uint256 public constant BIN_PRECISION = 10**BIN_PRECISION_DECIMALS; // @note there will be (9 * BIN_PRECISION) number of elt with the same binStep
+    uint256 private constant BIN_PRECISION_DECIMALS = 4;
+    uint256 public constant BIN_PRECISION = 10**BIN_PRECISION_DECIMALS; // @note there will be (9 * BIN_PRECISION) number of bins with the same binStep
     // @note thus, the total number of bin will be lower than 65 * 90_000 + 100_000 = 5_950_000
     uint256 public constant PRICE_PRECISION = 1e36;
     uint256 public constant BP_PRECISION = 10_000;
@@ -45,8 +45,9 @@ contract LiquidityBinExchange {
     // uint256 private immutable fee_helper;
 
     mapping(uint256 => Bin) private bins;
+    mapping(uint256 => uint256) private ids;
 
-    mapping(uint256 => uint256) private binEmpty;
+    mapping(uint256 => uint256)[3] private binEmpty;
 
     constructor(
         IERC20Metadata _token0,
@@ -340,12 +341,129 @@ contract LiquidityBinExchange {
             if (x >= 1e1) {
                 decimals += 1;
             }
-
-            return decimals;
         }
     }
 
-    function _mostSignificantBit(uint256 x) internal pure returns (uint256 msb) {
+    function findFirstBin(
+        uint256 binId,
+        uint256 bit,
+        bool isRight
+    ) external view returns (uint256, uint256) {
+        uint256 current;
+        uint256 nextBit;
+        bool found;
+        if (isRight) {
+            if (bit != 0) {
+                current = binEmpty[2][binId];
+                (nextBit, found) = _closestBitRight(current, bit - 1);
+                if (found) {
+                    return (binId, nextBit);
+                }
+            }
+
+            uint256 binIdDepth1 = binId / 256;
+            uint256 nextBinId;
+
+            require(binIdDepth1 != 0, "LBE: Error depth search");
+
+            if (binId % 256 != 0) {
+                current = binEmpty[1][binIdDepth1];
+                (nextBinId, found) = _closestBitRight(
+                    current,
+                    (binId % 256) - 1
+                );
+                if (found) {
+                    nextBinId = 256 * binIdDepth1 + nextBinId;
+                    current = binEmpty[2][nextBinId];
+                    nextBit = _mostSignificantBit(current);
+                    return (nextBinId, nextBit);
+                }
+            }
+
+            current = binEmpty[0][0];
+            (nextBinId, found) = _closestBitRight(current, binIdDepth1 - 1);
+            require(found, "LBE: Error depth search");
+            current = binEmpty[1][nextBinId];
+            nextBinId = 256 * nextBinId + _mostSignificantBit(current);
+            current = binEmpty[2][nextBinId];
+            nextBit = _mostSignificantBit(current);
+            return (nextBinId, nextBit);
+        } else {
+            if (bit < 255) {
+                current = binEmpty[2][binId];
+                (nextBit, found) = _closestBitLeft(current, bit + 1);
+                if (found) {
+                    return (binId, nextBit);
+                }
+            }
+
+            uint256 binIdDepth1 = binId / 256;
+            uint256 nextBinId;
+
+            require(binIdDepth1 != 255, "LBE: Error depth search");
+
+            if (binId % 256 != 255) {
+                current = binEmpty[1][binIdDepth1];
+                (nextBinId, found) = _closestBitLeft(
+                    current,
+                    (binId % 256) + 1
+                );
+                if (found) {
+                    nextBinId = 256 * binIdDepth1 + nextBinId;
+                    current = binEmpty[2][nextBinId];
+                    nextBit = _leastSignificantBit(current);
+                    return (nextBinId, nextBit);
+                }
+            }
+
+            current = binEmpty[0][0];
+            (nextBinId, found) = _closestBitLeft(current, binIdDepth1 + 1);
+            require(found, "LBE: Error depth search");
+            current = binEmpty[1][nextBinId];
+            nextBinId = 256 * nextBinId + _leastSignificantBit(current);
+            current = binEmpty[2][nextBinId];
+            nextBit = _leastSignificantBit(current);
+            return (nextBinId, nextBit);
+        }
+    }
+
+    function _closestBitRight(uint256 x, uint256 bit)
+        public
+        pure
+        returns (uint256 id, bool found)
+    {
+        unchecked {
+            x <<= 255 - bit;
+
+            if (x == 0) {
+                return (0, false);
+            }
+
+            return (_mostSignificantBit(x) - (255 - bit), true);
+        }
+    }
+
+    function _closestBitLeft(uint256 x, uint256 bit)
+        public
+        pure
+        returns (uint256 id, bool found)
+    {
+        unchecked {
+            x >>= bit;
+
+            if (x == 0) {
+                return (0, false);
+            }
+
+            return (_leastSignificantBit(x) + bit, true);
+        }
+    }
+
+    function _mostSignificantBit(uint256 x)
+        internal
+        pure
+        returns (uint256 msb)
+    {
         unchecked {
             if (x >= 1 << 128) {
                 x >>= 128;
@@ -378,8 +496,6 @@ contract LiquidityBinExchange {
             if (x >= 1 << 1) {
                 msb += 1;
             }
-
-            return msb;
         }
     }
 
@@ -421,7 +537,7 @@ contract LiquidityBinExchange {
                 lsb += 1;
             }
 
-            return 256 - lsb;
+            return 255 - lsb;
         }
     }
 

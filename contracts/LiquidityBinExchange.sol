@@ -60,7 +60,7 @@ contract LiquidityBinExchange is ReentrancyGuard {
         token1 = _token1;
 
         fee = BP_PRECISION - _fee;
-        uint256 price = _getBinPrice(_price);
+        uint256 price = _getBinPrice(_price); // delete this when seeding is made on add
         global.currentId = price;
         global.firstId = price;
         global.lastId = price;
@@ -289,20 +289,12 @@ contract LiquidityBinExchange is ReentrancyGuard {
         return _getBinStep(price);
     }
 
-    function getBinPrice(uint256 price) external pure returns (uint256) {
-        return _getBinPrice(price);
-    }
-
-    function getDecimals(uint256 x) external pure returns (uint256) {
-        return _getDecimals(x);
-    }
-
-    function findFirstBin(uint256 binId, bool isRight)
+    function findFirstBin(uint256 binId, bool isSearchRight)
         external
         view
         returns (uint256)
     {
-        return _findFirstBin(binId, isRight);
+        return _findFirstBin(binId, isSearchRight);
     }
 
     function getIdFromPrice(uint256 price) external pure returns (uint256) {

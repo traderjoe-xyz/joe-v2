@@ -7,8 +7,9 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "prb-math/contracts/PRBMath.sol";
 import "./JLBPToken.sol";
 
-import "hardhat/console.sol";
-
+/// @title Liquidity Bin Exchange
+/// @author Trader Joe
+/// @notice DexV2 POC
 contract LiquidityBinExchange is JLBPToken, ReentrancyGuard {
     using PRBMath for uint256;
 
@@ -33,9 +34,10 @@ contract LiquidityBinExchange is JLBPToken, ReentrancyGuard {
         uint256 firstId;
     }
 
-    IERC20Metadata public immutable token0;
-    IERC20Metadata public immutable token1;
-    uint256 public immutable fee;
+    IERC20Metadata public token0;
+    IERC20Metadata public token1;
+
+    uint256 public fee;
     uint256 private constant BIN_PRECISION_DECIMALS = 4;
     uint256 public constant BIN_PRECISION = 10**BIN_PRECISION_DECIMALS; // @note there will be (9 * BIN_PRECISION) number of bins with the same binStep
     // @note thus, the total number of bin will be lower than 65 * 90_000 + 100_000 = 5_950_000
@@ -129,7 +131,7 @@ contract LiquidityBinExchange is JLBPToken, ReentrancyGuard {
                         .mulDiv(
                             _amount0OutOfBin * BP_PRECISION,
                             PRICE_PRECISION * fee
-                        ); // needs to rounds up
+                        ) + 1; // needs to rounds up
                     _amount1In -= _amount1InToBin;
                     _bin.reserve1 += _safe112(_amount1InToBin);
                     _global.reserve1 += _safe112(_amount1InToBin);
@@ -146,7 +148,7 @@ contract LiquidityBinExchange is JLBPToken, ReentrancyGuard {
                     uint256 _amount0inToBin = PRICE_PRECISION.mulDiv(
                         _amount1OutOfBin * BP_PRECISION,
                         _getPriceFromId(_global.currentId) * fee
-                    ); // needs to rounds up
+                    ) + 1; // needs to rounds up
                     _amount0in -= _amount0inToBin;
                     _bin.reserve0 += _safe112(_amount0inToBin);
                     _global.reserve0 += _safe112(_amount0inToBin);
@@ -154,7 +156,9 @@ contract LiquidityBinExchange is JLBPToken, ReentrancyGuard {
                 uint256 l = _getPriceFromId(_global.currentId).mulDiv(
                     _bin.reserve0,
                     PRICE_PRECISION
-                ) + _bin.reserve1; // needs to rounds up
+                ) +
+                    1 +
+                    _bin.reserve1; // needs to rounds up
                 require(_bin.l <= l, "LBE: Constant liquidity not respected"); // not sure this is even needed as this checks is forced thanks to the fees added
                 _bin.l = l;
 
@@ -200,6 +204,7 @@ contract LiquidityBinExchange is JLBPToken, ReentrancyGuard {
         uint256 _maxAmount1 = token1.balanceOf(address(this)) -
             _global.reserve1;
 
+        // seeding liquidity
         if (_global.currentId == 0) {
             for (uint256 i; i < _len; i++) {
                 if (_amounts1[i] != 0) {
@@ -271,7 +276,7 @@ contract LiquidityBinExchange is JLBPToken, ReentrancyGuard {
         global = _global;
     }
 
-    function removeLiquity(uint112[] calldata ids, uint256[] calldata amounts)
+    function removeLiquidity(uint112[] calldata ids, uint256[] calldata amounts)
         external
         nonReentrant
     {
@@ -307,13 +312,16 @@ contract LiquidityBinExchange is JLBPToken, ReentrancyGuard {
                 _reserve1;
 
             if (_reserve0 == _amount0 && _reserve1 == _amount1) {
-                binEmpty[2][_id / 256] -= 2**(_id % 256); // add 0 at the right index
-                binEmpty[1][_id / 65_536] -= 2**((_id / 256) % 256); // add 0 at the right index
-                binEmpty[0][0] -= 2**(_id / 65_536); // add 0 at the right index
+                binEmpty[2][_id / 256] -= 2**(_id % 256); // remove 1 at the right index
+                binEmpty[1][_id / 65_536] -= 2**((_id / 256) % 256); // remove 1 at the right index
+                binEmpty[0][0] -= 2**(_id / 65_536); // remove 1 at the right index
             }
 
             _global.reserve0 -= _amount0;
             _global.reserve1 -= _amount1;
+        }
+        if (_global.reserve0 == 0 && _global.reserve1 == 0) {
+            global.currentId = 0; // back to seeding liquidity
         }
         global = _global;
     }

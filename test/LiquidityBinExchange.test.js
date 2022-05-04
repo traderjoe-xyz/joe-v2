@@ -79,7 +79,7 @@ describe.only("Liquidity Bin Exchange", function () {
     );
 
     const value = ethers.utils.parseUnits("1", 12).mul("1000").div("997");
-    await this.token12D.mint(this.lbe.address, value);
+    await this.token12D.mint(this.lbe.address, value + 1);
     await this.lbe
       .connect(this.alice)
       .swap(ethers.utils.parseUnits("1", 6), 0, this.alice.address, 0);

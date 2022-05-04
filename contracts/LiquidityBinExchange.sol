@@ -131,7 +131,7 @@ contract LiquidityBinExchange is JLBPToken, ReentrancyGuard {
                         .mulDiv(
                             _amount0OutOfBin * BP_PRECISION,
                             PRICE_PRECISION * fee
-                        ) + 1; // needs to rounds up
+                        ); // @note needs to rounds up ?
                     _amount1In -= _amount1InToBin;
                     _bin.reserve1 += _safe112(_amount1InToBin);
                     _global.reserve1 += _safe112(_amount1InToBin);
@@ -148,7 +148,7 @@ contract LiquidityBinExchange is JLBPToken, ReentrancyGuard {
                     uint256 _amount0inToBin = PRICE_PRECISION.mulDiv(
                         _amount1OutOfBin * BP_PRECISION,
                         _getPriceFromId(_global.currentId) * fee
-                    ) + 1; // needs to rounds up
+                    ); // @note needs to rounds up ?
                     _amount0in -= _amount0inToBin;
                     _bin.reserve0 += _safe112(_amount0inToBin);
                     _global.reserve0 += _safe112(_amount0inToBin);
@@ -156,9 +156,7 @@ contract LiquidityBinExchange is JLBPToken, ReentrancyGuard {
                 uint256 l = _getPriceFromId(_global.currentId).mulDiv(
                     _bin.reserve0,
                     PRICE_PRECISION
-                ) +
-                    1 +
-                    _bin.reserve1; // needs to rounds up
+                ) + _bin.reserve1; // @note needs to rounds up ?
                 require(_bin.l <= l, "LBE: Constant liquidity not respected"); // not sure this is even needed as this checks is forced thanks to the fees added
                 _bin.l = l;
 

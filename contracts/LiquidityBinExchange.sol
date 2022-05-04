@@ -364,27 +364,6 @@ contract LiquidityBinExchange is JLBPToken, ReentrancyGuard {
         return (id - 9 * BIN_PRECISION * alpha) * 10**alpha; // cant simplify as rounding down is necessary
     }
 
-    function _getBinPrice(uint256 price) private pure returns (uint256) {
-        /// 1e36 / 2**112 = 192.59..
-        require(price >= 192, "LBE: Price too low");
-        /// 2 ** 112 * 1e36 = 5192296858534827628530496329220096000000000000000000000000000000000000
-        require(
-            price <
-                5192296858534827628530496329220096000000000000000000000000000000000000,
-            "LBE: Price too high"
-        );
-        if (price < BIN_PRECISION) {
-            return price;
-        }
-        uint256 binStep = _getBinStep(price);
-        return (price / binStep) * binStep;
-    }
-
-    function _getBinStep(uint256 price) private pure returns (uint256) {
-        uint256 decimals = _getDecimals(price);
-        return 10**decimals / BIN_PRECISION;
-    } // 1.00000000 -> [1.0001 - 1.0002[
-
     function _getDecimals(uint256 x) private pure returns (uint256 decimals) {
         unchecked {
             if (x >= 1e38) {
@@ -632,14 +611,5 @@ contract LiquidityBinExchange is JLBPToken, ReentrancyGuard {
     function _safe112(uint256 x) private pure returns (uint112) {
         require(x < 2**112, "LBE: Exceeds 112 bits");
         return uint112(x);
-    }
-
-    function _safe128(uint256 x) private pure returns (uint128) {
-        require(x < 2**128, "LBE: Exceeds 128 bits");
-        return uint128(x);
-    }
-
-    function _max(uint256 x, uint256 y) private pure returns (uint256) {
-        return x > y ? x : y;
     }
 }

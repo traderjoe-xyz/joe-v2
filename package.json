@@ -30,7 +30,6 @@
     "@openzeppelin/contracts": "^4.5.0",
     "@openzeppelin/contracts-upgradeable": "^4.5.2",
     "hardhat-abi-exporter": "^2.8.0",
-    "hardhat-deploy": "^0.11.4",
-    "prb-math": "^2.4.3"
+    "hardhat-deploy": "^0.11.4"
   }
 }

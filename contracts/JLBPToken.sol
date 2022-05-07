@@ -4,6 +4,10 @@ pragma solidity 0.8.9;
 
 import "./interfaces/IJLBPToken.sol";
 
+/// @title Joe Liquidity Bin Provider Token
+/// @author Trader Joe
+/// @notice The JLBPToken is an implementation of a multi-token.
+/// It allows to create multi-ERC20 represented by their IDs.
 contract JLBPToken is IJLBPToken {
     // Mapping from token ID to account balances
     mapping(uint256 => mapping(address => uint256)) private _balances;

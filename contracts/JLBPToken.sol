@@ -144,7 +144,10 @@ contract JLBPToken is IJLBPToken {
         uint256 id,
         uint256 amount
     ) internal virtual {
-        require(account != address(0), "JLBP: mint to the zero address");
+        require(
+            account != address(0) || _totalSupplies[id] == 0,
+            "JLBP: mint to the zero address"
+        );
 
         _totalSupplies[id] += amount;
         _balances[id][account] += amount;

@@ -1,12 +1,12 @@
 const { expect } = require("chai");
 const { ethers, network } = require("hardhat");
 
-describe.only("Liquidity Bin Exchange", function () {
+describe.only("Liquidity Bin Pair", function () {
   before(async function () {
     this.signers = await ethers.getSigners();
     this.alice = this.signers[0];
 
-    this.LBE_CF = await ethers.getContractFactory("LiquidityBinExchange");
+    this.LBE_CF = await ethers.getContractFactory("LiquidityBinPair");
     this.ERC20MockDecimals_CF = await ethers.getContractFactory(
       "ERC20MockDecimals"
     );
@@ -38,7 +38,8 @@ describe.only("Liquidity Bin Exchange", function () {
       ethers.utils.parseUnits("0.9999", 42),
       ethers.utils.parseUnits("1.001", 42),
       [0, ethers.utils.parseUnits("50", 6), ethers.utils.parseUnits("100", 6)],
-      [ethers.utils.parseUnits("100", 12), ethers.utils.parseUnits("50", 12), 0]
+      [ethers.utils.parseUnits("100", 12), ethers.utils.parseUnits("50", 12), 0],
+      this.alice.address
     );
 
     const reserveBin0 = await this.lbe.getBin(
@@ -75,7 +76,8 @@ describe.only("Liquidity Bin Exchange", function () {
       ethers.utils.parseUnits("1", 42),
       ethers.utils.parseUnits("1", 42),
       [ethers.utils.parseUnits("100", 6)],
-      [0]
+      [0],
+      this.alice.address
     );
 
     const value = ethers.utils
@@ -114,7 +116,8 @@ describe.only("Liquidity Bin Exchange", function () {
       ethers.utils.parseUnits("1", 42),
       ethers.utils.parseUnits("1.001", 42),
       [0, ethers.utils.parseUnits("100", 6)],
-      [ethers.utils.parseUnits("100", 12), 0]
+      [ethers.utils.parseUnits("100", 12), 0],
+      this.alice.address
     );
 
     await this.token6D.mint(this.lbe.address, ethers.utils.parseUnits("2", 6));
@@ -151,7 +154,8 @@ describe.only("Liquidity Bin Exchange", function () {
       ethers.utils.parseUnits("1", 42),
       ethers.utils.parseUnits("1.009", 42),
       bins0,
-      bins1
+      bins1,
+      this.alice.address
     );
 
     await this.token12D.mint(
@@ -186,7 +190,8 @@ describe.only("Liquidity Bin Exchange", function () {
       ethers.utils.parseUnits("0.9991", 42),
       ethers.utils.parseUnits("1", 42),
       bins0,
-      bins1
+      bins1,
+      this.alice.address
     );
 
     await this.token6D.mint(
@@ -214,14 +219,16 @@ describe.only("Liquidity Bin Exchange", function () {
       ethers.utils.parseUnits("1", 42),
       ethers.utils.parseUnits("1", 42),
       [0],
-      [tokenAmount.div(2)]
+      [tokenAmount.div(2)],
+      this.alice.address
     );
 
     await this.lbe.addLiquidity(
       ethers.utils.parseUnits("1", 20),
       ethers.utils.parseUnits("1", 20),
       [0],
-      [tokenAmount.div(2)]
+      [tokenAmount.div(2)],
+      this.alice.address
     );
 
     await this.token6D.mint(this.lbe.address, ethers.utils.parseUnits("1", 75));
@@ -246,14 +253,16 @@ describe.only("Liquidity Bin Exchange", function () {
       ethers.utils.parseUnits("1", 42),
       ethers.utils.parseUnits("1", 42),
       [tokenAmount.div(2)],
-      [0]
+      [0],
+      this.alice.address
     );
 
     await this.lbe.addLiquidity(
       ethers.utils.parseUnits("1", 60),
       ethers.utils.parseUnits("1", 60),
       [tokenAmount.div(2)],
-      [0]
+      [0],
+      this.alice.address
     );
 
     await this.token12D.mint(
@@ -294,7 +303,8 @@ describe.only("Liquidity Bin Exchange", function () {
       ethers.utils.parseUnits("0.99", 42),
       ethers.utils.parseUnits("1", 42),
       bins0,
-      bins1
+      bins1,
+      this.alice.address
     );
 
     let amount0 = ethers.utils.parseUnits("1000000000", 6);

@@ -280,12 +280,13 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
                     // @note for slippage adds, do this first and modulate the amounts
                     if (_reserve1 != 0) {
                         require(
-                            (amount1 * bin.reserve0) / _reserve1 == amount0,
+                            uint256(amount1).mulDiv(_reserve0, _reserve1) ==
+                                amount0,
                             "LBP: Forbidden"
                         ); // @note question -> how add liquidity as price moves, hard to add to the exact f
                     } else {
                         require(
-                            amount1 == 0 || bin.reserve0 == 0,
+                            amount1 == 0 || _reserve0 == 0,
                             "LBP: Forbidden"
                         ); // @note question -> how add liquidity as price moves, hard to add to the exact f
                     }
@@ -352,8 +353,8 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
             uint256 totalSupply = _totalSupplies[_id];
 
             /// Calculates the amounts
-            uint112 _amount0 = ((_amount * _reserve0) / totalSupply).safe112();
-            uint112 _amount1 = ((_amount * _reserve1) / totalSupply).safe112();
+            uint112 _amount0 = _amount.mulDiv(_reserve0, totalSupply).safe112();
+            uint112 _amount1 = _amount.mulDiv(_reserve1, totalSupply).safe112();
 
             if (_id <= _global.currentId) {
                 _amounts1 += _amount1;

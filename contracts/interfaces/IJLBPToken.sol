@@ -6,7 +6,7 @@ interface IJLBPToken {
     event TransferSingle(
         address indexed from,
         address indexed to,
-        uint256 id,
+        int256 id,
         uint256 amount
     );
 
@@ -14,7 +14,7 @@ interface IJLBPToken {
         address indexed operator,
         address indexed from,
         address indexed to,
-        uint256 id,
+        int256 id,
         uint256 amount
     );
 
@@ -24,16 +24,16 @@ interface IJLBPToken {
         bool approved
     );
 
-    function balanceOf(address account, uint256 id)
+    function balanceOf(address account, int256 id)
         external
         view
         returns (uint256);
 
-    function totalSupply(uint256 id) external view returns (uint256);
+    function totalSupply(int256 id) external view returns (uint256);
 
     function safeTransfer(
         address to,
-        uint256 id,
+        int256 id,
         uint256 amount
     ) external;
 
@@ -47,7 +47,7 @@ interface IJLBPToken {
     function safeTransferFrom(
         address from,
         address to,
-        uint256 id,
+        int256 id,
         uint256 amount
     ) external;
 }

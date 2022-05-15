@@ -4,33 +4,45 @@ pragma solidity 0.8.9;
 
 import "./interfaces/IJLBPToken.sol";
 
+error JLPBToken__OperatorNotApproved(address from, address operator);
+error JLPBToken__TransferFromOrToAddress0();
+error JLPBToken__MintToAddress0();
+error JLPBToken__BurnFromAddress0();
+error JLPBToken__BurnExceedsBalance(address from, int256 id, uint256 amount);
+error JLPBToken__SelfApproval(address owner);
+error JLPBToken__TransferExceedsBalance(
+    address from,
+    int256 id,
+    uint256 amount
+);
+
 /// @title Joe Liquidity Bin Provider Token
 /// @author Trader Joe
 /// @notice The JLBPToken is an implementation of a multi-token.
 /// It allows to create multi-ERC20 represented by their IDs.
 contract JLBPToken is IJLBPToken {
     // Mapping from token ID to account balances
-    mapping(uint256 => mapping(address => uint256)) private _balances;
+    mapping(int256 => mapping(address => uint256)) private _balances;
 
     // Mapping from account to operator approvals
     mapping(address => mapping(address => bool)) private _operatorApprovals;
 
     // Mapping from token ID to total supplies
-    mapping(uint256 => uint256) internal _totalSupplies;
+    mapping(int256 => uint256) internal _totalSupplies;
 
     string public constant name = "JLBP Token";
     string public constant symbol = "JLBP";
 
     /// @notice Returns the number of decimals used to get its user representation
     /// @return The number of decimals as uint8
-    function decimals() external pure virtual returns (uint8) {
+    function decimals() external view virtual returns (uint8) {
         return 18;
     }
 
     /// @notice Returns the number of decimals used to get its user representation
     /// @param id The token ID
     /// @return The total supply of that token ID
-    function totalSupply(uint256 id)
+    function totalSupply(int256 id)
         external
         view
         virtual
@@ -44,7 +56,7 @@ contract JLBPToken is IJLBPToken {
     /// @param account The address of the owner
     /// @param id The token ID
     /// @return The amount of tokens of type `id` owned by `account`
-    function balanceOf(address account, uint256 id)
+    function balanceOf(address account, int256 id)
         external
         view
         virtual
@@ -60,7 +72,7 @@ contract JLBPToken is IJLBPToken {
     /// @param amount The amount to send
     function safeTransfer(
         address to,
-        uint256 id,
+        int256 id,
         uint256 amount
     ) external virtual override {
         address owner = msg.sender;
@@ -101,14 +113,12 @@ contract JLBPToken is IJLBPToken {
     function safeTransferFrom(
         address from,
         address to,
-        uint256 id,
+        int256 id,
         uint256 amount
     ) external virtual override {
         address operator = msg.sender;
-        require(
-            _isApprovedForAll(from, operator),
-            "JLBP: caller is not approved"
-        );
+        if (_isApprovedForAll(from, operator))
+            revert JLPBToken__OperatorNotApproved(from, operator);
         _safeTransfer(from, to, id, amount);
         emit TransferFromSingle(msg.sender, from, to, id, amount);
     }
@@ -121,14 +131,15 @@ contract JLBPToken is IJLBPToken {
     function _safeTransfer(
         address from,
         address to,
-        uint256 id,
+        int256 id,
         uint256 amount
     ) internal virtual {
-        require(from != address(0), "JLBP: transfer from the zero address");
-        require(to != address(0), "JLBP: transfer to the zero address");
+        if (from == address(0) || to == address(0))
+            revert JLPBToken__TransferFromOrToAddress0();
 
         uint256 fromBalance = _balances[id][from];
-        require(fromBalance >= amount, "JLBP: transfer amount exceeds balance");
+        if (fromBalance < amount)
+            revert JLPBToken__TransferExceedsBalance(from, id, amount);
         unchecked {
             _balances[id][from] = fromBalance - amount;
         }
@@ -141,15 +152,18 @@ contract JLBPToken is IJLBPToken {
     /// @param amount The amount to create
     function _mint(
         address account,
-        uint256 id,
+        int256 id,
         uint256 amount
     ) internal virtual {
-        require(
-            account != address(0) || _totalSupplies[id] == 0,
-            "JLBP: mint to the zero address"
-        );
+        if (account == address(0)) revert JLPBToken__MintToAddress0();
 
-        _totalSupplies[id] += amount;
+        uint256 _totalSupply = _totalSupplies[id];
+        _totalSupplies[id] = _totalSupply + amount;
+        if (_totalSupply == 0) {
+            amount -= 1000;
+            _balances[id][address(0)] = 1000;
+            emit TransferSingle(address(0), address(0), id, 1000);
+        }
         _balances[id][account] += amount;
         emit TransferSingle(address(0), account, id, amount);
     }
@@ -160,13 +174,14 @@ contract JLBPToken is IJLBPToken {
     /// @param amount The amount to destroy
     function _burn(
         address account,
-        uint256 id,
+        int256 id,
         uint256 amount
     ) internal virtual {
-        require(account != address(0), "JLBP: burn from the zero address");
+        if (account == address(0)) revert JLPBToken__BurnFromAddress0();
 
         uint256 accountBalance = _balances[id][account];
-        require(accountBalance >= amount, "JLBP: burn amount exceeds balance");
+        if (accountBalance < amount)
+            revert JLPBToken__BurnExceedsBalance(account, id, amount);
         unchecked {
             _balances[id][account] = accountBalance - amount;
         }
@@ -183,7 +198,9 @@ contract JLBPToken is IJLBPToken {
         address operator,
         bool approved
     ) internal virtual {
-        require(owner != operator, "JLBP: setting approval status for self");
+        if (owner == operator) {
+            revert JLPBToken__SelfApproval(owner);
+        }
         _operatorApprovals[owner][operator] = approved;
         emit ApprovalForAll(owner, operator, approved);
     }

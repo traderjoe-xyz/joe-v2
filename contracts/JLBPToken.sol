@@ -7,9 +7,11 @@ import "./interfaces/IJLBPToken.sol";
 error JLPBToken__OperatorNotApproved(address from, address operator);
 error JLPBToken__TransferFromOrToAddress0();
 error JLPBToken__MintToAddress0();
+error JLPBToken__MintTooLow(uint256 amount);
 error JLPBToken__BurnFromAddress0();
 error JLPBToken__BurnExceedsBalance(address from, int256 id, uint256 amount);
 error JLPBToken__SelfApproval(address owner);
+error JLBP__WrongId();
 error JLPBToken__TransferExceedsBalance(
     address from,
     int256 id,
@@ -22,16 +24,19 @@ error JLPBToken__TransferExceedsBalance(
 /// It allows to create multi-ERC20 represented by their IDs.
 contract JLBPToken is IJLBPToken {
     // Mapping from token ID to account balances
-    mapping(int256 => mapping(address => uint256)) private _balances;
+    mapping(uint256 => mapping(address => uint256)) internal _balances;
 
     // Mapping from account to operator approvals
     mapping(address => mapping(address => bool)) private _operatorApprovals;
 
     // Mapping from token ID to total supplies
-    mapping(int256 => uint256) internal _totalSupplies;
+    mapping(uint256 => uint256) internal _totalSupplies;
 
     string public constant name = "JLBP Token";
     string public constant symbol = "JLBP";
+
+    uint256 private constant MAX_NUM_BINS = 2**24;
+    int256 private constant HALF_MAX_NUM_BINS = 2**24 / 2;
 
     /// @notice Returns the number of decimals used to get its user representation
     /// @return The number of decimals as uint8
@@ -49,7 +54,7 @@ contract JLBPToken is IJLBPToken {
         override
         returns (uint256)
     {
-        return _totalSupplies[id];
+        return _totalSupplies[_getInternalId(id)];
     }
 
     /// @notice Returns the amount of tokens of type `id` owned by `account`
@@ -63,7 +68,7 @@ contract JLBPToken is IJLBPToken {
         override
         returns (uint256)
     {
-        return _balances[id][account];
+        return _balances[_getInternalId(id)][account];
     }
 
     /// @notice Transfers `amount` tokens of type `id` from `msg.sender` to `to`
@@ -123,6 +128,23 @@ contract JLBPToken is IJLBPToken {
         emit TransferFromSingle(msg.sender, from, to, id, amount);
     }
 
+    /// @notice Returns the internal `id`, i.e., the natural one
+    /// @param _id The public id
+    /// @return The internal id
+    function _getInternalId(int256 _id) internal pure returns (uint256) {
+        uint256 id = uint256(HALF_MAX_NUM_BINS + _id);
+        if (id > MAX_NUM_BINS) revert JLBP__WrongId(); // prevent over and underflow
+        return id;
+    }
+
+    /// @notice Returns the public `id`, i.e., the integer one
+    /// @param _id The internal id
+    /// @return The public id
+    function _getPublicId(uint256 _id) internal pure returns (int256) {
+        if (_id > MAX_NUM_BINS) revert JLBP__WrongId(); // prevent over and underflow
+        return int256(_id) - HALF_MAX_NUM_BINS;
+    }
+
     /// @dev Transfers `amount` tokens of type `id` from `from` to `to`
     /// @param from The address of the owner of the tokens
     /// @param to The address of the recipient
@@ -137,13 +159,15 @@ contract JLBPToken is IJLBPToken {
         if (from == address(0) || to == address(0))
             revert JLPBToken__TransferFromOrToAddress0();
 
-        uint256 fromBalance = _balances[id][from];
+        uint256 _id = _getInternalId(id);
+
+        uint256 fromBalance = _balances[_id][from];
         if (fromBalance < amount)
             revert JLPBToken__TransferExceedsBalance(from, id, amount);
         unchecked {
-            _balances[id][from] = fromBalance - amount;
+            _balances[_id][from] = fromBalance - amount;
         }
-        _balances[id][to] += amount;
+        _balances[_id][to] += amount;
     }
 
     /// @dev Creates `amount` tokens of type `id`, and assigns them to `account`
@@ -152,7 +176,7 @@ contract JLBPToken is IJLBPToken {
     /// @param amount The amount to create
     function _mint(
         address account,
-        int256 id,
+        uint256 id,
         uint256 amount
     ) internal virtual {
         if (account == address(0)) revert JLPBToken__MintToAddress0();
@@ -160,12 +184,20 @@ contract JLBPToken is IJLBPToken {
         uint256 _totalSupply = _totalSupplies[id];
         _totalSupplies[id] = _totalSupply + amount;
         if (_totalSupply == 0) {
-            amount -= 1000;
-            _balances[id][address(0)] = 1000;
-            emit TransferSingle(address(0), address(0), id, 1000);
+            if (amount < 10_000) revert JLPBToken__MintTooLow(amount); // Do we check that ? or only > 1000 ?
+            unchecked {
+                amount -= 1000;
+                _balances[id][address(0)] = 1000;
+                emit TransferSingle(
+                    address(0),
+                    address(0),
+                    _getPublicId(id),
+                    1000
+                );
+            }
         }
         _balances[id][account] += amount;
-        emit TransferSingle(address(0), account, id, amount);
+        emit TransferSingle(address(0), account, _getPublicId(id), amount);
     }
 
     /// @dev Destroys `amount` tokens of type `id` from `account`
@@ -174,20 +206,24 @@ contract JLBPToken is IJLBPToken {
     /// @param amount The amount to destroy
     function _burn(
         address account,
-        int256 id,
+        uint256 id,
         uint256 amount
     ) internal virtual {
         if (account == address(0)) revert JLPBToken__BurnFromAddress0();
 
         uint256 accountBalance = _balances[id][account];
         if (accountBalance < amount)
-            revert JLPBToken__BurnExceedsBalance(account, id, amount);
+            revert JLPBToken__BurnExceedsBalance(
+                account,
+                _getPublicId(id),
+                amount
+            );
         unchecked {
             _balances[id][account] = accountBalance - amount;
         }
         _totalSupplies[id] -= amount;
 
-        emit TransferSingle(account, address(0), id, amount);
+        emit TransferSingle(account, address(0), _getPublicId(id), amount);
     }
 
     /// @notice Grants or revokes permission to `operator` to transfer the caller's tokens, according to `approved`

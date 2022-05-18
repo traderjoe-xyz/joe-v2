@@ -4,49 +4,9 @@ pragma solidity 0.8.9;
 
 error Math__MulDivOverflow(uint256 prod1, uint256 denominator);
 error Math__Exceeds112Bits(uint256 x);
+error Math__Exceeds128Bits(uint256 x);
 
 library Math {
-    /// @notice Returns the number of decimal of x
-    /// @param x The value as an uint256
-    /// @return decimals The number of decimals of x
-    function getDecimals(uint256 x) internal pure returns (uint256 decimals) {
-        unchecked {
-            if (x >= 1e38) {
-                x /= 1e38;
-                decimals += 38;
-            }
-
-            if (x >= 1e19) {
-                x /= 1e19;
-                decimals += 19;
-            }
-
-            if (x >= 1e10) {
-                x /= 1e10;
-                decimals += 10;
-            }
-
-            if (x >= 1e5) {
-                x /= 1e5;
-                decimals += 5;
-            }
-
-            if (x >= 1e3) {
-                x /= 1e3;
-                decimals += 3;
-            }
-
-            if (x >= 1e2) {
-                x /= 1e2;
-                decimals += 2;
-            }
-
-            if (x >= 1e1) {
-                decimals += 1;
-            }
-        }
-    }
-
     /// @notice Returns a tuple (uint256 id, bool found),
     /// id is the index of the closest bit on the right of x that is non null
     /// @param x The value as an uint256
@@ -305,6 +265,12 @@ library Math {
         return _endMulDiv(prod0, prod1, denominator, 0);
     }
 
+    /// @notice The end of the muldiv function, common to the roundUp our RoundDown
+    /// @param prod0 The least significant 256 bits of the product as an uint256
+    /// @param prod1 The most significant 256 bits of the product as an uint256
+    /// @param denominator The denominator as an uint256
+    /// @param result The current result (0 or 1, depending if we roundUp or not) as an uint256
+    /// @return The result as an uint256
     function _endMulDiv(
         uint256 prod0,
         uint256 prod1,
@@ -359,5 +325,13 @@ library Math {
     function safe112(uint256 x) internal pure returns (uint112) {
         if (x >= 2**112) revert Math__Exceeds112Bits(x);
         return uint112(x);
+    }
+
+    /// @notice Returns x on uint128 and check that it does not overflow
+    /// @param x The value as an uint256
+    /// @return The value as an uint128
+    function safe128(uint256 x) internal pure returns (uint128) {
+        if (x >= 2**128) revert Math__Exceeds128Bits(x);
+        return uint128(x);
     }
 }

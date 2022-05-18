@@ -19,6 +19,7 @@
     "ethereum-waffle": "^3.4.4",
     "ethers": "^5.6.2",
     "hardhat": "^2.9.2",
+    "hardhat-contract-sizer": "^2.5.1",
     "hardhat-gas-reporter": "^1.0.8",
     "prettier": "^2.6.1",
     "prettier-plugin-solidity": "^1.0.0-beta.13",
@@ -29,6 +30,7 @@
     "@nomiclabs/hardhat-solhint": "^2.0.0",
     "@openzeppelin/contracts": "^4.5.0",
     "@openzeppelin/contracts-upgradeable": "^4.5.2",
+    "@prb/math": "^2.5.0",
     "hardhat-abi-exporter": "^2.8.0",
     "hardhat-deploy": "^0.11.4"
   }

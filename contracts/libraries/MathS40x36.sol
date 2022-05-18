@@ -12,12 +12,8 @@ error Math__Exp2InputTooBig(int256 x);
 
 library MathS40x36 {
     using Math for uint256;
-    int256 internal constant SCALE = 1e36;
-    int256 internal constant HALF_SCALE = 5e35;
-
-    function abs(int256 x) internal pure returns (uint256) {
-        return x > 0 ? uint256(x) : uint256(-x);
-    }
+    int256 public constant SCALE = 1e36;
+    int256 public constant HALF_SCALE = 5e35;
 
     /// @notice Calculates the binary exponent of x using the binary fraction method.
     ///
@@ -32,7 +28,7 @@ library MathS40x36 {
     ///
     /// @param x The exponent as a signed 40.36-decimal fixed-point number.
     /// @return result The result as a signed 40.36-decimal fixed-point number.
-    function exp2(int256 x) internal pure returns (int256 result) {
+    function exp2(int256 x) public pure returns (int256 result) {
         // This works because 2^(-x) = 1/2^x.
         if (x < 0) {
             // 2^119.589411415945044523331499461618046332 is the maximum number whose inverse does not truncate down to zero.
@@ -51,11 +47,11 @@ library MathS40x36 {
             }
 
             unchecked {
-                // Convert x to the 192.64-bit fixed-point format.
-                uint256 x192x64 = (uint256(x) << 128) / uint256(SCALE);
+                // Convert x to the 128.128-bit fixed-point format.
+                uint256 x128x128 = (uint256(x) << 128) / uint256(SCALE);
 
                 // Safe to convert the result to int256 directly because the maximum input allowed is 128.
-                result = int256(_exp2(x192x64));
+                result = int256(_exp2(x128x128));
             }
         }
     }
@@ -480,7 +476,7 @@ library MathS40x36 {
     ///
     /// @param x The signed 40.36-decimal fixed-point number for which to calculate the binary logarithm.
     /// @return result The binary logarithm as a signed 40.36-decimal fixed-point number.
-    function log2(int256 x) internal pure returns (int256 result) {
+    function log2(int256 x) external pure returns (int256 result) {
         if (x <= 0) {
             revert Math__LogInputTooSmall(x);
         }

@@ -35,17 +35,29 @@ contract LBToken is ILBToken {
     // Mapping from token ID to total supplies
     mapping(uint256 => uint256) internal _totalSupplies;
 
-    string public name;
-    string public symbol;
+    string private _name;
+    string private _symbol;
 
-    constructor(string memory _name, string memory _symbol) {
-        name = _name;
-        symbol = _symbol;
+    constructor(string memory name_, string memory symbol_) {
+        _name = name_;
+        _symbol = symbol_;
+    }
+
+    /// @notice Returns the name of the token
+    /// @return The name of the token
+    function name() public view virtual override returns (string memory) {
+        return _name;
+    }
+
+    /// @notice Returns the symbol of the token, usually a shorter version of the name
+    /// @return The symbol of the token
+    function symbol() public view virtual override returns (string memory) {
+        return _symbol;
     }
 
     /// @notice Returns the number of decimals used to get its user representation
     /// @return The number of decimals as uint8
-    function decimals() external view virtual returns (uint8) {
+    function decimals() public view virtual override returns (uint8) {
         return 18;
     }
 
@@ -53,7 +65,7 @@ contract LBToken is ILBToken {
     /// @param _id The token ID
     /// @return The total supply of that token ID
     function totalSupply(uint256 _id)
-        external
+        public
         view
         virtual
         override
@@ -67,7 +79,7 @@ contract LBToken is ILBToken {
     /// @param _id The token ID
     /// @return The amount of tokens of type `id` owned by `_account`
     function balanceOf(address _account, uint256 _id)
-        external
+        public
         view
         virtual
         override
@@ -76,11 +88,11 @@ contract LBToken is ILBToken {
         return _balances[_id][_account];
     }
 
-    /// @notice Returns the amount of tokens of type `id` owned by `_account`
+    /// @notice Returns the list of tokens ids owned by `_account`
     /// @param _account The address of the owner
     /// @return The amount of tokens of type `id` owned by `_account`
     function tokensIds(address _account)
-        external
+        public
         view
         virtual
         override
@@ -97,35 +109,35 @@ contract LBToken is ILBToken {
         address _to,
         uint256 _id,
         uint256 _amount
-    ) external virtual override {
-        address owner = msg.sender;
-        _safeTransfer(owner, _to, _id, _amount);
-        emit TransferSingle(owner, _to, _id, _amount);
+    ) public virtual override {
+        address _owner = msg.sender;
+        _safeTransfer(_owner, _to, _id, _amount);
+        emit TransferSingle(_owner, _to, _id, _amount);
     }
 
     /// @notice Returns true if `operator` is approved to transfer `_account`'s tokens
-    /// @param owner The address of the owner
-    /// @param spender The address of the spender
+    /// @param _owner The address of the owner
+    /// @param _spender The address of the spender
     /// @return True if `operator` is approved to transfer `_account`'s tokens
-    function isApprovedForAll(address owner, address spender)
-        external
+    function isApprovedForAll(address _owner, address _spender)
+        public
         view
         virtual
         override
         returns (bool)
     {
-        return _isApprovedForAll(owner, spender);
+        return _isApprovedForAll(_owner, _spender);
     }
 
     /// @notice Grants or revokes permission to `operator` to transfer the caller's tokens, according to `approved`
-    /// @param operator The address of the operator
-    /// @param approved The boolean value to grant or revoke permission
-    function setApprovalForAll(address operator, bool approved)
-        external
+    /// @param _operator The address of the operator
+    /// @param _approved The boolean value to grant or revoke permission
+    function setApprovalForAll(address _operator, bool _approved)
+        public
         virtual
         override
     {
-        _setApprovalForAll(msg.sender, operator, approved);
+        _setApprovalForAll(msg.sender, _operator, _approved);
     }
 
     /// @notice Transfers `_amount` tokens of type `_id` from `_from` to `_to`
@@ -138,7 +150,7 @@ contract LBToken is ILBToken {
         address _to,
         uint256 _id,
         uint256 _amount
-    ) external virtual override {
+    ) public virtual override {
         address operator = msg.sender;
         if (_isApprovedForAll(_from, operator))
             revert LBToken__OperatorNotApproved(_from, operator);
@@ -230,30 +242,31 @@ contract LBToken is ILBToken {
     }
 
     /// @notice Grants or revokes permission to `operator` to transfer the caller's tokens, according to `approved`
-    /// @param operator The address of the operator
-    /// @param approved The boolean value to grant or revoke permission
+    /// @param _owner The address of the owner
+    /// @param _operator The address of the operator
+    /// @param _approved The boolean value to grant or revoke permission
     function _setApprovalForAll(
-        address owner,
-        address operator,
-        bool approved
+        address _owner,
+        address _operator,
+        bool _approved
     ) internal virtual {
-        if (owner == operator) {
-            revert LBToken__SelfApproval(owner);
+        if (_owner == _operator) {
+            revert LBToken__SelfApproval(_owner);
         }
-        _operatorApprovals[owner][operator] = approved;
-        emit ApprovalForAll(owner, operator, approved);
+        _operatorApprovals[_owner][_operator] = _approved;
+        emit ApprovalForAll(_owner, _operator, _approved);
     }
 
     /// @notice Returns true if `operator` is approved to transfer `_account`'s tokens
-    /// @param owner The address of the owner
-    /// @param spender The address of the spender
+    /// @param _owner The address of the owner
+    /// @param _spender The address of the spender
     /// @return True if `operator` is approved to transfer `_account`'s tokens
-    function _isApprovedForAll(address owner, address spender)
+    function _isApprovedForAll(address _owner, address _spender)
         internal
         view
         virtual
         returns (bool)
     {
-        return _operatorApprovals[owner][spender];
+        return _operatorApprovals[_owner][_spender];
     }
 }

@@ -2,11 +2,11 @@
 
 pragma solidity 0.8.9;
 
-interface IJLBPToken {
+interface ILBToken {
     event TransferSingle(
         address indexed from,
         address indexed to,
-        int256 id,
+        int24 id,
         uint256 amount
     );
 
@@ -14,7 +14,7 @@ interface IJLBPToken {
         address indexed operator,
         address indexed from,
         address indexed to,
-        int256 id,
+        int24 id,
         uint256 amount
     );
 
@@ -24,16 +24,16 @@ interface IJLBPToken {
         bool approved
     );
 
-    function balanceOf(address account, int256 id)
+    function balanceOf(address account, int24 id)
         external
         view
         returns (uint256);
 
-    function totalSupply(int256 id) external view returns (uint256);
+    function totalSupply(int24 id) external view returns (uint256);
 
     function safeTransfer(
         address to,
-        int256 id,
+        int24 id,
         uint256 amount
     ) external;
 
@@ -47,7 +47,7 @@ interface IJLBPToken {
     function safeTransferFrom(
         address from,
         address to,
-        int256 id,
+        int24 id,
         uint256 amount
     ) external;
 }

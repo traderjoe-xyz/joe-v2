@@ -14,7 +14,6 @@ error LBToken__BurnFromAddress0();
 error LBToken__BurnExceedsBalance(address from, uint256 id, uint256 amount);
 error LBToken__SelfApproval(address owner);
 error LBToken__TransferExceedsBalance(address from, uint256 id, uint256 amount);
-error LBToken__IdNotInSet(address from, uint256 id, uint256 amount);
 
 /// @title Joe Liquidity Bin Provider Token
 /// @author Trader Joe

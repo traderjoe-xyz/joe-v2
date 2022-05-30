@@ -5,6 +5,7 @@ pragma solidity 0.8.9;
 error Math__MulDivOverflow(uint256 prod1, uint256 denominator);
 error Math__Exceeds112Bits(uint256 x);
 error Math__Exceeds128Bits(uint256 x);
+error Math__Exceeds24Bits(uint256 x);
 
 library Math {
     /// @notice Returns a tuple (uint256 id, bool found),
@@ -333,5 +334,13 @@ library Math {
     function safe128(uint256 x) internal pure returns (uint128) {
         if (x >= 2**128) revert Math__Exceeds128Bits(x);
         return uint128(x);
+    }
+
+    /// @notice Returns x on uint24 and check that it does not overflow
+    /// @param x The value as an uint256
+    /// @return The value as an uint24
+    function safe24(uint256 x) internal pure returns (uint24) {
+        if (x >= 2**24) revert Math__Exceeds24Bits(x);
+        return uint24(x);
     }
 }

@@ -2,31 +2,33 @@
 
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
-import "./JLBPToken.sol";
+import "./LBToken.sol";
 import "./libraries/Math.sol";
 import "./libraries/MathS40x36.sol";
 
-error LBP__FeeTooBig(uint256 fee);
-error LBP__InsufficientAmounts(uint256 amount0In, uint256 amount1In);
-error LBP__WrongAmounts(uint256 amount0Out, uint256 amount1Out);
-error LBP__BrokenSafetyCheck();
-error LBP__ForbiddenFillFactor();
-error LBP__InsufficientLiquidityMinted();
-error LBP__InsufficientLiquidityBurned();
-error LBP__WrongLengths();
-error LBP__TransferFailed(address token, address to, uint256 value);
-error LBP__ErrorDepthSearch();
-error LBP__WrongDepth(uint256 depth);
-error LBP__WrongId();
+error LBPair__BaseFeeTooBig(uint256 baseFee);
+error LBPair__InsufficientAmounts(uint256 amount0In, uint256 amount1In);
+error LBPair__WrongAmounts(uint256 amount0Out, uint256 amount1Out);
+error LBPair__BrokenSafetyCheck();
+error LBPair__ForbiddenFillFactor();
+error LBPair__InsufficientLiquidityMinted();
+error LBPair__InsufficientLiquidityBurned();
+error LBPair__WrongLengths();
+error LBPair__ZeroAddress();
+error LBPair__AlreadyInitialized();
+error LBPair__TransferFailed(address token, address to, uint256 value);
+error LBPair__ErrorDepthSearch();
+error LBPair__WrongDepth(uint256 depth);
+error LBPair__WrongId();
 
-// TODO add oracle price, add fee distributed to protocol
+// TODO add oracle price, add baseFee distributed to protocol
 /// @title Liquidity Bin Exchange
 /// @author Trader Joe
 /// @notice DexV2 POC
-contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
+contract LBPair is LBToken, ReentrancyGuardUpgradeable {
     using Math for uint256;
     using MathS40x36 for int256;
 
@@ -38,15 +40,15 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
     struct GlobalInfo {
         uint128 reserve0;
         uint128 reserve1;
-        uint256 currentId;
+        uint24 currentId;
         uint112 currentReserve0;
     }
 
-    IERC20 public token0;
-    IERC20 public token1;
+    IERC20Upgradeable public immutable token0;
+    IERC20Upgradeable public immutable token1;
 
-    /// @notice The fee added to each swap
-    uint256 public fee;
+    /// @notice The baseFee added to each swap
+    uint256 public immutable baseFee;
     uint256 public constant PRICE_PRECISION = 1e36;
     uint256 private constant BASIS_POINT_MAX = 10_000;
     /// @notice The `log2(1 + 1bp)` value hard codded as a signed 39.36-decimal fixed-point number
@@ -55,6 +57,7 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
     bytes4 private constant SELECTOR = 0xa9059cbb;
 
     GlobalInfo private globalInfo;
+    bool private initialized;
 
     // uint256 private immutable fee_helper;
 
@@ -66,32 +69,29 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
     /// @dev Tree to find bins with non zero liquidity
     mapping(uint256 => uint256)[3] private _tree;
 
-    /// @notice Constructor of pair (will soon become an init as this contract needs to be a ClonableProxy)
+    /// @notice Initialize the parameters
     /// @param _token0 The address of the token0
     /// @param _token1 The address of the token1
-    /// @param _fee The fee added to every swap
+    /// @param _baseFee The baseFee added to every swap
     constructor(
-        IERC20 _token0,
-        IERC20 _token1,
-        uint256 _fee
+        IERC20Upgradeable _token0,
+        IERC20Upgradeable _token1,
+        uint256 _baseFee
     ) {
-        if (_fee > BASIS_POINT_MAX / 10) {
-            revert LBP__FeeTooBig(_fee);
+        if (initialized) {
+            revert LBPair__AlreadyInitialized();
         }
-        unchecked {
-            fee = BASIS_POINT_MAX - _fee;
-        }
+        initialized = true;
 
+        if (_isAddress0(_token0) || _isAddress0(_token1)) {
+            revert LBPair__ZeroAddress();
+        }
+        if (_baseFee > BASIS_POINT_MAX / 100) {
+            revert LBPair__BaseFeeTooBig(_baseFee);
+        }
+        baseFee = _baseFee;
         token0 = _token0;
         token1 = _token1;
-
-        // uint256 _fee_helper;
-        // if (BASIS_POINT_MAX + (_fee % BASIS_POINT_MAX) == 0) {
-        //     _fee_helper = (BASIS_POINT_MAX * BASIS_POINT_MAX) / (BASIS_POINT_MAX + _fee);
-        // } else {
-        //     _fee_helper = (BASIS_POINT_MAX * BASIS_POINT_MAX) / (BASIS_POINT_MAX + _fee) + 1;
-        // }
-        // fee_helper = _fee_helper; // @note do we do this ? (if not, if fee is 50%, people will have to pay for 2 times more in fact, not 1.5 as expected)
     }
 
     /// @notice Performs a low level swap, this needs to be called from a contract which performs important safety checks
@@ -109,7 +109,7 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
         uint256 _amount0In = token0.balanceOf(address(this)) - _global.reserve0;
         uint256 _amount1In = token1.balanceOf(address(this)) - _global.reserve1;
         if (_amount0In == 0 && _amount1In == 0)
-            revert LBP__InsufficientAmounts(_amount0In, _amount1In);
+            revert LBPair__InsufficientAmounts(_amount0In, _amount1In);
 
         if (_amount0Out != 0) {
             _safeTransfer(address(token0), _to, _amount0Out);
@@ -121,9 +121,10 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
         }
 
         if (_amount0Out != 0 && _amount1Out != 0)
-            revert LBP__WrongAmounts(_amount0Out, _amount1Out); // If this is wrong, then we're sure the amounts sent are wrong
+            revert LBPair__WrongAmounts(_amount0Out, _amount1Out); // If this is wrong, then we're sure the amounts sent are wrong
 
-        uint256 _currentId = _global.currentId;
+        uint24 _currentId = _global.currentId;
+        uint256 _fee = _getFee();
 
         // Performs the actual swap, bin per bin
         // It uses the findFirstBin function to make sure the bin we're currently looking at
@@ -143,7 +144,7 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
                         : _amount0Out;
                     uint256 _amount1InToBin = _price.mulDivRoundUp(
                         _amount0OutOfBin * BASIS_POINT_MAX,
-                        PRICE_PRECISION * fee
+                        PRICE_PRECISION * _fee
                     );
                     _reserve += _amount1InToBin;
                     _global.currentReserve0 = (_reserve0 - _amount0OutOfBin)
@@ -160,7 +161,7 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
                         : _amount1Out;
                     uint256 _amount0InToBin = PRICE_PRECISION.mulDivRoundUp(
                         _amount1OutOfBin * BASIS_POINT_MAX,
-                        _price * fee
+                        _price * _fee
                     );
 
                     if (_amount1OutOfBin == _amount1Out) {
@@ -187,12 +188,12 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
                 _global.currentId = _findFirstBin(
                     _global.currentId,
                     _amount0Out == 0
-                );
+                ).safe24();
             }
         }
         globalInfo = _global;
         if (_amount0Out != 0 || _amount1Out != 0)
-            revert LBP__BrokenSafetyCheck(); // Safety check, but should never be false as it would have reverted on transfer
+            revert LBPair__BrokenSafetyCheck(); // Safety check, but should never be false as it would have reverted on transfer
     }
 
     /// @notice Simulate a swap in
@@ -211,9 +212,10 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
             (_amount0Out != 0 && _amount1Out != 0) ||
             _amount0Out > _global.reserve0 ||
             _amount1Out > _global.reserve1
-        ) revert LBP__WrongAmounts(_amount0Out, _amount1Out); // If this is wrong, then we're sure the amounts sent are wrong
+        ) revert LBPair__WrongAmounts(_amount0Out, _amount1Out); // If this is wrong, then we're sure the amounts sent are wrong
 
-        uint256 _currentId = _global.currentId;
+        uint24 _currentId = _global.currentId;
+        uint256 _fee = _getFee();
 
         // Performs the actual swap, bin per bin
         // It uses the findFirstBin function to make sure the bin we're currently looking at
@@ -232,7 +234,7 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
                         _getPublicId(_currentId)
                     ).mulDivRoundUp(
                             _amount0OutOfBin * BASIS_POINT_MAX,
-                            PRICE_PRECISION * fee
+                            PRICE_PRECISION * _fee
                         );
                     _amount0Out -= _amount0OutOfBin;
                     amount1In += _amount1InToBin;
@@ -242,7 +244,7 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
                         : _amount1Out;
                     uint256 _amount0InToBin = PRICE_PRECISION.mulDivRoundUp(
                         _amount1OutOfBin * BASIS_POINT_MAX,
-                        _getPriceFromId(_getPublicId(_currentId)) * fee
+                        _getPriceFromId(_getPublicId(_currentId)) * _fee
                     );
                     _amount1Out -= _amount1OutOfBin;
                     amount0In += _amount0InToBin;
@@ -250,11 +252,12 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
             }
 
             if (_amount0Out != 0 || _amount1Out != 0) {
-                _currentId = _findFirstBin(_currentId, _amount0Out == 0);
+                _currentId = _findFirstBin(_currentId, _amount0Out == 0)
+                    .safe24();
             }
         }
         if (_amount0Out != 0 || _amount1Out != 0)
-            revert LBP__BrokenSafetyCheck(); // Safety check, but should never be false as it would have reverted on transfer
+            revert LBPair__BrokenSafetyCheck(); // Safety check, but should never be false as it would have reverted on transfer
     }
 
     /// @notice Simulate a swap out
@@ -270,9 +273,10 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
         GlobalInfo memory _global = globalInfo;
 
         if (_amount0In != 0 && _amount1In != 0)
-            revert LBP__WrongAmounts(amount0Out, amount1Out); // If this is wrong, then we're sure the amounts sent are wrong
+            revert LBPair__WrongAmounts(amount0Out, amount1Out); // If this is wrong, then we're sure the amounts sent are wrong
 
-        uint256 _currentId = _global.currentId;
+        uint24 _currentId = _global.currentId;
+        uint256 _fee = _getFee();
 
         // Performs the actual swap, bin per bin
         // It uses the findFirstBin function to make sure the bin we're currently looking at
@@ -288,7 +292,7 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
                         _getPublicId(_currentId)
                     ).mulDivRoundUp(
                             _reserve0 * BASIS_POINT_MAX,
-                            PRICE_PRECISION * fee
+                            PRICE_PRECISION * _fee
                         );
                     uint256 _amount1InToBin = _amount1In > _maxAmount1InToBin
                         ? _maxAmount1InToBin
@@ -301,7 +305,7 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
                     // _amount0In != 0
                     uint256 _maxAmount0InToBin = PRICE_PRECISION.mulDivRoundUp(
                         _reserve * BASIS_POINT_MAX,
-                        _getPriceFromId(_getPublicId(_currentId)) * fee
+                        _getPriceFromId(_getPublicId(_currentId)) * _fee
                     );
                     uint256 _amount0InToBin = _amount0In > _maxAmount0InToBin
                         ? _maxAmount0InToBin
@@ -314,10 +318,11 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
             }
 
             if (_amount0In != 0 || _amount1In != 0) {
-                _currentId = _findFirstBin(_currentId, _amount1In == 0);
+                _currentId = _findFirstBin(_currentId, _amount1In == 0).safe24();
             }
         }
-        if (_amount0In != 0 || _amount1In != 0) revert LBP__BrokenSafetyCheck(); // Safety check, but should never be false as it would have reverted on transfer
+        if (_amount0In != 0 || _amount1In != 0)
+            revert LBPair__BrokenSafetyCheck(); // Safety check, but should never be false as it would have reverted on transfer
     }
 
     /// @notice Performs a low level add, this needs to be called from a contract which performs important safety checks
@@ -326,25 +331,24 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
     /// @param _amounts1 The amounts of token1
     /// @param _to The address of the recipient
     function mint(
-        int256 _startId,
+        int24 _startId,
         uint112[] calldata _amounts0, // [1 2 5 20 0 0 0]
         uint112[] calldata _amounts1, // [0 0 0 20 5 2 1]
         address _to
     ) external nonReentrant {
         uint256 _len = _amounts0.length;
-        if (_len != _amounts1.length) revert LBP__WrongLengths();
+        if (_len != _amounts1.length) revert LBPair__WrongLengths();
 
         GlobalInfo memory _global = globalInfo;
         uint256 _amount0In = token0.balanceOf(address(this)) - _global.reserve0;
         uint256 _amount1In = token1.balanceOf(address(this)) - _global.reserve1;
 
-        uint256 id = _getInternalId(_startId);
+        uint24 id = _getInternalId(_startId);
 
         // seeding liquidity
         if (_global.currentId == 0) {
-            _global.currentId =
-                id +
-                _binarySearchMiddle(_amounts0, 0, _len - 1);
+            _global.currentId = (id +
+                _binarySearchMiddle(_amounts0, 0, _len - 1)).safe24();
         }
 
         for (uint256 i; i < _len; ++i) {
@@ -366,7 +370,7 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
                     _tree[0][0] |= 1 << (id / 65_536);
                 }
                 if (id < _global.currentId) {
-                    if (_amount0 != 0) revert LBP__ForbiddenFillFactor();
+                    if (_amount0 != 0) revert LBPair__ForbiddenFillFactor();
                     _pastL = _reserve;
 
                     _amount1In -= _amount1; // revert if too much
@@ -375,7 +379,7 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
 
                     _newL = _amount1;
                 } else if (id > _global.currentId) {
-                    if (_amount1 != 0) revert LBP__ForbiddenFillFactor();
+                    if (_amount1 != 0) revert LBPair__ForbiddenFillFactor();
 
                     uint256 _price = _getPriceFromId(_getPublicId(id));
                     _pastL = _price.mulDivRoundUp(_reserve, PRICE_PRECISION);
@@ -395,9 +399,9 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
                             ) !=
                             _amount0) ||
                         (_reserve == 0 &&
-                            _amount1 != 0 &&
+                            _amount1 != 0 && // @note can't add 0 ?
                             _global.currentReserve0 != 0)
-                    ) revert LBP__ForbiddenFillFactor();
+                    ) revert LBPair__ForbiddenFillFactor();
 
                     uint256 _price = _getPriceFromId(_getPublicId(id));
                     _pastL =
@@ -425,7 +429,7 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
                 if (_pastL != 0) {
                     _newL = _newL.mulDivRoundUp(_totalSupplies[id], _pastL);
                 }
-                if (_newL == 0) revert LBP__InsufficientLiquidityMinted();
+                if (_newL == 0) revert LBPair__InsufficientLiquidityMinted();
 
                 _mint(_to, id, _newL);
                 ++id;
@@ -437,7 +441,7 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
     /// @notice Performs a low level remove, this needs to be called from a contract which performs important safety checks
     /// @param _ids The ids the user want to remove its liquidity
     /// @param _to The address of the recipient
-    function burn(int112[] calldata _ids, address _to) external nonReentrant {
+    function burn(int24[] calldata _ids, address _to) external nonReentrant {
         uint256 _len = _ids.length;
 
         GlobalInfo memory _global = globalInfo;
@@ -446,10 +450,10 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
         uint256 _amounts1;
 
         for (uint256 i; i < _len; ++i) {
-            uint256 _id = _getInternalId(_ids[i]);
+            uint24 _id = _getInternalId(_ids[i]);
             uint256 _amount = _balances[_id][address(this)];
 
-            if (_amount == 0) revert LBP__InsufficientLiquidityBurned();
+            if (_amount == 0) revert LBPair__InsufficientLiquidityBurned();
 
             uint256 _reserve = _reserves[_id];
 
@@ -512,7 +516,7 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
     /// @return price The exchange price of y per x inside this bin (multiplied by 1e36)
     /// @return reserve0 The reserve of token0 of the bin
     /// @return reserve1 The reserve of token1 of the bin
-    function getBin(int256 _id)
+    function getBin(int24 _id)
         external
         view
         returns (
@@ -521,7 +525,7 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
             uint112 reserve1
         )
     {
-        uint256 id = _getInternalId(_id);
+        uint24 id = _getInternalId(_id);
         uint256 _price = _getPriceFromId(_id);
         uint256 _currentId = globalInfo.currentId;
         if (id < _currentId) return (_price, 0, _reserves[id]);
@@ -533,8 +537,8 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
     /// Warning, the returned id may be inaccurate close to the start price of a bin
     /// @param _price The price of y per x (multiplied by 1e36)
     /// @return The id corresponding to this price
-    function getIdFromPrice(uint256 _price) external pure returns (int256) {
-        return int256(_getIdFromPrice(_price));
+    function getIdFromPrice(uint256 _price) external pure returns (int24) {
+        return int24(_getIdFromPrice(_price));
     }
 
     /// @notice Returns the price corresponding to the inputted id
@@ -554,11 +558,11 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
         external
         view
         returns (
-            uint256 reserve0,
-            uint256 reserve1,
-            int256 currentId,
-            uint256 currentReserve0,
-            uint256 currentReserve1
+            uint128 reserve0,
+            uint128 reserve1,
+            int24 currentId,
+            uint112 currentReserve0,
+            uint112 currentReserve1
         )
     {
         GlobalInfo memory _global = globalInfo;
@@ -585,8 +589,14 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
     /// @return The price corresponding to this id
     function _getPriceFromId(int256 _id) private pure returns (uint256) {
         uint256 val = uint256((_id * LOG2_1BP).exp2());
-        if (val == 0) revert LBP__WrongId();
+        if (val == 0) revert LBPair__WrongId();
         return val;
+    }
+
+    /// @notice Returns the fee added to a swap
+    /// @return The fee
+    function _getFee() private view returns (uint256) {
+        return BASIS_POINT_MAX - baseFee;
     }
 
     /// @notice Returns the amount that needs to be swapped
@@ -654,7 +664,7 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
         // Search in depth 0
         current = _tree[0][0];
         (_binId, found) = _closestBit(current, _binId, _isSearchingRight);
-        if (!found) revert LBP__ErrorDepthSearch();
+        if (!found) revert LBPair__ErrorDepthSearch();
         current = _tree[1][_binId];
         _binId = 256 * _binId + _significantBit(current, _isSearchingRight);
         current = _tree[2][_binId];
@@ -724,6 +734,13 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
         return _integer.leastSignificantBit();
     }
 
+    /// @notice Return if the address is the zero address
+    /// @param _token The token address
+    /// @return True if `_address` is zero address
+    function _isAddress0(IERC20Upgradeable _token) private pure returns (bool) {
+        return address(_token) == address(0);
+    }
+
     /// @notice Helper function to transfer tokens, similar to safeTransfer, but lighter
     /// @param _token The address of the token
     /// @param _to The address to send tokens to
@@ -737,6 +754,6 @@ contract LiquidityBinPair is JLBPToken, ReentrancyGuard {
             abi.encodeWithSelector(SELECTOR, _to, _amount)
         );
         if (!_success || (_data.length == 0 && !abi.decode(_data, (bool))))
-            revert LBP__TransferFailed(_token, _to, _amount);
+            revert LBPair__TransferFailed(_token, _to, _amount);
     }
 }

@@ -2,41 +2,36 @@
 
 pragma solidity 0.8.9;
 
-import "./interfaces/IJLBPToken.sol";
+import "./interfaces/ILBToken.sol";
 
-error JLPBToken__OperatorNotApproved(address from, address operator);
-error JLPBToken__TransferFromOrToAddress0();
-error JLPBToken__MintToAddress0();
-error JLPBToken__MintTooLow(uint256 amount);
-error JLPBToken__BurnFromAddress0();
-error JLPBToken__BurnExceedsBalance(address from, int256 id, uint256 amount);
-error JLPBToken__SelfApproval(address owner);
-error JLBP__WrongId();
-error JLPBToken__TransferExceedsBalance(
-    address from,
-    int256 id,
-    uint256 amount
-);
+error LBToken__OperatorNotApproved(address from, address operator);
+error LBToken__TransferFromOrToAddress0();
+error LBToken__MintToAddress0();
+error LBToken__MintTooLow(uint256 amount);
+error LBToken__BurnFromAddress0();
+error LBToken__BurnExceedsBalance(address from, int24 id, uint256 amount);
+error LBToken__SelfApproval(address owner);
+error LBToken__WrongId();
+error LBToken__TransferExceedsBalance(address from, int24 id, uint256 amount);
 
 /// @title Joe Liquidity Bin Provider Token
 /// @author Trader Joe
-/// @notice The JLBPToken is an implementation of a multi-token.
+/// @notice The LBToken is an implementation of a multi-token.
 /// It allows to create multi-ERC20 represented by their IDs.
-contract JLBPToken is IJLBPToken {
+contract LBToken is ILBToken {
     // Mapping from token ID to account balances
-    mapping(uint256 => mapping(address => uint256)) internal _balances;
+    mapping(uint24 => mapping(address => uint256)) internal _balances;
 
     // Mapping from account to operator approvals
     mapping(address => mapping(address => bool)) private _operatorApprovals;
 
     // Mapping from token ID to total supplies
-    mapping(uint256 => uint256) internal _totalSupplies;
+    mapping(uint24 => uint256) internal _totalSupplies;
 
-    string public constant name = "JLBP Token";
-    string public constant symbol = "JLBP";
+    string public constant name = "JLB Token";
+    string public constant symbol = "JLB";
 
-    uint256 private constant MAX_NUM_BINS = 2**24;
-    int256 private constant HALF_MAX_NUM_BINS = 2**24 / 2;
+    uint24 private constant HALF_MAX_NUM_BINS = type(uint24).max / 2 + 1;
 
     /// @notice Returns the number of decimals used to get its user representation
     /// @return The number of decimals as uint8
@@ -47,7 +42,7 @@ contract JLBPToken is IJLBPToken {
     /// @notice Returns the number of decimals used to get its user representation
     /// @param id The token ID
     /// @return The total supply of that token ID
-    function totalSupply(int256 id)
+    function totalSupply(int24 id)
         external
         view
         virtual
@@ -61,7 +56,7 @@ contract JLBPToken is IJLBPToken {
     /// @param account The address of the owner
     /// @param id The token ID
     /// @return The amount of tokens of type `id` owned by `account`
-    function balanceOf(address account, int256 id)
+    function balanceOf(address account, int24 id)
         external
         view
         virtual
@@ -77,7 +72,7 @@ contract JLBPToken is IJLBPToken {
     /// @param amount The amount to send
     function safeTransfer(
         address to,
-        int256 id,
+        int24 id,
         uint256 amount
     ) external virtual override {
         address owner = msg.sender;
@@ -118,12 +113,12 @@ contract JLBPToken is IJLBPToken {
     function safeTransferFrom(
         address from,
         address to,
-        int256 id,
+        int24 id,
         uint256 amount
     ) external virtual override {
         address operator = msg.sender;
         if (_isApprovedForAll(from, operator))
-            revert JLPBToken__OperatorNotApproved(from, operator);
+            revert LBToken__OperatorNotApproved(from, operator);
         _safeTransfer(from, to, id, amount);
         emit TransferFromSingle(msg.sender, from, to, id, amount);
     }
@@ -131,18 +126,18 @@ contract JLBPToken is IJLBPToken {
     /// @notice Returns the internal `id`, i.e., the natural one
     /// @param _id The public id
     /// @return The internal id
-    function _getInternalId(int256 _id) internal pure returns (uint256) {
-        uint256 id = uint256(HALF_MAX_NUM_BINS + _id);
-        if (id > MAX_NUM_BINS) revert JLBP__WrongId(); // prevent over and underflow
-        return id;
+    function _getInternalId(int24 _id) internal pure returns (uint24) {
+        if (_id < 0) {
+            return HALF_MAX_NUM_BINS + uint24(-_id);
+        }
+        return HALF_MAX_NUM_BINS + uint24(_id);
     }
 
     /// @notice Returns the public `id`, i.e., the integer one
     /// @param _id The internal id
     /// @return The public id
-    function _getPublicId(uint256 _id) internal pure returns (int256) {
-        if (_id > MAX_NUM_BINS) revert JLBP__WrongId(); // prevent over and underflow
-        return int256(_id) - HALF_MAX_NUM_BINS;
+    function _getPublicId(uint24 _id) internal pure returns (int24) {
+        return int24(_id) - int24(HALF_MAX_NUM_BINS);
     }
 
     /// @dev Transfers `amount` tokens of type `id` from `from` to `to`
@@ -153,17 +148,17 @@ contract JLBPToken is IJLBPToken {
     function _safeTransfer(
         address from,
         address to,
-        int256 id,
+        int24 id,
         uint256 amount
     ) internal virtual {
         if (from == address(0) || to == address(0))
-            revert JLPBToken__TransferFromOrToAddress0();
+            revert LBToken__TransferFromOrToAddress0();
 
-        uint256 _id = _getInternalId(id);
+        uint24 _id = _getInternalId(id);
 
         uint256 fromBalance = _balances[_id][from];
         if (fromBalance < amount)
-            revert JLPBToken__TransferExceedsBalance(from, id, amount);
+            revert LBToken__TransferExceedsBalance(from, id, amount);
         unchecked {
             _balances[_id][from] = fromBalance - amount;
         }
@@ -176,15 +171,15 @@ contract JLBPToken is IJLBPToken {
     /// @param amount The amount to create
     function _mint(
         address account,
-        uint256 id,
+        uint24 id,
         uint256 amount
     ) internal virtual {
-        if (account == address(0)) revert JLPBToken__MintToAddress0();
+        if (account == address(0)) revert LBToken__MintToAddress0();
 
         uint256 _totalSupply = _totalSupplies[id];
         _totalSupplies[id] = _totalSupply + amount;
         if (_totalSupply == 0) {
-            if (amount < 10_000) revert JLPBToken__MintTooLow(amount); // Do we check that ? or only > 1000 ?
+            if (amount < 10_000) revert LBToken__MintTooLow(amount); // Do we check that ? or only > 1000 ?
             unchecked {
                 amount -= 1000;
                 _balances[id][address(0)] = 1000;
@@ -206,14 +201,14 @@ contract JLBPToken is IJLBPToken {
     /// @param amount The amount to destroy
     function _burn(
         address account,
-        uint256 id,
+        uint24 id,
         uint256 amount
     ) internal virtual {
-        if (account == address(0)) revert JLPBToken__BurnFromAddress0();
+        if (account == address(0)) revert LBToken__BurnFromAddress0();
 
         uint256 accountBalance = _balances[id][account];
         if (accountBalance < amount)
-            revert JLPBToken__BurnExceedsBalance(
+            revert LBToken__BurnExceedsBalance(
                 account,
                 _getPublicId(id),
                 amount
@@ -235,7 +230,7 @@ contract JLBPToken is IJLBPToken {
         bool approved
     ) internal virtual {
         if (owner == operator) {
-            revert JLPBToken__SelfApproval(owner);
+            revert LBToken__SelfApproval(owner);
         }
         _operatorApprovals[owner][operator] = approved;
         emit ApprovalForAll(owner, operator, approved);

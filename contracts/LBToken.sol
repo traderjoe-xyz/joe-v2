@@ -23,7 +23,7 @@ contract LBToken is ILBToken {
     using EnumerableSet for EnumerableSet.UintSet;
 
     // Mapping from token ID to account balances
-    mapping(uint256 => mapping(address => uint256)) internal _balances;
+    mapping(uint256 => mapping(address => uint256)) private _balances;
 
     // Mapping from address to a list of token IDs owned by this account
     mapping(address => EnumerableSet.UintSet) private _idSet;
@@ -32,7 +32,7 @@ contract LBToken is ILBToken {
     mapping(address => mapping(address => bool)) private _operatorApprovals;
 
     // Mapping from token ID to total supplies
-    mapping(uint256 => uint256) internal _totalSupplies;
+    mapping(uint256 => uint256) private _totalSupplies;
 
     string private _name;
     string private _symbol;

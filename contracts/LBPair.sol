@@ -10,7 +10,7 @@ import "./libraries/Math.sol";
 import "./libraries/MathS40x36.sol";
 
 error LBPair__BaseFeeTooBig(uint256 baseFee);
-error LBPair__InsufficientAmounts(uint256 amount0In, uint256 amount1In);
+error LBPair__InsufficientAmounts();
 error LBPair__WrongAmounts(uint256 amount0Out, uint256 amount1Out);
 error LBPair__BrokenSafetyCheck();
 error LBPair__ForbiddenFillFactor();
@@ -23,6 +23,7 @@ error LBPair__TransferFailed(address token, address to, uint256 value);
 error LBPair__ErrorDepthSearch();
 error LBPair__WrongDepth(uint256 depth);
 error LBPair__WrongId();
+error LBPair__BasisPointTooBig();
 
 // TODO add oracle price, add baseFee distributed to protocol
 /// @title Liquidity Bin Exchange
@@ -33,28 +34,30 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
     using MathS40x36 for int256;
 
     /// @dev Structure to store the globalInfo information of the pair such as:
+    /// - currentId: The currentId of the pair, this is also linked with the price
     /// - reserve0: The sum of amounts of token0 across all bins
     /// - reserve1: The sum of amounts of token1 across all bins
-    /// - currentId: The currentId of the pair, this is also linked with the price
     /// - currentReserve0: The amount of token0 in the bins[currentId]
     struct GlobalInfo {
-        uint128 reserve0;
-        uint128 reserve1;
         uint24 currentId;
+        uint136 reserve0;
+        uint136 reserve1;
         uint112 currentReserve0;
     }
+
+    uint256 public constant PRICE_PRECISION = 1e36;
+    uint256 private constant BASIS_POINT_MAX = 10_000;
+    uint256 private constant INT24_SHIFT = 2**23;
+    /// @dev Hardcoded value of bytes4(keccak256(bytes('transfer(address,uint256)')))
+    bytes4 private constant SELECTOR = 0xa9059cbb;
 
     IERC20Upgradeable public immutable token0;
     IERC20Upgradeable public immutable token1;
 
     /// @notice The baseFee added to each swap
     uint256 public immutable baseFee;
-    uint256 public constant PRICE_PRECISION = 1e36;
-    uint256 private constant BASIS_POINT_MAX = 10_000;
-    /// @notice The `log2(1 + 1bp)` value hard codded as a signed 39.36-decimal fixed-point number
-    int256 public constant LOG2_1BP = 0x71cd89a50de980ef9634c417572;
-    /// Hardcoded value of bytes4(keccak256(bytes('transfer(address,uint256)')))
-    bytes4 private constant SELECTOR = 0xa9059cbb;
+    /// @notice The `log2(1 + α bp)` value as a signed 39.36-decimal fixed-point number
+    int256 public immutable log2Value;
 
     GlobalInfo private globalInfo;
     bool private initialized;
@@ -70,28 +73,30 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
     mapping(uint256 => uint256)[3] private _tree;
 
     /// @notice Initialize the parameters
-    /// @param _token0 The address of the token0
-    /// @param _token1 The address of the token1
-    /// @param _baseFee The baseFee added to every swap
+    /// @param _token0 The address of the token0. Can't be address 0
+    /// @param _token1 The address of the token1. Can't be address 0
+    /// @param _baseFee The baseFee added to every swap. Max is 100 (1%)
+    /// @param _bp The basis point, used to calculate log(1 + _bp). Max is 100 (1%)
     constructor(
         IERC20Upgradeable _token0,
         IERC20Upgradeable _token1,
-        uint256 _baseFee
-    ) {
-        if (initialized) {
-            revert LBPair__AlreadyInitialized();
-        }
+        uint256 _baseFee,
+        uint256 _bp
+    ) LBToken("Liquidity Unified Bin Exchange", "LUBE") {
+        if (initialized) revert LBPair__AlreadyInitialized();
+        if (_isAddress0(_token0) || _isAddress0(_token1))
+            revert LBPair__ZeroAddress();
+        if (_baseFee > BASIS_POINT_MAX / 100)
+            revert LBPair__BaseFeeTooBig(_baseFee);
+        if (_bp > BASIS_POINT_MAX / 100) revert LBPair__BasisPointTooBig();
         initialized = true;
 
-        if (_isAddress0(_token0) || _isAddress0(_token1)) {
-            revert LBPair__ZeroAddress();
-        }
-        if (_baseFee > BASIS_POINT_MAX / 100) {
-            revert LBPair__BaseFeeTooBig(_baseFee);
-        }
-        baseFee = _baseFee;
         token0 = _token0;
         token1 = _token1;
+        baseFee = _baseFee;
+        log2Value = int256(
+            PRICE_PRECISION + (_bp * PRICE_PRECISION) / BASIS_POINT_MAX
+        ).log2();
     }
 
     /// @notice Performs a low level swap, this needs to be called from a contract which performs important safety checks
@@ -106,19 +111,21 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
         bytes calldata _data
     ) external nonReentrant {
         GlobalInfo memory _global = globalInfo;
-        uint256 _amount0In = token0.balanceOf(address(this)) - _global.reserve0;
-        uint256 _amount1In = token1.balanceOf(address(this)) - _global.reserve1;
-        if (_amount0In == 0 && _amount1In == 0)
-            revert LBPair__InsufficientAmounts(_amount0In, _amount1In);
+        uint256 _amount0In;
+        uint256 _amount1In;
 
         if (_amount0Out != 0) {
+            _amount1In = token1.balanceOf(address(this)) - _global.reserve1;
             _safeTransfer(address(token0), _to, _amount0Out);
             _amount0Out = _getAmountOut(_amount0In, _amount0Out);
         }
         if (_amount1Out != 0) {
+            _amount0In = token0.balanceOf(address(this)) - _global.reserve0;
             _safeTransfer(address(token1), _to, _amount1Out);
             _amount1Out = _getAmountOut(_amount1In, _amount1Out);
         }
+        if (_amount0In == 0 && _amount1In == 0)
+            revert LBPair__InsufficientAmounts();
 
         if (_amount0Out != 0 && _amount1Out != 0)
             revert LBPair__WrongAmounts(_amount0Out, _amount1Out); // If this is wrong, then we're sure the amounts sent are wrong
@@ -132,9 +139,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
         while (_amount0Out != 0 || _amount1Out != 0) {
             uint256 _reserve = _reserves[_global.currentId];
             if (_reserve != 0 || _global.currentReserve0 != 0) {
-                uint256 _price = _getPriceFromId(
-                    _getPublicId(_global.currentId)
-                );
+                uint256 _price = _getPriceFromId(_global.currentId);
                 if (_amount0Out != 0) {
                     uint256 _reserve0 = _currentId == _global.currentId
                         ? _global.currentReserve0
@@ -223,6 +228,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
         while (_amount0Out != 0 || _amount1Out != 0) {
             uint256 _reserve = _reserves[_currentId];
             if (_reserve != 0 || _global.currentReserve0 != 0) {
+                uint256 _price = _getPriceFromId(_currentId);
                 if (_amount0Out != 0) {
                     uint256 _reserve0 = _currentId == _global.currentId
                         ? _global.currentReserve0
@@ -230,12 +236,10 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
                     uint256 _amount0OutOfBin = _amount0Out > _reserve0
                         ? _reserve0
                         : _amount0Out;
-                    uint256 _amount1InToBin = _getPriceFromId(
-                        _getPublicId(_currentId)
-                    ).mulDivRoundUp(
-                            _amount0OutOfBin * BASIS_POINT_MAX,
-                            PRICE_PRECISION * _fee
-                        );
+                    uint256 _amount1InToBin = _price.mulDivRoundUp(
+                        _amount0OutOfBin * BASIS_POINT_MAX,
+                        PRICE_PRECISION * _fee
+                    );
                     _amount0Out -= _amount0OutOfBin;
                     amount1In += _amount1InToBin;
                 } else {
@@ -244,7 +248,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
                         : _amount1Out;
                     uint256 _amount0InToBin = PRICE_PRECISION.mulDivRoundUp(
                         _amount1OutOfBin * BASIS_POINT_MAX,
-                        _getPriceFromId(_getPublicId(_currentId)) * _fee
+                        _price * _fee
                     );
                     _amount1Out -= _amount1OutOfBin;
                     amount0In += _amount0InToBin;
@@ -284,16 +288,15 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
         while (_amount0In != 0 || _amount1In != 0) {
             uint256 _reserve = _reserves[_currentId];
             if (_reserve != 0 || _global.currentReserve0 != 0) {
+                uint256 _price = _getPriceFromId(_currentId);
                 if (_amount1In != 0) {
                     uint256 _reserve0 = _currentId == _global.currentId
                         ? _global.currentReserve0
                         : _reserve;
-                    uint256 _maxAmount1InToBin = _getPriceFromId(
-                        _getPublicId(_currentId)
-                    ).mulDivRoundUp(
-                            _reserve0 * BASIS_POINT_MAX,
-                            PRICE_PRECISION * _fee
-                        );
+                    uint256 _maxAmount1InToBin = _price.mulDivRoundUp(
+                        _reserve0 * BASIS_POINT_MAX,
+                        PRICE_PRECISION * _fee
+                    );
                     uint256 _amount1InToBin = _amount1In > _maxAmount1InToBin
                         ? _maxAmount1InToBin
                         : _amount1In;
@@ -305,7 +308,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
                     // _amount0In != 0
                     uint256 _maxAmount0InToBin = PRICE_PRECISION.mulDivRoundUp(
                         _reserve * BASIS_POINT_MAX,
-                        _getPriceFromId(_getPublicId(_currentId)) * _fee
+                        _price * _fee
                     );
                     uint256 _amount0InToBin = _amount0In > _maxAmount0InToBin
                         ? _maxAmount0InToBin
@@ -331,7 +334,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
     /// @param _amounts1 The amounts of token1
     /// @param _to The address of the recipient
     function mint(
-        int24 _startId,
+        uint24 _startId,
         uint112[] calldata _amounts0, // [1 2 5 20 0 0 0]
         uint112[] calldata _amounts1, // [0 0 0 20 5 2 1]
         address _to
@@ -343,7 +346,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
         uint256 _amount0In = token0.balanceOf(address(this)) - _global.reserve0;
         uint256 _amount1In = token1.balanceOf(address(this)) - _global.reserve1;
 
-        uint24 id = _getInternalId(_startId);
+        uint24 id = _startId;
 
         // seeding liquidity
         if (_global.currentId == 0) {
@@ -381,7 +384,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
                 } else if (id > _global.currentId) {
                     if (_amount1 != 0) revert LBPair__ForbiddenFillFactor();
 
-                    uint256 _price = _getPriceFromId(_getPublicId(id));
+                    uint256 _price = _getPriceFromId(id);
                     _pastL = _price.mulDivRoundUp(_reserve, PRICE_PRECISION);
 
                     _amount0In -= _amount0; // revert if too much
@@ -403,7 +406,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
                             _global.currentReserve0 != 0)
                     ) revert LBPair__ForbiddenFillFactor();
 
-                    uint256 _price = _getPriceFromId(_getPublicId(id));
+                    uint256 _price = _getPriceFromId(id);
                     _pastL =
                         _price.mulDivRoundUp(
                             _global.currentReserve0,
@@ -427,7 +430,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
                 }
                 _reserves[id] = _reserve.safe112();
                 if (_pastL != 0) {
-                    _newL = _newL.mulDivRoundUp(_totalSupplies[id], _pastL);
+                    _newL = _newL.mulDivRoundUp(totalSupply(id), _pastL);
                 }
                 if (_newL == 0) revert LBPair__InsufficientLiquidityMinted();
 
@@ -441,7 +444,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
     /// @notice Performs a low level remove, this needs to be called from a contract which performs important safety checks
     /// @param _ids The ids the user want to remove its liquidity
     /// @param _to The address of the recipient
-    function burn(int24[] calldata _ids, address _to) external nonReentrant {
+    function burn(uint24[] calldata _ids, address _to) external nonReentrant {
         uint256 _len = _ids.length;
 
         GlobalInfo memory _global = globalInfo;
@@ -450,14 +453,14 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
         uint256 _amounts1;
 
         for (uint256 i; i < _len; ++i) {
-            uint24 _id = _getInternalId(_ids[i]);
-            uint256 _amount = _balances[_id][address(this)];
+            uint24 _id = _ids[i];
+            uint256 _amount = balanceOf(address(this), _id);
 
             if (_amount == 0) revert LBPair__InsufficientLiquidityBurned();
 
             uint256 _reserve = _reserves[_id];
 
-            uint256 totalSupply = _totalSupplies[_id];
+            uint256 totalSupply = totalSupply(_id);
 
             if (_id <= _global.currentId) {
                 uint256 _amount1 = _amount.mulDivRoundDown(
@@ -511,12 +514,12 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
         _safeTransfer(address(token1), _to, _amounts1);
     }
 
-    /// @notice pure function to get the bin at `id`
+    /// @notice View function to get the bin at `id`
     /// @param _id The bin id
     /// @return price The exchange price of y per x inside this bin (multiplied by 1e36)
     /// @return reserve0 The reserve of token0 of the bin
     /// @return reserve1 The reserve of token1 of the bin
-    function getBin(int24 _id)
+    function getBin(uint24 _id)
         external
         view
         returns (
@@ -525,26 +528,25 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
             uint112 reserve1
         )
     {
-        uint24 id = _getInternalId(_id);
         uint256 _price = _getPriceFromId(_id);
         uint256 _currentId = globalInfo.currentId;
-        if (id < _currentId) return (_price, 0, _reserves[id]);
-        if (id > _currentId) return (_price, _reserves[id], 0);
-        return (_price, globalInfo.currentReserve0, _reserves[id]);
+        if (_id < _currentId) return (_price, 0, _reserves[_id]);
+        if (_id > _currentId) return (_price, _reserves[_id], 0);
+        return (_price, globalInfo.currentReserve0, _reserves[_id]);
     }
 
     /// @notice Returns the approximate id corresponding to the inputted price.
     /// Warning, the returned id may be inaccurate close to the start price of a bin
     /// @param _price The price of y per x (multiplied by 1e36)
     /// @return The id corresponding to this price
-    function getIdFromPrice(uint256 _price) external pure returns (int24) {
-        return int24(_getIdFromPrice(_price));
+    function getIdFromPrice(uint256 _price) external view returns (uint24) {
+        return _getIdFromPrice(_price);
     }
 
     /// @notice Returns the price corresponding to the inputted id
     /// @param _id The id
     /// @return The price corresponding to this id
-    function getPriceFromId(int256 _id) external pure returns (uint256) {
+    function getPriceFromId(uint24 _id) external view returns (uint256) {
         return _getPriceFromId(_id);
     }
 
@@ -558,9 +560,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
         external
         view
         returns (
-            uint128 reserve0,
-            uint128 reserve1,
-            int24 currentId,
+            uint136 reserve0,
+            uint136 reserve1,
+            uint24 currentId,
             uint112 currentReserve0,
             uint112 currentReserve1
         )
@@ -569,7 +571,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
         return (
             _global.reserve0,
             _global.reserve1,
-            _getPublicId(_global.currentId),
+            _global.currentId,
             _global.currentReserve0,
             _reserves[_global.currentId]
         );
@@ -580,17 +582,23 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
     /// @notice Returns the id corresponding to the inputted price
     /// @param _price The price of y per x (multiplied by 1e36)
     /// @return The id corresponding to this price
-    function _getIdFromPrice(uint256 _price) private pure returns (int256) {
-        return int256(_price).log2() / LOG2_1BP;
+    function _getIdFromPrice(uint256 _price) private view returns (uint24) {
+        /// don't need to check if it overflows as log2(max_s40x36) < 136e36
+        /// and log2Value > 1e32, thus the result is lower than 136e36 / 1e32 = 136e4 < 2**24
+        return
+            uint24(
+                uint256(int256(INT24_SHIFT) + int256(_price).log2() / log2Value)
+            );
     }
 
     /// @notice Returns the price corresponding to the inputted id
     /// @param _id The id
-    /// @return The price corresponding to this id
-    function _getPriceFromId(int256 _id) private pure returns (uint256) {
-        uint256 val = uint256((_id * LOG2_1BP).exp2());
-        if (val == 0) revert LBPair__WrongId();
-        return val;
+    /// @return price The price corresponding to this id
+    function _getPriceFromId(uint24 _id) private view returns (uint256 price) {
+        unchecked {
+            price = uint256((int256(_id - INT24_SHIFT) * log2Value).exp2());
+            if (price == 0) revert LBPair__WrongId();
+        }
     }
 
     /// @notice Returns the fee added to a swap

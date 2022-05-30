@@ -320,20 +320,20 @@ library Math {
         }
     }
 
-    /// @notice Returns x on uint112 and check that it does not overflow
-    /// @param x The value as an uint256
-    /// @return The value as an uint112
-    function safe112(uint256 x) internal pure returns (uint112) {
-        if (x >= 2**112) revert Math__Exceeds112Bits(x);
-        return uint112(x);
-    }
-
     /// @notice Returns x on uint128 and check that it does not overflow
     /// @param x The value as an uint256
     /// @return The value as an uint128
     function safe128(uint256 x) internal pure returns (uint128) {
         if (x >= 2**128) revert Math__Exceeds128Bits(x);
         return uint128(x);
+    }
+
+    /// @notice Returns x on uint112 and check that it does not overflow
+    /// @param x The value as an uint256
+    /// @return The value as an uint112
+    function safe112(uint256 x) internal pure returns (uint112) {
+        if (x >= 2**112) revert Math__Exceeds112Bits(x);
+        return uint112(x);
     }
 
     /// @notice Returns x on uint24 and check that it does not overflow

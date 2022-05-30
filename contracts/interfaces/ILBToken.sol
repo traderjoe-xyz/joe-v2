@@ -6,7 +6,7 @@ interface ILBToken {
     event TransferSingle(
         address indexed from,
         address indexed to,
-        int24 id,
+        uint256 id,
         uint256 amount
     );
 
@@ -14,7 +14,7 @@ interface ILBToken {
         address indexed operator,
         address indexed from,
         address indexed to,
-        int24 id,
+        uint256 id,
         uint256 amount
     );
 
@@ -24,16 +24,21 @@ interface ILBToken {
         bool approved
     );
 
-    function balanceOf(address account, int24 id)
+    function balanceOf(address account, uint256 id)
         external
         view
         returns (uint256);
 
-    function totalSupply(int24 id) external view returns (uint256);
+    function tokensIds(address _account)
+        external
+        view
+        returns (uint256[] memory);
+
+    function totalSupply(uint256 id) external view returns (uint256);
 
     function safeTransfer(
         address to,
-        int24 id,
+        uint256 id,
         uint256 amount
     ) external;
 
@@ -47,7 +52,7 @@ interface ILBToken {
     function safeTransferFrom(
         address from,
         address to,
-        int24 id,
+        uint256 id,
         uint256 amount
     ) external;
 }

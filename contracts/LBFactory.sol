@@ -3,9 +3,10 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 import "./interfaces/ILBPair.sol";
+import "./LBPair.sol";
 
 error LBFactory__IdenticalAddresses();
 error LBFactory__ZeroAddress();
@@ -16,11 +17,12 @@ contract LBFactory is Ownable {
     address public immutable implementation;
 
     address[] public allLBPairs;
-    mapping(address => mapping(address => address)) private _LBPair;
+    mapping(IERC20Upgradeable => mapping(IERC20Upgradeable => address))
+        private _LBPair;
 
     event PairCreated(
-        address indexed _token0,
-        address indexed _token1,
+        IERC20Upgradeable indexed _token0,
+        IERC20Upgradeable indexed _token1,
         address pair,
         uint256 pid
     );
@@ -44,12 +46,13 @@ contract LBFactory is Ownable {
     /// @param _tokenA The address of the first token
     /// @param _tokenB The address of the second token
     /// @return pair The address of the pair
-    function getLBPair(address _tokenA, address _tokenB)
+    function getLBPair(IERC20Upgradeable _tokenA, IERC20Upgradeable _tokenB)
         external
         view
         returns (address)
     {
-        (address _token0, address _token1) = _tokenA < _tokenB
+        (IERC20Upgradeable _token0, IERC20Upgradeable _token1) = _tokenA <
+            _tokenB
             ? (_tokenA, _tokenB)
             : (_tokenB, _tokenA);
         return _LBPair[_token0][_token1];
@@ -60,23 +63,30 @@ contract LBFactory is Ownable {
     /// @param _tokenA The address of the first token
     /// @param _tokenB The address of the second token
     /// @param _baseFee The base fee of the pair
+    /// @param _bp The basis point, used to calculate log(1 + _bp)
     /// @return pair The address of the newly created pair
     function createLBPair(
-        address _tokenA,
-        address _tokenB,
-        uint256 _baseFee
+        IERC20Upgradeable _tokenA,
+        IERC20Upgradeable _tokenB,
+        uint256 _baseFee,
+        uint256 _bp
     ) external returns (address pair) {
         if (_tokenA == _tokenB) revert LBFactory__IdenticalAddresses();
-        (address _token0, address _token1) = _tokenA < _tokenB
+        (IERC20Upgradeable _token0, IERC20Upgradeable _token1) = _tokenA <
+            _tokenB
             ? (_tokenA, _tokenB)
             : (_tokenB, _tokenA);
-        if (_token0 == address(0)) revert LBFactory__ZeroAddress();
+        if (address(_token0) == address(0)) revert LBFactory__ZeroAddress();
         if (_LBPair[_token0][_token1] != address(0))
             revert LBFactory__LBPairAlreadyExists(); // single check is sufficient
-        // @audit NO CLONE, CREATE2 // @audit TEST IF ETHERSCAN IS SMART ENOUGH TO LINK 2 CONTRACTS WITH DIFFERENT BYTECODE CAUSE OF IMMUTABLE VAR
-        bytes32 salt = keccak256(abi.encodePacked(_token0, _token1));
-        pair = Clones.cloneDeterministic(implementation, salt);
-        ILBPair(pair).initialize(_token0, _token1, _baseFee);
+        // pair = address(
+        //     new LBPair{salt: keccak256(abi.encodePacked(_token0, _token1))}(
+        //         _token0,
+        //         _token1,
+        //         _baseFee,
+        //         _bp
+        //     )
+        // );
 
         _LBPair[_token0][_token1] = pair;
         allLBPairs.push(pair);

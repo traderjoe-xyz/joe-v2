@@ -3,7 +3,7 @@ require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-solhint");
 require("hardhat-abi-exporter");
-require('hardhat-contract-sizer');
+require("hardhat-contract-sizer");
 require("hardhat-deploy");
 require("hardhat-gas-reporter");
 require("dotenv").config();
@@ -16,7 +16,15 @@ const accounts = process.env.DEPLOY_PRIVATE_KEY
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.8.9",
+  solidity: {
+    version: "0.8.9",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 800,
+      },
+    },
+  },
   networks: {
     mainnet: {
       url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,

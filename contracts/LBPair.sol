@@ -121,33 +121,24 @@ contract LBPair is LBToken, ReentrancyGuard {
     /// @param _factory The address of the factory.
     /// @param _token0 The address of the token0. Can't be address 0
     /// @param _token1 The address of the token1. Can't be address 0
+    /// @param _log2Value The log(1 + binStep) value
     /// @param _feeParameters The fee parameters
     constructor(
         address _factory,
         address _token0,
         address _token1,
-        uint256 _feeParameters
+        int256 _log2Value,
+        bytes32 _feeParameters
     ) LBToken("Liquidity Book Token", "LBT") {
         factory = ILBFactory(_factory);
         token0 = IERC20(_token0);
         token1 = IERC20(_token1);
 
-        unchecked {
-            uint16 _binStep = uint16(_feeParameters >> 16);
-            feeParameters = FeeHelper.FeeParameters({
-                accumulator: 0,
-                time: 0,
-                coolDownTime: uint16(_feeParameters),
-                binStep: _binStep,
-                fF: uint16(_feeParameters >> 32),
-                fV: uint16(_feeParameters >> 48),
-                maxFee: uint16(_feeParameters >> 64),
-                protocolShare: uint16(_feeParameters >> 80)
-            }); // TODO change this to abi.decode if enough memory
-            log2Value = int256(
-                PRICE_PRECISION + (_binStep * PRICE_PRECISION) / BASIS_POINT_MAX
-            ).log2();
+        assembly {
+            sstore(add(feeParameters.slot, 1), _feeParameters)
         }
+
+        log2Value = _log2Value;
     }
 
     /** External View Functions **/

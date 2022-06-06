@@ -2,10 +2,7 @@ const { expect } = require("chai");
 const { ethers, network } = require("hardhat");
 
 const one = ethers.utils.parseUnits("1", 36);
-
-const getId = (x) => {
-  return 2 ** 23 + x;
-};
+let idOne, getId;
 
 describe("Liquidity Bin Pair", function () {
   before(async function () {
@@ -25,25 +22,59 @@ describe("Liquidity Bin Pair", function () {
       this.alice.address,
       this.token6D.address, // x
       this.token12D.address, // y
-      30, // fee
-      1 // bp
+      ethers.utils
+        .parseUnits("5000", 0)
+        .mul(2 ** 16)
+        .add(100)
+        .mul(2 ** 16)
+        .add(5_000)
+        .mul(2 ** 16)
+        .add(1_000)
+        .mul(2 ** 16)
+        .add(25)
+        .mul(2 ** 16)
+        .add(100) // fee parameters
     );
+
+    if (idOne == null)
+      idOne = await this.LBP.getIdFromPrice(ethers.utils.parseUnits("1", 42));
+
+    getId = (x) => {
+      return idOne + x;
+    };
+  });
+
+  it("Should verify the constructor parameters", async function () {
+    expect(await this.LBP.factory()).to.be.equal(this.alice.address);
+    expect(await this.LBP.token0()).to.be.equal(this.token6D.address);
+    expect(await this.LBP.token1()).to.be.equal(this.token12D.address);
+
+    const feeParameters = await this.LBP.feeParameters();
+    expect(feeParameters.accumulator).to.be.equal(0);
+    expect(feeParameters.time).to.be.equal(0);
+    expect(feeParameters.coolDownTime).to.be.equal(100);
+    expect(feeParameters.binStep).to.be.equal(25);
+    expect(feeParameters.fF).to.be.equal(1_000);
+    expect(feeParameters.fV).to.be.equal(5_000);
+    expect(feeParameters.maxFee).to.be.equal(100);
+    expect(feeParameters.protocolShare).to.be.equal(5_000);
   });
 
   it("Should verify that 2 opposite ids have an inverse price", async function () {
+    const int24 = (x) => 2 ** 23 + x;
     expect(
-      (await this.LBP.getPriceFromId(getId(100)))
-        .mul(await this.LBP.getPriceFromId(getId(-100)))
+      (await this.LBP.getPriceFromId(int24(10)))
+        .mul(await this.LBP.getPriceFromId(int24(-10)))
         .div(one)
     ).closeTo(one, one.div(100_000_000));
     expect(
-      (await this.LBP.getPriceFromId(getId(10_000)))
-        .mul(await this.LBP.getPriceFromId(getId(-10_000)))
+      (await this.LBP.getPriceFromId(int24(1_000)))
+        .mul(await this.LBP.getPriceFromId(int24(-1_000)))
         .div(one)
     ).closeTo(one, one.div(100_000_000));
     expect(
-      (await this.LBP.getPriceFromId(getId(100_000)))
-        .mul(await this.LBP.getPriceFromId(getId(-100_000)))
+      (await this.LBP.getPriceFromId(int24(10_000)))
+        .mul(await this.LBP.getPriceFromId(int24(-10_000)))
         .div(one)
     ).closeTo(one, one.div(100_000_000));
   });
@@ -92,11 +123,11 @@ describe("Liquidity Bin Pair", function () {
     expect(bin2.price).to.be.above(bin1.price);
   });
 
-  it("Should swap in only 1 bin 1.003.. token1 for 1 token0 at price 1 (0.3% fee)", async function () {
+  it("Should swap in only 1 bin 1.003.. token1 for 1 token0 at bin id 0 (0.3% fee)", async function () {
     const tokenAmount = ethers.utils.parseUnits("100", 6);
     await this.token6D.mint(this.LBP.address, tokenAmount);
 
-    const id = getId(100_000);
+    const id = getId(0);
 
     //  1.0000
     // [100, 0]
@@ -119,16 +150,17 @@ describe("Liquidity Bin Pair", function () {
     expect(await this.token12D.balanceOf(this.alice.address)).to.be.equal(0);
 
     const bin = await this.LBP.getBin(id);
+    const pair = await this.LBP.pair();
 
     expect(bin.reserve0).to.be.equal(tokenAmount.sub(amount0Out));
-    expect(bin.reserve1).to.be.equal(amount1In);
+    expect(bin.reserve1).to.be.equal(amount1In.sub(pair.protocolFees1));
   });
 
-  it("Should swap in only 1 bin 1.002908 token0 for 1 token1 at price 1.0001 (0.3% fee)", async function () {
+  it("Should swap in only 1 bin 1.002908 token0 for 1 token1 at bin id 1 (0.3% fee)", async function () {
     const tokenAmount = ethers.utils.parseUnits("100", 12);
     await this.token12D.mint(this.LBP.address, tokenAmount);
 
-    const id = getId(100_000);
+    const id = getId(1);
 
     // [100, 0], [0, 100]
     await this.LBP.mint(id, [0], [tokenAmount], this.alice.address);
@@ -150,8 +182,12 @@ describe("Liquidity Bin Pair", function () {
     );
 
     const bin = await this.LBP.getBin(id);
+    const pair = await this.LBP.pair();
 
-    expect(bin.reserve0).to.be.equal(amount0In);
+    expect(bin.reserve0).to.be.closeTo(
+      amount0In.sub(pair.protocolFees0),
+      amount0In.div(10_000)
+    );
     expect(bin.reserve1).to.be.equal(tokenAmount.sub(amount1Out));
   });
 
@@ -159,7 +195,7 @@ describe("Liquidity Bin Pair", function () {
     const tokenAmount = ethers.utils.parseUnits("100", 12);
     await this.token12D.mint(this.LBP.address, tokenAmount);
 
-    const startId = getId(200_000);
+    const startId = getId(-1_000);
 
     const nb = 10;
     let bins0 = Array(nb).fill(0);
@@ -185,7 +221,7 @@ describe("Liquidity Bin Pair", function () {
     );
 
     const pair = await this.LBP.pair();
-    expect(pair.reserve0).to.be.equal(amount0In);
+    expect(pair.reserve0).to.be.equal(amount0In.sub(pair.protocolFees0));
     expect(pair.reserve1).to.be.equal(0);
   });
 
@@ -193,7 +229,7 @@ describe("Liquidity Bin Pair", function () {
     const tokenAmount = ethers.utils.parseUnits("400", 6);
     await this.token6D.mint(this.LBP.address, tokenAmount);
 
-    const startId = getId(123456);
+    const startId = getId(1_000);
 
     const nb = 10;
     let bins0 = Array(nb).fill(tokenAmount.div(nb));
@@ -220,7 +256,10 @@ describe("Liquidity Bin Pair", function () {
 
     const pair = await this.LBP.pair();
     expect(pair.reserve0).to.be.equal(tokenAmount.sub(amount0Out));
-    expect(pair.reserve1).to.be.closeTo(amount1In, amount1In.div(10_000));
+    expect(pair.reserve1).to.be.closeTo(
+      amount1In.sub(pair.protocolFees1),
+      amount1In.div(10_000)
+    );
   });
 
   it("Should add liquidity and swap token0 for token1, even if the 2 bins are really far away", async function () {
@@ -264,7 +303,7 @@ describe("Liquidity Bin Pair", function () {
     await this.token6D.mint(this.LBP.address, tokenAmount);
 
     await this.LBP.mint(
-      getId(-10_000),
+      getId(-1_000),
       [tokenAmount.div(2)],
       [0],
       this.alice.address
@@ -298,7 +337,7 @@ describe("Liquidity Bin Pair", function () {
     expect(pair.reserve1).to.be.above(0);
   });
 
-  it("40M swap with 50M liq with 1% range, 1 bp and 0.3% fee", async function () {
+  it("40M swap with 50M liq with 1% range, 1 binStep and 0.3% fee", async function () {
     //  6D = x
     // 12D = y
     const tokenAmount = ethers.utils.parseUnits("50000000", 12);
@@ -348,6 +387,13 @@ describe("Liquidity Bin Pair", function () {
       "Price impact:",
       (Math.abs(endPrice - startPrice) / startPrice) * 100,
       "%"
+    );
+    const pair = await this.LBP.pair();
+    const feesPar = await this.LBP.feeParameters();
+    console.log(
+      "Fees paid:",
+      pair.protocolFees0 / 1e2 / feesPar.protocolShare,
+      pair.protocolFees1 / 1e8 / feesPar.protocolShare
     );
   });
 

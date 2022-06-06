@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.9;
 
-import "./libraries/FeeHelper.sol";
+import "../libraries/FeeHelper.sol";
 
 interface ILBPair {
     /// @dev Structure to store the reserves of bins:
@@ -37,9 +37,12 @@ interface ILBPair {
 
     function log2Value() external view returns (int256);
 
-    function Pair() external view returns (Pair);
+    function pair() external view returns (Pair memory);
 
-    function feeParameters() external view returns (FeeHelper.feeParameters);
+    function feeParameters()
+        external
+        view
+        returns (FeeHelper.FeeParameters memory);
 
     function getBin(uint24 _id)
         external

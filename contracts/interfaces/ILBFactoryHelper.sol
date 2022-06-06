@@ -10,7 +10,6 @@ interface ILBFactoryHelper {
     function createLBPair(
         address _token0,
         address _token1,
-        uint16 _bp,
-        uint16 _baseFee
+        uint256 _feeParameters
     ) external returns (address);
 }

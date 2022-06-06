@@ -35,11 +35,6 @@ interface ILBToken {
         view
         returns (uint256);
 
-    function tokensIds(address _account)
-        external
-        view
-        returns (uint256[] memory);
-
     function totalSupply(uint256 _id) external view returns (uint256);
 
     function safeTransfer(

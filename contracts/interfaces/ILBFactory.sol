@@ -9,6 +9,8 @@ interface ILBFactory {
 
     function feeRecipient() external view returns (address);
 
+    function allLBPairs(uint256 _id) external returns (address);
+
     function allPairsLength() external view returns (uint256);
 
     function getLBPair(address _tokenA, address _tokenB)
@@ -16,13 +18,15 @@ interface ILBFactory {
         view
         returns (address);
 
-    function allLBPairs(uint256 _id) external returns (address);
-
     function createLBPair(
         address _tokenA,
         address _tokenB,
-        uint16 _baseFee,
-        uint16 _bp
+        uint16 _coolDownTime,
+        uint16 _binStep,
+        uint16 _fF,
+        uint16 _fV,
+        uint16 _maxFee,
+        uint16 _protocolShare
     ) external returns (address pair);
 
     function setFeeRecipient(address _feeRecipient) external;

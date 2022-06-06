@@ -31,7 +31,7 @@ library BinHelper {
 
     /// @notice Returns the price corresponding to the inputted id
     /// @param _id The id
-    /// @param _log2Value The log(1+bp) value
+    /// @param _log2Value The log(1+binStep) value
     /// @return price The price corresponding to this id
     function getPriceFromId(uint24 _id, int256 _log2Value)
         internal

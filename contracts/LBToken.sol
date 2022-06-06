@@ -9,10 +9,9 @@ error LBToken__TransferFromOrToAddress0();
 error LBToken__MintToAddress0();
 error LBToken__MintTooLow(uint256 amount);
 error LBToken__BurnFromAddress0();
-error LBToken__BurnExceedsBalance(address from, int24 id, uint256 amount);
+error LBToken__BurnExceedsBalance(address from, uint256 id, uint256 amount);
 error LBToken__SelfApproval(address owner);
-error LBToken__WrongId();
-error LBToken__TransferExceedsBalance(address from, int24 id, uint256 amount);
+error LBToken__TransferExceedsBalance(address from, uint256 id, uint256 amount);
 
 /// @title Joe Liquidity Bin Provider Token
 /// @author Trader Joe
@@ -20,232 +19,220 @@ error LBToken__TransferExceedsBalance(address from, int24 id, uint256 amount);
 /// It allows to create multi-ERC20 represented by their IDs.
 contract LBToken is ILBToken {
     // Mapping from token ID to account balances
-    mapping(uint24 => mapping(address => uint256)) internal _balances;
+    mapping(uint256 => mapping(address => uint256)) private _balances;
 
     // Mapping from account to operator approvals
     mapping(address => mapping(address => bool)) private _operatorApprovals;
 
     // Mapping from token ID to total supplies
-    mapping(uint24 => uint256) internal _totalSupplies;
+    mapping(uint256 => uint256) private _totalSupplies;
 
-    string public constant name = "JLB Token";
-    string public constant symbol = "JLB";
+    string private _name;
+    string private _symbol;
 
-    uint24 private constant HALF_MAX_NUM_BINS = type(uint24).max / 2 + 1;
+    constructor(string memory name_, string memory symbol_) {
+        _name = name_;
+        _symbol = symbol_;
+    }
+
+    /// @notice Returns the name of the token
+    /// @return The name of the token
+    function name() public view virtual override returns (string memory) {
+        return _name;
+    }
+
+    /// @notice Returns the symbol of the token, usually a shorter version of the name
+    /// @return The symbol of the token
+    function symbol() public view virtual override returns (string memory) {
+        return _symbol;
+    }
 
     /// @notice Returns the number of decimals used to get its user representation
     /// @return The number of decimals as uint8
-    function decimals() external view virtual returns (uint8) {
+    function decimals() public view virtual override returns (uint8) {
         return 18;
     }
 
     /// @notice Returns the number of decimals used to get its user representation
-    /// @param id The token ID
+    /// @param _id The token ID
     /// @return The total supply of that token ID
-    function totalSupply(int24 id)
-        external
+    function totalSupply(uint256 _id)
+        public
         view
         virtual
         override
         returns (uint256)
     {
-        return _totalSupplies[_getInternalId(id)];
+        return _totalSupplies[_id];
     }
 
-    /// @notice Returns the amount of tokens of type `id` owned by `account`
-    /// @param account The address of the owner
-    /// @param id The token ID
-    /// @return The amount of tokens of type `id` owned by `account`
-    function balanceOf(address account, int24 id)
-        external
+    /// @notice Returns the amount of tokens of type `id` owned by `_account`
+    /// @param _account The address of the owner
+    /// @param _id The token ID
+    /// @return The amount of tokens of type `id` owned by `_account`
+    function balanceOf(address _account, uint256 _id)
+        public
         view
         virtual
         override
         returns (uint256)
     {
-        return _balances[_getInternalId(id)][account];
+        return _balances[_id][_account];
     }
 
-    /// @notice Transfers `amount` tokens of type `id` from `msg.sender` to `to`
-    /// @param to The address of the recipient
-    /// @param id The token ID
-    /// @param amount The amount to send
+    /// @notice Transfers `_amount` tokens of type `_id` from `msg.sender` to `_to`
+    /// @param _to The address of the recipient
+    /// @param _id The token ID
+    /// @param _amount The amount to send
     function safeTransfer(
-        address to,
-        int24 id,
-        uint256 amount
-    ) external virtual override {
-        address owner = msg.sender;
-        _safeTransfer(owner, to, id, amount);
-        emit TransferSingle(owner, to, id, amount);
+        address _to,
+        uint256 _id,
+        uint256 _amount
+    ) public virtual override {
+        address _owner = msg.sender;
+        _safeTransfer(_owner, _to, _id, _amount);
+        emit TransferSingle(_owner, _to, _id, _amount);
     }
 
-    /// @notice Returns true if `operator` is approved to transfer `account`'s tokens
-    /// @param owner The address of the owner
-    /// @param spender The address of the spender
-    /// @return True if `operator` is approved to transfer `account`'s tokens
-    function isApprovedForAll(address owner, address spender)
-        external
+    /// @notice Returns true if `operator` is approved to transfer `_account`'s tokens
+    /// @param _owner The address of the owner
+    /// @param _spender The address of the spender
+    /// @return True if `operator` is approved to transfer `_account`'s tokens
+    function isApprovedForAll(address _owner, address _spender)
+        public
         view
         virtual
         override
         returns (bool)
     {
-        return _isApprovedForAll(owner, spender);
+        return _isApprovedForAll(_owner, _spender);
     }
 
     /// @notice Grants or revokes permission to `operator` to transfer the caller's tokens, according to `approved`
-    /// @param operator The address of the operator
-    /// @param approved The boolean value to grant or revoke permission
-    function setApprovalForAll(address operator, bool approved)
-        external
+    /// @param _operator The address of the operator
+    /// @param _approved The boolean value to grant or revoke permission
+    function setApprovalForAll(address _operator, bool _approved)
+        public
         virtual
         override
     {
-        _setApprovalForAll(msg.sender, operator, approved);
+        _setApprovalForAll(msg.sender, _operator, _approved);
     }
 
-    /// @notice Transfers `amount` tokens of type `id` from `from` to `to`
-    /// @param from The address of the owner of the tokens
-    /// @param to The address of the recipient
-    /// @param id The token ID
-    /// @param amount The amount to send
+    /// @notice Transfers `_amount` tokens of type `_id` from `_from` to `_to`
+    /// @param _from The address of the owner of the tokens
+    /// @param _to The address of the recipient
+    /// @param _id The token ID
+    /// @param _amount The amount to send
     function safeTransferFrom(
-        address from,
-        address to,
-        int24 id,
-        uint256 amount
-    ) external virtual override {
+        address _from,
+        address _to,
+        uint256 _id,
+        uint256 _amount
+    ) public virtual override {
         address operator = msg.sender;
-        if (_isApprovedForAll(from, operator))
-            revert LBToken__OperatorNotApproved(from, operator);
-        _safeTransfer(from, to, id, amount);
-        emit TransferFromSingle(msg.sender, from, to, id, amount);
+        if (_isApprovedForAll(_from, operator))
+            revert LBToken__OperatorNotApproved(_from, operator);
+        _safeTransfer(_from, _to, _id, _amount);
+        emit TransferFromSingle(msg.sender, _from, _to, _id, _amount);
     }
 
-    /// @notice Returns the internal `id`, i.e., the natural one
-    /// @param _id The public id
-    /// @return The internal id
-    function _getInternalId(int24 _id) internal pure returns (uint24) {
-        if (_id < 0) {
-            return HALF_MAX_NUM_BINS + uint24(-_id);
-        }
-        return HALF_MAX_NUM_BINS + uint24(_id);
-    }
-
-    /// @notice Returns the public `id`, i.e., the integer one
-    /// @param _id The internal id
-    /// @return The public id
-    function _getPublicId(uint24 _id) internal pure returns (int24) {
-        return int24(_id) - int24(HALF_MAX_NUM_BINS);
-    }
-
-    /// @dev Transfers `amount` tokens of type `id` from `from` to `to`
-    /// @param from The address of the owner of the tokens
-    /// @param to The address of the recipient
-    /// @param id The token ID
-    /// @param amount The amount to send
+    /// @dev Transfers `_amount` tokens of type `_id` from `_from` to `_to`
+    /// @param _from The address of the owner of the tokens
+    /// @param _to The address of the recipient
+    /// @param _id The token ID
+    /// @param _amount The amount to send
     function _safeTransfer(
-        address from,
-        address to,
-        int24 id,
-        uint256 amount
+        address _from,
+        address _to,
+        uint256 _id,
+        uint256 _amount
     ) internal virtual {
-        if (from == address(0) || to == address(0))
+        if (_from == address(0) || _to == address(0))
             revert LBToken__TransferFromOrToAddress0();
 
-        uint24 _id = _getInternalId(id);
-
-        uint256 fromBalance = _balances[_id][from];
-        if (fromBalance < amount)
-            revert LBToken__TransferExceedsBalance(from, id, amount);
+        uint256 _fromBalance = _balances[_id][_from];
+        if (_fromBalance < _amount)
+            revert LBToken__TransferExceedsBalance(_from, _id, _amount);
         unchecked {
-            _balances[_id][from] = fromBalance - amount;
+            _balances[_id][_from] = _fromBalance - _amount;
         }
-        _balances[_id][to] += amount;
+        _balances[_id][_to] += _amount;
     }
 
-    /// @dev Creates `amount` tokens of type `id`, and assigns them to `account`
-    /// @param account The address of the recipient
-    /// @param id The token ID
-    /// @param amount The amount to create
+    /// @dev Creates `_amount` tokens of type `_id`, and assigns them to `_account`
+    /// @param _account The address of the recipient
+    /// @param _id The token ID
+    /// @param _amount The amount to create
     function _mint(
-        address account,
-        uint24 id,
-        uint256 amount
+        address _account,
+        uint256 _id,
+        uint256 _amount
     ) internal virtual {
-        if (account == address(0)) revert LBToken__MintToAddress0();
+        if (_account == address(0)) revert LBToken__MintToAddress0();
 
-        uint256 _totalSupply = _totalSupplies[id];
-        _totalSupplies[id] = _totalSupply + amount;
+        uint256 _totalSupply = _totalSupplies[_id];
+        _totalSupplies[_id] = _totalSupply + _amount;
         if (_totalSupply == 0) {
-            if (amount < 10_000) revert LBToken__MintTooLow(amount); // Do we check that ? or only > 1000 ?
+            if (_amount < 10_000) revert LBToken__MintTooLow(_amount); // Do we check that ? or only > 1000 ?
             unchecked {
-                amount -= 1000;
-                _balances[id][address(0)] = 1000;
-                emit TransferSingle(
-                    address(0),
-                    address(0),
-                    _getPublicId(id),
-                    1000
-                );
+                _amount -= 1000;
+                _balances[_id][address(0)] = 1000;
+                emit TransferSingle(address(0), address(0), _id, 1000);
             }
         }
-        _balances[id][account] += amount;
-        emit TransferSingle(address(0), account, _getPublicId(id), amount);
+        _balances[_id][_account] += _amount;
+        emit TransferSingle(address(0), _account, _id, _amount);
     }
 
-    /// @dev Destroys `amount` tokens of type `id` from `account`
-    /// @param account The address of the owner
-    /// @param id The token ID
-    /// @param amount The amount to destroy
+    /// @dev Destroys `_amount` tokens of type `_id` from `_account`
+    /// @param _account The address of the owner
+    /// @param _id The token ID
+    /// @param _amount The amount to destroy
     function _burn(
-        address account,
-        uint24 id,
-        uint256 amount
+        address _account,
+        uint256 _id,
+        uint256 _amount
     ) internal virtual {
-        if (account == address(0)) revert LBToken__BurnFromAddress0();
+        if (_account == address(0)) revert LBToken__BurnFromAddress0();
 
-        uint256 accountBalance = _balances[id][account];
-        if (accountBalance < amount)
-            revert LBToken__BurnExceedsBalance(
-                account,
-                _getPublicId(id),
-                amount
-            );
+        uint256 _accountBalance = _balances[_id][_account];
+        if (_accountBalance < _amount)
+            revert LBToken__BurnExceedsBalance(_account, _id, _amount);
         unchecked {
-            _balances[id][account] = accountBalance - amount;
+            _balances[_id][_account] = _accountBalance - _amount;
         }
-        _totalSupplies[id] -= amount;
+        _totalSupplies[_id] -= _amount;
 
-        emit TransferSingle(account, address(0), _getPublicId(id), amount);
+        emit TransferSingle(_account, address(0), _id, _amount);
     }
 
     /// @notice Grants or revokes permission to `operator` to transfer the caller's tokens, according to `approved`
-    /// @param operator The address of the operator
-    /// @param approved The boolean value to grant or revoke permission
+    /// @param _owner The address of the owner
+    /// @param _operator The address of the operator
+    /// @param _approved The boolean value to grant or revoke permission
     function _setApprovalForAll(
-        address owner,
-        address operator,
-        bool approved
+        address _owner,
+        address _operator,
+        bool _approved
     ) internal virtual {
-        if (owner == operator) {
-            revert LBToken__SelfApproval(owner);
+        if (_owner == _operator) {
+            revert LBToken__SelfApproval(_owner);
         }
-        _operatorApprovals[owner][operator] = approved;
-        emit ApprovalForAll(owner, operator, approved);
+        _operatorApprovals[_owner][_operator] = _approved;
+        emit ApprovalForAll(_owner, _operator, _approved);
     }
 
-    /// @notice Returns true if `operator` is approved to transfer `account`'s tokens
-    /// @param owner The address of the owner
-    /// @param spender The address of the spender
-    /// @return True if `operator` is approved to transfer `account`'s tokens
-    function _isApprovedForAll(address owner, address spender)
+    /// @notice Returns true if `operator` is approved to transfer `_account`'s tokens
+    /// @param _owner The address of the owner
+    /// @param _spender The address of the spender
+    /// @return True if `operator` is approved to transfer `_account`'s tokens
+    function _isApprovedForAll(address _owner, address _spender)
         internal
         view
         virtual
         returns (bool)
     {
-        return _operatorApprovals[owner][spender];
+        return _operatorApprovals[_owner][_spender];
     }
 }

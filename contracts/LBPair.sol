@@ -2,198 +2,187 @@
 
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+/** Imports **/
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./LBToken.sol";
-import "./libraries/Math.sol";
+import "./libraries/Math512Bits.sol";
+import "./libraries/BinHelper.sol";
 import "./libraries/MathS40x36.sol";
+import "./libraries/TreeMath.sol";
+import "./libraries/FeeHelper.sol";
+import "./libraries/SafeCast.sol";
+import "./interfaces/ILBFactory.sol";
+import "./interfaces/ILBFactoryHelper.sol";
+
+/** Errors **/
 
 error LBPair__BaseFeeTooBig(uint256 baseFee);
-error LBPair__InsufficientAmounts(uint256 amount0In, uint256 amount1In);
+error LBPair__InsufficientAmounts();
 error LBPair__WrongAmounts(uint256 amount0Out, uint256 amount1Out);
 error LBPair__BrokenSafetyCheck();
-error LBPair__ForbiddenFillFactor();
-error LBPair__InsufficientLiquidityMinted();
-error LBPair__InsufficientLiquidityBurned();
+error LBPair__ForbiddenFillFactor(uint256 id);
+error LBPair__InsufficientLiquidityMinted(uint24 id);
+error LBPair__InsufficientLiquidityBurned(uint24 id);
+error LBPair__BurnExceedsReserve(uint24 id);
 error LBPair__WrongLengths();
-error LBPair__ZeroAddress();
-error LBPair__AlreadyInitialized();
 error LBPair__TransferFailed(address token, address to, uint256 value);
-error LBPair__ErrorDepthSearch();
-error LBPair__WrongDepth(uint256 depth);
-error LBPair__WrongId();
+error LBPair__BasisPointTooBig();
+error LBPair__SwapExceedsAmountIn(uint24 id);
+error LBPair__BinReserveOverflow(uint24 id);
+error LBPair__SwapOverflows(uint24 id);
+error LBPair__TooMuchTokensIn(uint256 amount0In, uint256 amount1In);
 
 // TODO add oracle price, add baseFee distributed to protocol
 /// @title Liquidity Bin Exchange
 /// @author Trader Joe
 /// @notice DexV2 POC
-contract LBPair is LBToken, ReentrancyGuardUpgradeable {
-    using Math for uint256;
-    using MathS40x36 for int256;
+contract LBPair is LBToken, ReentrancyGuard {
+    /** Libraries **/
 
-    /// @dev Structure to store the globalInfo information of the pair such as:
-    /// - reserve0: The sum of amounts of token0 across all bins
-    /// - reserve1: The sum of amounts of token1 across all bins
-    /// - currentId: The currentId of the pair, this is also linked with the price
-    /// - currentReserve0: The amount of token0 in the bins[currentId]
-    struct GlobalInfo {
-        uint128 reserve0;
-        uint128 reserve1;
-        uint24 currentId;
-        uint112 currentReserve0;
+    using Math512Bits for uint256;
+    using MathS40x36 for int256;
+    using TreeMath for mapping(uint256 => uint256)[3];
+    using SafeCast for uint256;
+    using SafeERC20 for IERC20;
+    using FeeHelper for FeeHelper.FeeParameters;
+
+    /** Structures **/
+
+    /// @dev Structure to store the reserves of bins:
+    /// - reserve0: The current reserve of token0 of the bin
+    /// - reserve1: The current reserve of token1 of the bin
+    struct Bin {
+        uint112 reserve0;
+        uint112 reserve1;
     }
 
-    IERC20Upgradeable public immutable token0;
-    IERC20Upgradeable public immutable token1;
+    /// @dev Structure to store the information of the pair such as:
+    /// - reserve0: The sum of amounts of token0 across all bins
+    /// - reserve1: The sum of amounts of token1 across all bins
+    /// - id: The current id used for swaps, this is also linked with the price
+    /// - protocolFees0: The protocol fees received in token0
+    /// - protocolFees1: The protocol fees received in token1
+    struct Pair {
+        uint136 reserve0;
+        uint136 reserve1;
+        uint24 id;
+        uint128 protocolFees0;
+        uint128 protocolFees1;
+    }
 
-    /// @notice The baseFee added to each swap
-    uint256 public immutable baseFee;
+    /** Events **/
+
+    event ProtocolFeesCollected(
+        address indexed sender,
+        address indexed recipient,
+        uint256 amount0,
+        uint256 amount1
+    );
+
+    /** Public constant variables **/
+
     uint256 public constant PRICE_PRECISION = 1e36;
+
+    /** Public immutable variables **/
+
+    IERC20 public immutable token0;
+    IERC20 public immutable token1;
+    ILBFactory public immutable factory;
+    /// @notice The `log2(1 + α binStep)` value as a signed 39.36-decimal fixed-point number
+    int256 public immutable log2Value;
+
+    /** Public variables **/
+
+    Pair public pair;
+    FeeHelper.FeeParameters public feeParameters;
+
+    /** Private constant variables **/
+
     uint256 private constant BASIS_POINT_MAX = 10_000;
-    /// @notice The `log2(1 + 1bp)` value hard codded as a signed 39.36-decimal fixed-point number
-    int256 public constant LOG2_1BP = 0x71cd89a50de980ef9634c417572;
-    /// Hardcoded value of bytes4(keccak256(bytes('transfer(address,uint256)')))
+    /// @dev Hardcoded value of bytes4(keccak256(bytes('transfer(address,uint256)')))
     bytes4 private constant SELECTOR = 0xa9059cbb;
 
-    GlobalInfo private globalInfo;
-    bool private initialized;
-
-    // uint256 private immutable fee_helper;
+    /** Private variables **/
 
     /// @dev the reserves of tokens for every bin. This is the amount
-    /// of token1 if `id < globalInfo.id`; of token0 if `id > globalInfo.id`
-    /// and a mix of both if `id == globalInfo.id`
-    mapping(uint256 => uint112) private _reserves;
-
+    /// of token1 if `id < pair.id`; of token0 if `id > pair.id`
+    /// and a mix of both if `id == pair.id`
+    mapping(uint256 => Bin) private _bins;
     /// @dev Tree to find bins with non zero liquidity
     mapping(uint256 => uint256)[3] private _tree;
 
-    /// @notice Initialize the parameters
-    /// @param _token0 The address of the token0
-    /// @param _token1 The address of the token1
-    /// @param _baseFee The baseFee added to every swap
-    constructor(
-        IERC20Upgradeable _token0,
-        IERC20Upgradeable _token1,
-        uint256 _baseFee
-    ) {
-        if (initialized) {
-            revert LBPair__AlreadyInitialized();
-        }
-        initialized = true;
+    /** Constructor **/
 
-        if (_isAddress0(_token0) || _isAddress0(_token1)) {
-            revert LBPair__ZeroAddress();
+    /// @notice Initialize the parameters
+    /// @param _factory The address of the factory.
+    /// @param _token0 The address of the token0. Can't be address 0
+    /// @param _token1 The address of the token1. Can't be address 0
+    /// @param _feeParameters The fee parameters
+    constructor(
+        address _factory,
+        address _token0,
+        address _token1,
+        uint256 _feeParameters
+    ) LBToken("Liquidity Book Token", "LBT") {
+        factory = ILBFactory(_factory);
+        token0 = IERC20(_token0);
+        token1 = IERC20(_token1);
+
+        unchecked {
+            uint16 _binStep = uint16(_feeParameters >> 16);
+            feeParameters = FeeHelper.FeeParameters({
+                accumulator: 0,
+                time: 0,
+                coolDownTime: uint16(_feeParameters),
+                binStep: _binStep,
+                fF: uint16(_feeParameters >> 32),
+                fV: uint16(_feeParameters >> 48),
+                maxFee: uint16(_feeParameters >> 64),
+                protocolShare: uint16(_feeParameters >> 80)
+            }); // TODO change this to abi.decode if enough memory
+            log2Value = int256(
+                PRICE_PRECISION + (_binStep * PRICE_PRECISION) / BASIS_POINT_MAX
+            ).log2();
         }
-        if (_baseFee > BASIS_POINT_MAX / 100) {
-            revert LBPair__BaseFeeTooBig(_baseFee);
-        }
-        baseFee = _baseFee;
-        token0 = _token0;
-        token1 = _token1;
     }
 
-    /// @notice Performs a low level swap, this needs to be called from a contract which performs important safety checks
-    /// @param _amount0Out The amount of token0
-    /// @param _amount1Out The amount of token1
-    /// @param _to The address of the recipient
-    /// @param _data Unused for now
-    function swap(
-        uint256 _amount0Out,
-        uint256 _amount1Out,
-        address _to,
-        bytes calldata _data
-    ) external nonReentrant {
-        GlobalInfo memory _global = globalInfo;
-        uint256 _amount0In = token0.balanceOf(address(this)) - _global.reserve0;
-        uint256 _amount1In = token1.balanceOf(address(this)) - _global.reserve1;
-        if (_amount0In == 0 && _amount1In == 0)
-            revert LBPair__InsufficientAmounts(_amount0In, _amount1In);
+    /** External View Functions **/
 
-        if (_amount0Out != 0) {
-            _safeTransfer(address(token0), _to, _amount0Out);
-            _amount0Out = _getAmountOut(_amount0In, _amount0Out);
-        }
-        if (_amount1Out != 0) {
-            _safeTransfer(address(token1), _to, _amount1Out);
-            _amount1Out = _getAmountOut(_amount1In, _amount1Out);
-        }
+    /// @notice View function to get the bin at `id`
+    /// @param _id The bin id
+    /// @return price The exchange price of y per x inside this bin (multiplied by 1e36)
+    /// @return reserve0 The reserve of token0 of the bin
+    /// @return reserve1 The reserve of token1 of the bin
+    function getBin(uint24 _id)
+        external
+        view
+        returns (
+            uint256 price,
+            uint112 reserve0,
+            uint112 reserve1
+        )
+    {
+        uint256 _price = BinHelper.getPriceFromId(_id, log2Value);
+        return (_price, _bins[_id].reserve0, _bins[_id].reserve1);
+    }
 
-        if (_amount0Out != 0 && _amount1Out != 0)
-            revert LBPair__WrongAmounts(_amount0Out, _amount1Out); // If this is wrong, then we're sure the amounts sent are wrong
+    /// @notice Returns the approximate id corresponding to the inputted price.
+    /// Warning, the returned id may be inaccurate close to the start price of a bin
+    /// @param _price The price of y per x (multiplied by 1e36)
+    /// @return The id corresponding to this price
+    function getIdFromPrice(uint256 _price) external view returns (uint24) {
+        return BinHelper.getIdFromPrice(_price, log2Value);
+    }
 
-        uint24 _currentId = _global.currentId;
-        uint256 _fee = _getFee();
-
-        // Performs the actual swap, bin per bin
-        // It uses the findFirstBin function to make sure the bin we're currently looking at
-        // has liquidity in it.
-        while (_amount0Out != 0 || _amount1Out != 0) {
-            uint256 _reserve = _reserves[_global.currentId];
-            if (_reserve != 0 || _global.currentReserve0 != 0) {
-                uint256 _price = _getPriceFromId(
-                    _getPublicId(_global.currentId)
-                );
-                if (_amount0Out != 0) {
-                    uint256 _reserve0 = _currentId == _global.currentId
-                        ? _global.currentReserve0
-                        : _reserve;
-                    uint256 _amount0OutOfBin = _amount0Out > _reserve0
-                        ? _reserve0
-                        : _amount0Out;
-                    uint256 _amount1InToBin = _price.mulDivRoundUp(
-                        _amount0OutOfBin * BASIS_POINT_MAX,
-                        PRICE_PRECISION * _fee
-                    );
-                    _reserve += _amount1InToBin;
-                    _global.currentReserve0 = (_reserve0 - _amount0OutOfBin)
-                        .safe112();
-
-                    _amount0Out -= _amount0OutOfBin;
-                    _global.reserve0 -= _amount0OutOfBin.safe112(); // check that this can't underflow
-
-                    _amount1In -= _amount1InToBin; // check that these can't overflow
-                    _global.reserve1 += _amount1InToBin.safe112();
-                } else {
-                    uint256 _amount1OutOfBin = _amount1Out > _reserve
-                        ? _reserve
-                        : _amount1Out;
-                    uint256 _amount0InToBin = PRICE_PRECISION.mulDivRoundUp(
-                        _amount1OutOfBin * BASIS_POINT_MAX,
-                        _price * _fee
-                    );
-
-                    if (_amount1OutOfBin == _amount1Out) {
-                        // this is the final bin, so this bin is a mix of x and y
-                        _reserve -= _amount1OutOfBin;
-                        _global.currentReserve0 = (_global.currentReserve0 +
-                            _amount0InToBin).safe112();
-                    } else {
-                        // This is not the final bin, so this bin becomes only x
-                        _reserve = _amount0InToBin + _global.currentReserve0;
-                        _global.currentReserve0 = 0;
-                    }
-
-                    _amount1Out -= _amount1OutOfBin;
-                    _global.reserve1 -= _amount1OutOfBin.safe112();
-
-                    _amount0In -= _amount0InToBin;
-                    _global.reserve0 += _amount0InToBin.safe112();
-                }
-                _reserves[_global.currentId] = _reserve.safe112();
-            }
-
-            if (_amount0Out != 0 || _amount1Out != 0) {
-                _global.currentId = _findFirstBin(
-                    _global.currentId,
-                    _amount0Out == 0
-                ).safe24();
-            }
-        }
-        globalInfo = _global;
-        if (_amount0Out != 0 || _amount1Out != 0)
-            revert LBPair__BrokenSafetyCheck(); // Safety check, but should never be false as it would have reverted on transfer
+    /// @notice Returns the price corresponding to the inputted id
+    /// @param _id The id
+    /// @return The price corresponding to this id
+    function getPriceFromId(uint24 _id) external view returns (uint256) {
+        return BinHelper.getPriceFromId(_id, log2Value);
     }
 
     /// @notice Simulate a swap in
@@ -206,54 +195,81 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
         view
         returns (uint256 amount0In, uint256 amount1In)
     {
-        GlobalInfo memory _global = globalInfo;
+        Pair memory _pair = pair;
 
         if (
             (_amount0Out != 0 && _amount1Out != 0) ||
-            _amount0Out > _global.reserve0 ||
-            _amount1Out > _global.reserve1
+            _amount0Out > _pair.reserve0 ||
+            _amount1Out > _pair.reserve1
         ) revert LBPair__WrongAmounts(_amount0Out, _amount1Out); // If this is wrong, then we're sure the amounts sent are wrong
 
-        uint24 _currentId = _global.currentId;
-        uint256 _fee = _getFee();
+        FeeHelper.FeeParameters memory _feeParameters = feeParameters;
+        _feeParameters.updateAccumulatorValue();
+        uint256 _startId = _pair.id;
 
         // Performs the actual swap, bin per bin
         // It uses the findFirstBin function to make sure the bin we're currently looking at
         // has liquidity in it.
-        while (_amount0Out != 0 || _amount1Out != 0) {
-            uint256 _reserve = _reserves[_currentId];
-            if (_reserve != 0 || _global.currentReserve0 != 0) {
+        while (true) {
+            Bin memory _bin = _bins[_pair.id];
+            if (_bin.reserve0 != 0 || _bin.reserve1 != 0) {
+                uint256 _price = BinHelper.getPriceFromId(
+                    uint24(_pair.id),
+                    log2Value
+                );
                 if (_amount0Out != 0) {
-                    uint256 _reserve0 = _currentId == _global.currentId
-                        ? _global.currentReserve0
-                        : _reserve;
-                    uint256 _amount0OutOfBin = _amount0Out > _reserve0
-                        ? _reserve0
+                    uint256 _amount0OutOfBin = _amount0Out > _bin.reserve0
+                        ? _bin.reserve0
                         : _amount0Out;
-                    uint256 _amount1InToBin = _getPriceFromId(
-                        _getPublicId(_currentId)
-                    ).mulDivRoundUp(
-                            _amount0OutOfBin * BASIS_POINT_MAX,
-                            PRICE_PRECISION * _fee
-                        );
-                    _amount0Out -= _amount0OutOfBin;
-                    amount1In += _amount1InToBin;
+                    uint256 _amount1InToBin = _price.mulDivRoundUp(
+                        _amount0OutOfBin,
+                        PRICE_PRECISION
+                    );
+                    uint256 _amount1InToBinWithFees = (_amount1InToBin *
+                        BASIS_POINT_MAX) /
+                        (BASIS_POINT_MAX -
+                            _feeParameters.getFees(_pair.id - _startId));
+
+                    unchecked {
+                        if (
+                            amount1In + _amount1InToBinWithFees >
+                            type(uint112).max
+                        ) revert LBPair__SwapOverflows(_pair.id);
+
+                        _amount0Out -= _amount0OutOfBin;
+                        amount1In += _amount1InToBinWithFees;
+                    }
                 } else {
-                    uint256 _amount1OutOfBin = _amount1Out > _reserve
-                        ? _reserve
+                    uint256 _amount1OutOfBin = _amount1Out > _bin.reserve1
+                        ? _bin.reserve1
                         : _amount1Out;
                     uint256 _amount0InToBin = PRICE_PRECISION.mulDivRoundUp(
-                        _amount1OutOfBin * BASIS_POINT_MAX,
-                        _getPriceFromId(_getPublicId(_currentId)) * _fee
+                        _amount1OutOfBin,
+                        _price
                     );
-                    _amount1Out -= _amount1OutOfBin;
-                    amount0In += _amount0InToBin;
+                    uint256 _amount0InToBinWithFees = (_amount0InToBin *
+                        BASIS_POINT_MAX) /
+                        (BASIS_POINT_MAX -
+                            _feeParameters.getFees(_startId - _pair.id));
+
+                    unchecked {
+                        if (
+                            amount0In + _amount0InToBinWithFees >
+                            type(uint112).max
+                        ) revert LBPair__SwapOverflows(_pair.id);
+
+                        amount0In += _amount0InToBinWithFees;
+                        _amount1Out -= _amount1OutOfBin;
+                    }
                 }
             }
 
             if (_amount0Out != 0 || _amount1Out != 0) {
-                _currentId = _findFirstBin(_currentId, _amount0Out == 0)
-                    .safe24();
+                _pair.id = uint24(
+                    _tree.findFirstBin(_pair.id, _amount0Out == 0)
+                );
+            } else {
+                break;
             }
         }
         if (_amount0Out != 0 || _amount1Out != 0)
@@ -270,58 +286,251 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
         view
         returns (uint256 amount0Out, uint256 amount1Out)
     {
-        GlobalInfo memory _global = globalInfo;
+        Pair memory _pair = pair;
 
         if (_amount0In != 0 && _amount1In != 0)
             revert LBPair__WrongAmounts(amount0Out, amount1Out); // If this is wrong, then we're sure the amounts sent are wrong
 
-        uint24 _currentId = _global.currentId;
-        uint256 _fee = _getFee();
+        FeeHelper.FeeParameters memory _feeParameters = feeParameters;
+        _feeParameters.updateAccumulatorValue();
+        uint256 _startId = _pair.id;
 
         // Performs the actual swap, bin per bin
         // It uses the findFirstBin function to make sure the bin we're currently looking at
         // has liquidity in it.
-        while (_amount0In != 0 || _amount1In != 0) {
-            uint256 _reserve = _reserves[_currentId];
-            if (_reserve != 0 || _global.currentReserve0 != 0) {
+        while (true) {
+            Bin memory _bin = _bins[_pair.id];
+            if (_bin.reserve0 != 0 || _bin.reserve1 != 0) {
+                uint256 _price = BinHelper.getPriceFromId(
+                    uint24(_pair.id),
+                    log2Value
+                );
                 if (_amount1In != 0) {
-                    uint256 _reserve0 = _currentId == _global.currentId
-                        ? _global.currentReserve0
-                        : _reserve;
-                    uint256 _maxAmount1InToBin = _getPriceFromId(
-                        _getPublicId(_currentId)
-                    ).mulDivRoundUp(
-                            _reserve0 * BASIS_POINT_MAX,
-                            PRICE_PRECISION * _fee
+                    unchecked {
+                        uint256 _maxAmount1In = _price.mulDivRoundUp(
+                            _bin.reserve0,
+                            PRICE_PRECISION
                         );
-                    uint256 _amount1InToBin = _amount1In > _maxAmount1InToBin
-                        ? _maxAmount1InToBin
-                        : _amount1In;
-                    _amount1In -= _amount1InToBin;
-                    amount0Out +=
-                        (_amount1InToBin * _reserve0) /
-                        _maxAmount1InToBin;
+
+                        if (_maxAmount1In > type(uint112).max)
+                            revert LBPair__SwapOverflows(_pair.id);
+
+                        uint256 _maxAmount1InWithFees = (_maxAmount1In *
+                            BASIS_POINT_MAX) /
+                            (BASIS_POINT_MAX -
+                                _feeParameters.getFees(_pair.id - _startId));
+
+                        if (_maxAmount1InWithFees > type(uint112).max)
+                            revert LBPair__SwapOverflows(_pair.id);
+
+                        uint256 _amount1InToBin = _amount1In >
+                            _maxAmount1InWithFees
+                            ? _maxAmount1InWithFees
+                            : _amount1In;
+
+                        uint256 _amount0OutOfBin = _amount1InToBin == 0
+                            ? 0
+                            : ((_amount1InToBin - 1) * _bin.reserve0) /
+                                _maxAmount1InWithFees; // Forces round down to match the round up during a swap
+
+                        _amount1In -= _amount1InToBin;
+                        amount0Out += _amount0OutOfBin;
+                    }
                 } else {
-                    // _amount0In != 0
-                    uint256 _maxAmount0InToBin = PRICE_PRECISION.mulDivRoundUp(
-                        _reserve * BASIS_POINT_MAX,
-                        _getPriceFromId(_getPublicId(_currentId)) * _fee
-                    );
-                    uint256 _amount0InToBin = _amount0In > _maxAmount0InToBin
-                        ? _maxAmount0InToBin
-                        : _amount0In;
-                    _amount0In -= _amount0InToBin;
-                    amount1Out +=
-                        (_amount0InToBin * _reserve) /
-                        _maxAmount0InToBin;
+                    unchecked {
+                        uint256 _maxAmount0In = PRICE_PRECISION.mulDivRoundUp(
+                            _bin.reserve1,
+                            _price
+                        );
+
+                        if (_maxAmount0In > type(uint112).max)
+                            revert LBPair__SwapOverflows(_pair.id);
+
+                        uint256 _maxAmount0InWithFees = (_maxAmount0In *
+                            BASIS_POINT_MAX) /
+                            (BASIS_POINT_MAX -
+                                _feeParameters.getFees(_startId - _pair.id));
+
+                        if (_maxAmount0InWithFees > type(uint112).max)
+                            revert LBPair__SwapOverflows(_pair.id);
+
+                        uint256 _amount0InToBin = _amount0In >
+                            _maxAmount0InWithFees
+                            ? _maxAmount0InWithFees
+                            : _amount0In;
+
+                        uint256 _amount1OutOfBin = _amount0InToBin == 0
+                            ? 0
+                            : ((_amount0InToBin - 1) * _bin.reserve1) /
+                                _maxAmount0InWithFees; // Forces round down to match the round up during a swap
+
+                        _amount0In -= _amount0InToBin;
+                        amount1Out += _amount1OutOfBin;
+                    }
                 }
             }
 
             if (_amount0In != 0 || _amount1In != 0) {
-                _currentId = _findFirstBin(_currentId, _amount1In == 0).safe24();
+                _pair.id = _tree
+                    .findFirstBin(_pair.id, _amount1In == 0)
+                    .safe24();
+            } else {
+                break;
             }
         }
         if (_amount0In != 0 || _amount1In != 0)
+            revert LBPair__TooMuchTokensIn(_amount0In, _amount1In);
+    }
+
+    /** External Functions **/
+
+    /// @notice Performs a low level swap, this needs to be called from a contract which performs important safety checks
+    /// @param _amount0Out The amount of token0
+    /// @param _amount1Out The amount of token1
+    /// @param _to The address of the recipient
+    /// @param _data Unused for now
+    function swap(
+        uint256 _amount0Out,
+        uint256 _amount1Out,
+        address _to,
+        bytes calldata _data
+    ) external nonReentrant {
+        Pair memory _pair = pair;
+
+        uint256 _amount1In = token1.balanceOf(address(this)) -
+            _pair.reserve1 -
+            _pair.protocolFees0;
+        uint256 _amount0In = token0.balanceOf(address(this)) -
+            _pair.reserve0 -
+            _pair.protocolFees1;
+
+        if (_amount0Out != 0) {
+            token0.safeTransfer(_to, _amount0Out);
+            _amount0Out = _getAmountOut(_amount0In, _amount0Out);
+        }
+        if (_amount1Out != 0) {
+            token1.safeTransfer(_to, _amount1Out);
+            _amount1Out = _getAmountOut(_amount1In, _amount1Out);
+        }
+        if (_amount0In == 0 && _amount1In == 0)
+            revert LBPair__InsufficientAmounts();
+
+        if (_amount0Out != 0 && _amount1Out != 0)
+            revert LBPair__WrongAmounts(_amount0Out, _amount1Out); // If this is wrong, then we're sure the amounts sent are wrong
+
+        FeeHelper.FeeParameters memory _feeParameters = feeParameters;
+        _feeParameters.updateAccumulatorValue();
+        uint256 _startId = _pair.id;
+
+        // Performs the actual swap, bin per bin
+        // It uses the findFirstBin function to make sure the bin we're currently looking at
+        // has liquidity in it.
+        while (true) {
+            Bin memory _bin = _bins[_pair.id];
+            if (_bin.reserve0 != 0 || _bin.reserve1 != 0) {
+                uint256 _price = BinHelper.getPriceFromId(_pair.id, log2Value);
+                if (_amount0Out != 0) {
+                    uint256 _amount0OutOfBin = _amount0Out > _bin.reserve0
+                        ? _bin.reserve0
+                        : _amount0Out;
+                    uint256 _amount1InToBin = _price.mulDivRoundUp(
+                        _amount0OutOfBin,
+                        PRICE_PRECISION
+                    );
+
+                    unchecked {
+                        FeeHelper.FeesDistribution memory _fees = _feeParameters
+                            .getFeesDistribution(
+                                _amount1InToBin,
+                                _pair.id - _startId
+                            );
+
+                        if (_amount1In < _amount1InToBin + _fees.total)
+                            revert LBPair__SwapExceedsAmountIn(_pair.id);
+                        if (_bin.reserve1 + _amount1InToBin > type(uint112).max)
+                            revert LBPair__BinReserveOverflow(_pair.id);
+
+                        _pair.protocolFees1 += _fees.protocol;
+
+                        _amount0Out -= _amount0OutOfBin;
+                        _amount1In -= _amount1InToBin + _fees.total;
+
+                        _bin.reserve0 -= uint112(_amount0OutOfBin);
+                        _bin.reserve1 += uint112(
+                            _amount1InToBin +
+                                _fees.total -
+                                uint256(_fees.protocol)
+                        );
+
+                        _pair.reserve0 -= uint136(_amount0OutOfBin);
+                        _pair.reserve1 += uint136(
+                            _amount1InToBin +
+                                _fees.total -
+                                uint256(_fees.protocol)
+                        );
+                    }
+                } else {
+                    uint256 _amount1OutOfBin = _amount1Out > _bin.reserve1
+                        ? _bin.reserve1
+                        : _amount1Out;
+                    uint256 _amount0InToBin = PRICE_PRECISION.mulDivRoundUp(
+                        _amount1OutOfBin,
+                        _price
+                    );
+
+                    unchecked {
+                        FeeHelper.FeesDistribution memory _fees = _feeParameters
+                            .getFeesDistribution(
+                                _amount0InToBin,
+                                _startId - _pair.id
+                            );
+
+                        if (_amount0In < _amount0InToBin + uint256(_fees.total))
+                            revert LBPair__SwapExceedsAmountIn(_pair.id);
+                        if (_bin.reserve0 + _amount0InToBin > type(uint112).max)
+                            revert LBPair__BinReserveOverflow(_pair.id);
+
+                        _pair.protocolFees0 += _fees.protocol;
+
+                        _amount0In -= _amount0InToBin + uint256(_fees.total);
+                        _amount1Out -= _amount1OutOfBin;
+
+                        _bin.reserve0 += uint112(
+                            _amount0InToBin +
+                                _fees.total -
+                                uint256(_fees.protocol)
+                        );
+                        _bin.reserve1 -= uint112(_amount1OutOfBin);
+
+                        _pair.reserve0 += uint136(
+                            _amount0InToBin +
+                                _fees.total -
+                                uint256(_fees.protocol)
+                        );
+                        _pair.reserve1 -= uint136(_amount1OutOfBin);
+                    }
+                }
+                _bins[_pair.id] = _bin;
+            }
+
+            if (_amount0Out != 0 || _amount1Out != 0) {
+                _pair.id = uint24(
+                    _tree.findFirstBin(_pair.id, _amount0Out == 0)
+                );
+            } else {
+                break;
+            }
+        }
+        pair = _pair;
+        feeParameters.accumulator = (_feeParameters.accumulator +
+            uint256(
+                _startId > _pair.id
+                    ? (_startId - _pair.id)
+                    : (_pair.id - _startId)
+            ) *
+            1e18).safe192();
+        feeParameters.time = uint64(block.timestamp);
+        if (_amount0Out != 0 || _amount1Out != 0)
             revert LBPair__BrokenSafetyCheck(); // Safety check, but should never be false as it would have reverted on transfer
     }
 
@@ -331,273 +540,176 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
     /// @param _amounts1 The amounts of token1
     /// @param _to The address of the recipient
     function mint(
-        int24 _startId,
+        uint24 _startId,
         uint112[] calldata _amounts0, // [1 2 5 20 0 0 0]
         uint112[] calldata _amounts1, // [0 0 0 20 5 2 1]
         address _to
     ) external nonReentrant {
         uint256 _len = _amounts0.length;
-        if (_len != _amounts1.length) revert LBPair__WrongLengths();
+        if (
+            _len != _amounts1.length &&
+            _len != 0 &&
+            _startId + _len - 1 > type(uint24).max
+        ) revert LBPair__WrongLengths();
 
-        GlobalInfo memory _global = globalInfo;
-        uint256 _amount0In = token0.balanceOf(address(this)) - _global.reserve0;
-        uint256 _amount1In = token1.balanceOf(address(this)) - _global.reserve1;
-
-        uint24 id = _getInternalId(_startId);
+        Pair memory _pair = pair;
+        uint256 _amount0In = token0.balanceOf(address(this)) - _pair.reserve0;
+        uint256 _amount1In = token1.balanceOf(address(this)) - _pair.reserve1;
 
         // seeding liquidity
-        if (_global.currentId == 0) {
-            _global.currentId = (id +
-                _binarySearchMiddle(_amounts0, 0, _len - 1)).safe24();
+        if (_pair.id == 0) {
+            _pair.id = (_startId +
+                BinHelper.binarySearchMiddle(_amounts0, 0, _len - 1)).safe24();
         }
 
-        for (uint256 i; i < _len; ++i) {
-            uint256 _amount0 = _amounts0[i];
-            uint256 _amount1 = _amounts1[i];
+        for (uint256 _id = _startId; _id < _startId + _len; ++_id) {
+            uint256 _amount0 = _amounts0[_id - _startId];
+            uint256 _amount1 = _amounts1[_id - _startId];
             if (_amount0 != 0 || _amount1 != 0) {
-                uint256 _reserve = _reserves[id];
+                Bin memory _bin = _bins[_id];
 
-                uint256 _pastL;
-                uint256 _newL;
+                if (_amount0 * _bin.reserve1 != _amount1 * _bin.reserve0)
+                    revert LBPair__ForbiddenFillFactor(_id);
 
-                if (
-                    _reserve == 0 ||
-                    (id == _global.currentId && _global.currentReserve0 == 0)
-                ) {
+                uint256 _price = BinHelper.getPriceFromId(
+                    uint24(_id),
+                    log2Value
+                );
+
+                if (_bin.reserve0 == 0 || _bin.reserve1 == 0) {
                     // add 1 at the right indices if the pair was empty
-                    _tree[2][id / 256] |= 1 << (id % 256);
-                    _tree[1][id / 65_536] |= 1 << ((id / 256) % 256);
-                    _tree[0][0] |= 1 << (id / 65_536);
+                    _tree[2][_id / 256] |= 1 << (_id % 256);
+                    _tree[1][_id / 65_536] |= 1 << ((_id / 256) % 256);
+                    _tree[0][0] |= 1 << (_id / 65_536);
                 }
-                if (id < _global.currentId) {
-                    if (_amount0 != 0) revert LBPair__ForbiddenFillFactor();
-                    _pastL = _reserve;
 
-                    _amount1In -= _amount1; // revert if too much
-                    _reserve += _amount1;
-                    _global.reserve1 = (_global.reserve1 + _amount1).safe112();
+                uint256 _pastL = _price.mulDivRoundUp(
+                    _bin.reserve0,
+                    PRICE_PRECISION
+                ) + _bin.reserve1;
 
-                    _newL = _amount1;
-                } else if (id > _global.currentId) {
-                    if (_amount1 != 0) revert LBPair__ForbiddenFillFactor();
+                _amount0In -= _amount0;
+                _amount1In -= _amount1;
 
-                    uint256 _price = _getPriceFromId(_getPublicId(id));
-                    _pastL = _price.mulDivRoundUp(_reserve, PRICE_PRECISION);
+                _bin.reserve0 += uint112(_amount0);
+                _bin.reserve1 += uint112(_amount1);
 
-                    _amount0In -= _amount0; // revert if too much
-                    _reserve += _amount0;
-                    _global.reserve0 = (_global.reserve0 + _amount0).safe112();
+                _pair.reserve0 += uint136(_amount0);
+                _pair.reserve1 += uint136(_amount1);
 
-                    _newL = _price.mulDivRoundUp(_amount0, PRICE_PRECISION);
-                } else {
-                    // @note for slippage adds, do this first and modulate the amounts
-                    if (
-                        (_reserve != 0 &&
-                            uint256(_amount1).mulDivRoundDown(
-                                _global.currentReserve0,
-                                _reserve
-                            ) !=
-                            _amount0) ||
-                        (_reserve == 0 &&
-                            _amount1 != 0 && // @note can't add 0 ?
-                            _global.currentReserve0 != 0)
-                    ) revert LBPair__ForbiddenFillFactor();
+                uint256 _newL = _price.mulDivRoundUp(
+                    _bin.reserve0,
+                    PRICE_PRECISION
+                ) + _bin.reserve1;
 
-                    uint256 _price = _getPriceFromId(_getPublicId(id));
-                    _pastL =
-                        _price.mulDivRoundUp(
-                            _global.currentReserve0,
-                            PRICE_PRECISION
-                        ) +
-                        _reserve;
-
-                    _amount0In -= _amount0; // revert if too much
-                    _amount1In -= _amount1; // revert if too much
-
-                    _global.currentReserve0 = (_global.currentReserve0 +
-                        _amount0).safe112();
-                    _reserve += _amount1;
-
-                    _global.reserve0 += _amount0.safe128();
-                    _global.reserve1 += _amount1.safe128();
-
-                    _newL =
-                        _price.mulDivRoundUp(_amount0, PRICE_PRECISION) +
-                        _amount1;
-                }
-                _reserves[id] = _reserve.safe112();
                 if (_pastL != 0) {
-                    _newL = _newL.mulDivRoundUp(_totalSupplies[id], _pastL);
+                    _newL = _newL.mulDivRoundUp(totalSupply(_id), _pastL);
                 }
-                if (_newL == 0) revert LBPair__InsufficientLiquidityMinted();
+                if (_newL == 0)
+                    revert LBPair__InsufficientLiquidityMinted(uint24(_id));
 
-                _mint(_to, id, _newL);
-                ++id;
+                _bins[_id] = _bin;
+                _mint(_to, _id, _newL);
             }
         }
-        globalInfo = _global;
+        pair = _pair;
     }
 
     /// @notice Performs a low level remove, this needs to be called from a contract which performs important safety checks
     /// @param _ids The ids the user want to remove its liquidity
     /// @param _to The address of the recipient
-    function burn(int24[] calldata _ids, address _to) external nonReentrant {
+    function burn(uint24[] calldata _ids, address _to) external nonReentrant {
         uint256 _len = _ids.length;
 
-        GlobalInfo memory _global = globalInfo;
+        Pair memory _pair = pair;
 
         uint256 _amounts0;
         uint256 _amounts1;
 
         for (uint256 i; i < _len; ++i) {
-            uint24 _id = _getInternalId(_ids[i]);
-            uint256 _amount = _balances[_id][address(this)];
+            uint256 _id = _ids[i];
+            uint256 _amount = balanceOf(address(this), _id);
 
-            if (_amount == 0) revert LBPair__InsufficientLiquidityBurned();
+            if (_amount == 0)
+                revert LBPair__InsufficientLiquidityBurned(uint24(_id));
 
-            uint256 _reserve = _reserves[_id];
+            Bin memory _bin = _bins[_id];
 
-            uint256 totalSupply = _totalSupplies[_id];
+            uint256 totalSupply = totalSupply(_id);
 
-            if (_id <= _global.currentId) {
+            if (_id <= _pair.id) {
                 uint256 _amount1 = _amount.mulDivRoundDown(
-                    _reserve,
+                    _bin.reserve1,
                     totalSupply
                 );
 
-                _amounts1 += _amount1;
-                _reserve -= _amount1;
-                _global.reserve1 -= _amount1.safe128();
-            }
-            if (_id >= _global.currentId) {
-                uint256 _amount0;
-                if (_id == _global.currentId) {
-                    _amount0 = _amount.mulDivRoundDown(
-                        _global.currentReserve0,
-                        totalSupply
-                    );
-                    _global.currentReserve0 -= uint112(_amount0);
-                } else {
-                    _amount0 = _amount.mulDivRoundDown(_reserve, totalSupply);
-                    _reserve -= _amount0;
+                if (_bin.reserve1 < _amount1)
+                    revert LBPair__BurnExceedsReserve(uint24(_id));
+
+                unchecked {
+                    _amounts1 += _amount1;
+                    _bin.reserve1 -= uint112(_amount1);
+                    _pair.reserve1 -= uint136(_amount1);
                 }
+            }
+            if (_id >= _pair.id) {
+                uint256 _amount0 = _amount.mulDivRoundDown(
+                    _bin.reserve0,
+                    totalSupply
+                );
 
-                _amounts0 += _amount0;
-                _global.reserve0 -= _amount0.safe128();
+                if (_bin.reserve0 < _amount0)
+                    revert LBPair__BurnExceedsReserve(uint24(_id));
+                unchecked {
+                    _amounts0 += _amount0;
+                    _bin.reserve0 -= uint112(_amount0);
+                    _pair.reserve0 -= uint136(_amount0);
+                }
             }
 
-            if (
-                _reserve == 0 &&
-                (_id != _global.currentId || _global.currentReserve0 == 0)
-            ) {
+            if (_bin.reserve0 == 0 && _bin.reserve1 == 0) {
                 // removes 1 at the right indices
-                uint256 memId2 = _id / 256;
-                _tree[2][memId2] -= 1 << (_id % 256);
-                if (_tree[2][memId2] == 0) {
-                    uint256 memId1 = _id / 65_536;
-                    _tree[1][memId1] -= 1 << (memId2 % 256);
-                    if (_tree[1][memId1] == 0) {
-                        _tree[0][0] -= 1 << memId1;
+                uint256 _idDepth2 = _id / 256;
+                _tree[2][_idDepth2] -= 1 << (_id % 256);
+                if (_tree[2][_idDepth2] == 0) {
+                    uint256 _idDepth1 = _id / 65_536;
+                    _tree[1][_idDepth1] -= 1 << (_idDepth2 % 256);
+                    if (_tree[1][_idDepth1] == 0) {
+                        _tree[0][0] -= 1 << _idDepth1;
                     }
                 }
             }
 
-            _reserves[_id] = uint112(_reserve);
-
+            _bins[_id] = _bin;
             _burn(address(this), _id, _amount);
         }
-        globalInfo = _global;
-        _safeTransfer(address(token0), _to, _amounts0);
-        _safeTransfer(address(token1), _to, _amounts1);
+        pair = _pair;
+        if (_amounts0 != 0) token0.safeTransfer(_to, _amounts0);
+        if (_amounts1 != 0) token1.safeTransfer(_to, _amounts1);
     }
 
-    /// @notice pure function to get the bin at `id`
-    /// @param _id The bin id
-    /// @return price The exchange price of y per x inside this bin (multiplied by 1e36)
-    /// @return reserve0 The reserve of token0 of the bin
-    /// @return reserve1 The reserve of token1 of the bin
-    function getBin(int24 _id)
-        external
-        view
-        returns (
-            uint256 price,
-            uint112 reserve0,
-            uint112 reserve1
-        )
-    {
-        uint24 id = _getInternalId(_id);
-        uint256 _price = _getPriceFromId(_id);
-        uint256 _currentId = globalInfo.currentId;
-        if (id < _currentId) return (_price, 0, _reserves[id]);
-        if (id > _currentId) return (_price, _reserves[id], 0);
-        return (_price, globalInfo.currentReserve0, _reserves[id]);
-    }
+    function distributeProtocolFees() external nonReentrant {
+        Pair memory _pair = pair;
+        address _feeRecipient = factory.feeRecipient();
 
-    /// @notice Returns the approximate id corresponding to the inputted price.
-    /// Warning, the returned id may be inaccurate close to the start price of a bin
-    /// @param _price The price of y per x (multiplied by 1e36)
-    /// @return The id corresponding to this price
-    function getIdFromPrice(uint256 _price) external pure returns (int24) {
-        return int24(_getIdFromPrice(_price));
-    }
+        if (_pair.protocolFees0 != 0) {
+            pair.protocolFees0 = 1;
+            token0.safeTransfer(_feeRecipient, _pair.protocolFees0 - 1);
+        }
+        if (_pair.protocolFees1 != 0) {
+            pair.protocolFees1 = 1;
+            token1.safeTransfer(_feeRecipient, _pair.protocolFees1 - 1);
+        }
 
-    /// @notice Returns the price corresponding to the inputted id
-    /// @param _id The id
-    /// @return The price corresponding to this id
-    function getPriceFromId(int256 _id) external pure returns (uint256) {
-        return _getPriceFromId(_id);
-    }
-
-    /// @notice View function to return the global data
-    /// @return reserve0 The total amount of token0 inside all bins
-    /// @return reserve1 The total amount of token1 inside all bins
-    /// @return currentId The public current id
-    /// @return currentReserve0 The reserve of token0 inside the current bin
-    /// @return currentReserve1 The reserve of token1 inside the current bin
-    function global()
-        external
-        view
-        returns (
-            uint128 reserve0,
-            uint128 reserve1,
-            int24 currentId,
-            uint112 currentReserve0,
-            uint112 currentReserve1
-        )
-    {
-        GlobalInfo memory _global = globalInfo;
-        return (
-            _global.reserve0,
-            _global.reserve1,
-            _getPublicId(_global.currentId),
-            _global.currentReserve0,
-            _reserves[_global.currentId]
+        emit ProtocolFeesCollected(
+            msg.sender,
+            _feeRecipient,
+            _pair.protocolFees1 - 1,
+            _pair.protocolFees0 - 1
         );
     }
 
-    /** Private functions **/
-
-    /// @notice Returns the id corresponding to the inputted price
-    /// @param _price The price of y per x (multiplied by 1e36)
-    /// @return The id corresponding to this price
-    function _getIdFromPrice(uint256 _price) private pure returns (int256) {
-        return int256(_price).log2() / LOG2_1BP;
-    }
-
-    /// @notice Returns the price corresponding to the inputted id
-    /// @param _id The id
-    /// @return The price corresponding to this id
-    function _getPriceFromId(int256 _id) private pure returns (uint256) {
-        uint256 val = uint256((_id * LOG2_1BP).exp2());
-        if (val == 0) revert LBPair__WrongId();
-        return val;
-    }
-
-    /// @notice Returns the fee added to a swap
-    /// @return The fee
-    function _getFee() private view returns (uint256) {
-        return BASIS_POINT_MAX - baseFee;
-    }
+    /** Private Functions **/
 
     /// @notice Returns the amount that needs to be swapped
     /// @param _amountIn The amount sent to the pair
@@ -613,147 +725,5 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable {
             return _amountOut - _amountIn;
         }
         return 0;
-    }
-
-    /// @notice Returns the first id that is non zero, corresponding to a bin with
-    /// liquidity in it
-    /// @param _binId the binId to start searching
-    /// @param _isSearchingRight The boolean value to decide if the algorithm will look
-    /// for the closest non zero bit on the right or the left
-    /// @return The closest non zero bit on the right side
-    function _findFirstBin(uint256 _binId, bool _isSearchingRight)
-        private
-        view
-        returns (uint256)
-    {
-        uint256 current;
-        bool found;
-
-        uint256 bit = _binId % 256;
-        _binId /= 256;
-
-        // Search in depth 2
-        if (
-            (_isSearchingRight && bit != 0) || (!_isSearchingRight && bit < 255)
-        ) {
-            current = _tree[2][_binId];
-            (bit, found) = _closestBit(current, bit, _isSearchingRight);
-            if (found) {
-                return _binId * 256 + bit;
-            }
-        }
-
-        bit = _binId % 256;
-        _binId /= 256;
-
-        // Search in depth 1
-        if (
-            (_isSearchingRight && _binId % 256 != 0) ||
-            (!_isSearchingRight && _binId % 256 != 255)
-        ) {
-            current = _tree[1][_binId];
-            (bit, found) = _closestBit(current, bit, _isSearchingRight);
-            if (found) {
-                _binId = 256 * _binId + bit;
-                current = _tree[2][_binId];
-                bit = current.mostSignificantBit();
-                return _binId * 256 + bit;
-            }
-        }
-
-        // Search in depth 0
-        current = _tree[0][0];
-        (_binId, found) = _closestBit(current, _binId, _isSearchingRight);
-        if (!found) revert LBPair__ErrorDepthSearch();
-        current = _tree[1][_binId];
-        _binId = 256 * _binId + _significantBit(current, _isSearchingRight);
-        current = _tree[2][_binId];
-        bit = _significantBit(current, _isSearchingRight);
-        return _binId * 256 + bit;
-    }
-
-    /// @notice Returns the first index of the array that is non zero, The
-    /// array need to be ordered so that zeros and non zeros aren't together
-    /// (no cross over), e.g. [0,1,2,1], [1,1,1,0,0], [0,0,0], [1,2,1]
-    /// @param _array The uint112 array
-    /// @param _start The index where the search will start
-    /// @param _end The index where the search will end
-    /// @return The first index of the array that is non zero
-    function _binarySearchMiddle(
-        uint112[] memory _array,
-        uint256 _start,
-        uint256 _end
-    ) private pure returns (uint256) {
-        uint256 middle;
-        if (_array[_end] == 0) {
-            return _end;
-        }
-        while (_end > _start) {
-            middle = (_start + _end) / 2;
-            if (_array[middle] == 0) {
-                _start = middle + 1;
-            } else {
-                _end = middle;
-            }
-        }
-        if (_array[middle] == 0) {
-            return middle + 1;
-        }
-        return middle;
-    }
-
-    /// @notice Return the closest non zero bit of `_integer` to the right (or left) of the `bit` index
-    /// @param _integer The integer
-    /// @param _bit The bit
-    /// @param _isSearchingRight If we're searching to the right (true) or left (false)
-    /// @return The index of the closest non zero bit
-    /// @return Wether it was found (true), or not (false)
-    function _closestBit(
-        uint256 _integer,
-        uint256 _bit,
-        bool _isSearchingRight
-    ) private pure returns (uint256, bool) {
-        if (_isSearchingRight) {
-            return _integer.closestBitRight(_bit - 1);
-        }
-        return _integer.closestBitLeft(_bit + 1);
-    }
-
-    /// @notice Return the most (or least) significant bit of `_integer`
-    /// @param _integer The integer
-    /// @param _isMostSignificant Wether we want the most (true) or the least (false) significant bit
-    /// @return The index of the most (or least) significant bit
-    function _significantBit(uint256 _integer, bool _isMostSignificant)
-        private
-        pure
-        returns (uint256)
-    {
-        if (_isMostSignificant) {
-            return _integer.mostSignificantBit();
-        }
-        return _integer.leastSignificantBit();
-    }
-
-    /// @notice Return if the address is the zero address
-    /// @param _token The token address
-    /// @return True if `_address` is zero address
-    function _isAddress0(IERC20Upgradeable _token) private pure returns (bool) {
-        return address(_token) == address(0);
-    }
-
-    /// @notice Helper function to transfer tokens, similar to safeTransfer, but lighter
-    /// @param _token The address of the token
-    /// @param _to The address to send tokens to
-    /// @param _amount The amount to transfer
-    function _safeTransfer(
-        address _token,
-        address _to,
-        uint256 _amount
-    ) private {
-        (bool _success, bytes memory _data) = _token.call(
-            abi.encodeWithSelector(SELECTOR, _to, _amount)
-        );
-        if (!_success || (_data.length == 0 && !abi.decode(_data, (bool))))
-            revert LBPair__TransferFailed(_token, _to, _amount);
     }
 }

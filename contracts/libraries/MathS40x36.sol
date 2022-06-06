@@ -2,7 +2,8 @@
 
 pragma solidity 0.8.9;
 
-import "./Math.sol";
+import "./Math512Bits.sol";
+import "./BitMath.sol";
 
 /// @notice Emitted when the input is less than or equal to zero.
 error Math__LogInputTooSmall(int256 x);
@@ -11,9 +12,11 @@ error Math__LogInputTooSmall(int256 x);
 error Math__Exp2InputTooBig(int256 x);
 
 library MathS40x36 {
-    using Math for uint256;
-    int256 public constant SCALE = 1e36;
-    int256 public constant HALF_SCALE = 5e35;
+    using Math512Bits for uint256;
+    using BitMath for uint256;
+
+    int256 internal constant SCALE = 1e36;
+    int256 private constant HALF_SCALE = 5e35;
 
     /// @notice Calculates the binary exponent of x using the binary fraction method.
     ///
@@ -21,32 +24,31 @@ library MathS40x36 {
     ///
     /// Requirements:
     /// - x must be 128 or less.
-    /// - The result must fit within MAX_SD41x36.
+    /// - The result must fit within MAX_SD40x36.
     ///
     /// Caveats:
     /// - For any x less than -119_589411415945044523331499461618046331, the result is zero.
     ///
     /// @param x The exponent as a signed 40.36-decimal fixed-point number.
     /// @return result The result as a signed 40.36-decimal fixed-point number.
-    function exp2(int256 x) public pure returns (int256 result) {
-        // This works because 2^(-x) = 1/2^x.
-        if (x < 0) {
-            // 2^119.589411415945044523331499461618046332 is the maximum number whose inverse does not truncate down to zero.
-            if (x < -119_589411415945044523331499461618046331) {
-                return 0;
-            }
+    function exp2(int256 x) internal pure returns (int256 result) {
+        unchecked {
+            // This works because 2^(-x) = 1/2^x.
+            if (x < 0) {
+                // 2^119.589411415945044523331499461618046331 is the maximum number whose inverse does not truncate down to zero.
+                if (x < -119_589411415945044523331499461618046331) {
+                    return 0;
+                }
 
-            // Do the fixed-point inversion inline to save gas. The numerator is SCALE * SCALE.
-            unchecked {
+                // Do the fixed-point inversion inline to save gas. The numerator is SCALE * SCALE.
+
                 result = 1e72 / exp2(-x);
-            }
-        } else {
-            // 2^128 doesn't fit within the 128.128-bit format used internally in this function.
-            if (x >= 128e36) {
-                revert Math__Exp2InputTooBig(x);
-            }
+            } else {
+                // 2^128 doesn't fit within the 128.128-bit format used internally in this function.
+                if (x >= 128e36) {
+                    revert Math__Exp2InputTooBig(x);
+                }
 
-            unchecked {
                 // Convert x to the 128.128-bit fixed-point format.
                 uint256 x128x128 = (uint256(x) << 128) / uint256(SCALE);
 
@@ -476,7 +478,7 @@ library MathS40x36 {
     ///
     /// @param x The signed 40.36-decimal fixed-point number for which to calculate the binary logarithm.
     /// @return result The binary logarithm as a signed 40.36-decimal fixed-point number.
-    function log2(int256 x) external pure returns (int256 result) {
+    function log2(int256 x) internal pure returns (int256 result) {
         if (x <= 0) {
             revert Math__LogInputTooSmall(x);
         }

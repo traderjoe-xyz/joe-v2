@@ -6,6 +6,7 @@ import "./libraries/PendingOwnable.sol";
 import "./LBFactoryHelper.sol";
 import "./LBPair.sol";
 import "./interfaces/ILBFactoryHelper.sol";
+import "./libraries/MathS40x36.sol";
 
 error LBFactory__IdenticalAddresses(address token);
 error LBFactory__ZeroAddress();
@@ -18,8 +19,10 @@ error LBFactory___protocolShareTooBig(uint16 protocolShare, uint16 max);
 error LBFactory___protocolShareTooLow(uint16 protocolShare, uint16 min);
 
 contract LBFactory is PendingOwnable {
+    using MathS40x36 for int256;
+
     ILBFactoryHelper public immutable factoryHelper;
-    
+
     address public feeRecipient;
 
     address[] public allLBPairs;
@@ -36,9 +39,7 @@ contract LBFactory is PendingOwnable {
 
     /// @notice Constructor
     constructor(address _feeRecipient) {
-        factoryHelper = ILBFactoryHelper(
-            address(new LBFactoryHelper(address(this)))
-        );
+        factoryHelper = ILBFactoryHelper(address(new LBFactoryHelper()));
         _setFeeRecipient(_feeRecipient);
     }
 
@@ -96,20 +97,29 @@ contract LBFactory is PendingOwnable {
         if (_protocolShare > 10_000)
             revert LBFactory___protocolShareTooBig(_protocolShare, 10_000);
 
-        uint256 _feeParameters = uint256(
-            bytes32(
-                abi.encodePacked(
-                    _protocolShare,
-                    _maxFee,
-                    _fV,
-                    _fF,
-                    _binStep,
-                    _coolDownTime
-                )
+        bytes32 _feeParameters = bytes32(
+            abi.encodePacked(
+                uint160(0),
+                _protocolShare,
+                _maxFee,
+                _fV,
+                _fF,
+                _binStep,
+                _coolDownTime
             )
         );
 
-        pair = factoryHelper.createLBPair(_token0, _token1, _feeParameters);
+        int256 _log2Value = (MathS40x36.SCALE +
+            (MathS40x36.SCALE * int256(uint256(_binStep))) /
+            10_000).log2();
+
+        pair = factoryHelper.createLBPair(
+            _token0,
+            _token1,
+            _log2Value,
+            keccak256(abi.encode(_token0, _token1, _feeParameters)),
+            _feeParameters
+        );
 
         _LBPair[_token0][_token1] = pair;
         allLBPairs.push(pair);

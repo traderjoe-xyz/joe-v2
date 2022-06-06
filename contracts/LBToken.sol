@@ -2,8 +2,6 @@
 
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
 import "./interfaces/ILBToken.sol";
 
 error LBToken__OperatorNotApproved(address from, address operator);
@@ -20,13 +18,8 @@ error LBToken__TransferExceedsBalance(address from, uint256 id, uint256 amount);
 /// @notice The LBToken is an implementation of a multi-token.
 /// It allows to create multi-ERC20 represented by their IDs.
 contract LBToken is ILBToken {
-    using EnumerableSet for EnumerableSet.UintSet;
-
     // Mapping from token ID to account balances
     mapping(uint256 => mapping(address => uint256)) private _balances;
-
-    // Mapping from address to a list of token IDs owned by this account
-    mapping(address => EnumerableSet.UintSet) private _idSet;
 
     // Mapping from account to operator approvals
     mapping(address => mapping(address => bool)) private _operatorApprovals;
@@ -85,19 +78,6 @@ contract LBToken is ILBToken {
         returns (uint256)
     {
         return _balances[_id][_account];
-    }
-
-    /// @notice Returns the list of tokens ids owned by `_account`
-    /// @param _account The address of the owner
-    /// @return The amount of tokens of type `id` owned by `_account`
-    function tokensIds(address _account)
-        public
-        view
-        virtual
-        override
-        returns (uint256[] memory)
-    {
-        return _idSet[_account].values();
     }
 
     /// @notice Transfers `_amount` tokens of type `_id` from `msg.sender` to `_to`
@@ -178,12 +158,6 @@ contract LBToken is ILBToken {
             _balances[_id][_from] = _fromBalance - _amount;
         }
         _balances[_id][_to] += _amount;
-        if (_amount != 0) {
-            _idSet[_to].add(_id);
-            if (_fromBalance == _amount) {
-                assert(_idSet[_from].remove(_id));
-            }
-        }
     }
 
     /// @dev Creates `_amount` tokens of type `_id`, and assigns them to `_account`
@@ -204,14 +178,10 @@ contract LBToken is ILBToken {
             unchecked {
                 _amount -= 1000;
                 _balances[_id][address(0)] = 1000;
-                _idSet[address(0)].add(_id);
                 emit TransferSingle(address(0), address(0), _id, 1000);
             }
         }
         _balances[_id][_account] += _amount;
-        if (_amount != 0) {
-            _idSet[_account].add(_id);
-        }
         emit TransferSingle(address(0), _account, _id, _amount);
     }
 
@@ -231,9 +201,6 @@ contract LBToken is ILBToken {
             revert LBToken__BurnExceedsBalance(_account, _id, _amount);
         unchecked {
             _balances[_id][_account] = _accountBalance - _amount;
-        }
-        if (_amount != 0 && _accountBalance == _amount) {
-            assert(_idSet[_account].remove(_id));
         }
         _totalSupplies[_id] -= _amount;
 

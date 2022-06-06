@@ -25,8 +25,7 @@ contract LBFactoryHelper {
     function createLBPair(
         address _token0,
         address _token1,
-        uint16 _bp,
-        uint16 _baseFee
+        uint256 _feeParameters
     ) external OnlyFactory returns (address) {
         return
             address(
@@ -34,8 +33,7 @@ contract LBFactoryHelper {
                     factory,
                     _token0,
                     _token1,
-                    _bp,
-                    _baseFee
+                    _feeParameters
                 )
             );
     }

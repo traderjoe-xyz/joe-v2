@@ -2,16 +2,19 @@
 
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import "./ILBFactory.sol";
+import "./ILBPair.sol";
 
 interface ILBFactoryHelper {
     function factory() external view returns (ILBFactory);
 
     function createLBPair(
-        address _token0,
-        address _token1,
+        IERC20 _token0,
+        IERC20 _token1,
         int256 _log2Value,
         bytes32 _salt,
-        bytes32 _feeParameters
-    ) external returns (address);
+        bytes32 _packedFeeParameters
+    ) external returns (ILBPair);
 }

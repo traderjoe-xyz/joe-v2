@@ -21,8 +21,8 @@ library FeeHelper {
     struct FeeParameters {
         uint192 accumulator;
         uint64 time;
-        uint16 coolDownTime;
         uint16 maxFee;
+        uint16 coolDownTime;
         uint16 binStep;
         uint16 fF;
         uint16 fV;

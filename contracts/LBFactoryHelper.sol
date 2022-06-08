@@ -3,39 +3,39 @@
 pragma solidity 0.8.9;
 
 import "./LBPair.sol";
+import "./interfaces/ILBFactoryHelper.sol";
 
 error LBFactoryHelper__NotFactory();
 
-contract LBFactoryHelper {
-    address public immutable factory;
+contract LBFactoryHelper is ILBFactoryHelper {
+    ILBFactory public immutable factory;
 
     modifier OnlyFactory() {
-        if (msg.sender != factory) revert LBFactoryHelper__NotFactory();
+        if (msg.sender != address(factory))
+            revert LBFactoryHelper__NotFactory();
         _;
     }
 
     /// @notice Initialize the factory address
     constructor() {
-        factory = msg.sender;
+        factory = ILBFactory(msg.sender);
     }
 
     /// @notice Create a liquidity bin pair with a given salt
     function createLBPair(
-        address _token0,
-        address _token1,
+        IERC20 _token0,
+        IERC20 _token1,
         int256 _log2Value,
         bytes32 _salt,
-        bytes32 _feeParameters
-    ) external OnlyFactory returns (address) {
+        bytes32 _packedFeeParameters
+    ) external override OnlyFactory returns (ILBPair) {
         return
-            address(
-                new LBPair{salt: _salt}(
-                    factory,
-                    _token0,
-                    _token1,
-                    _log2Value,
-                    _feeParameters
-                )
+            new LBPair{salt: _salt}(
+                factory,
+                _token0,
+                _token1,
+                _log2Value,
+                _packedFeeParameters
             );
     }
 }

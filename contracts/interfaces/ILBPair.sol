@@ -2,6 +2,9 @@
 
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import "./ILBFactory.sol";
 import "../libraries/FeeHelper.sol";
 
 interface ILBPair {
@@ -19,7 +22,7 @@ interface ILBPair {
     /// - id: The current id used for swaps, this is also linked with the price
     /// - protocolFees0: The protocol fees received in token0
     /// - protocolFees1: The protocol fees received in token1
-    struct Pair {
+    struct PairInformation {
         uint136 reserve0;
         uint136 reserve1;
         uint24 id;
@@ -29,15 +32,15 @@ interface ILBPair {
 
     function PRICE_PRECISION() external pure returns (uint256);
 
-    function token0() external view returns (address);
+    function token0() external view returns (IERC20);
 
-    function token1() external view returns (address);
+    function token1() external view returns (IERC20);
 
-    function factory() external view returns (address);
+    function factory() external view returns (ILBFactory);
 
     function log2Value() external view returns (int256);
 
-    function pair() external view returns (Pair memory);
+    function pairInformation() external view returns (PairInformation memory);
 
     function feeParameters()
         external

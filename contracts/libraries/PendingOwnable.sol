@@ -41,7 +41,7 @@ contract PendingOwnable {
 
     /// @notice Throws if called by any account other than the pending owner.
     modifier onlyPendingOwner() {
-        if (msg.sender != _pendingOwner)
+        if (msg.sender != _pendingOwner || msg.sender == address(0))
             revert PendingOwnable__NotPendingOwner();
         _;
     }

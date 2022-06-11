@@ -5,12 +5,13 @@ pragma solidity 0.8.9;
 import "./SafeCast.sol";
 import "./MathS40x36.sol";
 
+error FeeHelper__AccumulatorOverflows();
+
 library FeeHelper {
     using SafeCast for uint256;
     using MathS40x36 for int256;
 
     uint256 internal constant BASIS_POINT_MAX = 10_000;
-    uint256 internal constant PRECISION = 1e18;
 
     /// @dev Structure to store the protocol fees:
     /// - accumulator: The value of the accumulator
@@ -19,13 +20,13 @@ library FeeHelper {
     /// - baseFee: The baseFee added to each swap. Max is 100 (1%)
     /// - maxFee: The maxFee that a user will pay. Max is 1000 (10%)
     struct FeeParameters {
-        uint192 accumulator;
-        uint64 time;
-        uint16 maxFee;
-        uint16 coolDownTime;
+        uint176 accumulator;
+        uint80 time;
+        uint176 maxAccumulator;
+        uint16 filterPeriod;
+        uint16 decayPeriod;
         uint16 binStep;
-        uint16 fF;
-        uint16 fV;
+        uint16 baseFactor;
         uint16 protocolShare;
     }
 
@@ -38,63 +39,91 @@ library FeeHelper {
     }
 
     /// @notice Update the value of the accumulator
-    /// @param _fee The current fee parameters
-    function updateAccumulatorValue(FeeParameters memory _fee) internal view {
+    /// @param _fp The current fee parameters
+    function updateAccumulatorValue(FeeParameters memory _fp) internal view {
         unchecked {
-            uint256 _deltaT = block.timestamp - _fee.time;
-            if (_deltaT >= _fee.coolDownTime) _fee.accumulator = 0;
-            else {
-                // uint256 _coolDown = (_deltaT * PRECISION) / _fee.coolDownTime;
-                uint256 _coolDown = uint256(
-                    int256(1e36 - (_deltaT * 1e36) / _fee.coolDownTime).log2()
-                );
-                _fee.accumulator = ((_fee.accumulator *
-                    (PRECISION - _coolDown)) / PRECISION).safe192();
+            uint256 deltaT = block.timestamp - _fp.time;
+
+            uint176 _accumulator; // Can't overflow as _accumulator <= _fp.accumulator <= _fp.maxAccumulator < 2**176
+            if (deltaT < _fp.filterPeriod) {
+                _accumulator = _fp.accumulator;
+            } else if (deltaT < _fp.decayPeriod) {
+                _accumulator = _fp.accumulator / 2;
+            } // else _accumulator = 0
+
+            _fp.accumulator = _accumulator;
+        }
+    }
+
+    /// @notice Update the accumulator and the timestamp
+    /// @dev This is done in assembly to save some gas, be very cautious if you change this
+    /// @param _fp The stored fee parameters
+    /// @param _accumulator The current accumulator (the one in memory)
+    /// @param _binCrossed The current number of bin crossed
+    function updateStoredFeeParameters(
+        FeeParameters storage _fp,
+        uint256 _accumulator,
+        uint256 _binCrossed
+    ) internal {
+        unchecked {
+            // This equation can't overflow
+            _accumulator += _binCrossed * BASIS_POINT_MAX;
+
+            if (_accumulator > type(uint128).max)
+                revert FeeHelper__AccumulatorOverflows();
+
+            assembly {
+                sstore(_fp.slot, add(shl(176, timestamp()), _accumulator))
             }
         }
     }
 
-    /// @notice Returns the variable fee added to a swap
-    /// @param _fee The current fee parameters
-    /// @param _binCrossed The current number of bin crossed
+    /// @notice Returns the base fee added to a swap in basis point
+    /// @param _fp The current fee parameters
     /// @return The fee
-    function getVariableFee(FeeParameters memory _fee, uint256 _binCrossed)
+    function getBaseFeeBP(FeeParameters memory _fp)
         internal
         pure
         returns (uint256)
     {
         unchecked {
-            uint256 _a = _fee.accumulator + _binCrossed * PRECISION;
-            return (_fee.fV * (_fee.binStep * _a)**2) / 1e44; // 1e4 * (1e4 * PRECISION)**2 = 1e48
+            return (_fp.baseFactor * _fp.binStep) / BASIS_POINT_MAX;
         }
     }
 
-    /// @notice Returns the fees (base + variable) added to a swap
-    /// @param _fee The current fee parameters
+    /// @notice Returns the variable fee added to a swap in basis point
+    /// @param _fp The current fee parameters
     /// @param _binCrossed The current number of bin crossed
-    /// @return fee The fee
-    function getFees(FeeParameters memory _fee, uint256 _binCrossed)
+    /// @return The variable fee
+    function getVariableFeeBP(FeeParameters memory _fp, uint256 _binCrossed)
         internal
         pure
-        returns (uint256 fee)
+        returns (uint256)
     {
-        fee =
-            (uint256(_fee.binStep) * _fee.fF) /
-            BASIS_POINT_MAX +
-            getVariableFee(_fee, _binCrossed);
-        return fee > _fee.maxFee ? _fee.maxFee : fee;
+        unchecked {
+            uint256 _acc = _fp.accumulator + _binCrossed * BASIS_POINT_MAX;
+
+            if (_acc > _fp.maxAccumulator) _acc = _fp.maxAccumulator;
+
+            // The multiplication can't overflow as 176 + 16 < 256
+            if (_acc * _fp.binStep > type(uint128).max)
+                revert FeeHelper__AccumulatorOverflows();
+
+            // decimals((_acc * _fp.binStep)**2) = (4 + 4) * 2 = 16
+            // The result should use 4 decimals, but as we divide it by 2, 5e11
+            return (_acc * _fp.binStep)**2 / 5e11; // 0.5 * (v_k * s) ** 2
+        }
     }
 
-    function getFeesDistribution(
-        FeeParameters memory _feeParameters,
+    function getFees(
+        FeeParameters memory _fp,
         uint256 _amount,
         uint256 _binCrossed
-    ) internal pure returns (FeesDistribution memory feesDistribution) {
-        uint256 _fee = BASIS_POINT_MAX - getFees(_feeParameters, _binCrossed);
-        feesDistribution.total = ((uint256(_amount) * BASIS_POINT_MAX) /
-            _fee -
-            _amount).safe128();
-        feesDistribution.protocol = ((uint256(feesDistribution.total) *
-            _feeParameters.protocolShare) / BASIS_POINT_MAX).safe128();
+    ) internal pure returns (uint256 fee) {
+        unchecked {
+            uint256 _feeBP = getBaseFeeBP(_fp) +
+                getVariableFeeBP(_fp, _binCrossed);
+            return (_amount * _feeBP) / (BASIS_POINT_MAX - _feeBP);
+        }
     }
 }

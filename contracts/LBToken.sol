@@ -3,6 +3,7 @@
 pragma solidity 0.8.9;
 
 import "./interfaces/ILBToken.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 error LBToken__OperatorNotApproved(address from, address operator);
 error LBToken__TransferFromOrToAddress0();
@@ -17,7 +18,7 @@ error LBToken__TransferExceedsBalance(address from, uint256 id, uint256 amount);
 /// @author Trader Joe
 /// @notice The LBToken is an implementation of a multi-token.
 /// It allows to create multi-ERC20 represented by their IDs.
-contract LBToken is ILBToken {
+contract LBToken is ILBToken, ERC165 {
     // Mapping from token ID to account balances
     mapping(uint256 => mapping(address => uint256)) private _balances;
 
@@ -33,6 +34,20 @@ contract LBToken is ILBToken {
     constructor(string memory name_, string memory symbol_) {
         _name = name_;
         _symbol = symbol_;
+    }
+
+    /// @notice Wether this contract implements the interface defined by `_interfaceId`.
+    /// @param _interfaceId The interfaceId as a bytes4
+    function supportsInterface(bytes4 _interfaceId)
+        public
+        view
+        virtual
+        override(ERC165, IERC165)
+        returns (bool)
+    {
+        return
+            _interfaceId == type(ILBToken).interfaceId ||
+            super.supportsInterface(_interfaceId);
     }
 
     /// @notice Returns the name of the token

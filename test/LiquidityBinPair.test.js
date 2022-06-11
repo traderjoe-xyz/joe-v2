@@ -24,8 +24,8 @@ describe("Liquidity Bin Pair", function () {
       this.token12D.address, // y
       "0xb19a9e77af6827457b6619208c48",
       ethers.utils.solidityPack(
-        ["uint160", "uint16", "uint16", "uint16", "uint16", "uint16", "uint16"],
-        [0, 5_000, 5_000, 1_000, 25, 100, 1_000]
+        ["uint16", "uint16", "uint16", "uint16", "uint16", "uint176"],
+        [5_000, 1_000, 25, 100, 10, 50 * 10_000]
       )
     );
 
@@ -45,11 +45,11 @@ describe("Liquidity Bin Pair", function () {
     const feeParameters = await this.LBP.feeParameters();
     expect(feeParameters.accumulator).to.be.equal(0);
     expect(feeParameters.time).to.be.equal(0);
-    expect(feeParameters.coolDownTime).to.be.equal(100);
+    expect(feeParameters.maxAccumulator).to.be.equal(50 * 10_000);
+    expect(feeParameters.filterPeriod).to.be.equal(10);
+    expect(feeParameters.decayPeriod).to.be.equal(100);
     expect(feeParameters.binStep).to.be.equal(25);
-    expect(feeParameters.fF).to.be.equal(1_000);
-    expect(feeParameters.fV).to.be.equal(5_000);
-    expect(feeParameters.maxFee).to.be.equal(1_000);
+    expect(feeParameters.baseFactor).to.be.equal(1_000);
     expect(feeParameters.protocolShare).to.be.equal(5_000);
   });
 
@@ -130,12 +130,7 @@ describe("Liquidity Bin Pair", function () {
     const amount1In = (await this.LBP.getSwapIn(amount0Out, 0)).amount1In;
 
     await this.token12D.mint(this.LBP.address, amount1In);
-    await this.LBP.connect(this.alice).swap(
-      amount0Out,
-      0,
-      this.alice.address,
-      0
-    );
+    await this.LBP.connect(this.alice).swap(amount0Out, 0, this.alice.address);
 
     expect(await this.token6D.balanceOf(this.alice.address)).to.be.equal(
       amount0Out
@@ -146,9 +141,7 @@ describe("Liquidity Bin Pair", function () {
     const pairInformation = await this.LBP.pairInformation();
 
     expect(bin.reserve0).to.be.equal(tokenAmount.sub(amount0Out));
-    expect(bin.reserve1).to.be.equal(
-      amount1In.sub(pairInformation.protocolFees1)
-    );
+    expect(bin.reserve1).to.be.equal(amount1In.sub(pairInformation.fees1));
   });
 
   it("Should swap in only 1 bin 1.002908 token0 for 1 token1 at bin id 1 (0.3% fee)", async function () {
@@ -164,12 +157,7 @@ describe("Liquidity Bin Pair", function () {
     const amount1Out = (await this.LBP.getSwapOut(amount0In, 0)).amount1Out;
 
     await this.token6D.mint(this.LBP.address, amount0In);
-    await this.LBP.connect(this.alice).swap(
-      0,
-      amount1Out,
-      this.alice.address,
-      0
-    );
+    await this.LBP.connect(this.alice).swap(0, amount1Out, this.alice.address);
 
     expect(await this.token6D.balanceOf(this.alice.address)).to.be.equal(0);
     expect(await this.token12D.balanceOf(this.alice.address)).to.be.equal(
@@ -180,7 +168,7 @@ describe("Liquidity Bin Pair", function () {
     const pairInformation = await this.LBP.pairInformation();
 
     expect(bin.reserve0).to.be.closeTo(
-      amount0In.sub(pairInformation.protocolFees0),
+      amount0In.sub(pairInformation.fees0),
       amount0In.div(10_000)
     );
     expect(bin.reserve1).to.be.equal(tokenAmount.sub(amount1Out));
@@ -203,12 +191,7 @@ describe("Liquidity Bin Pair", function () {
 
     await this.token6D.mint(this.LBP.address, amount0In);
 
-    await this.LBP.connect(this.alice).swap(
-      0,
-      amount1Out,
-      this.alice.address,
-      0
-    );
+    await this.LBP.connect(this.alice).swap(0, amount1Out, this.alice.address);
 
     expect(await this.token6D.balanceOf(this.alice.address)).to.be.equal(0);
     expect(await this.token12D.balanceOf(this.alice.address)).to.be.equal(
@@ -217,7 +200,7 @@ describe("Liquidity Bin Pair", function () {
 
     const pairInformation = await this.LBP.pairInformation();
     expect(pairInformation.reserve0).to.be.equal(
-      amount0In.sub(pairInformation.protocolFees0)
+      amount0In.sub(pairInformation.fees0)
     );
     expect(pairInformation.reserve1).to.be.equal(0);
   });
@@ -239,12 +222,7 @@ describe("Liquidity Bin Pair", function () {
 
     await this.token12D.mint(this.LBP.address, amount1In);
 
-    await this.LBP.connect(this.alice).swap(
-      amount0Out,
-      0,
-      this.alice.address,
-      0
-    );
+    await this.LBP.connect(this.alice).swap(amount0Out, 0, this.alice.address);
 
     expect(await this.token6D.balanceOf(this.alice.address)).to.be.equal(
       amount0Out
@@ -254,7 +232,7 @@ describe("Liquidity Bin Pair", function () {
     const pairInformation = await this.LBP.pairInformation();
     expect(pairInformation.reserve0).to.be.equal(tokenAmount.sub(amount0Out));
     expect(pairInformation.reserve1).to.be.closeTo(
-      amount1In.sub(pairInformation.protocolFees1),
+      amount1In.sub(pairInformation.fees1),
       amount1In.div(10_000)
     );
   });
@@ -278,12 +256,7 @@ describe("Liquidity Bin Pair", function () {
     );
 
     await this.token6D.mint(this.LBP.address, ethers.utils.parseUnits("1", 75));
-    await this.LBP.connect(this.alice).swap(
-      0,
-      tokenAmount,
-      this.alice.address,
-      0
-    );
+    await this.LBP.connect(this.alice).swap(0, tokenAmount, this.alice.address);
 
     expect(await this.token6D.balanceOf(this.alice.address)).to.be.equal(0);
     expect(await this.token12D.balanceOf(this.alice.address)).to.be.equal(
@@ -317,12 +290,7 @@ describe("Liquidity Bin Pair", function () {
       this.LBP.address,
       ethers.utils.parseUnits("1", 75)
     );
-    await this.LBP.connect(this.alice).swap(
-      tokenAmount,
-      0,
-      this.alice.address,
-      0
-    );
+    await this.LBP.connect(this.alice).swap(tokenAmount, 0, this.alice.address);
 
     expect(await this.token6D.balanceOf(this.alice.address)).to.be.equal(
       tokenAmount
@@ -363,12 +331,7 @@ describe("Liquidity Bin Pair", function () {
     ).div(one.div(100));
 
     await this.token6D.mint(this.LBP.address, amount0In);
-    await this.LBP.connect(this.alice).swap(
-      0,
-      amount1Out,
-      this.alice.address,
-      0
-    );
+    await this.LBP.connect(this.alice).swap(0, amount1Out, this.alice.address);
 
     console.log(
       amount0In / 1e6,
@@ -389,8 +352,8 @@ describe("Liquidity Bin Pair", function () {
     const feesPar = await this.LBP.feeParameters();
     console.log(
       "Fees paid:",
-      pairInformation.protocolFees0 / 1e2 / feesPar.protocolShare,
-      pairInformation.protocolFees1 / 1e8 / feesPar.protocolShare
+      pairInformation.fees0 / 1e2 / feesPar.protocolShare,
+      pairInformation.fees1 / 1e8 / feesPar.protocolShare
     );
   });
 

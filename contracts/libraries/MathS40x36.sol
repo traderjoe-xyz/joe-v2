@@ -8,7 +8,7 @@ import "./BitMath.sol";
 /// @notice Emitted when the input is less than or equal to zero.
 error Math__LogInputTooSmall(int256 x);
 
-/// @notice Emitted when the input is greater than 192.
+/// @notice Emitted when the input is greater than or equal to 128e36.
 error Math__Exp2InputTooBig(int256 x);
 
 library MathS40x36 {

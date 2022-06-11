@@ -2,7 +2,9 @@
 
 pragma solidity 0.8.9;
 
-interface ILBToken {
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+
+interface ILBToken is IERC165 {
     event TransferSingle(
         address indexed from,
         address indexed to,

@@ -8,29 +8,45 @@ import "./ILBPair.sol";
 import "./ILBFactoryHelper.sol";
 
 interface ILBFactory {
+    function MAX_BASIS_POINT() external pure returns (uint256);
+
+    function MIN_FEE() external pure returns (uint256);
+
+    function MAX_FEE() external pure returns (uint256);
+
+    function MIN_BIN_STEP() external pure returns (uint256);
+
+    function MAX_BIN_STEP() external pure returns (uint256);
+
+    function MIN_PROTOCOL_SHARE() external pure returns (uint256);
+
+    function MAX_PROTOCOL_SHARE() external pure returns (uint256);
+
     function factoryHelper() external view returns (ILBFactoryHelper);
 
     function feeRecipient() external view returns (address);
 
-    function allLBPairs(uint256 _id) external returns (ILBPair);
+    function unlocked() external view returns (bool);
+
+    function allLBPairs(uint256 id) external returns (ILBPair);
 
     function allPairsLength() external view returns (uint256);
 
-    function getLBPair(IERC20 _tokenA, IERC20 _tokenB)
+    function getLBPair(IERC20 tokenA, IERC20 tokenB)
         external
         view
         returns (ILBPair);
 
     function createLBPair(
-        IERC20 _tokenA,
-        IERC20 _tokenB,
-        uint16 _coolDownTime,
-        uint16 _binStep,
-        uint16 _fF,
-        uint16 _fV,
-        uint16 _maxFee,
-        uint16 _protocolShare
+        IERC20 tokenA,
+        IERC20 tokenB,
+        uint176 maxAccumulator,
+        uint16 filterPeriod,
+        uint16 decayPeriod,
+        uint16 binStep,
+        uint16 baseFactor,
+        uint16 protocolShare
     ) external returns (ILBPair pair);
 
-    function setFeeRecipient(address _feeRecipient) external;
+    function setFeeRecipient(address feeRecipient) external;
 }

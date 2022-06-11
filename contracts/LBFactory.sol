@@ -11,19 +11,42 @@ import "./libraries/PendingOwnable.sol";
 error LBFactory__IdenticalAddresses(IERC20 token);
 error LBFactory__ZeroAddress();
 error LBFactory__LBPairAlreadyExists(IERC20 token0, IERC20 token1);
-error LBFactory__BinStepTooBig(uint16 binStep, uint16 max);
-error LBFactory__fFTooBig(uint16 fF, uint16 max);
-error LBFactory__fVTooBig(uint16 fV, uint16 max);
-error LBFactory__maxFeeTooBig(uint16 maxFee, uint16 max);
-error LBFactory___protocolShareTooBig(uint16 protocolShare, uint16 max);
-error LBFactory___protocolShareTooLow(uint16 protocolShare, uint16 min);
+error LBFactory__DecreasingPeriods(uint16 filterPeriod, uint16 decayPeriod);
+error LBFactory__BaseFactorExceedsBP(uint16 baseFactor, uint256 maxBP);
+error LBFactory__BaseFeesBelowMin(uint256 baseFees, uint256 minBaseFees);
+error LBFactory__FeesAboveMax(uint256 fees, uint256 maxFees);
+error LBFactory__BinStepRequirementsBreached(
+    uint256 lowerBound,
+    uint16 binStep,
+    uint256 higherBound
+);
+error LBFactory___ProtocolShareRequirementsBreached(
+    uint256 lowerBound,
+    uint16 protocolShare,
+    uint256 higherBound
+);
+error LBFactory__FunctionIsLockedForUsers(address user);
 
 contract LBFactory is PendingOwnable, ILBFactory {
     using MathS40x36 for int256;
 
+    uint256 public constant override MAX_BASIS_POINT = 10_000; // 100%
+
+    uint256 public constant override MIN_FEE = 1; // 0.01%
+    uint256 public constant override MAX_FEE = 1_000; // 10%
+
+    uint256 public constant override MIN_BIN_STEP = 1; // 0.0001
+    uint256 public constant override MAX_BIN_STEP = 100; // 0.01
+
+    uint256 public constant override MIN_PROTOCOL_SHARE = 1_000; // 10%
+    uint256 public constant override MAX_PROTOCOL_SHARE = 5_000; // 50%
+
     ILBFactoryHelper public immutable override factoryHelper;
 
     address public override feeRecipient;
+
+    /// @notice Whether the createLBPair function is unlocked and can be called by anyone or only by owner
+    bool public override unlocked;
 
     ILBPair[] public override allLBPairs;
     mapping(IERC20 => mapping(IERC20 => ILBPair)) private _LBPair;
@@ -36,6 +59,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
     );
 
     event FeeRecipientChanged(address oldRecipient, address newRecipient);
+
+    modifier onlyOwnerIfLocked() {
+        if (!unlocked && msg.sender != owner())
+            revert LBFactory__FunctionIsLockedForUsers(msg.sender);
+        _;
+    }
 
     /// @notice Constructor
     constructor(address _feeRecipient) {
@@ -64,50 +93,79 @@ contract LBFactory is PendingOwnable, ILBFactory {
         return _LBPair[_token0][_token1];
     }
 
-    // TODO add onlyowner when locked
     /// @notice Create a liquidity bin pair for _tokenA and _tokenB
     /// @param _tokenA The address of the first token
     /// @param _tokenB The address of the second token
-    /// @param _coolDownTime The cool down time, the accumulator slowly decrease to 0 over the cool down time
-    /// @param _binStep The bin step in basis point, used to calculate log(1 + _binStep)
-    /// @param _fF //TODO
-    /// @param _fV //TODO
-    /// @param _maxFee The max fee that users will have to pay
+    /// @param _maxAccumulator The max value of the accumulator
+    /// @param _filterPeriod The period where the accumulator value is untouched, prevent spam
+    /// @param _decayPeriod The period where the accumulator value is halved
+    /// @param _binStep The bin step in basis point, used to calculate log(1 + binStep)
+    /// @param _baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
     /// @param _protocolShare The share of the fees received by the protocol
     /// @return pair The address of the newly created pair
     function createLBPair(
         IERC20 _tokenA,
         IERC20 _tokenB,
-        uint16 _coolDownTime,
+        uint176 _maxAccumulator,
+        uint16 _filterPeriod,
+        uint16 _decayPeriod,
         uint16 _binStep,
-        uint16 _fF,
-        uint16 _fV,
-        uint16 _maxFee,
+        uint16 _baseFactor,
         uint16 _protocolShare
-    ) external override returns (ILBPair pair) {
+    ) external override onlyOwnerIfLocked returns (ILBPair pair) {
         if (_tokenA == _tokenB) revert LBFactory__IdenticalAddresses(_tokenA);
         (IERC20 _token0, IERC20 _token1) = _sortAddresses(_tokenA, _tokenB);
         if (address(_token0) == address(0)) revert LBFactory__ZeroAddress();
         if (address(_LBPair[_token0][_token1]) != address(0))
-            revert LBFactory__LBPairAlreadyExists(_token0, _token1); // single check is sufficient
-        if (_binStep > 100) revert LBFactory__BinStepTooBig(_binStep, 100);
-        if (_fF > 10_000) revert LBFactory__fFTooBig(_fF, 10_000);
-        if (_fV > 10_000) revert LBFactory__fVTooBig(_fV, 10_000);
-        if (_maxFee > 1_000) revert LBFactory__maxFeeTooBig(_maxFee, 1_000);
-        if (_protocolShare < 1_000)
-            revert LBFactory___protocolShareTooLow(_protocolShare, 1_000);
-        if (_protocolShare > 10_000)
-            revert LBFactory___protocolShareTooBig(_protocolShare, 10_000);
+            // single check is sufficient
+            revert LBFactory__LBPairAlreadyExists(_token0, _token1);
 
+        if (_filterPeriod >= _decayPeriod)
+            revert LBFactory__DecreasingPeriods(_filterPeriod, _decayPeriod);
+
+        if (_binStep < MIN_BIN_STEP || _binStep > MAX_BIN_STEP)
+            revert LBFactory__BinStepRequirementsBreached(
+                MIN_BIN_STEP,
+                _binStep,
+                MAX_BIN_STEP
+            );
+
+        if (_baseFactor > MAX_BASIS_POINT)
+            revert LBFactory__BaseFactorExceedsBP(_binStep, MAX_BASIS_POINT);
+
+        if (
+            _protocolShare < MIN_PROTOCOL_SHARE ||
+            _protocolShare > MAX_PROTOCOL_SHARE
+        )
+            revert LBFactory___ProtocolShareRequirementsBreached(
+                MIN_PROTOCOL_SHARE,
+                _protocolShare,
+                MAX_PROTOCOL_SHARE
+            );
+        {
+            uint256 _baseFee = (uint256(_baseFactor) * uint256(_binStep)) /
+                MAX_BASIS_POINT;
+            if (_baseFee < MIN_FEE)
+                revert LBFactory__BaseFeesBelowMin(_baseFee, MIN_FEE);
+
+            uint256 _maxVariableFee = (uint256(_maxAccumulator) *
+                uint256(_binStep)) / MAX_BASIS_POINT;
+            if (_baseFee + _maxVariableFee > MAX_FEE)
+                revert LBFactory__FeesAboveMax(
+                    _baseFee + _maxVariableFee,
+                    MAX_FEE
+                );
+        }
+
+        /// @dev It's very important that the sum of those values is exactly 256 bits
         bytes32 _packedFeeParameters = bytes32(
             abi.encodePacked(
-                uint160(0),
                 _protocolShare,
-                _maxFee,
-                _fV,
-                _fF,
+                _baseFactor,
                 _binStep,
-                _coolDownTime
+                _decayPeriod,
+                _filterPeriod,
+                _maxAccumulator
             )
         );
 
@@ -129,7 +187,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         emit PairCreated(_token0, _token1, pair, allLBPairs.length - 1);
     }
 
-    /// @notice Function to set the recipient of the fees
+    /// @notice Function to set the recipient of the fees. This address needs to be able to receive native AVAX and ERC20.
     /// @param _feeRecipient The address of the recipient
     function setFeeRecipient(address _feeRecipient)
         external
@@ -142,6 +200,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @notice Internal function to set the recipient of the fees
     /// @param _feeRecipient The address of the recipient
     function _setFeeRecipient(address _feeRecipient) internal {
+        if (_feeRecipient == address(0)) revert LBFactory__ZeroAddress();
+
         address oldFeeRecipient = feeRecipient;
         feeRecipient = _feeRecipient;
         emit FeeRecipientChanged(oldFeeRecipient, _feeRecipient);

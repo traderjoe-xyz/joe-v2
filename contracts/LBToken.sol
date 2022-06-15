@@ -5,12 +5,13 @@ pragma solidity 0.8.9;
 import "./interfaces/ILBToken.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
-error LBToken__OperatorNotApproved(address from, address operator);
+error LBToken__SpenderNotApproved(address owner, address spender);
 error LBToken__TransferFromOrToAddress0();
 error LBToken__MintToAddress0();
 error LBToken__MintTooLow(uint256 amount);
 error LBToken__BurnFromAddress0();
 error LBToken__BurnExceedsBalance(address from, uint256 id, uint256 amount);
+error LBToken__LengthMismatch(uint256 accountsLength, uint256 idsLength);
 error LBToken__SelfApproval(address owner);
 error LBToken__TransferExceedsBalance(address from, uint256 id, uint256 amount);
 
@@ -22,14 +23,16 @@ contract LBToken is ILBToken, ERC165 {
     // Mapping from token ID to account balances
     mapping(uint256 => mapping(address => uint256)) private _balances;
 
-    // Mapping from account to operator approvals
-    mapping(address => mapping(address => bool)) private _operatorApprovals;
+    // Mapping from account to spender approvals
+    mapping(address => mapping(address => bool)) private _spenderApprovals;
 
     // Mapping from token ID to total supplies
     mapping(uint256 => uint256) private _totalSupplies;
 
     string private _name;
     string private _symbol;
+
+    event Transfer();
 
     constructor(string memory name_, string memory symbol_) {
         _name = name_;
@@ -95,24 +98,31 @@ contract LBToken is ILBToken, ERC165 {
         return _balances[_id][_account];
     }
 
-    /// @notice Transfers `_amount` tokens of type `_id` from `msg.sender` to `_to`
-    /// @param _to The address of the recipient
-    /// @param _id The token ID
-    /// @param _amount The amount to send
-    function safeTransfer(
-        address _to,
-        uint256 _id,
-        uint256 _amount
-    ) public virtual override {
-        address _owner = msg.sender;
-        _safeTransfer(_owner, _to, _id, _amount);
-        emit TransferSingle(_owner, _to, _id, _amount);
+    /// @notice Returns the amounts of tokens of type `id` owned by each `account` looping on the two arrays
+    /// @param _accounts The address of the owners
+    /// @param _ids The token IDs
+    /// @return batchBalances the amounts of tokens of type `id` owned by each `account` looping on the two arrays
+    function balanceOfBatch(address[] memory _accounts, uint256[] memory _ids)
+        public
+        view
+        virtual
+        override
+        returns (uint256[] memory batchBalances)
+    {
+        uint256 _len = _accounts.length;
+        if (_len != _ids.length)
+            revert LBToken__LengthMismatch(_len, _ids.length);
+
+        batchBalances = new uint256[](_len);
+        for (uint256 i; i < _len; ++i) {
+            batchBalances[i] = balanceOf(_accounts[i], _ids[i]);
+        }
     }
 
-    /// @notice Returns true if `operator` is approved to transfer `_account`'s tokens
+    /// @notice Returns true if `spender` is approved to transfer `_account`'s tokens
     /// @param _owner The address of the owner
     /// @param _spender The address of the spender
-    /// @return True if `operator` is approved to transfer `_account`'s tokens
+    /// @return True if `spender` is approved to transfer `_account`'s tokens
     function isApprovedForAll(address _owner, address _spender)
         public
         view
@@ -123,15 +133,15 @@ contract LBToken is ILBToken, ERC165 {
         return _isApprovedForAll(_owner, _spender);
     }
 
-    /// @notice Grants or revokes permission to `operator` to transfer the caller's tokens, according to `approved`
-    /// @param _operator The address of the operator
+    /// @notice Grants or revokes permission to `spender` to transfer the caller's tokens, according to `approved`
+    /// @param _spender The address of the spender
     /// @param _approved The boolean value to grant or revoke permission
-    function setApprovalForAll(address _operator, bool _approved)
+    function setApprovalForAll(address _spender, bool _approved)
         public
         virtual
         override
     {
-        _setApprovalForAll(msg.sender, _operator, _approved);
+        _setApprovalForAll(msg.sender, _spender, _approved);
     }
 
     /// @notice Transfers `_amount` tokens of type `_id` from `_from` to `_to`
@@ -145,11 +155,24 @@ contract LBToken is ILBToken, ERC165 {
         uint256 _id,
         uint256 _amount
     ) public virtual override {
-        address operator = msg.sender;
-        if (_isApprovedForAll(_from, operator))
-            revert LBToken__OperatorNotApproved(_from, operator);
-        _safeTransfer(_from, _to, _id, _amount);
-        emit TransferFromSingle(msg.sender, _from, _to, _id, _amount);
+        address _spender = msg.sender;
+        if (_isApprovedForAll(_from, _spender))
+            revert LBToken__SpenderNotApproved(_from, _spender);
+        _safeTransferFrom(_from, _to, _id, _amount);
+        emit TransferSingle(_spender, _from, _to, _id, _amount);
+    }
+
+    function safeBatchTransferFrom(
+        address _from,
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _amounts
+    ) public virtual override {
+        address _spender = msg.sender;
+        if (_isApprovedForAll(_from, _spender))
+            revert LBToken__SpenderNotApproved(_from, _spender);
+        _safeBatchTransferFrom(_from, _to, _ids, _amounts);
+        emit TransferBatch(_spender, _from, _to, _ids, _amounts);
     }
 
     /// @dev Transfers `_amount` tokens of type `_id` from `_from` to `_to`
@@ -157,7 +180,7 @@ contract LBToken is ILBToken, ERC165 {
     /// @param _to The address of the recipient
     /// @param _id The token ID
     /// @param _amount The amount to send
-    function _safeTransfer(
+    function _safeTransferFrom(
         address _from,
         address _to,
         uint256 _id,
@@ -165,6 +188,13 @@ contract LBToken is ILBToken, ERC165 {
     ) internal virtual {
         if (_from == address(0) || _to == address(0))
             revert LBToken__TransferFromOrToAddress0();
+
+        _beforeTokenTransfer(
+            _from,
+            _to,
+            _asSingletonArray(_id),
+            _asSingletonArray(_amount)
+        );
 
         uint256 _fromBalance = _balances[_id][_from];
         if (_fromBalance < _amount)
@@ -175,79 +205,157 @@ contract LBToken is ILBToken, ERC165 {
         _balances[_id][_to] += _amount;
     }
 
+    function _safeBatchTransferFrom(
+        address _from,
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _amounts
+    ) internal virtual {
+        if (_from == address(0) || _to == address(0))
+            revert LBToken__TransferFromOrToAddress0();
+        uint256 _len = _ids.length;
+        if (_len != _amounts.length)
+            revert LBToken__LengthMismatch(_len, _amounts.length);
+
+        _beforeTokenTransfer(_from, _to, _ids, _amounts);
+
+        for (uint256 i; i < _len; ++i) {
+            uint256 _id = _ids[i];
+            uint256 _amount = _amounts[i];
+
+            uint256 _fromBalance = _balances[_id][_from];
+            if (_fromBalance < _amount)
+                revert LBToken__TransferExceedsBalance(_from, _id, _amount);
+            unchecked {
+                _balances[_id][_from] = _fromBalance - _amount;
+            }
+            _balances[_id][_to] += _amount;
+        }
+    }
+
     /// @dev Creates `_amount` tokens of type `_id`, and assigns them to `_account`
     /// @param _account The address of the recipient
-    /// @param _id The token ID
-    /// @param _amount The amount to create
+    /// @param _ids The token IDs
+    /// @param _amounts The amounts to mint
     function _mint(
         address _account,
-        uint256 _id,
-        uint256 _amount
+        uint256[] memory _ids,
+        uint256[] memory _amounts
     ) internal virtual {
         if (_account == address(0)) revert LBToken__MintToAddress0();
+        uint256 _len = _ids.length;
+        if (_len != _amounts.length)
+            revert LBToken__LengthMismatch(_len, _amounts.length);
 
-        uint256 _totalSupply = _totalSupplies[_id];
-        _totalSupplies[_id] = _totalSupply + _amount;
-        if (_totalSupply == 0) {
-            if (_amount < 10_000) revert LBToken__MintTooLow(_amount); // Do we check that ? or only > 1000 ?
-            unchecked {
-                _amount -= 1000;
-                _balances[_id][address(0)] = 1000;
-                emit TransferSingle(address(0), address(0), _id, 1000);
-            }
+        _beforeTokenTransfer(address(0), _account, _ids, _amounts);
+
+        for (uint256 i; i < _len; ++i) {
+            uint256 _id = _ids[i];
+            uint256 _amount = _amounts[i];
+
+            _totalSupplies[_id] += _amount;
+            _balances[_id][_account] += _amount;
         }
-        _balances[_id][_account] += _amount;
-        emit TransferSingle(address(0), _account, _id, _amount);
+
+        emit TransferBatch(msg.sender, address(0), _account, _ids, _amounts);
     }
 
     /// @dev Destroys `_amount` tokens of type `_id` from `_account`
     /// @param _account The address of the owner
-    /// @param _id The token ID
-    /// @param _amount The amount to destroy
+    /// @param _ids The token ID
+    /// @param _amounts The amount to destroy
     function _burn(
         address _account,
-        uint256 _id,
-        uint256 _amount
+        uint256[] memory _ids,
+        uint256[] memory _amounts
     ) internal virtual {
         if (_account == address(0)) revert LBToken__BurnFromAddress0();
+        uint256 _len = _ids.length;
+        if (_len != _amounts.length)
+            revert LBToken__LengthMismatch(_len, _amounts.length);
 
-        uint256 _accountBalance = _balances[_id][_account];
-        if (_accountBalance < _amount)
-            revert LBToken__BurnExceedsBalance(_account, _id, _amount);
-        unchecked {
-            _balances[_id][_account] = _accountBalance - _amount;
+        for (uint256 i; i < _len; ++i) {
+            uint256 _id = _ids[i];
+            uint256 _amount = _amounts[i];
+
+            uint256 _accountBalance = _balances[_id][_account];
+            if (_accountBalance < _amount)
+                revert LBToken__BurnExceedsBalance(_account, _id, _amount);
+
+            unchecked {
+                _balances[_id][_account] = _accountBalance - _amount;
+                _totalSupplies[_id] -= _amount;
+            }
         }
-        _totalSupplies[_id] -= _amount;
 
-        emit TransferSingle(_account, address(0), _id, _amount);
+        emit TransferBatch(msg.sender, _account, address(0), _ids, _amounts);
     }
 
-    /// @notice Grants or revokes permission to `operator` to transfer the caller's tokens, according to `approved`
+    /// @notice Grants or revokes permission to `spender` to transfer the caller's tokens, according to `approved`
     /// @param _owner The address of the owner
-    /// @param _operator The address of the operator
+    /// @param _spender The address of the spender
     /// @param _approved The boolean value to grant or revoke permission
     function _setApprovalForAll(
         address _owner,
-        address _operator,
+        address _spender,
         bool _approved
     ) internal virtual {
-        if (_owner == _operator) {
+        if (_owner == _spender) {
             revert LBToken__SelfApproval(_owner);
         }
-        _operatorApprovals[_owner][_operator] = _approved;
-        emit ApprovalForAll(_owner, _operator, _approved);
+        _spenderApprovals[_owner][_spender] = _approved;
+        emit ApprovalForAll(_owner, _spender, _approved);
     }
 
-    /// @notice Returns true if `operator` is approved to transfer `_account`'s tokens
+    /// @notice Returns true if `spender` is approved to transfer `owner`'s tokens
+    /// or if `sender` is the `owner`
     /// @param _owner The address of the owner
     /// @param _spender The address of the spender
-    /// @return True if `operator` is approved to transfer `_account`'s tokens
+    /// @return True if `spender` is approved to transfer `owner`'s tokens
     function _isApprovedForAll(address _owner, address _spender)
         internal
         view
         virtual
         returns (bool)
     {
-        return _operatorApprovals[_owner][_spender];
+        return _owner == _spender || _spenderApprovals[_owner][_spender];
+    }
+
+    /// @notice Hook that is called before any token transfer. This includes minting
+    /// and burning.
+    ///
+    /// Calling conditions (for each `id` and `amount` pair):
+    ///
+    /// - When `from` and `to` are both non-zero, `amount` of ``from``'s tokens
+    /// of token type `id` will be  transferred to `to`.
+    /// - When `from` is zero, `amount` tokens of token type `id` will be minted
+    /// for `to`.
+    /// - when `to` is zero, `amount` of ``from``'s tokens of token type `id`
+    /// will be burned.
+    /// - `from` and `to` are never both zero.
+    /// - `ids` and `amounts` have the same, non-zero length
+    /// @param from The address of the owner of the token
+    /// @param to The address of the recipient of the  token
+    /// @param ids The ids of the token
+    /// @param amounts The amounts of token of each type `id`
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts
+    ) internal {}
+
+    /// @notice Returns an uint256 as a singleton array
+    /// @param element The element
+    /// @return The singleton composed of only element
+    function _asSingletonArray(uint256 element)
+        private
+        pure
+        returns (uint256[] memory)
+    {
+        uint256[] memory array = new uint256[](1);
+        array[0] = element;
+
+        return array;
     }
 }

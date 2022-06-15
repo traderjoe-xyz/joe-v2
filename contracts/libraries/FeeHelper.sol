@@ -5,8 +5,6 @@ pragma solidity 0.8.9;
 import "./SafeCast.sol";
 import "./MathS40x36.sol";
 
-error FeeHelper__AccumulatorOverflows();
-
 library FeeHelper {
     using SafeCast for uint256;
     using MathS40x36 for int256;
@@ -32,7 +30,7 @@ library FeeHelper {
 
     /// @dev Structure used during swaps to distributes the fees:
     /// - total: The total amount of fees
-    /// - protocol: The fees reserved for the protocol
+    /// - protocol: The amount of fees reserved for protocol
     struct FeesDistribution {
         uint128 total;
         uint128 protocol;
@@ -69,8 +67,8 @@ library FeeHelper {
             // This equation can't overflow
             _accumulator += _binCrossed * BASIS_POINT_MAX;
 
-            if (_accumulator > type(uint128).max)
-                revert FeeHelper__AccumulatorOverflows();
+            if (_accumulator > _fp.maxAccumulator)
+                _accumulator = _fp.maxAccumulator;
 
             assembly {
                 sstore(_fp.slot, add(shl(176, timestamp()), _accumulator))
@@ -78,10 +76,10 @@ library FeeHelper {
         }
     }
 
-    /// @notice Returns the base fee added to a swap in basis point
+    /// @notice Returns the base fee added to a swap in basis point squared (100% is 100_000_000)
     /// @param _fp The current fee parameters
     /// @return The fee
-    function getBaseFeeBP(FeeParameters memory _fp)
+    function getBaseFeeBP2(FeeParameters memory _fp)
         internal
         pure
         returns (uint256)
@@ -91,11 +89,11 @@ library FeeHelper {
         }
     }
 
-    /// @notice Returns the variable fee added to a swap in basis point
+    /// @notice Returns the variable fee added to a swap in basis point squared (100% is 100_000_000)
     /// @param _fp The current fee parameters
     /// @param _binCrossed The current number of bin crossed
     /// @return The variable fee
-    function getVariableFeeBP(FeeParameters memory _fp, uint256 _binCrossed)
+    function getVariableFeeBP2(FeeParameters memory _fp, uint256 _binCrossed)
         internal
         pure
         returns (uint256)
@@ -105,25 +103,45 @@ library FeeHelper {
 
             if (_acc > _fp.maxAccumulator) _acc = _fp.maxAccumulator;
 
-            // The multiplication can't overflow as 176 + 16 < 256
-            if (_acc * _fp.binStep > type(uint128).max)
-                revert FeeHelper__AccumulatorOverflows();
-
             // decimals((_acc * _fp.binStep)**2) = (4 + 4) * 2 = 16
-            // The result should use 4 decimals, but as we divide it by 2, 5e11
-            return (_acc * _fp.binStep)**2 / 5e11; // 0.5 * (v_k * s) ** 2
+            // The result should use 8 decimals, but as we divide it by 2, 5e7
+            return (_acc * _fp.binStep)**2 / 5e7; // 0.5 * (v_k * s) ** 2
         }
     }
 
+    /// @notice Return the fees added to an amount
+    /// @param _fp The current fee parameter
+    /// @param _amount The amount of token sent
+    /// @param _binCrossed The current number of bin crossed
+    /// @return The fee amount
     function getFees(
         FeeParameters memory _fp,
         uint256 _amount,
         uint256 _binCrossed
-    ) internal pure returns (uint256 fee) {
-        unchecked {
-            uint256 _feeBP = getBaseFeeBP(_fp) +
-                getVariableFeeBP(_fp, _binCrossed);
-            return (_amount * _feeBP) / (BASIS_POINT_MAX - _feeBP);
-        }
+    ) internal pure returns (uint256) {
+        uint256 _feeBP = getBaseFeeBP2(_fp) +
+            getVariableFeeBP2(_fp, _binCrossed);
+
+        return
+            (_amount * _feeBP) / ((BASIS_POINT_MAX - _feeBP) * BASIS_POINT_MAX);
+    }
+
+    /// @notice Return the fees distribution added to an amount
+    /// @param _fp The current fee parameter
+    /// @param _amount The amount of token sent
+    /// @param _binCrossed The current number of bin crossed
+    /// @return The fee amount
+    function getFeesDistribution(
+        FeeParameters memory _fp,
+        uint256 _amount,
+        uint256 _binCrossed
+    ) internal pure returns (FeesDistribution memory) {
+        uint256 _fees = getFees(_fp, _amount, _binCrossed);
+        uint256 _protocolFees = (_fees * _fp.protocolShare) / BASIS_POINT_MAX;
+        return
+            FeesDistribution({
+                total: _fees.safe128(),
+                protocol: _protocolFees.safe128()
+            });
     }
 }

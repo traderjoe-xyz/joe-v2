@@ -15,22 +15,42 @@ interface ILBPair is IERC165 {
     struct Bin {
         uint112 reserve0;
         uint112 reserve1;
-        uint128 fees0;
-        uint128 fees1;
+        uint256 accToken0PerShare;
+        uint256 accToken1PerShare;
     }
 
     /// @dev Structure to store the information of the pair such as:
     /// - reserve0: The sum of amounts of token0 across all bins
     /// - reserve1: The sum of amounts of token1 across all bins
     /// - id: The current id used for swaps, this is also linked with the price
-    /// - fees0: The token0 fees, they will be distributed to users and to the protocol
-    /// - fees1: The token1 fees, they will be distributed to users and to the protocol
+    /// - fees0: The current amount of fees to distribute in token0 (total, protocol)
+    /// - fees1: The current amount of fees to distribute in token1 (total, protocol)
     struct PairInformation {
         uint136 reserve0;
         uint136 reserve1;
         uint24 id;
-        uint128 fees0;
-        uint128 fees1;
+        FeeHelper.FeesDistribution fees0;
+        FeeHelper.FeesDistribution fees1;
+    }
+
+    struct FeesOut {
+        uint128 amount0;
+        uint128 amount1;
+    }
+
+    struct UnclaimedFees {
+        uint128 token0;
+        uint128 token1;
+    }
+
+    struct Debts {
+        uint256 debt0;
+        uint256 debt1;
+    }
+
+    struct Amounts {
+        uint128 token0;
+        uint128 token1;
     }
 
     function PRICE_PRECISION() external pure returns (uint256);
@@ -87,11 +107,14 @@ interface ILBPair is IERC165 {
     ) external;
 
     function mint(
-        uint24 startId,
-        uint112[] calldata amounts0,
-        uint112[] calldata amounts1,
-        address to
+        uint256[] calldata _ids,
+        uint256[] calldata _Ls,
+        address _to
     ) external;
 
-    function burn(uint24[] calldata ids, address to) external;
+    function burn(
+        uint256[] calldata ids,
+        uint256[] calldata _amounts,
+        address to
+    ) external;
 }

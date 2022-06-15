@@ -6,23 +6,24 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 interface ILBToken is IERC165 {
     event TransferSingle(
+        address indexed sender,
         address indexed from,
         address indexed to,
         uint256 id,
         uint256 amount
     );
 
-    event TransferFromSingle(
-        address indexed operator,
+    event TransferBatch(
+        address indexed sender,
         address indexed from,
         address indexed to,
-        uint256 id,
-        uint256 amount
+        uint256[] ids,
+        uint256[] amounts
     );
 
     event ApprovalForAll(
         address indexed account,
-        address indexed operator,
+        address indexed sender,
         bool approved
     );
 
@@ -32,30 +33,36 @@ interface ILBToken is IERC165 {
 
     function decimals() external view returns (uint8);
 
-    function balanceOf(address _account, uint256 _id)
+    function balanceOf(address account, uint256 id)
         external
         view
         returns (uint256);
 
-    function totalSupply(uint256 _id) external view returns (uint256);
+    function balanceOfBatch(address[] memory accounts, uint256[] memory ids)
+        external
+        view
+        returns (uint256[] memory);
 
-    function safeTransfer(
+    function totalSupply(uint256 id) external view returns (uint256);
+
+    function isApprovedForAll(address owner, address spender)
+        external
+        view
+        returns (bool);
+
+    function setApprovalForAll(address sender, bool approved) external;
+
+    function safeTransferFrom(
+        address from,
         address to,
         uint256 id,
         uint256 amount
     ) external;
 
-    function isApprovedForAll(address _owner, address _spender)
-        external
-        view
-        returns (bool);
-
-    function setApprovalForAll(address _operator, bool _approved) external;
-
-    function safeTransferFrom(
-        address _from,
-        address _to,
-        uint256 _id,
-        uint256 _amount
+    function safeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] memory id,
+        uint256[] memory amount
     ) external;
 }

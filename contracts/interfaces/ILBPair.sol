@@ -79,20 +79,6 @@ interface ILBPair is IERC165 {
             uint112 reserve1
         );
 
-    function getIdFromPrice(uint256 price) external view returns (uint24);
-
-    function getPriceFromId(uint24 id) external view returns (uint256);
-
-    function getSwapIn(uint256 amount0Out, uint256 amount1Out)
-        external
-        view
-        returns (uint256 amount0In, uint256 amount1In);
-
-    function getSwapOut(uint256 amount0In, uint256 amount1In)
-        external
-        view
-        returns (uint256 amount0Out, uint256 amount1Out);
-
     function swap(
         uint256 amount0Out,
         uint256 amount1Out,

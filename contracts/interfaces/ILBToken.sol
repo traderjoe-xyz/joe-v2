@@ -52,13 +52,6 @@ interface ILBToken is IERC165 {
 
     function setApprovalForAll(address sender, bool approved) external;
 
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount
-    ) external;
-
     function safeBatchTransferFrom(
         address from,
         address to,

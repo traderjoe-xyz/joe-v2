@@ -8,7 +8,7 @@ library BitMath {
     /// @param _bit The bit index
     /// @param _isSearchingRight If we're searching to the right (true) or left (false)
     /// @return The index of the closest non zero bit
-    /// @return Wether it was found (true), or not (false)
+    /// @return Whether it was found (true), or not (false)
     function closestBit(
         uint256 _integer,
         uint256 _bit,
@@ -24,7 +24,7 @@ library BitMath {
 
     /// @notice Returns the most (or least) significant bit of `_integer`
     /// @param _integer The integer
-    /// @param _isMostSignificant Wether we want the most (true) or the least (false) significant bit
+    /// @param _isMostSignificant Whether we want the most (true) or the least (false) significant bit
     /// @return The index of the most (or least) significant bit
     function significantBit(uint256 _integer, bool _isMostSignificant)
         internal

@@ -199,6 +199,39 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         return (_price, _bins[_id].reserve0, _bins[_id].reserve1);
     }
 
+    /// @notice View function to get the pending fees of a user
+    /// @param _account The address of the user
+    /// @param _ids The list of ids
+    /// @return The unclaimed fees
+    function pendingFees(address _account, uint256[] memory _ids)
+        external
+        view
+        override
+        returns (UnclaimedFees memory)
+    {
+        uint256 _len = _ids.length;
+        UnclaimedFees memory _fees = _unclaimedFees[_account];
+
+        uint256 _lastId;
+        for (uint256 i; i < _len; ++i) {
+            uint256 _id = _ids[i];
+            uint256 _balance = balanceOf(_account, _id);
+
+            if (_lastId >= _id && i != 0)
+                revert LBPair__OnlyStrictlyIncreasingId();
+
+            if (_balance != 0) {
+                Bin memory _bin = _bins[_id];
+
+                _collect(_fees, _bin, _account, _id, _balance);
+            }
+
+            _lastId = _id;
+        }
+
+        return _fees;
+    }
+
     /** External Functions **/
 
     /// @notice Performs a low level swap, this needs to be called from a contract which performs important safety checks

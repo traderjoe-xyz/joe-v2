@@ -79,6 +79,11 @@ interface ILBPair is IERC165 {
             uint112 reserve1
         );
 
+    function pendingFees(address _account, uint256[] memory _ids)
+        external
+        view
+        returns (UnclaimedFees memory);
+
     function swap(
         uint256 amount0Out,
         uint256 amount1Out,

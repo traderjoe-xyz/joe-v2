@@ -144,24 +144,6 @@ contract LBToken is ILBToken, ERC165 {
         _setApprovalForAll(msg.sender, _spender, _approved);
     }
 
-    /// @notice Transfers `_amount` tokens of type `_id` from `_from` to `_to`
-    /// @param _from The address of the owner of the tokens
-    /// @param _to The address of the recipient
-    /// @param _id The token id
-    /// @param _amount The amount to send
-    function safeTransferFrom(
-        address _from,
-        address _to,
-        uint256 _id,
-        uint256 _amount
-    ) public virtual override {
-        address _spender = msg.sender;
-        if (_isApprovedForAll(_from, _spender))
-            revert LBToken__SpenderNotApproved(_from, _spender);
-        _safeTransferFrom(_from, _to, _id, _amount);
-        emit TransferSingle(_spender, _from, _to, _id, _amount);
-    }
-
     /// @notice Batch transfers `_amount` tokens of type `_id` from `_from` to `_to`
     /// @param _from The address of the owner of the tokens
     /// @param _to The address of the recipient
@@ -176,32 +158,7 @@ contract LBToken is ILBToken, ERC165 {
         address _spender = msg.sender;
         if (_isApprovedForAll(_from, _spender))
             revert LBToken__SpenderNotApproved(_from, _spender);
-        _safeBatchTransferFrom(_from, _to, _ids, _amounts);
-        emit TransferBatch(_spender, _from, _to, _ids, _amounts);
-    }
 
-    /// @dev Transfers `_amount` tokens of type `_id` from `_from` to `_to`
-    /// @param _from The address of the owner of the tokens
-    /// @param _to The address of the recipient
-    /// @param _id The token id
-    /// @param _amount The amount to send
-    function _safeTransferFrom(
-        address _from,
-        address _to,
-        uint256 _id,
-        uint256 _amount
-    ) internal virtual {
-        if (_from == address(0) || _to == address(0))
-            revert LBToken__TransferFromOrToAddress0();
-        _safeTransferHelper(_from, _to, _id, _amount);
-    }
-
-    function _safeBatchTransferFrom(
-        address _from,
-        address _to,
-        uint256[] memory _ids,
-        uint256[] memory _amounts
-    ) internal virtual {
         if (_from == address(0) || _to == address(0))
             revert LBToken__TransferFromOrToAddress0();
         uint256 _len = _ids.length;
@@ -212,26 +169,19 @@ contract LBToken is ILBToken, ERC165 {
             uint256 _id = _ids[i];
             uint256 _amount = _amounts[i];
 
-            _safeTransferHelper(_from, _to, _id, _amount);
+            uint256 _fromBalance = _balances[_id][_from];
+            if (_fromBalance < _amount)
+                revert LBToken__TransferExceedsBalance(_from, _id, _amount);
+
+            _beforeTokenTransfer(_from, _to, _id, _amount);
+
+            unchecked {
+                _balances[_id][_from] = _fromBalance - _amount;
+            }
+            _balances[_id][_to] += _amount;
         }
-    }
 
-    function _safeTransferHelper(
-        address _from,
-        address _to,
-        uint256 _id,
-        uint256 _amount
-    ) private {
-        uint256 _fromBalance = _balances[_id][_from];
-        if (_fromBalance < _amount)
-            revert LBToken__TransferExceedsBalance(_from, _id, _amount);
-
-        _beforeTokenTransfer(_from, _to, _id, _amount);
-
-        unchecked {
-            _balances[_id][_from] = _fromBalance - _amount;
-        }
-        _balances[_id][_to] += _amount;
+        emit TransferBatch(_spender, _from, _to, _ids, _amounts);
     }
 
     /// @dev Creates `_amount` tokens of type `_id`, and assigns them to `_account`

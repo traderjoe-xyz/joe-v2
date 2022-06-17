@@ -120,6 +120,102 @@ contract LBFactory is PendingOwnable, ILBFactory {
         if (address(_LBPair[_token0][_token1]) != address(0))
             revert LBFactory__LBPairAlreadyExists(_token0, _token1);
 
+        bytes32 _packedFeeParameters = _getPackedFeeParameters(
+            _maxAccumulator,
+            _filterPeriod,
+            _decayPeriod,
+            _binStep,
+            _baseFactor,
+            _protocolShare
+        );
+
+        int256 _log2Value = (MathS40x36.SCALE +
+            (MathS40x36.SCALE * int256(uint256(_binStep))) /
+            int256(MAX_BASIS_POINT)).log2();
+
+        pair = factoryHelper.createLBPair(
+            _token0,
+            _token1,
+            _log2Value,
+            keccak256(abi.encode(_token0, _token1)),
+            _packedFeeParameters
+        );
+
+        _LBPair[_token0][_token1] = pair;
+        _LBPair[_token1][_token0] = pair;
+
+        allLBPairs.push(pair);
+
+        emit PairCreated(_token0, _token1, pair, allLBPairs.length - 1);
+    }
+
+    /// @notice Function to set the recipient of the fees. This address needs to be able to receive ERC20s.
+    /// @param _feeRecipient The address of the recipient
+    function setFeeRecipient(address _feeRecipient)
+        external
+        override
+        onlyOwner
+    {
+        _setFeeRecipient(_feeRecipient);
+    }
+
+    /// @notice Function to set the fee parameter of a pair
+    /// @param _token0 The address of the first token
+    /// @param _token1 The address of the second token
+    /// @param _maxAccumulator The max value of the accumulator
+    /// @param _filterPeriod The period where the accumulator value is untouched, prevent spam
+    /// @param _decayPeriod The period where the accumulator value is halved
+    /// @param _binStep The bin step in basis point, used to calculate log(1 + binStep)
+    /// @param _baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
+    /// @param _protocolShare The share of the fees received by the protocol
+    function setFeeParametersOnPair(
+        IERC20 _token0,
+        IERC20 _token1,
+        uint176 _maxAccumulator,
+        uint16 _filterPeriod,
+        uint16 _decayPeriod,
+        uint16 _binStep,
+        uint16 _baseFactor,
+        uint16 _protocolShare
+    ) external override onlyOwner {
+        bytes32 _packedFeeParameters = _getPackedFeeParameters(
+            _maxAccumulator,
+            _filterPeriod,
+            _decayPeriod,
+            _binStep,
+            _baseFactor,
+            _protocolShare
+        );
+
+        ILBPair _lbPair = _LBPair[_token0][_token1];
+        _lbPair.setFeesParameters(_packedFeeParameters);
+    }
+
+    /// @notice Internal function to set the recipient of the fees
+    /// @param _feeRecipient The address of the recipient
+    function _setFeeRecipient(address _feeRecipient) internal {
+        if (_feeRecipient == address(0)) revert LBFactory__ZeroAddress();
+
+        address oldFeeRecipient = feeRecipient;
+        feeRecipient = _feeRecipient;
+        emit FeeRecipientChanged(oldFeeRecipient, _feeRecipient);
+    }
+
+    /// @notice Internal function to set the fee parameter of a pair
+    /// @param _maxAccumulator The max value of the accumulator
+    /// @param _filterPeriod The period where the accumulator value is untouched, prevent spam
+    /// @param _decayPeriod The period where the accumulator value is halved
+    /// @param _binStep The bin step in basis point, used to calculate log(1 + binStep)
+    /// @param _baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
+    /// @param _protocolShare The share of the fees received by the protocol
+    function _getPackedFeeParameters(
+        uint176 _maxAccumulator,
+        uint16 _filterPeriod,
+        uint16 _decayPeriod,
+        uint16 _binStep,
+        uint16 _baseFactor,
+        uint16 _protocolShare
+    ) private pure returns (bytes32) {
         if (_filterPeriod >= _decayPeriod)
             revert LBFactory__DecreasingPeriods(_filterPeriod, _decayPeriod);
 
@@ -159,54 +255,16 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         /// @dev It's very important that the sum of the sizes of those values is exactly 256 bits
         /// here, 176 + 16 + 16 + 16 + 16 + 16 = 256
-        bytes32 _packedFeeParameters = bytes32(
-            abi.encodePacked(
-                _protocolShare,
-                _baseFactor,
-                _binStep,
-                _decayPeriod,
-                _filterPeriod,
-                _maxAccumulator
-            )
-        );
-
-        int256 _log2Value = (MathS40x36.SCALE +
-            (MathS40x36.SCALE * int256(uint256(_binStep))) /
-            int256(MAX_BASIS_POINT)).log2();
-
-        pair = factoryHelper.createLBPair(
-            _token0,
-            _token1,
-            _log2Value,
-            keccak256(abi.encode(_token0, _token1)),
-            _packedFeeParameters
-        );
-
-        _LBPair[_token0][_token1] = pair;
-        _LBPair[_token1][_token0] = pair;
-
-        allLBPairs.push(pair);
-
-        emit PairCreated(_token0, _token1, pair, allLBPairs.length - 1);
-    }
-
-    /// @notice Function to set the recipient of the fees. This address needs to be able to receive native AVAX and ERC20.
-    /// @param _feeRecipient The address of the recipient
-    function setFeeRecipient(address _feeRecipient)
-        external
-        override
-        onlyOwner
-    {
-        _setFeeRecipient(_feeRecipient);
-    }
-
-    /// @notice Internal function to set the recipient of the fees
-    /// @param _feeRecipient The address of the recipient
-    function _setFeeRecipient(address _feeRecipient) internal {
-        if (_feeRecipient == address(0)) revert LBFactory__ZeroAddress();
-
-        address oldFeeRecipient = feeRecipient;
-        feeRecipient = _feeRecipient;
-        emit FeeRecipientChanged(oldFeeRecipient, _feeRecipient);
+        return
+            bytes32(
+                abi.encodePacked(
+                    _protocolShare,
+                    _baseFactor,
+                    _binStep,
+                    _decayPeriod,
+                    _filterPeriod,
+                    _maxAccumulator
+                )
+            );
     }
 }

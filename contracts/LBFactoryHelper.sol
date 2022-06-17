@@ -5,14 +5,14 @@ pragma solidity 0.8.9;
 import "./LBPair.sol";
 import "./interfaces/ILBFactoryHelper.sol";
 
-error LBFactoryHelper__NotFactory();
+error LBFactoryHelper__CallerIsNotFactory();
 
 contract LBFactoryHelper is ILBFactoryHelper {
     ILBFactory public immutable factory;
 
     modifier OnlyFactory() {
         if (msg.sender != address(factory))
-            revert LBFactoryHelper__NotFactory();
+            revert LBFactoryHelper__CallerIsNotFactory();
         _;
     }
 

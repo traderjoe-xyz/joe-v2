@@ -108,4 +108,8 @@ interface ILBPair is IERC165 {
         uint256[] memory _amounts,
         address to
     ) external;
+
+    function setFeesParameters(
+        bytes32 packedFeeParameters
+    ) external;
 }

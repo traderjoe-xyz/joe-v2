@@ -8,17 +8,16 @@ import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 error LBToken__SpenderNotApproved(address owner, address spender);
 error LBToken__TransferFromOrToAddress0();
 error LBToken__MintToAddress0();
-error LBToken__MintTooLow(uint256 amount);
 error LBToken__BurnFromAddress0();
 error LBToken__BurnExceedsBalance(address from, uint256 id, uint256 amount);
 error LBToken__LengthMismatch(uint256 accountsLength, uint256 idsLength);
 error LBToken__SelfApproval(address owner);
 error LBToken__TransferExceedsBalance(address from, uint256 id, uint256 amount);
 
-/// @title Joe Liquidity Bin Provider Token
+/// @title Liquidity Book Token
 /// @author Trader Joe
 /// @notice The LBToken is an implementation of a multi-token.
-/// It allows to create multi-ERC20 represented by their ids.
+/// It allows to create multi-ERC20 represented by their ids
 contract LBToken is ILBToken, ERC165 {
     // Mapping from token id to account balances
     mapping(uint256 => mapping(address => uint256)) private _balances;

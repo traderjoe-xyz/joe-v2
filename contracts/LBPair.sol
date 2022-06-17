@@ -4,44 +4,35 @@ pragma solidity 0.8.9;
 
 /** Imports **/
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-
 import "./LBToken.sol";
 import "./libraries/BinHelper.sol";
 import "./libraries/Math512Bits.sol";
 import "./libraries/MathS40x36.sol";
 import "./libraries/SafeCast.sol";
 import "./libraries/TreeMath.sol";
+import "./libraries/ReentrancyGuard.sol";
+import "./libraries/SafeTransfer.sol";
 import "./interfaces/ILBFactoryHelper.sol";
 import "./interfaces/ILBFlashLoanCallback.sol";
 import "./interfaces/ILBPair.sol";
 
 /** Errors **/
 
-error LBPair__BaseFeeTooBig(uint256 baseFee);
 error LBPair__InsufficientAmounts();
 error LBPair__WrongAmounts(uint256 amount0Out, uint256 amount1Out);
 error LBPair__BrokenSwapSafetyCheck();
-error LBPair__ForbiddenFillFactor(uint256 id);
 error LBPair__BrokenMintSafetyCheck(uint256 id);
 error LBPair__InsufficientLiquidityBurned(uint256 id);
 error LBPair__BurnExceedsReserve(uint256 id);
 error LBPair__WrongLengths();
-error LBPair__TransferFailed(address token, address to, uint256 value);
-error LBPair__BasisPointTooBig();
-error LBPair__SwapExceedsAmountsIn(uint256 id);
 error LBPair__MintExceedsAmountsIn(uint256 id);
 error LBPair__BinReserveOverflows(uint256 id);
-error LBPair__SwapOverflows(uint256 id);
 error LBPair__IdOverflows(uint256 id);
 error LBPair__FlashLoanUnderflow(uint256 expectedBalance, uint256 balance);
-error LBPair__TooMuchTokensIn(uint256 amount0In, uint256 amount1In);
-error LBPair__BrokenFlashLoanSafetyChecks(uint256 amount0In, uint256 amount1In);
 error LBPair__OnlyStrictlyIncreasingId();
+error LBPair__CallerIsNotFactory();
 
-// TODO add oracle price, distribute fees
+// TODO add oracle price
 /// @title Liquidity Bin Exchange
 /// @author Trader Joe
 /// @notice DexV2 POC
@@ -52,7 +43,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     using MathS40x36 for int256;
     using TreeMath for mapping(uint256 => uint256)[3];
     using SafeCast for uint256;
-    using SafeERC20 for IERC20;
+    using SafeTransfer for IERC20;
     using FeeHelper for FeeHelper.FeeParameters;
 
     /** Events **/
@@ -101,6 +92,15 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint256 amount0,
         uint256 amount1
     );
+
+    event FeesParametersSet(bytes32 packedFeeParameters);
+
+    /** Modifiers **/
+
+    modifier OnlyFactory() {
+        if (msg.sender != address(factory)) revert LBPair__CallerIsNotFactory();
+        _;
+    }
 
     /** Public constant variables **/
 
@@ -155,9 +155,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         token0 = _token0;
         token1 = _token1;
 
-        assembly {
-            sstore(add(_feeParameters.slot, 1), _packedFeeParameters)
-        }
+        _setFeesParameters(_packedFeeParameters);
 
         log2Value = _log2Value;
     }
@@ -688,6 +686,14 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         );
     }
 
+    function setFeesParameters(bytes32 _packedFeeParameters)
+        external
+        override
+        OnlyFactory
+    {
+        _setFeesParameters(_packedFeeParameters);
+    }
+
     /** Public Functions **/
 
     function supportsInterface(bytes4 _interfaceId)
@@ -903,5 +909,14 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             _pairFees.total += _fees.total;
             _pairFees.protocol += _fees.protocol;
         }
+    }
+
+    /// @notice Internal function to set the fee parameters of the pair
+    /// @param _packedFeeParameters The packed fee parameters
+    function _setFeesParameters(bytes32 _packedFeeParameters) internal {
+        assembly {
+            sstore(add(_feeParameters.slot, 1), _packedFeeParameters)
+        }
+        emit FeesParametersSet(_packedFeeParameters);
     }
 }

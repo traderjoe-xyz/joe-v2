@@ -38,8 +38,8 @@ interface ILBFactory {
         returns (ILBPair);
 
     function createLBPair(
-        IERC20 tokenA,
-        IERC20 tokenB,
+        IERC20 token0,
+        IERC20 token1,
         uint176 maxAccumulator,
         uint16 filterPeriod,
         uint16 decayPeriod,
@@ -49,4 +49,15 @@ interface ILBFactory {
     ) external returns (ILBPair pair);
 
     function setFeeRecipient(address feeRecipient) external;
+
+    function setFeeParametersOnPair(
+        IERC20 token0,
+        IERC20 token1,
+        uint176 maxAccumulator,
+        uint16 filterPeriod,
+        uint16 decayPeriod,
+        uint16 binStep,
+        uint16 baseFactor,
+        uint16 protocolShare
+    ) external;
 }

@@ -139,7 +139,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _binStep,
             _baseFactor,
             _protocolShare,
-            1
+            0
         );
 
         int256 _log2Value = (MathS40x36.SCALE +

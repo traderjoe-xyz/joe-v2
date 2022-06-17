@@ -128,7 +128,7 @@ library MathS40x36 {
                 result = (result * 0x10000162E43F4F831060E02D839A9D16E) >> 128;
             }
             if (x & 0x1000000000000000000000000000 != 0) {
-                result = (result * 0x100000B1721BCFC99D9F890EA06911764) >> 128;
+                result = (result * 0x100000B1721BCFC99D9F890EA06911684) >> 128;
             }
             if (x & 0x800000000000000000000000000 != 0) {
                 result = (result * 0x10000058B90CF1E6D97F9CA14DBCC1629) >> 128;

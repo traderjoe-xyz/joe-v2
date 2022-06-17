@@ -24,8 +24,8 @@ describe("Liquidity Bin Pair", function () {
       this.token12D.address, // y
       "0xb19a9e77af6827457b6619208c48",
       ethers.utils.solidityPack(
-        ["uint16", "uint16", "uint16", "uint16", "uint16", "uint176"],
-        [5_000, 1_000, 25, 100, 10, 50 * 10_000]
+        ["uint8", "uint16", "uint16", "uint16", "uint16", "uint16", "uint168"],
+        [0, 5_000, 1_000, 25, 100, 10, 50 * 10_000]
       )
     );
 

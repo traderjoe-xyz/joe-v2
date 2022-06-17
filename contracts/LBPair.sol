@@ -29,10 +29,11 @@ error LBPair__MintExceedsAmountsIn(uint256 id);
 error LBPair__BinReserveOverflows(uint256 id);
 error LBPair__IdOverflows(uint256 id);
 error LBPair__FlashLoanUnderflow(uint256 expectedBalance, uint256 balance);
+error LBPair__BrokenFlashLoanSafetyChecks(uint256 amount0In, uint256 amount1In);
 error LBPair__OnlyStrictlyIncreasingId();
-error LBPair__CallerIsNotFactory();
+error LBPair__OnlyFactory();
 
-// TODO add oracle price
+// TODO add oracle price, distribute fees
 /// @title Liquidity Bin Exchange
 /// @author Trader Joe
 /// @notice DexV2 POC
@@ -98,7 +99,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /** Modifiers **/
 
     modifier OnlyFactory() {
-        if (msg.sender != address(factory)) revert LBPair__CallerIsNotFactory();
+        if (msg.sender != address(factory)) revert LBPair__OnlyFactory();
         _;
     }
 

@@ -38,7 +38,7 @@ contract LBToken is ILBToken, ERC165 {
         _symbol = symbol_;
     }
 
-    /// @notice Wether this contract implements the interface defined by `_interfaceId`.
+    /// @notice Whether this contract implements the interface defined by `_interfaceId`.
     /// @param _interfaceId The interfaceId as a bytes4
     function supportsInterface(bytes4 _interfaceId)
         public

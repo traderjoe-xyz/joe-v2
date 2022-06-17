@@ -60,6 +60,18 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     event FeeRecipientChanged(address oldRecipient, address newRecipient);
 
+    event PackedFeeParametersSet(
+        address sender,
+        ILBPair indexed lbPair,
+        uint168 _maxAccumulator,
+        uint16 _filterPeriod,
+        uint16 _decayPeriod,
+        uint16 _binStep,
+        uint16 _baseFactor,
+        uint16 _protocolShare,
+        uint8 _variableFeesDisabled
+    );
+
     modifier onlyOwnerIfLocked() {
         if (!unlocked && msg.sender != owner())
             revert LBFactory__FunctionIsLockedForUsers(msg.sender);
@@ -106,7 +118,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     function createLBPair(
         IERC20 _token0,
         IERC20 _token1,
-        uint176 _maxAccumulator,
+        uint168 _maxAccumulator,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
         uint16 _binStep,
@@ -126,7 +138,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _decayPeriod,
             _binStep,
             _baseFactor,
-            _protocolShare
+            _protocolShare,
+            1
         );
 
         int256 _log2Value = (MathS40x36.SCALE +
@@ -165,30 +178,45 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _maxAccumulator The max value of the accumulator
     /// @param _filterPeriod The period where the accumulator value is untouched, prevent spam
     /// @param _decayPeriod The period where the accumulator value is halved
-    /// @param _binStep The bin step in basis point, used to calculate log(1 + binStep)
     /// @param _baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
     /// @param _protocolShare The share of the fees received by the protocol
     function setFeeParametersOnPair(
         IERC20 _token0,
         IERC20 _token1,
-        uint176 _maxAccumulator,
+        uint168 _maxAccumulator,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
-        uint16 _binStep,
         uint16 _baseFactor,
-        uint16 _protocolShare
+        uint16 _protocolShare,
+        uint8 _variableFeesDisabled
     ) external override onlyOwner {
+        ILBPair _lbPair = _LBPair[_token0][_token1];
+
+        FeeHelper.FeeParameters memory _fp = _lbPair.feeParameters();
+
         bytes32 _packedFeeParameters = _getPackedFeeParameters(
             _maxAccumulator,
             _filterPeriod,
             _decayPeriod,
-            _binStep,
+            _fp.binStep,
             _baseFactor,
-            _protocolShare
+            _protocolShare,
+            _variableFeesDisabled
         );
 
-        ILBPair _lbPair = _LBPair[_token0][_token1];
         _lbPair.setFeesParameters(_packedFeeParameters);
+
+        emit PackedFeeParametersSet(
+            msg.sender,
+            _lbPair,
+            _maxAccumulator,
+            _filterPeriod,
+            _decayPeriod,
+            _fp.binStep,
+            _baseFactor,
+            _protocolShare,
+            _variableFeesDisabled
+        );
     }
 
     /// @notice Internal function to set the recipient of the fees
@@ -208,13 +236,15 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _binStep The bin step in basis point, used to calculate log(1 + binStep)
     /// @param _baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
     /// @param _protocolShare The share of the fees received by the protocol
+    /// @param _variableFeesDisabled Whether the variable fees are disabled. (any value other than 0, means disabled)
     function _getPackedFeeParameters(
-        uint176 _maxAccumulator,
+        uint168 _maxAccumulator,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
         uint16 _binStep,
         uint16 _baseFactor,
-        uint16 _protocolShare
+        uint16 _protocolShare,
+        uint8 _variableFeesDisabled
     ) private pure returns (bytes32) {
         if (_filterPeriod >= _decayPeriod)
             revert LBFactory__DecreasingPeriods(_filterPeriod, _decayPeriod);
@@ -238,6 +268,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
                 _protocolShare,
                 MAX_PROTOCOL_SHARE
             );
+
+        if (_variableFeesDisabled > 1) _variableFeesDisabled = 1;
+
         {
             uint256 _baseFee = (uint256(_baseFactor) * uint256(_binStep)) /
                 MAX_BASIS_POINT;
@@ -254,10 +287,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
         }
 
         /// @dev It's very important that the sum of the sizes of those values is exactly 256 bits
-        /// here, 176 + 16 + 16 + 16 + 16 + 16 = 256
+        /// here, 168 + 16 + 16 + 16 + 16 + 16 = 256
         return
             bytes32(
                 abi.encodePacked(
+                    _variableFeesDisabled,
                     _protocolShare,
                     _baseFactor,
                     _binStep,

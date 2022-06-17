@@ -14,18 +14,23 @@ library FeeHelper {
     /// @dev Structure to store the protocol fees:
     /// - accumulator: The value of the accumulator
     /// - time: The last time the accumulator was called
-    /// - coolDownTime: The time it needs to the accumulator to cool down
-    /// - baseFee: The baseFee added to each swap. Max is 100 (1%)
-    /// - maxFee: The maxFee that a user will pay. Max is 1000 (10%)
+    /// - maxAccumulator: The max value of the accumulator
+    /// - filterPeriod: The filter period, where the fees stays constant
+    /// - decayPeriod: The decay period, where the fees are halved
+    /// - binStep: The bin step
+    /// - baseFactor: The base factor
+    /// - protocolShare: The share of fees sent to protocol
+    /// - variableFeeDisabled: Whether the fees are disabled or not
     struct FeeParameters {
-        uint176 accumulator;
-        uint80 time;
-        uint176 maxAccumulator;
+        uint168 accumulator;
+        uint88 time;
+        uint168 maxAccumulator;
         uint16 filterPeriod;
         uint16 decayPeriod;
         uint16 binStep;
         uint16 baseFactor;
         uint16 protocolShare;
+        uint8 variableFeeDisabled;
     }
 
     /// @dev Structure used during swaps to distributes the fees:
@@ -42,7 +47,7 @@ library FeeHelper {
         unchecked {
             uint256 deltaT = block.timestamp - _fp.time;
 
-            uint176 _accumulator; // Can't overflow as _accumulator <= _fp.accumulator <= _fp.maxAccumulator < 2**176
+            uint168 _accumulator; // Can't overflow as _accumulator <= _fp.accumulator <= _fp.maxAccumulator < 2**168
             if (deltaT < _fp.filterPeriod) {
                 _accumulator = _fp.accumulator;
             } else if (deltaT < _fp.decayPeriod) {
@@ -71,7 +76,7 @@ library FeeHelper {
                 _accumulator = _fp.maxAccumulator;
 
             assembly {
-                sstore(_fp.slot, add(shl(176, timestamp()), _accumulator))
+                sstore(_fp.slot, add(shl(168, timestamp()), _accumulator))
             }
         }
     }
@@ -99,6 +104,10 @@ library FeeHelper {
         returns (uint256)
     {
         unchecked {
+            if (_fp.variableFeeDisabled != 0) {
+                return 0;
+            }
+
             uint256 _acc = _fp.accumulator + _binCrossed * BASIS_POINT_MAX;
 
             if (_acc > _fp.maxAccumulator) _acc = _fp.maxAccumulator;

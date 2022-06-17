@@ -89,18 +89,18 @@ interface ILBPair is IERC165 {
         address to,
         uint256 amount0Out,
         uint256 amount1Out,
-        bytes calldata data
+        bytes memory data
     ) external;
 
     function mint(
-        uint256[] calldata _ids,
-        uint256[] calldata _Ls,
+        uint256[] memory _ids,
+        uint256[] memory _Ls,
         address _to
     ) external;
 
     function burn(
-        uint256[] calldata ids,
-        uint256[] calldata _amounts,
+        uint256[] memory ids,
+        uint256[] memory _amounts,
         address to
     ) external;
 }

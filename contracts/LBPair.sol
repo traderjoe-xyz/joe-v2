@@ -57,6 +57,44 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /** Events **/
 
+    event Swap(
+        address indexed sender,
+        address indexed recipient,
+        uint24 indexed _id,
+        uint256 amount0,
+        uint256 amount1
+    );
+
+    event FlashLoan(
+        address indexed sender,
+        address indexed recipient,
+        uint256 amount0,
+        uint256 amount1,
+        uint256 fees0,
+        uint256 fees1
+    );
+
+    event Mint(
+        address indexed sender,
+        address indexed recipient,
+        uint256[] ids,
+        uint256[] liquidities
+    );
+
+    event Burn(
+        address indexed sender,
+        address indexed recipient,
+        uint256[] ids,
+        uint256[] amounts
+    );
+
+    event FeesCollected(
+        address indexed sender,
+        address indexed recipient,
+        uint256 amount0,
+        uint256 amount1
+    );
+
     event ProtocolFeesCollected(
         address indexed sender,
         address indexed recipient,
@@ -100,7 +138,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @notice Initialize the parameters
     /// @dev The different parameters needs to be validated very cautiously.
     /// It is highly recommended to never deploy this contract directly, use the factory
-    /// as it validated the different parameters
+    /// as it validates the different parameters
     /// @param _factory The address of the factory.
     /// @param _token0 The address of the token0. Can't be address 0
     /// @param _token1 The address of the token1. Can't be address 0
@@ -260,6 +298,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
                     _amount0In -= _amountInToBin + _fees.total;
                     _bin.reserve0 = (_bin.reserve0 + _amountInToBin).safe112();
+
                     unchecked {
                         _amount1Out -= _amountOutOfBin;
                         _bin.reserve1 -= uint112(_amountOutOfBin);
@@ -281,25 +320,27 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         }
 
         _pairInformation = _pair;
-        _feeParameters.updateStoredFeeParameters(
-            _fp.accumulator,
-            delta(_startId, _pair.id)
-        );
-
+        unchecked {
+            _feeParameters.updateStoredFeeParameters(
+                _fp.accumulator,
+                _startId > _pair.id ? _startId - _pair.id : _pair.id - _startId
+            );
+        }
         if (_amount0Out != 0 || _amount1Out != 0)
             revert LBPair__BrokenSwapSafetyCheck(); // Safety check
+        emit Swap(msg.sender, _to, _pair.id, _amount0Out, _amount1Out);
     }
 
     /// @notice Performs a flash loan
     /// @param _to the address that will execute the external call
     /// @param _amount0Out The amount of token0
-    /// @param _amount1Out The amount of token0
+    /// @param _amount1Out The amount of token1
     /// @param _data The bytes data that will be forwarded to _to
     function flashLoan(
         address _to,
         uint256 _amount0Out,
         uint256 _amount1Out,
-        bytes calldata _data
+        bytes memory _data
     ) external override nonReentrant {
         FeeHelper.FeeParameters memory _fp = _feeParameters;
         uint256 _reserve0 = _pairInformation.reserve0;
@@ -328,19 +369,41 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         _flashLoanHelper(_pairInformation.fees0, _fees0, token0, _reserve0);
         _flashLoanHelper(_pairInformation.fees1, _fees1, token1, _reserve1);
+
+        unchecked {
+            uint256 _id = _pairInformation.id;
+            uint256 _totalSupply = totalSupply(_id);
+            _bins[_id].accToken0PerShare +=
+                ((_fees0.total - _fees0.protocol) * PRICE_PRECISION) /
+                _totalSupply;
+
+            _bins[_id].accToken1PerShare +=
+                ((_fees1.total - _fees1.protocol) * PRICE_PRECISION) /
+                _totalSupply;
+        }
+
+        emit FlashLoan(
+            msg.sender,
+            _to,
+            _amount0Out,
+            _amount1Out,
+            _fees0.total,
+            _fees1.total
+        );
     }
 
-    /// @notice Performs a low level add, this needs to be called from a contract which performs important safety checks
+    /// @notice Performs a low level add, this needs to be called from a contract which performs important safety checks.
+    /// The first LP provider sets the current id with the first index of its ids
     /// @param _ids The list of ids to add liquidity
     /// @param _liquidities The amounts of L you want to add
     /// @param _to The address of the recipient
     function mint(
-        uint256[] calldata _ids,
-        uint256[] calldata _liquidities,
+        uint256[] memory _ids,
+        uint256[] memory _liquidities,
         address _to
     ) external override nonReentrant {
         uint256 _len = _ids.length;
-        if (_len != _liquidities.length && _len != 0)
+        if (_len == 0 || _len != _liquidities.length)
             revert LBPair__WrongLengths();
 
         PairInformation memory _pair = _pairInformation;
@@ -432,6 +495,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         }
 
         _pairInformation = _pair;
+        emit Mint(msg.sender, _to, _ids, _liquidities);
     }
 
     /// @notice Performs a low level remove, this needs to be called from a contract which performs important safety checks
@@ -439,8 +503,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @param _amounts The amount of token to burn
     /// @param _to The address of the recipient
     function burn(
-        uint256[] calldata _ids,
-        uint256[] calldata _amounts,
+        uint256[] memory _ids,
+        uint256[] memory _amounts,
         address _to
     ) external override nonReentrant {
         uint256 _len = _ids.length;
@@ -512,8 +576,13 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         _transferHelper(token0, _to, _amounts0);
         _transferHelper(token1, _to, _amounts1);
+
+        emit Burn(msg.sender, _to, _ids, _amounts);
     }
 
+    /// @notice Collect fees of an user
+    /// @param _account The address of the user
+    /// @param _ids The list of bin ids to collect fees in
     function collectFees(address _account, uint256[] memory _ids)
         external
         nonReentrant
@@ -544,6 +613,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         _transferHelper(token0, _account, _fees.token0);
         _transferHelper(token1, _account, _fees.token1);
+
+        emit FeesCollected(msg.sender, _account, _fees.token0, _fees.token1);
     }
 
     /// @notice Distribute the protocol fees to the feeRecipient
@@ -559,18 +630,18 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         if (_fees0.protocol != 0) {
             unchecked {
                 _fees0Out = _fees0.protocol - 1;
+                _fees0.total -= uint128(_fees0Out);
+                _fees0.protocol = 1;
+                _pairInformation.fees0 = _fees0;
             }
-            _fees0.total -= uint128(_fees0Out);
-            _fees0.protocol = 1;
-            _pairInformation.fees0 = _fees0;
         }
         if (_fees1.protocol != 0) {
             unchecked {
                 _fees1Out = _fees1.protocol - 1;
+                _fees1.total -= uint128(_fees1Out);
+                _fees1.protocol = 1;
+                _pairInformation.fees1 = _fees1;
             }
-            _fees1.total -= uint128(_fees1Out);
-            _fees1.protocol = 1;
-            _pairInformation.fees1 = _fees1;
         }
 
         _transferHelper(token0, _feeRecipient, _fees0Out);
@@ -599,6 +670,11 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /** Internal Functions **/
 
+    /// @notice Collect and update fees before any token transfer, mint or burn
+    /// @param _from The address of the owner of the token
+    /// @param _to The address of the recipient of the  token
+    /// @param _id The id of the token
+    /// @param _amount The amount of token of type `id`
     function _beforeTokenTransfer(
         address _from,
         address _to,
@@ -633,6 +709,12 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /** Private Functions **/
 
+    /// @notice Collect fees of a given bin
+    /// @param _fees The user's unclaimed fees
+    /// @param _bin  The bin where the user is collecting fees
+    /// @param _account The address of the user
+    /// @param _id The id where the user is collecting fees
+    /// @param _balance The previous balance of the user
     function _collect(
         UnclaimedFees memory _fees,
         Bin memory _bin,
@@ -653,6 +735,11 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         ) - _debts.debt1).safe128();
     }
 
+    /// @notice Update fees of a given user
+    /// @param _bin The bin where the user has collected fees
+    /// @param _account The address of the user
+    /// @param _id The id where the user has collected fees
+    /// @param _balance The new balance of the user
     function _update(
         Bin memory _bin,
         address _account,
@@ -671,8 +758,15 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         _accruedDebts[_account][_id] = Debts(_debt0, _debt1);
     }
 
-    /// @notice Returns the amount that needs to be swapped
-    /// @return The amount that still needs to be swapped
+    /// @notice Returns the amounts that needs to be swapped
+    /// @param _pair The current pair information
+    /// @param _to The address of the user
+    /// @param _amount0Out The amount of token0 to send to the user
+    /// @param _amount1Out The amount of token1 to send to the user
+    /// @return The amount of token0 sent by users to the pair contract
+    /// @return The amount of token0 sent to the user by the pair contract
+    /// @return The amount of token1 sent by users to the pair contract
+    /// @return The amount of token1 sent to the user by the pair contract
     function _getAmounts(
         PairInformation memory _pair,
         address _to,
@@ -708,6 +802,13 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         return (_amount0In, _amount0Out, _amount1In, _amount1Out);
     }
 
+    /// @notice Returns the swap amounts in the current bin
+    /// @param _amountOut The amount sent to the user
+    /// @param _reserve The reserve of the current bin
+    /// @param _numerator The first param of mulDiv
+    /// @param _denominator The denominator of the mulDiv
+    /// @return _amountOutOfBin The amount taken from the bin reserve
+    /// @return  _amountInToBin The amount added to the bin reserve
     function _swapHelper(
         uint256 _amountOut,
         uint256 _reserve,
@@ -721,16 +822,24 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         );
     }
 
+    /// @notice Transfers token only if the amount is greater than zero
+    /// @param _token The address of the token
+    /// @param _recipient The address of the recipient
+    /// @param _amount The amount to send
     function _transferHelper(
         IERC20 _token,
-        address _to,
+        address _recipient,
         uint256 _amount
     ) private {
         if (_amount != 0) {
-            _token.safeTransfer(_to, _amount);
+            _token.safeTransfer(_recipient, _amount);
         }
     }
 
+    /// @notice Returns the balance of an account
+    /// @param _token The address of the token
+    /// @param _account The address of the account
+    /// @return The balance of the account
     function _balanceHelper(IERC20 _token, address _account)
         private
         view
@@ -739,6 +848,11 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         return _token.balanceOf(_account);
     }
 
+    /// @notice Checks that the flash loan was done accordingly
+    /// @param _pairFees The fees of the pair
+    /// @param _fees The fees received by the pair
+    /// @param _token The address of the token received
+    /// @param _reserve The stored reserve of the current bin
     function _flashLoanHelper(
         FeeHelper.FeesDistribution storage _pairFees,
         FeeHelper.FeesDistribution memory _fees,
@@ -755,16 +869,6 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         else {
             _pairFees.total += _fees.total;
             _pairFees.protocol += _fees.protocol;
-        }
-    }
-
-    /// @notice Returns the difference between two values
-    /// @param x The first value
-    /// @param y The second value
-    /// @return The difference between the two
-    function delta(uint256 x, uint256 y) private pure returns (uint256) {
-        unchecked {
-            return x > y ? x - y : y - x;
         }
     }
 }

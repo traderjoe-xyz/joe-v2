@@ -22,6 +22,12 @@ contract LBFactoryHelper is ILBFactoryHelper {
     }
 
     /// @notice Create a liquidity bin pair with a given salt
+    /// @param _token0 The address of the token0. Can't be address 0
+    /// @param _token1 The address of the token1. Can't be address 0
+    /// @param _log2Value The log(1 + binStep) value
+    /// @param _salt The salt used to create the pair
+    /// @param _packedFeeParameters The fee parameters packed in a single 256 bits slot
+    /// @return The address of the pair newly created
     function createLBPair(
         IERC20 _token0,
         IERC20 _token1,

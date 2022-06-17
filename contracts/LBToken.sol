@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-identifier: MIT
 
 pragma solidity 0.8.9;
 
@@ -18,15 +18,15 @@ error LBToken__TransferExceedsBalance(address from, uint256 id, uint256 amount);
 /// @title Joe Liquidity Bin Provider Token
 /// @author Trader Joe
 /// @notice The LBToken is an implementation of a multi-token.
-/// It allows to create multi-ERC20 represented by their IDs.
+/// It allows to create multi-ERC20 represented by their ids.
 contract LBToken is ILBToken, ERC165 {
-    // Mapping from token ID to account balances
+    // Mapping from token id to account balances
     mapping(uint256 => mapping(address => uint256)) private _balances;
 
     // Mapping from account to spender approvals
     mapping(address => mapping(address => bool)) private _spenderApprovals;
 
-    // Mapping from token ID to total supplies
+    // Mapping from token id to total supplies
     mapping(uint256 => uint256) private _totalSupplies;
 
     string private _name;
@@ -72,8 +72,8 @@ contract LBToken is ILBToken, ERC165 {
     }
 
     /// @notice Returns the number of decimals used to get its user representation
-    /// @param _id The token ID
-    /// @return The total supply of that token ID
+    /// @param _id The token id
+    /// @return The total supply of that token id
     function totalSupply(uint256 _id)
         public
         view
@@ -86,7 +86,7 @@ contract LBToken is ILBToken, ERC165 {
 
     /// @notice Returns the amount of tokens of type `id` owned by `_account`
     /// @param _account The address of the owner
-    /// @param _id The token ID
+    /// @param _id The token id
     /// @return The amount of tokens of type `id` owned by `_account`
     function balanceOf(address _account, uint256 _id)
         public
@@ -98,10 +98,10 @@ contract LBToken is ILBToken, ERC165 {
         return _balances[_id][_account];
     }
 
-    /// @notice Returns the amounts of tokens of type `id` owned by each `account` looping on the two arrays
-    /// @param _accounts The address of the owners
-    /// @param _ids The token IDs
-    /// @return batchBalances the amounts of tokens of type `id` owned by each `account` looping on the two arrays
+    /// @notice Returns the list of balance of token of each (account, id) pair
+    /// @param _accounts The list of address of the owners
+    /// @param _ids The list of token ids
+    /// @return batchBalances The list of balance of token of each (account, id) pair
     function balanceOfBatch(address[] memory _accounts, uint256[] memory _ids)
         public
         view
@@ -147,7 +147,7 @@ contract LBToken is ILBToken, ERC165 {
     /// @notice Transfers `_amount` tokens of type `_id` from `_from` to `_to`
     /// @param _from The address of the owner of the tokens
     /// @param _to The address of the recipient
-    /// @param _id The token ID
+    /// @param _id The token id
     /// @param _amount The amount to send
     function safeTransferFrom(
         address _from,
@@ -162,6 +162,11 @@ contract LBToken is ILBToken, ERC165 {
         emit TransferSingle(_spender, _from, _to, _id, _amount);
     }
 
+    /// @notice Batch transfers `_amount` tokens of type `_id` from `_from` to `_to`
+    /// @param _from The address of the owner of the tokens
+    /// @param _to The address of the recipient
+    /// @param _ids The list of token ids
+    /// @param _amounts The list of amounts to send
     function safeBatchTransferFrom(
         address _from,
         address _to,
@@ -178,7 +183,7 @@ contract LBToken is ILBToken, ERC165 {
     /// @dev Transfers `_amount` tokens of type `_id` from `_from` to `_to`
     /// @param _from The address of the owner of the tokens
     /// @param _to The address of the recipient
-    /// @param _id The token ID
+    /// @param _id The token id
     /// @param _amount The amount to send
     function _safeTransferFrom(
         address _from,
@@ -188,17 +193,7 @@ contract LBToken is ILBToken, ERC165 {
     ) internal virtual {
         if (_from == address(0) || _to == address(0))
             revert LBToken__TransferFromOrToAddress0();
-
-        uint256 _fromBalance = _balances[_id][_from];
-        if (_fromBalance < _amount)
-            revert LBToken__TransferExceedsBalance(_from, _id, _amount);
-
-        _beforeTokenTransfer(_from, _to, _id, _amount);
-
-        unchecked {
-            _balances[_id][_from] = _fromBalance - _amount;
-        }
-        _balances[_id][_to] += _amount;
+        _safeTransferHelper(_from, _to, _id, _amount);
     }
 
     function _safeBatchTransferFrom(
@@ -217,23 +212,32 @@ contract LBToken is ILBToken, ERC165 {
             uint256 _id = _ids[i];
             uint256 _amount = _amounts[i];
 
-            uint256 _fromBalance = _balances[_id][_from];
-            if (_fromBalance < _amount)
-                revert LBToken__TransferExceedsBalance(_from, _id, _amount);
-
-            _beforeTokenTransfer(_from, _to, _id, _amount);
-
-            unchecked {
-                _balances[_id][_from] = _fromBalance - _amount;
-            }
-            _balances[_id][_to] += _amount;
+            _safeTransferHelper(_from, _to, _id, _amount);
         }
+    }
+
+    function _safeTransferHelper(
+        address _from,
+        address _to,
+        uint256 _id,
+        uint256 _amount
+    ) private {
+        uint256 _fromBalance = _balances[_id][_from];
+        if (_fromBalance < _amount)
+            revert LBToken__TransferExceedsBalance(_from, _id, _amount);
+
+        _beforeTokenTransfer(_from, _to, _id, _amount);
+
+        unchecked {
+            _balances[_id][_from] = _fromBalance - _amount;
+        }
+        _balances[_id][_to] += _amount;
     }
 
     /// @dev Creates `_amount` tokens of type `_id`, and assigns them to `_account`
     /// @param _account The address of the recipient
-    /// @param _id The token IDs
-    /// @param _amount The amounts to mint
+    /// @param _id The token id
+    /// @param _amount The amount to mint
     function _mint(
         address _account,
         uint256 _id,
@@ -244,14 +248,16 @@ contract LBToken is ILBToken, ERC165 {
         _beforeTokenTransfer(address(0), _account, _id, _amount);
 
         _totalSupplies[_id] += _amount;
-        _balances[_id][_account] += _amount;
+        unchecked {
+            _balances[_id][_account] += _amount;
+        }
 
         emit TransferSingle(msg.sender, address(0), _account, _id, _amount);
     }
 
     /// @dev Destroys `_amount` tokens of type `_id` from `_account`
     /// @param _account The address of the owner
-    /// @param _id The token ID
+    /// @param _id The token id
     /// @param _amount The amount to destroy
     function _burn(
         address _account,
@@ -316,11 +322,10 @@ contract LBToken is ILBToken, ERC165 {
     /// - when `to` is zero, `amount` of ``from``'s tokens of token type `id`
     /// will be burned.
     /// - `from` and `to` are never both zero.
-    /// - `ids` and `amounts` have the same, non-zero length
     /// @param from The address of the owner of the token
     /// @param to The address of the recipient of the  token
-    /// @param id The ids of the token
-    /// @param amount The amounts of token of each type `id`
+    /// @param id The id of the token
+    /// @param amount The amount of token of type `id`
     function _beforeTokenTransfer(
         address from,
         address to,

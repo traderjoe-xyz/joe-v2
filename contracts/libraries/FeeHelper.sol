@@ -90,7 +90,7 @@ library FeeHelper {
         returns (uint256)
     {
         unchecked {
-            return (_fp.baseFactor * _fp.binStep) / BASIS_POINT_MAX;
+            return _fp.baseFactor * _fp.binStep;
         }
     }
 

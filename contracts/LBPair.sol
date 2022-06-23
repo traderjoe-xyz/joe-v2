@@ -33,7 +33,7 @@ error LBPair__BrokenFlashLoanSafetyChecks(uint256 amount0In, uint256 amount1In);
 error LBPair__OnlyStrictlyIncreasingId();
 error LBPair__OnlyFactory();
 
-// TODO add oracle price, distribute fees
+// TODO add oracle price, distribute fees protocol / sJoe
 /// @title Liquidity Bin Exchange
 /// @author Trader Joe
 /// @notice DexV2 POC
@@ -728,7 +728,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         Bin memory _bin = _bins[_id];
 
-        if (_from != address(0)) {
+        if (_from != address(0) && _from != address(this)) {
             uint256 _balanceFrom = balanceOf(_from, _id);
 
             _collect(_feesFrom, _bin, _from, _id, _balanceFrom);
@@ -737,7 +737,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             _unclaimedFees[_from] = _feesFrom;
         }
 
-        if (_to != address(0) && _from != _to) {
+        if (_to != address(0) && _to != address(this) && _from != _to) {
             uint256 _balanceTo = balanceOf(_to, _id);
 
             _collect(_feesTo, _bin, _to, _id, _balanceTo);

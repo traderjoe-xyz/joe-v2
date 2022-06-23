@@ -70,6 +70,11 @@ interface ILBPair is IERC165 {
         view
         returns (FeeHelper.FeeParameters memory);
 
+    function findFirstBin(uint24 id, bool isSearchingRight)
+        external
+        view
+        returns (uint256);
+
     function getBin(uint24 id)
         external
         view
@@ -109,7 +114,5 @@ interface ILBPair is IERC165 {
         address to
     ) external;
 
-    function setFeesParameters(
-        bytes32 packedFeeParameters
-    ) external;
+    function setFeesParameters(bytes32 packedFeeParameters) external;
 }

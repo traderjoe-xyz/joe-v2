@@ -32,6 +32,7 @@ error LBPair__FlashLoanUnderflow(uint256 expectedBalance, uint256 balance);
 error LBPair__BrokenFlashLoanSafetyChecks(uint256 amount0In, uint256 amount1In);
 error LBPair__OnlyStrictlyIncreasingId();
 error LBPair__OnlyFactory();
+error LBPair__DepthTooDeep();
 
 // TODO add oracle price, distribute fees protocol / sJoe
 /// @title Liquidity Bin Exchange
@@ -165,7 +166,12 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /// @notice View function to get the _pairInformation information
     /// @return The _pairInformation information
-    function pairInformation() external view returns (PairInformation memory) {
+    function pairInformation()
+        external
+        view
+        override
+        returns (PairInformation memory)
+    {
         return _pairInformation;
     }
 
@@ -174,9 +180,23 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     function feeParameters()
         external
         view
+        override
         returns (FeeHelper.FeeParameters memory)
     {
         return _feeParameters;
+    }
+
+    /// @notice View function to get the tree
+    /// @param _id The bin id
+    /// @param _isSearchingRight Wether to search right or left
+    /// @return The value of the leaf at (depth, id)
+    function findFirstBin(uint24 _id, bool _isSearchingRight)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return _tree.findFirstBin(_id, _isSearchingRight);
     }
 
     /// @notice View function to get the bin at `id`

@@ -132,7 +132,7 @@ library FeeHelper {
             getVariableFeeBP2(_fp, _binCrossed);
 
         return
-            (_amount * _feeBP) / ((BASIS_POINT_MAX - _feeBP) * BASIS_POINT_MAX);
+            (_amount * _feeBP) / (BASIS_POINT_MAX * BASIS_POINT_MAX);
     }
 
     /// @notice Return the fees distribution added to an amount
@@ -150,7 +150,7 @@ library FeeHelper {
         return
             FeesDistribution({
                 total: _fees.safe128(),
-                protocol: _protocolFees.safe128()
+                protocol: uint128(_protocolFees)
             });
     }
 }

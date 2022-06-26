@@ -17,13 +17,13 @@ interface ILBRouter {
 
     function getSwapIn(
         ILBPair LBPair,
-        uint256 amount0Out,
-        uint256 amount1Out
-    ) external view returns (uint256 amount0In, uint256 amount1In);
+        uint256 amountXOut,
+        uint256 amountYOut
+    ) external view returns (uint256 amountXIn, uint256 amountYIn);
 
     function getSwapOut(
         ILBPair LBPair,
-        uint256 amount0In,
-        uint256 amount1In
-    ) external view returns (uint256 amount0Out, uint256 amount1Out);
+        uint256 amountXIn,
+        uint256 amountYIn
+    ) external view returns (uint256 amountXOut, uint256 amountYOut);
 }

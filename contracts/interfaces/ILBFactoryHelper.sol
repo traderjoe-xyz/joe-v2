@@ -11,8 +11,8 @@ interface ILBFactoryHelper {
     function factory() external view returns (ILBFactory);
 
     function createLBPair(
-        IERC20 _token0,
-        IERC20 _token1,
+        IERC20 _tokenX,
+        IERC20 _tokenY,
         int256 _log2Value,
         bytes32 _salt,
         bytes32 _packedFeeParameters

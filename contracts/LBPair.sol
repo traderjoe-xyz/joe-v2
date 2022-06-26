@@ -8,6 +8,7 @@ import "./LBToken.sol";
 import "./libraries/BinHelper.sol";
 import "./libraries/Math512Bits.sol";
 import "./libraries/SafeCast.sol";
+import "./libraries/SafeMath.sol";
 import "./libraries/TreeMath.sol";
 import "./libraries/Constants.sol";
 import "./libraries/ReentrancyGuard.sol";

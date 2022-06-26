@@ -6,10 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./ILBPair.sol";
 import "./ILBFactoryHelper.sol";
+import "./IPendingOwnable.sol";
 
-interface ILBFactory {
-    function MAX_BASIS_POINT() external pure returns (uint256);
-
+interface ILBFactory is IPendingOwnable {
     function MIN_FEE() external pure returns (uint256);
 
     function MAX_FEE() external pure returns (uint256);
@@ -38,8 +37,8 @@ interface ILBFactory {
         returns (ILBPair);
 
     function createLBPair(
-        IERC20 token0,
-        IERC20 token1,
+        IERC20 tokenX,
+        IERC20 tokenY,
         uint168 maxAccumulator,
         uint16 filterPeriod,
         uint16 decayPeriod,
@@ -51,8 +50,8 @@ interface ILBFactory {
     function setFeeRecipient(address feeRecipient) external;
 
     function setFeeParametersOnPair(
-        IERC20 token0,
-        IERC20 token1,
+        IERC20 tokenX,
+        IERC20 tokenY,
         uint168 maxAccumulator,
         uint16 filterPeriod,
         uint16 decayPeriod,

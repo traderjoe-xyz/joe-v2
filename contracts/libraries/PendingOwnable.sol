@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.9;
 
+import "../interfaces/IPendingOwnable.sol";
+
 error PendingOwnable__NotOwner();
 error PendingOwnable__NotPendingOwner();
 error PendingOwnable__PendingOwnerAlreadySet();
@@ -23,7 +25,7 @@ error PendingOwnable__NoPendingOwner();
 /// This module is used through inheritance. It will make available the modifier
 /// `onlyOwner`, which can be applied to your functions to restrict their use to
 /// the owner
-contract PendingOwnable {
+contract PendingOwnable is IPendingOwnable {
     address private _owner;
     address private _pendingOwner;
 
@@ -53,19 +55,19 @@ contract PendingOwnable {
 
     /// @notice Returns the address of the current owner
     /// @return The address of the current owner
-    function owner() public view returns (address) {
+    function owner() public view override returns (address) {
         return _owner;
     }
 
     /// @notice Returns the address of the current pending owner
     /// @return The address of the current pending owner
-    function pendingOwner() public view returns (address) {
+    function pendingOwner() public view override returns (address) {
         return _pendingOwner;
     }
 
     /// @notice Sets the pending owner address. This address will be able to become
     /// the owner of this contract by calling {becomeOwner}
-    function setPendingOwner(address pendingOwner_) public onlyOwner {
+    function setPendingOwner(address pendingOwner_) public override onlyOwner {
         if (_pendingOwner != address(0))
             revert PendingOwnable__PendingOwnerAlreadySet();
         _setPendingOwner(pendingOwner_);
@@ -74,7 +76,7 @@ contract PendingOwnable {
     /// @notice Revoke the pending owner address. This address will not be able to
     /// call {becomeOwner} to become the owner anymore.
     /// Can only be called by the owner
-    function revokePendingOwner() public onlyOwner {
+    function revokePendingOwner() public override onlyOwner {
         if (_pendingOwner == address(0))
             revert PendingOwnable__NoPendingOwner();
         _setPendingOwner(address(0));
@@ -82,7 +84,7 @@ contract PendingOwnable {
 
     /// @notice Transfers the ownership to the new owner (`pendingOwner).
     /// Can only be called by the pending owner
-    function becomeOwner() public onlyPendingOwner {
+    function becomeOwner() public override onlyPendingOwner {
         _transferOwnership(msg.sender);
     }
 
@@ -91,7 +93,7 @@ contract PendingOwnable {
     ///
     /// NOTE: Renouncing ownership will leave the contract without an owner,
     /// thereby removing any functionality that is only available to the owner.
-    function renounceOwnership() public onlyOwner {
+    function renounceOwnership() public override onlyOwner {
         _transferOwnership(address(0));
     }
 

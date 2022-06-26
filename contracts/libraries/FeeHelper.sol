@@ -3,13 +3,10 @@
 pragma solidity 0.8.9;
 
 import "./SafeCast.sol";
-import "./MathS40x36.sol";
+import "./Constants.sol";
 
 library FeeHelper {
     using SafeCast for uint256;
-    using MathS40x36 for int256;
-
-    uint256 internal constant BASIS_POINT_MAX = 10_000;
 
     /// @dev Structure to store the protocol fees:
     /// - accumulator: The value of the accumulator
@@ -70,7 +67,7 @@ library FeeHelper {
     ) internal {
         unchecked {
             // This equation can't overflow
-            _accumulator += _binCrossed * BASIS_POINT_MAX;
+            _accumulator += _binCrossed * Constants.BASIS_POINT_MAX;
 
             if (_accumulator > _fp.maxAccumulator)
                 _accumulator = _fp.maxAccumulator;
@@ -108,7 +105,9 @@ library FeeHelper {
                 return 0;
             }
 
-            uint256 _acc = _fp.accumulator + _binCrossed * BASIS_POINT_MAX;
+            uint256 _acc = _fp.accumulator +
+                _binCrossed *
+                Constants.BASIS_POINT_MAX;
 
             if (_acc > _fp.maxAccumulator) _acc = _fp.maxAccumulator;
 
@@ -128,25 +127,43 @@ library FeeHelper {
         uint256 _amount,
         uint256 _binCrossed
     ) internal pure returns (uint256) {
-        uint256 _feeBP = getBaseFeeBP2(_fp) +
+        uint256 _feeBP2 = getBaseFeeBP2(_fp) +
             getVariableFeeBP2(_fp, _binCrossed);
 
         return
-            (_amount * _feeBP) / (BASIS_POINT_MAX * BASIS_POINT_MAX);
+            (_amount * _feeBP2) /
+            (Constants.BASIS_POINT_MAX * Constants.BASIS_POINT_MAX);
+    }
+
+    /// @notice Return the fees from an amount
+    /// @param _fp The current fee parameter
+    /// @param _amountPlusFee The amount of token sent
+    /// @param _binCrossed The current number of bin crossed
+    /// @return The fee amount
+    function getFeesFrom(
+        FeeParameters memory _fp,
+        uint256 _amountPlusFee,
+        uint256 _binCrossed
+    ) internal pure returns (uint256) {
+        uint256 _feeBP2 = getBaseFeeBP2(_fp) +
+            getVariableFeeBP2(_fp, _binCrossed);
+
+        return
+            (_amountPlusFee * _feeBP2) /
+            (Constants.BASIS_POINT_MAX * Constants.BASIS_POINT_MAX + _feeBP2);
     }
 
     /// @notice Return the fees distribution added to an amount
     /// @param _fp The current fee parameter
-    /// @param _amount The amount of token sent
-    /// @param _binCrossed The current number of bin crossed
+    /// @param _fees The fee amount
     /// @return The fee amount
-    function getFeesDistribution(
-        FeeParameters memory _fp,
-        uint256 _amount,
-        uint256 _binCrossed
-    ) internal pure returns (FeesDistribution memory) {
-        uint256 _fees = getFees(_fp, _amount, _binCrossed);
-        uint256 _protocolFees = (_fees * _fp.protocolShare) / BASIS_POINT_MAX;
+    function getFeesDistribution(FeeParameters memory _fp, uint256 _fees)
+        internal
+        pure
+        returns (FeesDistribution memory)
+    {
+        uint256 _protocolFees = (_fees * _fp.protocolShare) /
+            Constants.BASIS_POINT_MAX;
         return
             FeesDistribution({
                 total: _fees.safe128(),

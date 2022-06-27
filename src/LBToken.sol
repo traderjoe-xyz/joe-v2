@@ -3,7 +3,7 @@
 pragma solidity 0.8.9;
 
 import "./interfaces/ILBToken.sol";
-import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import "openzeppelin/utils/introspection/ERC165.sol";
 
 error LBToken__SpenderNotApproved(address owner, address spender);
 error LBToken__TransferFromOrToAddress0();

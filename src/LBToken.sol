@@ -155,7 +155,7 @@ contract LBToken is ILBToken, ERC165 {
         uint256[] memory _amounts
     ) public virtual override {
         address _spender = msg.sender;
-        if (_isApprovedForAll(_from, _spender))
+        if (!_isApprovedForAll(_from, _spender))
             revert LBToken__SpenderNotApproved(_from, _spender);
 
         if (_from == address(0) || _to == address(0))

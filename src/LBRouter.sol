@@ -2,8 +2,8 @@
 
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "openzeppelin/token/ERC20/IERC20.sol";
+import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 
 import "./interfaces/ILBPair.sol";
 import "./interfaces/ILBFactory.sol";
@@ -123,10 +123,9 @@ contract LBRouter is ILBRouter {
                     uint256 _amountYOutOfBin = _amountYOut > _reserveY
                         ? _reserveY
                         : _amountYOut;
-                    uint256 _amountXInToBin = Constants.PRICE_PRECISION.mulDivRoundUp(
-                        _amountYOutOfBin,
-                        _price
-                    );
+                    uint256 _amountXInToBin = Constants
+                        .PRICE_PRECISION
+                        .mulDivRoundUp(_amountYOutOfBin, _price);
                     uint256 _amountXInWithFees = _amountXInToBin +
                         _fp.getFees(_amountXInToBin, _startId - _pair.id);
 
@@ -206,10 +205,9 @@ contract LBRouter is ILBRouter {
                         amountXOut += _amountXOutOfBin;
                     }
                 } else {
-                    uint256 _maxAmountXIn = Constants.PRICE_PRECISION.mulDivRoundUp(
-                        _reserveY,
-                        _price
-                    );
+                    uint256 _maxAmountXIn = Constants
+                        .PRICE_PRECISION
+                        .mulDivRoundUp(_reserveY, _price);
 
                     uint256 _maxAmountXInWithFees = _maxAmountXIn +
                         _fp.getFees(_maxAmountXIn, _startId - _pair.id);

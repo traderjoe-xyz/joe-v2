@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin/token/ERC20/IERC20.sol";
 
 error TokenHelper__TransferFailed(
     IERC20 token,

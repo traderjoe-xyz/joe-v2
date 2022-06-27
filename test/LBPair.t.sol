@@ -4,8 +4,7 @@ pragma solidity 0.8.9;
 import "forge-std/Test.sol";
 import "src/LBPair.sol";
 import "src/LBFactory.sol";
-import "src/mocks/ERC20MockDecimals.sol";
-import {console} from "forge-std/console.sol";
+import "test/mocks/ERC20MockDecimals.sol";
 
 contract LiquidityBinPairTest is Test {
     address private constant DEV = 0x1119fbb02F38764CD90F2d9fB35FeDcd8378ac2A;

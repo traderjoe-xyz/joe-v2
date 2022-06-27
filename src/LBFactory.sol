@@ -27,6 +27,7 @@ error LBFactory___ProtocolShareRequirementsBreached(
     uint256 higherBound
 );
 error LBFactory__FunctionIsLockedForUsers(address user);
+error LBFactory__FactoryLockIsAlreadyInTheSameState();
 
 contract LBFactory is PendingOwnable, ILBFactory {
     using MathS40x36 for int256;
@@ -70,6 +71,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 _protocolShare,
         uint8 _variableFeesDisabled
     );
+
+    event FactoryLocked(bool unlocked);
 
     modifier onlyOwnerIfLocked() {
         if (!unlocked && msg.sender != owner())
@@ -169,6 +172,15 @@ contract LBFactory is PendingOwnable, ILBFactory {
         onlyOwner
     {
         _setFeeRecipient(_feeRecipient);
+    }
+
+    /// @notice Function to lock the Factory and prevent anyone but the owner to create pairs.
+    /// @param _locked The new lock state
+    function setFactoryLocked(bool _locked) external onlyOwner {
+        if (unlocked == !_locked)
+            revert LBFactory__FactoryLockIsAlreadyInTheSameState();
+        unlocked = !_locked;
+        emit FactoryLocked(_locked);
     }
 
     /// @notice Function to set the fee parameter of a pair

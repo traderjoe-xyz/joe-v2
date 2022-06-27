@@ -435,12 +435,14 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                         );
 
                         if (_id < _pair.id) {
+                            _amountX = 0;
                             _amountY = _liquidity.safe128();
                         } else if (_id > _pair.id) {
                             _amountX = _liquidity.mulDivRoundUp(
                                 Constants.PRICE_PRECISION,
                                 _price
                             );
+                            _amountY = 0;
                         } else if (_id == _pair.id) {
                             _amountX = (_liquidity - _liquidity / 2)
                                 .mulDivRoundUp(

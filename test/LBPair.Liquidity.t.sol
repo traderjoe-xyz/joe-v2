@@ -43,8 +43,8 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
             _packedFeeParameters
         );
         assertEq(address(lbPair.factory()), DEV);
-        assertEq(address(lbPair.token0()), address(token6D));
-        assertEq(address(lbPair.token1()), address(token18D));
+        assertEq(address(lbPair.tokenX()), address(token6D));
+        assertEq(address(lbPair.tokenY()), address(token18D));
         assertEq(lbPair.log2Value(), DEFAULT_LOG2_VALUE);
 
         FeeHelper.FeeParameters memory feeParameters = lbPair.feeParameters();
@@ -73,7 +73,7 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
             uint256[] memory _ids,
             uint256[] memory _liquidities,
             uint256 amount0In
-        ) = spreadLiquidityN(amount1In * 2, startId, 3, 0);
+        ) = spreadLiquidity(amount1In * 2, startId, 3, 0);
 
         token6D.mint(address(pair), amount0In + 10);
         token18D.mint(address(pair), amount1In);
@@ -121,7 +121,7 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
             uint256[] memory _ids,
             uint256[] memory _liquidities,
             uint256 amount0In
-        ) = spreadLiquidityN(amount1In * 2, ID_ONE, 3, 0);
+        ) = spreadLiquidity(amount1In * 2, ID_ONE, 3, 0);
 
         token6D.mint(address(pair), amount0In);
         token18D.mint(address(pair), amount1In);

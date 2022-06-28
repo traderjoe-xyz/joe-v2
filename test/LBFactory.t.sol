@@ -23,8 +23,8 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(address(factory.getLBPair(token6D, token12D)), address(pair));
 
         assertEq(address(pair.factory()), address(factory));
-        assertEq(address(pair.token0()), address(token6D));
-        assertEq(address(pair.token1()), address(token12D));
+        assertEq(address(pair.tokenX()), address(token6D));
+        assertEq(address(pair.tokenY()), address(token12D));
         assertEq(pair.log2Value(), DEFAULT_LOG2_VALUE);
 
         FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();

@@ -26,7 +26,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         _liquidities[0] = 0;
         _liquidities[1] =
             (tokenAmount * getPriceFromId(ID_ONE)) /
-            pair.PRICE_PRECISION();
+            PRICE_PRECISION;
 
         pair.mint(_ids, _liquidities, DEV);
 
@@ -40,22 +40,21 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         token18D.mint(address(pair), amount1In);
         vm.prank(DEV);
-        pair.swap(amount0Out, 0, DEV);
+        pair.swap(true, DEV);
 
         assertEq(token6D.balanceOf(DEV), amount0Out);
         assertEq(token18D.balanceOf(DEV), 0);
 
-        (, uint112 binReserve0, uint112 binReserve1) = pair.getBin(ID_ONE);
+        (, uint112 binReserveX, uint112 binReserveY) = pair.getBin(ID_ONE);
 
         LBPair.PairInformation memory pair = pair.pairInformation();
 
-        console2.log("fees total", pair.fees1.total);
 
-        assertEq(binReserve0, tokenAmount - amount0Out, "binReserve0");
-        assertEq(binReserve1, amount1In - pair.fees1.total, "binReserve1");
+        assertEq(binReserveX, tokenAmount - amount0Out, "binReserveX");
+        assertEq(binReserveY, amount1In - pair.feesY.total, "binReserveY");
     }
 
-    function testSwapXToYSingleBin() public {
+    function testSwapXtoYSingleBin() public {
         uint112 tokenAmount = 100e12;
         token18D.mint(address(pair), tokenAmount);
 
@@ -76,102 +75,25 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         console2.log("amount0In", amount0In);
         token6D.mint(address(pair), amount0In);
         vm.prank(DEV);
-        pair.swap(0, amount1Out, DEV);
+        pair.swap(false, DEV);
 
         assertEq(token6D.balanceOf(DEV), 0);
         assertEq(token18D.balanceOf(DEV), amount1Out);
 
-        (, uint112 binReserve0, uint112 binReserve1) = pair.getBin(ID_ONE);
+        (, uint112 binReserveX, uint112 binReserveY) = pair.getBin(ID_ONE);
 
         LBPair.PairInformation memory pair = pair.pairInformation();
 
-        assertApproxEqRel(binReserve0, amount0In - pair.fees0.total, 1e14);
-        assertEq(binReserve1, tokenAmount - amount1Out);
+        assertApproxEqRel(binReserveX, amount0In - pair.feesX.total, 1e14);
+        assertEq(binReserveY, tokenAmount - amount1Out);
     }
 
-    function testSwapYtoXMultipleBin() public {
-        uint112 tokenAmount = 100e6;
-        token6D.mint(address(pair), tokenAmount);
-
-        uint24 startId = ID_ONE;
-
-        uint24 nb = 10;
-
-        uint256[] memory _ids = new uint256[](nb + 1);
-        uint256[] memory _liquidities = new uint256[](nb + 1);
-
-        _ids[0] = startId;
-        _liquidities[0] = 0;
-        for (uint256 i; i < nb; i++) {
-            _ids[i + 1] = startId + i + 1;
-            _liquidities[i + 1] = tokenAmount / nb;
-        }
-
-        pair.mint(_ids, _liquidities, DEV);
-
-        uint256 amount0Out = tokenAmount;
-
-        token18D.mint(address(pair), 200e6);
-
-        vm.prank(DEV);
-        pair.swap(amount0Out, 0, DEV);
-
-        assertEq(token6D.balanceOf(DEV), amount0Out);
-
-        LBPair.PairInformation memory pairInformation = pair.pairInformation();
-
-        assertEq(pairInformation.reserve0, 0);
-    }
-
-    function testSwapXtoYMultipleBin() public {
-        uint112 tokenAmount = 100e12;
-        token18D.mint(address(pair), tokenAmount);
-
-        uint24 startId = ID_ONE;
-
-        uint24 nb = 10;
-
-        uint256[] memory _ids = new uint256[](nb + 1);
-        uint256[] memory _liquidities = new uint256[](nb + 1);
-
-        _ids[0] = startId;
-        _liquidities[0] = 0;
-        for (uint256 i; i < nb; i++) {
-            _ids[i + 1] = startId - i - 1;
-            _liquidities[i + 1] = tokenAmount / nb;
-        }
-
-        pair.mint(_ids, _liquidities, DEV);
-
-        uint256 amount1Out = tokenAmount;
-
-        token6D.mint(address(pair), 200e12);
-
-        vm.prank(DEV);
-        pair.swap(0, amount1Out, DEV);
-
-        assertEq(token18D.balanceOf(DEV), amount1Out);
-
-        LBPair.PairInformation memory pairInformation = pair.pairInformation();
-
-        assertEq(pairInformation.reserve1, 0);
-    }
-
-    function testSwapYtoXDistantBins() public {
+    function testSwapYtoXConsecutiveBin() public {
         uint256 amountYInLiquidity = 100e18;
-        uint256 amountXOutForSwap = 50e18;
+        uint256 amountXOutForSwap = 30e18;
         uint24 startId = ID_ONE;
 
-        (
-            uint256[] memory _ids,
-            uint256[] memory _liquidities,
-            uint256 amountXIn
-        ) = spreadLiquidityN(amountYInLiquidity * 2, startId, 9, 100);
-
-        token6D.mint(address(pair), amountXIn);
-        token18D.mint(address(pair), amountYInLiquidity);
-
-        pair.mint(_ids, _liquidities, DEV);
+        addLiquidity(amountYInLiquidity, startId, 9, 0);
 
         (, uint256 amountYInForSwap) = router.getSwapIn(
             pair,
@@ -180,27 +102,18 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         );
 
         token18D.mint(address(pair), amountYInForSwap);
-        vm.prank(ALICE);
-        pair.swap(amountXOutForSwap, 0, ALICE);
+
+        pair.swap(true, ALICE);
 
         assertEq(token6D.balanceOf(ALICE), amountXOutForSwap);
     }
 
-    function testSwapXtoYDistantBins() public {
-        uint256 amountXInLiquidity = 100e6;
-        uint256 amountYOutForSwap = 50e6;
+    function testSwapXtoYConsecutiveBin() public {
+        uint256 amountYInLiquidity = 100e18;
+        uint256 amountYOutForSwap = 30e18;
         uint24 startId = ID_ONE;
 
-        (
-            uint256[] memory _ids,
-            uint256[] memory _liquidities,
-            uint256 amountYIn
-        ) = spreadLiquidityN(amountXInLiquidity * 2, startId, 9, 100);
-
-        token6D.mint(address(pair), amountYIn);
-        token18D.mint(address(pair), amountXInLiquidity);
-
-        pair.mint(_ids, _liquidities, DEV);
+        addLiquidity(amountYInLiquidity, startId, 9, 0);
 
         (uint256 amountXInForSwap, ) = router.getSwapIn(
             pair,
@@ -209,8 +122,48 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         );
 
         token6D.mint(address(pair), amountXInForSwap);
-        vm.prank(ALICE);
-        pair.swap(0, amountYOutForSwap, ALICE);
+
+        pair.swap(true, ALICE);
+
+        assertEq(token18D.balanceOf(ALICE), amountYOutForSwap);
+    }
+
+    function testSwapYtoXDistantBins() public {
+        uint256 amountYInLiquidity = 100e18;
+        uint256 amountXOutForSwap = 30e18;
+        uint24 startId = ID_ONE;
+
+        addLiquidity(amountYInLiquidity, startId, 9, 100);
+
+        (, uint256 amountYInForSwap) = router.getSwapIn(
+            pair,
+            amountXOutForSwap,
+            0
+        );
+
+        token18D.mint(address(pair), amountYInForSwap);
+
+        pair.swap(true, ALICE);
+
+        assertEq(token6D.balanceOf(ALICE), amountXOutForSwap);
+    }
+
+    function testSwapXtoYDistantBins() public {
+        uint256 amountYInLiquidity = 100e18;
+        uint256 amountYOutForSwap = 30e18;
+        uint24 startId = ID_ONE;
+
+        addLiquidity(amountYInLiquidity, startId, 9, 100);
+
+        (uint256 amountXInForSwap, ) = router.getSwapIn(
+            pair,
+            0,
+            amountYOutForSwap
+        );
+
+        token6D.mint(address(pair), amountXInForSwap);
+
+        pair.swap(true, ALICE);
 
         assertEq(token18D.balanceOf(ALICE), amountYOutForSwap);
     }

@@ -36,6 +36,8 @@ interface ILBFactory is IPendingOwnable {
         view
         returns (ILBPair);
 
+    function setFactoryHelper() external;
+
     function createLBPair(
         IERC20 tokenX,
         IERC20 tokenY,

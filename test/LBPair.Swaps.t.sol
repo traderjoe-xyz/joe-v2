@@ -154,7 +154,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         assertEq(binReserveY, amountYIn - pair.feesY.total);
     }
 
-    function testSwapYtoXConsecutiveBin() public {
+    function testSwapYtoXConsecutiveBinFromGetSwapIn() public {
         uint256 amountYInLiquidity = 100e18;
         uint256 amountXOutForSwap = 30e18;
         uint24 startId = ID_ONE;
@@ -171,10 +171,11 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         pair.swap(true, ALICE);
 
+        assertGt(token6D.balanceOf(ALICE), amountXOutForSwap);
         assertApproxEqRel(token6D.balanceOf(ALICE), amountXOutForSwap, 1e14);
     }
 
-    function testSwapXtoYConsecutiveBin() public {
+    function testSwapXtoYConsecutiveBinFromGetSwapIn() public {
         uint256 amountYInLiquidity = 100e18;
         uint256 amountYOutForSwap = 30e18;
         uint24 startId = ID_ONE;
@@ -191,12 +192,51 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         pair.swap(false, ALICE);
 
+        assertGt(token18D.balanceOf(ALICE), amountYOutForSwap);
         assertApproxEqRel(token18D.balanceOf(ALICE), amountYOutForSwap, 1e14);
-
-        LBPair.PairInformation memory pair = pair.pairInformation();
     }
 
-    function testSwapYtoXDistantBins() public {
+    function testSwapYtoXConsecutiveBinFromGetSwapOut() public {
+        uint256 amountYInLiquidity = 100e18;
+        uint256 amountYInForSwap = 30e18;
+        uint24 startId = ID_ONE;
+
+        addLiquidity(amountYInLiquidity, startId, 9, 0);
+
+        uint256 amountXOutForSwap = router.getSwapOut(
+            pair,
+            amountYInForSwap,
+            false
+        );
+
+        token18D.mint(address(pair), amountYInForSwap);
+
+        pair.swap(true, ALICE);
+
+        assertApproxEqAbs(token6D.balanceOf(ALICE), amountXOutForSwap, 1);
+    }
+
+    function testSwapXtoYConsecutiveBinFromGetSwapOut() public {
+        uint256 amountYInLiquidity = 100e18;
+        uint256 amountXInForSwap = 30e18;
+        uint24 startId = ID_ONE;
+
+        addLiquidity(amountYInLiquidity, startId, 9, 0);
+
+        uint256 amountYOutForSwap = router.getSwapOut(
+            pair,
+            amountXInForSwap,
+            true
+        );
+
+        token6D.mint(address(pair), amountXInForSwap);
+
+        pair.swap(false, ALICE);
+
+        assertEq(token18D.balanceOf(ALICE), amountYOutForSwap);
+    }
+
+    function testSwapYtoXDistantBinsFromGetSwapIn() public {
         uint256 amountYInLiquidity = 100e18;
         uint256 amountXOutForSwap = 30e18;
         uint24 startId = ID_ONE;
@@ -213,10 +253,11 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         pair.swap(true, ALICE);
 
+        assertGt(token6D.balanceOf(ALICE), amountXOutForSwap);
         assertApproxEqRel(token6D.balanceOf(ALICE), amountXOutForSwap, 1e14);
     }
 
-    function testSwapXtoYDistantBins() public {
+    function testSwapXtoYDistantBinsFromGetSwapIn() public {
         uint256 amountYInLiquidity = 100e18;
         uint256 amountYOutForSwap = 30e18;
         uint24 startId = ID_ONE;
@@ -233,6 +274,47 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         pair.swap(false, ALICE);
 
+        assertGt(token18D.balanceOf(ALICE), amountYOutForSwap);
         assertApproxEqRel(token18D.balanceOf(ALICE), amountYOutForSwap, 1e14);
+    }
+
+    function testSwapYtoXDistantBinsFromGetSwapOut() public {
+        uint256 amountYInLiquidity = 100e18;
+        uint256 amountYInForSwap = 30e18;
+        uint24 startId = ID_ONE;
+
+        addLiquidity(amountYInLiquidity, startId, 9, 100);
+
+        uint256 amountXOutForSwap = router.getSwapOut(
+            pair,
+            amountYInForSwap,
+            false
+        );
+
+        token18D.mint(address(pair), amountYInForSwap);
+
+        pair.swap(true, ALICE);
+
+        assertApproxEqAbs(token6D.balanceOf(ALICE), amountXOutForSwap, 1);
+    }
+
+    function testSwapXtoYDistantBinsFromGetSwapOut() public {
+        uint256 amountYInLiquidity = 100e18;
+        uint256 amountXInForSwap = 30e18;
+        uint24 startId = ID_ONE;
+
+        addLiquidity(amountYInLiquidity, startId, 9, 100);
+
+        uint256 amountYOutForSwap = router.getSwapOut(
+            pair,
+            amountXInForSwap,
+            true
+        );
+
+        token6D.mint(address(pair), amountXInForSwap);
+
+        pair.swap(false, ALICE);
+
+        assertEq(token18D.balanceOf(ALICE), amountYOutForSwap);
     }
 }

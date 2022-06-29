@@ -17,8 +17,9 @@ contract LBFactoryHelper is ILBFactoryHelper {
     }
 
     /// @notice Initialize the factory address
-    constructor() {
-        factory = ILBFactory(msg.sender);
+    constructor(ILBFactory _lbFactory) {
+        factory = _lbFactory;
+        _lbFactory.setFactoryHelper();
     }
 
     /// @notice Create a liquidity bin pair with a given salt

@@ -11,6 +11,7 @@ import "./libraries/Constants.sol";
 
 error LBFactory__IdenticalAddresses(IERC20 token);
 error LBFactory__ZeroAddress();
+error LBFactory__FactoryHelperAlreadyInitialized();
 error LBFactory__LBPairAlreadyExists(IERC20 tokenX, IERC20 tokenY);
 error LBFactory__DecreasingPeriods(uint16 filterPeriod, uint16 decayPeriod);
 error LBFactory__BaseFactorExceedsBP(uint16 baseFactor, uint256 maxBP);
@@ -41,7 +42,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     uint256 public constant override MIN_PROTOCOL_SHARE = 1_000; // 10%
     uint256 public constant override MAX_PROTOCOL_SHARE = 5_000; // 50%
 
-    ILBFactoryHelper public immutable override factoryHelper;
+    ILBFactoryHelper public override factoryHelper;
 
     address public override feeRecipient;
 
@@ -83,8 +84,13 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @notice Constructor
     /// @param _feeRecipient The address of the fee recipient
     constructor(address _feeRecipient) {
-        factoryHelper = ILBFactoryHelper(address(new LBFactoryHelper()));
         _setFeeRecipient(_feeRecipient);
+    }
+
+    function setFactoryHelper() external override {
+        if (address(factoryHelper) != address(0))
+            revert LBFactory__FactoryHelperAlreadyInitialized();
+        factoryHelper = ILBFactoryHelper(msg.sender);
     }
 
     /// @notice View function to return the number of LBPairs created

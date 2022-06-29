@@ -68,14 +68,14 @@ library SwapHelper {
             fees = fp.getFeesDistribution(fp.getFees(_reserve, _deltaId));
 
             if (_maxAmountInToBin.add(fees.total) <= amountIn) {
-                amountInToBin = _maxAmountInToBin + fees.total;
+                amountInToBin = _maxAmountInToBin;
                 amountOutOfBin = _reserve;
             } else {
                 fees = fp.getFeesDistribution(
                     fp.getFeesFrom(amountIn, _deltaId)
                 );
-                amountInToBin = amountIn;
-                amountOutOfBin = (amountIn - fees.total).mulDivRoundDown(
+                amountInToBin = amountIn.sub(fees.total);
+                amountOutOfBin = amountInToBin.mulDivRoundDown(
                     _reserve,
                     _maxAmountInToBin
                 );

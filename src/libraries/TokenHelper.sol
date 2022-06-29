@@ -52,7 +52,7 @@ library TokenHelper {
     ) internal view returns (uint256) {
         uint256 _internalBalance = reserve + fees;
         uint256 _balance = token.balanceOf(address(this));
-        if (_internalBalance < _balance) revert TokenHelper__ReserveUnderflow();
+        if (_internalBalance > _balance) revert TokenHelper__ReserveUnderflow();
         unchecked {
             return _balance - _internalBalance;
         }

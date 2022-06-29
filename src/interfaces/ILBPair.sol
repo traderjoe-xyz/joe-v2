@@ -66,11 +66,7 @@ interface ILBPair is IERC165 {
     function getBin(uint24 id)
         external
         view
-        returns (
-            uint256 price,
-            uint112 reserveX,
-            uint112 reserveY
-        );
+        returns (uint112 reserveX, uint112 reserveY);
 
     function pendingFees(address _account, uint256[] memory _ids)
         external

@@ -5,25 +5,30 @@ pragma solidity 0.8.9;
 import "./ILBPair.sol";
 
 interface ILBRouter {
-    function getIdFromPrice(ILBPair LBPair, uint256 price)
+    struct BinConst {
+        int256 log2Value;
+        uint256 startId;
+    }
+
+    function getIdFromPrice(ILBPair LBPair, uint256 _price)
         external
         view
         returns (uint24);
 
-    function getPriceFromId(ILBPair LBPair, uint24 id)
+    function getPriceFromId(ILBPair LBPair, uint24 _id)
         external
         view
         returns (uint256);
 
-    function getSwapIn(
-        ILBPair LBPair,
-        uint256 amountXOut,
-        uint256 amountYOut
-    ) external view returns (uint256 amountXIn, uint256 amountYIn);
-
     function getSwapOut(
-        ILBPair LBPair,
-        uint256 amountXIn,
-        uint256 amountYIn
-    ) external view returns (uint256 amountXOut, uint256 amountYOut);
+        ILBPair _LBPair,
+        uint256 _amountIn,
+        bool _swapForY
+    ) external view returns (uint256 _amountOut);
+
+    function getSwapIn(
+        ILBPair _LBPair,
+        uint256 _amountOut,
+        bool _swapForY
+    ) external view returns (uint256 _amountIn);
 }

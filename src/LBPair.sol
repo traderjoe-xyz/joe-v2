@@ -111,8 +111,6 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     IERC20 public immutable override tokenX;
     IERC20 public immutable override tokenY;
     ILBFactory public immutable override factory;
-    /// @notice The `log2(1 + α binStep)` value as a signed 39.36-decimal fixed-point number
-    int256 public immutable override log2Value;
 
     /** Private variables **/
 
@@ -138,13 +136,11 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @param _factory The address of the factory.
     /// @param _tokenX The address of the tokenX. Can't be address 0
     /// @param _tokenY The address of the tokenY. Can't be address 0
-    /// @param _log2Value The log(1 + binStep) value
     /// @param _packedFeeParameters The fee parameters packed in a single 256 bits slot
     constructor(
         ILBFactory _factory,
         IERC20 _tokenX,
         IERC20 _tokenY,
-        int256 _log2Value,
         bytes32 _packedFeeParameters
     ) LBToken("Liquidity Book Token", "LBT") {
         factory = _factory;
@@ -152,8 +148,6 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         tokenY = _tokenY;
 
         _setFeesParameters(_packedFeeParameters);
-
-        log2Value = _log2Value;
     }
 
     /** External View Functions **/
@@ -201,10 +195,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         external
         view
         override
-        returns (
-            uint112 reserveX,
-            uint112 reserveY
-        )
+        returns (uint112 reserveX, uint112 reserveY)
     {
         return (_bins[_id].reserveX, _bins[_id].reserveY);
     }
@@ -278,7 +269,6 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 ) = _pair.getAmounts(
                         _bin,
                         _fp,
-                        log2Value,
                         _sentTokenY,
                         _startId,
                         _amountIn
@@ -403,6 +393,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             _pair.id = uint24(_ids[0]);
         }
 
+        uint256 _binStep = _feeParameters.binStep;
+
         uint256 _amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total);
         uint256 _amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total);
 
@@ -430,7 +422,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                     } else {
                         uint256 _price = BinHelper.getPriceFromId(
                             uint24(_id),
-                            log2Value
+                            _binStep
                         );
 
                         if (_id < _pair.id) {

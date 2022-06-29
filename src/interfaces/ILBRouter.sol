@@ -5,11 +5,6 @@ pragma solidity 0.8.9;
 import "./ILBPair.sol";
 
 interface ILBRouter {
-    struct BinConst {
-        int256 log2Value;
-        uint256 startId;
-    }
-
     function getIdFromPrice(ILBPair LBPair, uint256 _price)
         external
         view

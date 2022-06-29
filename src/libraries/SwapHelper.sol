@@ -19,7 +19,6 @@ library SwapHelper {
     /// @param bin The bin information
     /// @param fp The fee parameters
     /// @param sentTokenY Wether the token sent was Y (true) or X (false)
-    /// @param log2Value The log2Value of the pair
     /// @param startId The id at which the swap started
     /// @param amountIn The amount sent to the user
     /// @return amountInToBin The amount of token that is added to the bin without the fees
@@ -29,7 +28,6 @@ library SwapHelper {
         ILBPair.PairInformation memory pair,
         ILBPair.Bin memory bin,
         FeeHelper.FeeParameters memory fp,
-        int256 log2Value,
         bool sentTokenY,
         uint256 startId,
         uint256 amountIn
@@ -43,7 +41,7 @@ library SwapHelper {
         )
     {
         unchecked {
-            uint256 _price = BinHelper.getPriceFromId(pair.id, log2Value);
+            uint256 _price = BinHelper.getPriceFromId(pair.id, fp.binStep);
 
             uint256 _reserve;
             uint256 _maxAmountInToBin;

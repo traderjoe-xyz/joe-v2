@@ -29,10 +29,10 @@ contract LiquidityBinPairFeesTest is TestHelper {
             0
         );
 
-        (, uint256 amountYInForSwap) = router.getSwapIn(
+        uint256 amountYInForSwap = router.getSwapIn(
             pair,
             amountXOutForSwap,
-            0
+            false
         );
 
         token18D.mint(address(pair), amountYInForSwap);
@@ -44,18 +44,22 @@ contract LiquidityBinPairFeesTest is TestHelper {
         uint256 accumulatedYfees = pairInfo.feesY.total -
             pairInfo.feesY.protocol;
 
-        ILBPair.Amounts memory fees = pair.pendingFees(DEV, _ids);
+        uint256[] memory orderedIds = new uint256[](5);
+        for (uint256 i; i < 5; i++) {
+            orderedIds[i] = startId - 2 + i;
+        }
+        ILBPair.Amounts memory fees = pair.pendingFees(DEV, orderedIds);
 
         assertEq(accumulatedYfees, fees.tokenY);
 
-        pair.collectFees(DEV, _ids);
+        pair.collectFees(DEV, orderedIds);
         assertEq(fees.tokenY, token18D.balanceOf(DEV));
 
         // Trying to claim a second time
         uint256 balanceBefore = token18D.balanceOf(DEV);
-        fees = pair.pendingFees(DEV, _ids);
+        fees = pair.pendingFees(DEV, orderedIds);
         assertEq(fees.tokenY, 0);
-        pair.collectFees(DEV, _ids);
+        pair.collectFees(DEV, orderedIds);
         assertEq(token18D.balanceOf(DEV), balanceBefore);
     }
 
@@ -85,8 +89,12 @@ contract LiquidityBinPairFeesTest is TestHelper {
         token18D.mint(address(pair), amountYForSwap);
         pair.swap(true, ALICE);
 
-        ILBPair.Amounts memory feesForDev = pair.pendingFees(DEV, _ids);
-        ILBPair.Amounts memory feesForBob = pair.pendingFees(BOB, _ids);
+        uint256[] memory orderedIds = new uint256[](5);
+        for (uint256 i; i < 5; i++) {
+            orderedIds[i] = startId - 2 + i;
+        }
+        ILBPair.Amounts memory feesForDev = pair.pendingFees(DEV, orderedIds);
+        ILBPair.Amounts memory feesForBob = pair.pendingFees(BOB, orderedIds);
 
         assertGt(feesForDev.tokenY, 0);
         assertGt(feesForBob.tokenY, 0);
@@ -98,9 +106,9 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         assertEq(feesForDev.tokenY + feesForBob.tokenY, accumulatedYfees);
 
-        pair.collectFees(DEV, _ids);
+        pair.collectFees(DEV, orderedIds);
         assertEq(feesForDev.tokenY, token18D.balanceOf(DEV));
-        pair.collectFees(BOB, _ids);
+        pair.collectFees(BOB, orderedIds);
         assertEq(feesForBob.tokenY, token18D.balanceOf(BOB));
     }
 
@@ -111,10 +119,10 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         addLiquidity(amountYInLiquidity, startId, 5, 0);
 
-        (, uint256 amountYInForSwap) = router.getSwapIn(
+        uint256 amountYInForSwap = router.getSwapIn(
             pair,
             amountXOutForSwap,
-            0
+            false
         );
 
         token18D.mint(address(pair), amountYInForSwap);

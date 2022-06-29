@@ -195,7 +195,6 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /// @notice View function to get the bin at `id`
     /// @param _id The bin id
-    /// @return price The exchange price of y per x inside this bin (multiplied by 1e36)
     /// @return reserveX The reserve of tokenX of the bin
     /// @return reserveY The reserve of tokenY of the bin
     function getBin(uint24 _id)
@@ -203,13 +202,11 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         view
         override
         returns (
-            uint256 price,
             uint112 reserveX,
             uint112 reserveY
         )
     {
-        uint256 _price = BinHelper.getPriceFromId(_id, log2Value);
-        return (_price, _bins[_id].reserveX, _bins[_id].reserveY);
+        return (_bins[_id].reserveX, _bins[_id].reserveY);
     }
 
     /// @notice View function to get the pending fees of a user
@@ -257,7 +254,9 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     {
         PairInformation memory _pair = _pairInformation;
 
-        uint256 _amountIn = _getAmountIn(_pair, _sentTokenY);
+        uint256 _amountIn = _sentTokenY
+            ? tokenY.received(_pair.reserveY, _pair.feesY.total)
+            : tokenX.received(_pair.reserveX, _pair.feesX.total);
 
         if (_amountIn == 0) revert LBPair__InsufficientAmounts();
 
@@ -760,21 +759,6 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         );
 
         _accruedDebts[_account][_id] = Debts(_debtX, _debtY);
-    }
-
-    /// @notice Returns the amount of token that was sent to the contract
-    /// @param _pair The current pair information
-    /// @param _sentTokenY Wether the token sent was Y (true) or X (false)
-    /// @return The amount of token that was sent to the contract
-    function _getAmountIn(PairInformation memory _pair, bool _sentTokenY)
-        private
-        view
-        returns (uint256)
-    {
-        if (_sentTokenY) {
-            return tokenY.received(_pair.reserveY, _pair.feesY.total);
-        }
-        return tokenX.received(_pair.reserveX, _pair.feesX.total);
     }
 
     /// @notice Checks that the flash loan was done accordingly

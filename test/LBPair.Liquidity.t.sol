@@ -82,13 +82,9 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
 
         console2.log("startId", startId);
 
-        (, uint112 bin0Reserve0, uint112 bin0Reserve1) = pair.getBin(startId);
-        (, uint112 binYReserve0, uint112 binYReserve1) = pair.getBin(
-            startId - 1
-        );
-        (, uint112 binXReserve0, uint112 binXReserve1) = pair.getBin(
-            startId + 1
-        );
+        (uint112 bin0Reserve0, uint112 bin0Reserve1) = pair.getBin(startId);
+        (uint112 binYReserve0, uint112 binYReserve1) = pair.getBin(startId - 1);
+        (uint112 binXReserve0, uint112 binXReserve1) = pair.getBin(startId + 1);
 
         console2.log("bin0", bin0Reserve0, bin0Reserve1);
         console2.log("binY", binYReserve0, binYReserve1);

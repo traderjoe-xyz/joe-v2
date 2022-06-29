@@ -58,7 +58,8 @@ contract LBRouter is ILBRouter {
         override
         returns (uint24)
     {
-        return BinHelper.getIdFromPrice(_price, _LBPair.log2Value());
+        return
+            BinHelper.getIdFromPrice(_price, _LBPair.feeParameters().binStep);
     }
 
     /// @notice Returns the price corresponding to the inputted id
@@ -71,7 +72,7 @@ contract LBRouter is ILBRouter {
         override
         returns (uint256)
     {
-        return BinHelper.getPriceFromId(_id, _LBPair.log2Value());
+        return BinHelper.getPriceFromId(_id, _LBPair.feeParameters().binStep);
     }
 
     /// @notice Simulate a swap in
@@ -102,7 +103,6 @@ contract LBRouter is ILBRouter {
         FeeHelper.FeeParameters memory _fp = _LBPair.feeParameters();
         _fp.updateAccumulatorValue();
         uint256 _startId = _pair.id;
-        int256 _log2Value = _LBPair.log2Value();
 
         uint256 _amountOutOfBin;
         uint256 _amountInWithFees;
@@ -117,11 +117,9 @@ contract LBRouter is ILBRouter {
                 );
                 _reserve = _swapForY ? _reserveY : _reserveX;
             }
-            uint256 _price = BinHelper.getPriceFromId(_pair.id, _log2Value);
+            uint256 _price = BinHelper.getPriceFromId(_pair.id, _fp.binStep);
             if (_reserve != 0) {
-                uint256 _amountOutOfBin = _amountOut > _reserve
-                    ? _reserve
-                    : _amountOut;
+                _amountOutOfBin = _amountOut > _reserve ? _reserve : _amountOut;
 
                 uint256 _amountInToBin = _swapForY
                     ? Constants.PRICE_PRECISION.mulDivRoundUp(
@@ -173,10 +171,7 @@ contract LBRouter is ILBRouter {
         _fp.updateAccumulatorValue();
         ILBPair.Bin memory _bin;
 
-        BinConst memory _const = ILBRouter.BinConst(
-            _LBPair.log2Value(),
-            _pair.id
-        );
+        uint256 _startId = _pair.id;
 
         // Performs the actual swap, bin per bin
         // It uses the findFirstBin function to make sure the bin we're currently looking at
@@ -201,9 +196,8 @@ contract LBRouter is ILBRouter {
                 ) = _pair.getAmounts(
                         _bin,
                         _fp,
-                        _const.log2Value,
                         !_swapForY,
-                        _const.startId,
+                        _startId,
                         _amountIn
                     );
 

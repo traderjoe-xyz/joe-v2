@@ -144,14 +144,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
             0
         );
 
-        int256 _log2Value = (Constants.S_PRICE_PRECISION +
-            (Constants.S_PRICE_PRECISION * int256(uint256(_binStep))) /
-            int256(Constants.BASIS_POINT_MAX)).log2();
-
         pair = factoryHelper.createLBPair(
             _tokenX,
             _tokenY,
-            _log2Value,
             keccak256(abi.encode(_tokenX, _tokenY)),
             _packedFeeParameters
         );

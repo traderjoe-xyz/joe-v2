@@ -49,8 +49,6 @@ interface ILBPair is IERC165 {
 
     function factory() external view returns (ILBFactory);
 
-    function log2Value() external view returns (int256);
-
     function pairInformation() external view returns (PairInformation memory);
 
     function feeParameters()

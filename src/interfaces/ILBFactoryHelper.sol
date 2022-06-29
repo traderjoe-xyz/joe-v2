@@ -13,7 +13,6 @@ interface ILBFactoryHelper {
     function createLBPair(
         IERC20 _tokenX,
         IERC20 _tokenY,
-        int256 _log2Value,
         bytes32 _salt,
         bytes32 _packedFeeParameters
     ) external returns (ILBPair);

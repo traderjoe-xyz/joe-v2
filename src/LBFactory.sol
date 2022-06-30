@@ -53,9 +53,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
     mapping(IERC20 => mapping(IERC20 => ILBPair)) private _LBPair;
 
     event PairCreated(
-        IERC20 indexed _tokenX,
-        IERC20 indexed _tokenY,
-        ILBPair pair,
+        IERC20 indexed tokenX,
+        IERC20 indexed tokenY,
+        ILBPair LBPair,
         uint256 pid
     );
 
@@ -64,13 +64,13 @@ contract LBFactory is PendingOwnable, ILBFactory {
     event PackedFeeParametersSet(
         address sender,
         ILBPair indexed LBPair,
-        uint168 _maxAccumulator,
-        uint16 _filterPeriod,
-        uint16 _decayPeriod,
-        uint16 _binStep,
-        uint16 _baseFactor,
-        uint16 _protocolShare,
-        uint8 _variableFeesDisabled
+        uint168 maxAccumulator,
+        uint16 filterPeriod,
+        uint16 decayPeriod,
+        uint16 binStep,
+        uint16 baseFactor,
+        uint16 protocolShare,
+        uint8 variableFeesDisabled
     );
 
     event FactoryLocked(bool unlocked);
@@ -96,16 +96,16 @@ contract LBFactory is PendingOwnable, ILBFactory {
     }
 
     /// @notice View function to return the number of LBPairs created
-    /// @return The number of pair
+    /// @return The number of LBPair
     function allPairsLength() external view override returns (uint256) {
         return allLBPairs.length;
     }
 
-    /// @notice Returns the address of the pair if it exists,
+    /// @notice Returns the address of the LBPair if it exists,
     /// if not, then the address 0 is returned. The order doesn't matter
     /// @param _tokenX The address of the first token
     /// @param _tokenY The address of the second token
-    /// @return pair The address of the pair
+    /// @return LBPair The address of the LBPair
     function getLBPair(IERC20 _tokenX, IERC20 _tokenY)
         external
         view
@@ -115,7 +115,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         return _LBPair[_tokenX][_tokenY];
     }
 
-    /// @notice Create a liquidity bin pair for _tokenX and _tokenY
+    /// @notice Create a liquidity bin LBPair for _tokenX and _tokenY
     /// @param _tokenX The address of the first token
     /// @param _tokenY The address of the second token
     /// @param _maxAccumulator The max value of the accumulator
@@ -124,7 +124,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _binStep The bin step in basis point, used to calculate log(1 + binStep)
     /// @param _baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
     /// @param _protocolShare The share of the fees received by the protocol
-    /// @return pair The address of the newly created pair
+    /// @return LBPair The address of the newly created LBPair
     function createLBPair(
         IERC20 _tokenX,
         IERC20 _tokenY,
@@ -134,7 +134,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 _binStep,
         uint16 _baseFactor,
         uint16 _protocolShare
-    ) external override onlyOwnerIfLocked returns (ILBPair pair) {
+    ) external override onlyOwnerIfLocked returns (ILBPair LBPair) {
         if (_tokenX == _tokenY) revert LBFactory__IdenticalAddresses(_tokenX);
         if (address(_tokenX) == address(0) || address(_tokenY) == address(0))
             revert LBFactory__ZeroAddress();
@@ -152,19 +152,19 @@ contract LBFactory is PendingOwnable, ILBFactory {
             0
         );
 
-        pair = factoryHelper.createLBPair(
+        LBPair = factoryHelper.createLBPair(
             _tokenX,
             _tokenY,
             keccak256(abi.encode(_tokenX, _tokenY)),
             _packedFeeParameters
         );
 
-        _LBPair[_tokenX][_tokenY] = pair;
-        _LBPair[_tokenY][_tokenX] = pair;
+        _LBPair[_tokenX][_tokenY] = LBPair;
+        _LBPair[_tokenY][_tokenX] = LBPair;
 
-        allLBPairs.push(pair);
+        allLBPairs.push(LBPair);
 
-        emit PairCreated(_tokenX, _tokenY, pair, allLBPairs.length - 1);
+        emit PairCreated(_tokenX, _tokenY, LBPair, allLBPairs.length - 1);
     }
 
     /// @notice Function to set the recipient of the fees. This address needs to be able to receive ERC20s.
@@ -186,7 +186,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         emit FactoryLocked(_locked);
     }
 
-    /// @notice Function to set the fee parameter of a pair
+    /// @notice Function to set the fee parameter of a LBPair
     /// @param _tokenX The address of the first token
     /// @param _tokenY The address of the second token
     /// @param _maxAccumulator The max value of the accumulator
@@ -243,7 +243,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         emit FeeRecipientChanged(oldFeeRecipient, _feeRecipient);
     }
 
-    /// @notice Internal function to set the fee parameter of a pair
+    /// @notice Internal function to set the fee parameter of a LBPair
     /// @param _maxAccumulator The max value of the accumulator
     /// @param _filterPeriod The period where the accumulator value is untouched, prevent spam
     /// @param _decayPeriod The period where the accumulator value is halved

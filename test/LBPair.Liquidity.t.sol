@@ -9,6 +9,7 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         token18D = new ERC20MockDecimals(18);
 
         factory = new LBFactory(DEV);
+        new LBFactoryHelper(factory);
         router = new LBRouter(ILBFactory(DEV), IWAVAX(DEV));
 
         pair = createLBPairDefaultFees(token6D, token18D);
@@ -39,13 +40,11 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
             ILBFactory(DEV),
             token6D,
             token18D,
-            DEFAULT_LOG2_VALUE,
             _packedFeeParameters
         );
         assertEq(address(LBPair.factory()), DEV);
         assertEq(address(LBPair.tokenX()), address(token6D));
         assertEq(address(LBPair.tokenY()), address(token18D));
-        assertEq(LBPair.log2Value(), DEFAULT_LOG2_VALUE);
 
         FeeHelper.FeeParameters memory feeParameters = LBPair.feeParameters();
         assertEq(feeParameters.accumulator, 0);

@@ -9,6 +9,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         token18D = new ERC20MockDecimals(18);
 
         factory = new LBFactory(DEV);
+        new LBFactoryHelper(factory);
         router = new LBRouter(ILBFactory(DEV), IWAVAX(DEV));
 
         pair = createLBPairDefaultFees(token6D, token18D);

@@ -10,6 +10,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         token18D = new ERC20MockDecimals(18);
 
         factory = new LBFactory(DEV);
+        new LBFactoryHelper(factory);
     }
 
     function testConstructor() public {
@@ -25,7 +26,6 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(address(pair.factory()), address(factory));
         assertEq(address(pair.tokenX()), address(token6D));
         assertEq(address(pair.tokenY()), address(token12D));
-        assertEq(pair.log2Value(), DEFAULT_LOG2_VALUE);
 
         FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();
         assertEq(feeParameters.accumulator, 0);
@@ -45,7 +45,6 @@ contract LiquidityBinFactoryTest is TestHelper {
         factoryHelper.createLBPair(
             token6D,
             token12D,
-            DEFAULT_LOG2_VALUE,
             keccak256(abi.encode(token6D, token12D)),
             bytes32(
                 abi.encodePacked(

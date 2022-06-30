@@ -22,9 +22,6 @@ abstract contract TestHelper is Test {
     uint256 internal constant PRICE_PRECISION = 1e36;
     uint256 internal constant BASIS_POINT_MAX = 10_000;
 
-    int256 internal constant DEFAULT_LOG2_VALUE =
-        int256(0xB19A9E77AF6827457B6619208C48);
-
     uint168 internal constant DEFAULT_MAX_ACCUMULATOR = 5_000;
     uint16 internal constant DEFAULT_FILTER_PERIOD = 50;
     uint16 internal constant DEFAULT_DECAY_PERIOD = 100;
@@ -61,11 +58,11 @@ abstract contract TestHelper is Test {
     LBPair internal pair;
 
     function getPriceFromId(uint24 _id) internal pure returns (uint256 price) {
-        price = BinHelper.getPriceFromId(_id, DEFAULT_LOG2_VALUE);
+        price = BinHelper.getPriceFromId(_id, DEFAULT_BIN_STEP);
     }
 
     function getIdFromPrice(uint256 _price) internal pure returns (uint24 id) {
-        id = BinHelper.getIdFromPrice(_price, DEFAULT_LOG2_VALUE);
+        id = BinHelper.getIdFromPrice(_price, DEFAULT_BIN_STEP);
     }
 
     function createLBPairDefaultFees(IERC20 _tokenX, IERC20 _tokenY)

@@ -63,7 +63,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     event PackedFeeParametersSet(
         address sender,
-        ILBPair indexed lbPair,
+        ILBPair indexed LBPair,
         uint168 _maxAccumulator,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
@@ -87,6 +87,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
         _setFeeRecipient(_feeRecipient);
     }
 
+    /// @notice Set the factory helper address
+    /// @dev Needs to be called by the factory helper
     function setFactoryHelper() external override {
         if (address(factoryHelper) != address(0))
             revert LBFactory__FactoryHelperAlreadyInitialized();
@@ -202,9 +204,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 _protocolShare,
         uint8 _variableFeesDisabled
     ) external override onlyOwner {
-        ILBPair _lbPair = _LBPair[_tokenX][_tokenY];
+        ILBPair _LBPair = _LBPair[_tokenX][_tokenY];
 
-        FeeHelper.FeeParameters memory _fp = _lbPair.feeParameters();
+        FeeHelper.FeeParameters memory _fp = _LBPair.feeParameters();
 
         bytes32 _packedFeeParameters = _getPackedFeeParameters(
             _maxAccumulator,
@@ -216,11 +218,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _variableFeesDisabled
         );
 
-        _lbPair.setFeesParameters(_packedFeeParameters);
+        _LBPair.setFeesParameters(_packedFeeParameters);
 
         emit PackedFeeParametersSet(
             msg.sender,
-            _lbPair,
+            _LBPair,
             _maxAccumulator,
             _filterPeriod,
             _decayPeriod,

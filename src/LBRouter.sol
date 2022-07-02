@@ -122,14 +122,8 @@ contract LBRouter is ILBRouter {
                 _amountOutOfBin = _amountOut > _reserve ? _reserve : _amountOut;
 
                 uint256 _amountInToBin = _swapForY
-                    ? Constants.PRICE_PRECISION.mulDivRoundUp(
-                        _amountOutOfBin,
-                        _price
-                    )
-                    : _price.mulDivRoundUp(
-                        _amountOutOfBin,
-                        Constants.PRICE_PRECISION
-                    );
+                    ? Constants.SCALE.mulDivRoundUp(_amountOutOfBin, _price)
+                    : _price.mulDivRoundUp(_amountOutOfBin, Constants.SCALE);
 
                 _amountInWithFees =
                     _amountInToBin +

@@ -60,7 +60,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         uint256[] memory _liquidities = new uint256[](2);
         _liquidities[0] = 0;
-        _liquidities[1] = (price * tokenAmount) / PRICE_PRECISION;
+        _liquidities[1] = (price * tokenAmount) / SCALE;
 
         pair.mint(_ids, _liquidities, DEV);
 
@@ -130,7 +130,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         uint256[] memory _liquidities = new uint256[](2);
         _liquidities[0] = 0;
-        _liquidities[1] = (price * tokenAmount) / PRICE_PRECISION;
+        _liquidities[1] = (price * tokenAmount) / SCALE;
 
         pair.mint(_ids, _liquidities, DEV);
 

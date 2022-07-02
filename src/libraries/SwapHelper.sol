@@ -49,11 +49,11 @@ library SwapHelper {
                 _reserve = bin.reserveX;
                 _maxAmountInToBin = _price.mulDivRoundUp(
                     _reserve,
-                    Constants.PRICE_PRECISION
+                    Constants.SCALE
                 );
             } else {
                 _reserve = bin.reserveY;
-                _maxAmountInToBin = Constants.PRICE_PRECISION.mulDivRoundUp(
+                _maxAmountInToBin = Constants.SCALE.mulDivRoundUp(
                     _reserve,
                     _price
                 );
@@ -105,7 +105,7 @@ library SwapHelper {
             pair.feesY.protocol += fees.protocol;
 
             bin.accTokenYPerShare +=
-                ((fees.total - fees.protocol) * Constants.PRICE_PRECISION) /
+                ((fees.total - fees.protocol) * Constants.SCALE) /
                 totalSupply;
 
             bin.reserveY += uint112(amountInToBin);
@@ -120,7 +120,7 @@ library SwapHelper {
             pair.feesX.protocol += fees.protocol;
 
             bin.accTokenXPerShare +=
-                ((fees.total - fees.protocol) * Constants.PRICE_PRECISION) /
+                ((fees.total - fees.protocol) * Constants.SCALE) /
                 totalSupply;
 
             bin.reserveX += uint112(amountInToBin);

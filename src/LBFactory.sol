@@ -118,6 +118,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @notice Create a liquidity bin LBPair for _tokenX and _tokenY
     /// @param _tokenX The address of the first token
     /// @param _tokenY The address of the second token
+    /// @param _id The active id of the pair
     /// @param _maxAccumulator The max value of the accumulator
     /// @param _filterPeriod The period where the accumulator value is untouched, prevent spam
     /// @param _decayPeriod The period where the accumulator value is halved
@@ -128,6 +129,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     function createLBPair(
         IERC20 _tokenX,
         IERC20 _tokenY,
+        uint256 _id,
         uint168 _maxAccumulator,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
@@ -156,6 +158,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _tokenX,
             _tokenY,
             keccak256(abi.encode(_tokenX, _tokenY)),
+            _id,
             _packedFeeParameters
         );
 

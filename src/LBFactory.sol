@@ -50,7 +50,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     bool public override unlocked;
 
     ILBPair[] public override allLBPairs;
-    mapping(IERC20 => mapping(IERC20 => ILBPair)) private _LBPair;
+    mapping(IERC20 => mapping(IERC20 => ILBPair)) private _LBPairs;
 
     event PairCreated(
         IERC20 indexed tokenX,
@@ -105,14 +105,14 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// if not, then the address 0 is returned. The order doesn't matter
     /// @param _tokenX The address of the first token
     /// @param _tokenY The address of the second token
-    /// @return LBPair The address of the LBPair
+    /// @return The address of the LBPair
     function getLBPair(IERC20 _tokenX, IERC20 _tokenY)
         external
         view
         override
         returns (ILBPair)
     {
-        return _LBPair[_tokenX][_tokenY];
+        return _LBPairs[_tokenX][_tokenY];
     }
 
     /// @notice Create a liquidity bin LBPair for _tokenX and _tokenY
@@ -124,7 +124,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _binStep The bin step in basis point, used to calculate log(1 + binStep)
     /// @param _baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
     /// @param _protocolShare The share of the fees received by the protocol
-    /// @return LBPair The address of the newly created LBPair
+    /// @return _LBPair The address of the newly created LBPair
     function createLBPair(
         IERC20 _tokenX,
         IERC20 _tokenY,
@@ -134,12 +134,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 _binStep,
         uint16 _baseFactor,
         uint16 _protocolShare
-    ) external override onlyOwnerIfLocked returns (ILBPair LBPair) {
+    ) external override onlyOwnerIfLocked returns (ILBPair _LBPair) {
         if (_tokenX == _tokenY) revert LBFactory__IdenticalAddresses(_tokenX);
         if (address(_tokenX) == address(0) || address(_tokenY) == address(0))
             revert LBFactory__ZeroAddress();
         // single check is sufficient
-        if (address(_LBPair[_tokenX][_tokenY]) != address(0))
+        if (address(_LBPairs[_tokenX][_tokenY]) != address(0))
             revert LBFactory__LBPairAlreadyExists(_tokenX, _tokenY);
 
         bytes32 _packedFeeParameters = _getPackedFeeParameters(
@@ -152,19 +152,19 @@ contract LBFactory is PendingOwnable, ILBFactory {
             0
         );
 
-        LBPair = factoryHelper.createLBPair(
+        _LBPair = factoryHelper.createLBPair(
             _tokenX,
             _tokenY,
             keccak256(abi.encode(_tokenX, _tokenY)),
             _packedFeeParameters
         );
 
-        _LBPair[_tokenX][_tokenY] = LBPair;
-        _LBPair[_tokenY][_tokenX] = LBPair;
+        _LBPairs[_tokenX][_tokenY] = _LBPair;
+        _LBPairs[_tokenY][_tokenX] = _LBPair;
 
-        allLBPairs.push(LBPair);
+        allLBPairs.push(_LBPair);
 
-        emit PairCreated(_tokenX, _tokenY, LBPair, allLBPairs.length - 1);
+        emit PairCreated(_tokenX, _tokenY, _LBPair, allLBPairs.length - 1);
     }
 
     /// @notice Function to set the recipient of the fees. This address needs to be able to receive ERC20s.
@@ -204,7 +204,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 _protocolShare,
         uint8 _variableFeesDisabled
     ) external override onlyOwner {
-        ILBPair _LBPair = _LBPair[_tokenX][_tokenY];
+        ILBPair _LBPair = _LBPairs[_tokenX][_tokenY];
 
         FeeHelper.FeeParameters memory _fp = _LBPair.feeParameters();
 

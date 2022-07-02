@@ -33,14 +33,25 @@ interface ILBPair is IERC165 {
         FeeHelper.FeesDistribution feesY;
     }
 
+    /// @dev Structure to store the debts of users
+    /// - debtX: The tokenX's debt
+    /// - debtY: The tokenY's debt
     struct Debts {
         uint256 debtX;
         uint256 debtY;
     }
 
+    /// Structure to store 2 amounts of tokens as uint128:
+    /// - tokenX: The amount of token X
+    /// - tokenY: The amount of token Y
     struct Amounts {
         uint128 tokenX;
         uint128 tokenY;
+    }
+
+    struct Distribution {
+        int256[] deltaIds;
+        uint128[] share;
     }
 
     function tokenX() external view returns (IERC20);
@@ -81,10 +92,11 @@ interface ILBPair is IERC165 {
     ) external;
 
     function mint(
-        uint256[] memory _ids,
-        uint256[] memory _Ls,
+        int256[] memory _deltaIds,
+        uint256[] memory _distributionX,
+        uint256[] memory _distributionY,
         address _to
-    ) external;
+    ) external returns (uint256, uint256);
 
     function burn(
         uint256[] memory ids,

@@ -19,7 +19,7 @@ abstract contract TestHelper is Test {
     using Math512Bits for uint256;
 
     uint24 internal constant ID_ONE = 2**23;
-    uint256 internal constant PRICE_PRECISION = 1e36;
+    uint256 internal constant SCALE = 1e36;
     uint256 internal constant BASIS_POINT_MAX = 10_000;
 
     uint168 internal constant DEFAULT_MAX_ACCUMULATOR = 5_000;
@@ -141,7 +141,7 @@ abstract contract TestHelper is Test {
         uint256 binLiquidity = _amountYIn / _numberBins;
         _liquidities[0] = binLiquidity;
         amountXIn += binLiquidity.mulDivRoundUp(
-            PRICE_PRECISION,
+            SCALE,
             2 * getPriceFromId(_startId)
         );
 
@@ -149,7 +149,7 @@ abstract contract TestHelper is Test {
             _liquidities[2 * i + 1] = binLiquidity;
             _liquidities[2 * i + 2] = binLiquidity;
             amountXIn += binLiquidity.mulDivRoundUp(
-                PRICE_PRECISION,
+                SCALE,
                 getPriceFromId(_startId + i * (1 + _gap) + 1)
             );
         }

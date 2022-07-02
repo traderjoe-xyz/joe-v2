@@ -33,11 +33,11 @@ library MathS40x36 {
         unchecked {
             // This works because log2(x) = -log2(1/x).
             int256 sign;
-            if (x >= Constants.S_PRICE_PRECISION) {
+            if (x >= Constants.S_SCALE) {
                 sign = 1;
             } else {
                 sign = -1;
-                // Do the fixed-point inversion inline to save gas. The numerator is Constants.S_PRICE_PRECISION * Constants.S_PRICE_PRECISION.
+                // Do the fixed-point inversion inline to save gas. The numerator is Constants.S_SCALE * Constants.S_SCALE.
                 assembly {
                     x := div(
                         1000000000000000000000000000000000000000000000000000000000000000000000000,
@@ -47,37 +47,36 @@ library MathS40x36 {
             }
 
             // Calculate the integer part of the logarithm and add it to the result and finally calculate y = x * 2^(-n).
-            uint256 n = uint256(x / Constants.S_PRICE_PRECISION)
-                .mostSignificantBit();
+            uint256 n = uint256(x / Constants.S_SCALE).mostSignificantBit();
 
             // The integer part of the logarithm as a signed 40.36-decimal fixed-point number. The operation can't overflow
-            // because n is maximum 255, Constants.S_PRICE_PRECISION is 1e36 and sign is either 1 or -1.
-            result = int256(n) * Constants.S_PRICE_PRECISION;
+            // because n is maximum 255, Constants.S_SCALE is 1e36 and sign is either 1 or -1.
+            result = int256(n) * Constants.S_SCALE;
 
             // This is y = x * 2^(-n).
             int256 y = x >> n;
 
             // If y = 1, the fractional part is zero.
-            if (y == Constants.S_PRICE_PRECISION) {
+            if (y == Constants.S_SCALE) {
                 return result * sign;
             }
 
             // Calculate the fractional part via the iterative approximation.
             // The "delta >>= 1" part is equivalent to "delta /= 2", but shifting bits is faster.
             for (
-                int256 delta = int256(Constants.S_HALF_PRICE_PRECISION);
+                int256 delta = int256(Constants.S_HALF_SCALE);
                 delta > 0;
                 delta >>= 1
             ) {
                 y = int256(
                     uint256(y).mulDivRoundDown(
                         uint256(y),
-                        uint256(Constants.S_PRICE_PRECISION)
+                        uint256(Constants.S_SCALE)
                     )
                 );
 
                 // Is y^2 > 2 and so in the range [2,4)?
-                if (y >= 2 * Constants.S_PRICE_PRECISION) {
+                if (y >= 2 * Constants.S_SCALE) {
                     // Add the 2^(-m) factor to the logarithm.
                     result += delta;
 

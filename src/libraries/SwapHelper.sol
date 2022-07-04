@@ -41,7 +41,10 @@ library SwapHelper {
         )
     {
         unchecked {
-            uint256 _price = BinHelper.getPriceFromId(pair.id, fp.binStep);
+            uint256 _price = BinHelper.getPriceFromId(
+                pair.activeId,
+                fp.binStep
+            );
 
             uint256 _reserve;
             uint256 _maxAmountInToBin;
@@ -59,9 +62,9 @@ library SwapHelper {
                 );
             }
 
-            uint256 _deltaId = startId > pair.id
-                ? startId - pair.id
-                : pair.id - startId;
+            uint256 _deltaId = startId > pair.activeId
+                ? startId - pair.activeId
+                : pair.activeId - startId;
 
             fees = fp.getFeesDistribution(fp.getFees(_reserve, _deltaId));
 

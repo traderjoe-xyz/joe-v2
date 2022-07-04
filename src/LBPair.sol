@@ -23,8 +23,8 @@ error LBPair__InsufficientAmounts();
 error LBPair__WrongAmounts(uint256 amountXOut, uint256 amountYOut);
 error LBPair__BrokenSwapSafetyCheck();
 error LBPair__BrokenMintSafetyCheck(
-    uint256 _totalDistributionX,
-    uint256 _totalDistributionY
+    uint256 totalDistributionX,
+    uint256 totalDistributionY
 );
 error LBPair__InsufficientLiquidityMinted(uint256 id);
 error LBPair__InsufficientLiquidityBurned(uint256 id);
@@ -76,8 +76,12 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     event Mint(
         address indexed sender,
         address indexed recipient,
+        uint256 indexed activeId,
+        uint256[] ids,
         uint256[] distributionX,
-        uint256[] distributionY
+        uint256[] distributionY,
+        uint256 amountX,
+        uint256 amountY
     );
 
     event Burn(
@@ -121,13 +125,13 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     PairInformation private _pairInformation;
     FeeHelper.FeeParameters private _feeParameters;
     /// @dev the reserves of tokens for every bin. This is the amount
-    /// of tokenY if `id < _pairInformation.id`; of tokenX if `id > _pairInformation.id`
-    /// and a mix of both if `id == _pairInformation.id`
+    /// of tokenY if `id < _pairInformation.activeId`; of tokenX if `id > _pairInformation.activeId`
+    /// and a mix of both if `id == _pairInformation.activeId`
     mapping(uint256 => Bin) private _bins;
     /// @dev Tree to find bins with non zero liquidity
     mapping(uint256 => uint256)[3] private _tree;
     /// @notice mappings from account to user's unclaimed fees.
-    mapping(address => Amounts) private _unclaimedFees;
+    mapping(address => UnclaimedFees) private _unclaimedFees;
     /// @notice mappings from account to id to user's accruedDebt.
     mapping(address => mapping(uint256 => Debts)) private _accruedDebts;
 
@@ -152,7 +156,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         factory = _factory;
         tokenX = _tokenX;
         tokenY = _tokenY;
-        _pairInformation.id = (_id).safe24();
+        _pairInformation.activeId = (_id).safe24();
 
         _setFeesParameters(_packedFeeParameters);
     }
@@ -215,10 +219,10 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         external
         view
         override
-        returns (Amounts memory)
+        returns (UnclaimedFees memory)
     {
         uint256 _len = _ids.length;
-        Amounts memory _fees = _unclaimedFees[_account];
+        UnclaimedFees memory _fees = _unclaimedFees[_account];
 
         uint256 _lastId;
         for (uint256 i; i < _len; ++i) {
@@ -260,14 +264,14 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         FeeHelper.FeeParameters memory _fp = _feeParameters;
         _fp.updateAccumulatorValue();
-        uint256 _startId = _pair.id;
+        uint256 _startId = _pair.activeId;
 
         uint256 _amountOut;
         // Performs the actual swap, bin per bin
         // It uses the findFirstBin function to make sure the bin we're currently looking at
         // has liquidity in it.
         while (true) {
-            Bin memory _bin = _bins[_pair.id];
+            Bin memory _bin = _bins[_pair.activeId];
             if (_bin.reserveX != 0 || _bin.reserveY != 0) {
                 (
                     uint256 _amountInToBin,
@@ -282,13 +286,13 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                     );
 
                 if (_amountInToBin > type(uint112).max)
-                    revert LBPair__BinReserveOverflows(_pair.id);
+                    revert LBPair__BinReserveOverflows(_pair.activeId);
 
                 _pair.update(
                     _bin,
                     _fees,
                     _sentTokenY,
-                    totalSupply(_pair.id),
+                    totalSupply(_pair.activeId),
                     _amountInToBin,
                     _amountOutOfBin
                 );
@@ -296,11 +300,13 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 _amountIn -= _amountInToBin + _fees.total;
                 _amountOut += _amountOutOfBin;
 
-                _bins[_pair.id] = _bin;
+                _bins[_pair.activeId] = _bin;
             }
 
             if (_amountIn != 0) {
-                _pair.id = uint24(_tree.findFirstBin(_pair.id, !_sentTokenY));
+                _pair.activeId = uint24(
+                    _tree.findFirstBin(_pair.activeId, !_sentTokenY)
+                );
             } else {
                 break;
             }
@@ -310,17 +316,19 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         unchecked {
             _feeParameters.updateStoredFeeParameters(
                 _fp.accumulator,
-                _startId > _pair.id ? _startId - _pair.id : _pair.id - _startId
+                _startId > _pair.activeId
+                    ? _startId - _pair.activeId
+                    : _pair.activeId - _startId
             );
         }
         if (_amountOut == 0) revert LBPair__BrokenSwapSafetyCheck(); // Safety check
 
         if (_sentTokenY) {
             tokenX.safeTransfer(_to, _amountOut);
-            emit Swap(msg.sender, _to, _pair.id, _amountOut, 0);
+            emit Swap(msg.sender, _to, _pair.activeId, _amountOut, 0);
         } else {
             tokenY.safeTransfer(_to, _amountOut);
-            emit Swap(msg.sender, _to, _pair.id, 0, _amountOut);
+            emit Swap(msg.sender, _to, _pair.activeId, 0, _amountOut);
         }
     }
 
@@ -361,7 +369,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         _flashLoanHelper(_pairInformation.feesX, _feesX, tokenX, _reserveX);
         _flashLoanHelper(_pairInformation.feesY, _feesY, tokenY, _reserveY);
 
-        uint256 _id = _pairInformation.id;
+        uint256 _id = _pairInformation.activeId;
         uint256 _totalSupply = totalSupply(_id);
         _bins[_id].accTokenXPerShare +=
             ((_feesX.total - _feesX.protocol) * Constants.SCALE) /
@@ -382,17 +390,19 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     }
 
     /// @notice Performs a low level add, this needs to be called from a contract which performs important safety checks.
-    /// @param _deltaIds The list of delta ids where user will add liquidity to. It's the result of `activeId - depositedId`
+    /// @param _ids The list of ids to add liquidity
     /// @param _distributionX The distribution of tokenX with sum(_distributionX) = 100e36 (100%) or 0 (0%)
     /// @param _distributionY The distribution of tokenY with sum(_distributionY) = 100e36 (100%) or 0 (0%)
     /// @param _to The address of the recipient
+    /// @return The amount of token X that was added to the pair
+    /// @return The amount of token Y that was added to the pair
     function mint(
-        int256[] memory _deltaIds,
+        uint256[] memory _ids,
         uint256[] memory _distributionX,
         uint256[] memory _distributionY,
         address _to
-    ) external override nonReentrant {
-        uint256 _len = _deltaIds.length;
+    ) external override nonReentrant returns (uint256, uint256) {
+        uint256 _len = _ids.length;
         if (
             _len == 0 ||
             _len != _distributionX.length ||
@@ -403,103 +413,138 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         uint256 _binStep = _feeParameters.binStep;
 
-        uint128 _amountXIn = tokenX
+        MintInfo memory _mintInfo;
+
+        _mintInfo.amountXIn = tokenX
             .received(_pair.reserveX, _pair.feesX.total)
             .safe128();
-        uint128 _amountYIn = tokenY
-            .received(_pair.reserveY, _pair.feesY.total)
+        _mintInfo.amountYIn = tokenY
+            .received(_pair.reserveX, _pair.feesY.total)
             .safe128();
-
-        uint256 _totalDistributionX;
-        uint256 _totalDistributionY;
-
-        uint256 _id;
-        int256 _deltaId;
-        uint256 _amount;
 
         unchecked {
             for (uint256 i; i < _len; ++i) {
-                _deltaId = _deltaIds[i];
-                {
-                    int256 id_ = int256(uint256(_pair.id)) + _deltaId;
-                    if (id_ < 0 || id_ > int256(uint256(type(uint24).max)))
-                        revert LBPair__IdOverflows(i);
-                    _id = uint256(id_);
-                }
-                Bin memory _bin = _bins[_id];
+                _mintInfo.id = _ids[i];
+                if (_mintInfo.id > uint256(type(uint24).max))
+                    revert LBPair__IdOverflows(i);
+                Bin memory _bin = _bins[_mintInfo.id];
 
                 if (_bin.reserveX != 0 && _bin.reserveY != 0) {
                     // add 1 at the right indices if the _pairInformation was empty
-                    uint256 _idDepth2 = _id / 256;
-                    uint256 _idDepth1 = _id / 65_536;
+                    uint256 _idDepth2 = _mintInfo.id / 256;
+                    uint256 _idDepth1 = _mintInfo.id / 65_536;
 
-                    _tree[2][_idDepth2] |= 1 << (_id % 256);
+                    _tree[2][_idDepth2] |= 1 << (_mintInfo.id % 256);
                     _tree[1][_idDepth1] |= 1 << (_idDepth2 % 256);
                     _tree[0][0] |= 1 << _idDepth1;
                 }
 
                 uint256 _liquidity;
 
-                if (_deltaId >= 0) {
+                if (_mintInfo.id >= _pair.activeId) {
                     uint256 _distribution = _distributionX[i];
 
                     if (_distribution > Constants.SCALE)
-                        revert LBPair__DistributionOverflow(_id, _distribution);
+                        revert LBPair__DistributionOverflow(
+                            _mintInfo.id,
+                            _distribution
+                        );
 
                     uint256 _price = BinHelper.getPriceFromId(
-                        uint24(_id),
+                        uint24(_mintInfo.id),
                         _binStep
                     );
 
-                    _amount = (_amountXIn * _distribution) / Constants.SCALE;
+                    _mintInfo.amount =
+                        (_mintInfo.amountXIn * _distribution) /
+                        Constants.SCALE;
                     _liquidity = _price.mulDivRoundDown(
-                        _amount,
+                        _mintInfo.amount,
                         Constants.SCALE
                     );
 
-                    _bin.reserveX = (_bin.reserveX + _amount).safe112();
-                    _pair.reserveX += uint136(_amount);
+                    _bin.reserveX = (_bin.reserveX + _mintInfo.amount)
+                        .safe112();
+                    _pair.reserveX += uint136(_mintInfo.amount);
 
-                    _totalDistributionX += _distribution;
+                    _mintInfo.totalDistributionX += _distribution;
+                    _mintInfo.amountXAddedToPair += _mintInfo.amount;
                 }
 
-                if (_deltaId <= 0) {
+                if (_mintInfo.id <= _pair.activeId) {
                     uint256 _distribution = _distributionY[i];
 
                     if (_distribution > Constants.SCALE)
-                        revert LBPair__DistributionOverflow(_id, _distribution);
+                        revert LBPair__DistributionOverflow(
+                            _mintInfo.id,
+                            _distribution
+                        );
 
-                    _amount = (_amountYIn * _distribution) / Constants.SCALE;
-                    _liquidity = _liquidity + _amount;
+                    _mintInfo.amount =
+                        (_mintInfo.amountYIn * _distribution) /
+                        Constants.SCALE;
+                    _liquidity = _liquidity + _mintInfo.amount;
 
-                    _bin.reserveY = (_bin.reserveY + _amount).safe112();
-                    _pair.reserveY += uint136(_amount);
+                    _bin.reserveY = (_bin.reserveY + _mintInfo.amount)
+                        .safe112();
+                    _pair.reserveY += uint136(_mintInfo.amount);
 
-                    _totalDistributionY += _distribution;
+                    _mintInfo.totalDistributionY += _distribution;
+                    _mintInfo.amountYAddedToPair += _mintInfo.amount;
                 }
 
                 if (_liquidity == 0)
-                    revert LBPair__InsufficientLiquidityMinted(_id);
+                    revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
 
-                _bins[_id] = _bin;
-                _mint(_to, _id, _liquidity);
+                _bins[_mintInfo.id] = _bin;
+                _mint(_to, _mintInfo.id, _liquidity);
             }
         }
 
         if (
-            _totalDistributionX > 100 * Constants.SCALE ||
-            _totalDistributionY > 100 * Constants.SCALE
+            _mintInfo.totalDistributionX > 100 * Constants.SCALE ||
+            _mintInfo.totalDistributionY > 100 * Constants.SCALE
         )
             revert LBPair__BrokenMintSafetyCheck(
-                _totalDistributionX,
-                _totalDistributionY
+                _mintInfo.totalDistributionX,
+                _mintInfo.totalDistributionY
             );
+
+        // If user sent too much tokens, we add them to the claimable fees so they're not lost.
+        unchecked {
+            if (
+                _mintInfo.amountXIn > _mintInfo.amountXAddedToPair ||
+                _mintInfo.amountYIn > _mintInfo.amountYAddedToPair
+            ) {
+                UnclaimedFees memory _fees = _unclaimedFees[_to];
+
+                uint256 _excessX = (_mintInfo.amountXIn -
+                    _mintInfo.amountXAddedToPair);
+                uint256 _excessY = (_mintInfo.amountYIn -
+                    _mintInfo.amountYAddedToPair);
+
+                _pair.feesX.total = (_pair.feesX.total + _excessX).safe128();
+                _pair.feesY.total = (_pair.feesX.total + _excessX).safe128();
+
+                _fees.tokenX = uint128(_fees.tokenX + _excessX);
+                _fees.tokenY = uint128(_fees.tokenY + _excessY);
+            }
+        }
 
         _pairInformation = _pair;
 
-        emit Mint(msg.sender, _to, _distributionX, _distributionY);
+        emit Mint(
+            msg.sender,
+            _to,
+            _pair.activeId,
+            _ids,
+            _distributionX,
+            _distributionY,
+            _mintInfo.amountXAddedToPair,
+            _mintInfo.amountYAddedToPair
+        );
 
-        return (_amountXIn, _amountYIn);
+        return (_mintInfo.amountXAddedToPair, _mintInfo.amountYAddedToPair);
     }
 
     /// @notice Performs a low level remove, this needs to be called from a contract which performs important safety checks
@@ -531,7 +576,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
                 uint256 totalSupply = totalSupply(_id);
 
-                if (_id <= _pair.id) {
+                if (_id <= _pair.activeId) {
                     uint256 _amountY = _amountToBurn.mulDivRoundDown(
                         _bin.reserveY,
                         totalSupply
@@ -544,7 +589,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                     _bin.reserveY -= uint112(_amountY);
                     _pair.reserveY -= uint136(_amountY);
                 }
-                if (_id >= _pair.id) {
+                if (_id >= _pair.activeId) {
                     uint256 _amountX = _amountToBurn.mulDivRoundDown(
                         _bin.reserveX,
                         totalSupply
@@ -593,7 +638,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     {
         uint256 _len = _ids.length;
 
-        Amounts memory _fees = _unclaimedFees[_account];
+        UnclaimedFees memory _fees = _unclaimedFees[_account];
         delete _unclaimedFees[_account];
 
         for (uint256 i; i < _len; ++i) {
@@ -698,7 +743,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         Bin memory _bin = _bins[_id];
 
         if (_from != address(0) && _from != address(this)) {
-            Amounts memory _feesFrom = _unclaimedFees[_from];
+            UnclaimedFees memory _feesFrom = _unclaimedFees[_from];
             uint256 _balanceFrom = balanceOf(_from, _id);
 
             _collectFees(_feesFrom, _bin, _from, _id, _balanceFrom);
@@ -708,7 +753,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         }
 
         if (_to != address(0) && _to != address(this) && _from != _to) {
-            Amounts memory _feesTo = _unclaimedFees[_to];
+            UnclaimedFees memory _feesTo = _unclaimedFees[_to];
 
             uint256 _balanceTo = balanceOf(_to, _id);
 
@@ -728,7 +773,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @param _id The id where the user is collecting fees
     /// @param _balance The previous balance of the user
     function _collectFees(
-        Amounts memory _fees,
+        UnclaimedFees memory _fees,
         Bin memory _bin,
         address _account,
         uint256 _id,

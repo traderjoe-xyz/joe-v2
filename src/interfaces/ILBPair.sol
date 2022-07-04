@@ -20,15 +20,15 @@ interface ILBPair is IERC165 {
     }
 
     /// @dev Structure to store the information of the pair such as:
+    /// - activeId: The current id used for swaps, this is also linked with the price
     /// - reserveX: The sum of amounts of tokenX across all bins
     /// - reserveY: The sum of amounts of tokenY across all bins
-    /// - id: The current id used for swaps, this is also linked with the price
     /// - feesX: The current amount of fees to distribute in tokenX (total, protocol)
     /// - feesY: The current amount of fees to distribute in tokenY (total, protocol)
     struct PairInformation {
+        uint24 activeId;
         uint136 reserveX;
         uint136 reserveY;
-        uint24 id;
         FeeHelper.FeesDistribution feesX;
         FeeHelper.FeesDistribution feesY;
     }
@@ -41,17 +41,23 @@ interface ILBPair is IERC165 {
         uint256 debtY;
     }
 
-    /// Structure to store 2 amounts of tokens as uint128:
-    /// - tokenX: The amount of token X
-    /// - tokenY: The amount of token Y
-    struct Amounts {
+    /// Structure to store fees:
+    /// - tokenX: The amount of fees of token X
+    /// - tokenY: The amount of fees of token Y
+    struct UnclaimedFees {
         uint128 tokenX;
         uint128 tokenY;
     }
 
-    struct Distribution {
-        int256[] deltaIds;
-        uint128[] share;
+    struct MintInfo {
+        uint256 amountXIn;
+        uint256 amountYIn;
+        uint256 amountXAddedToPair;
+        uint256 amountYAddedToPair;
+        uint256 totalDistributionX;
+        uint256 totalDistributionY;
+        uint256 id;
+        uint256 amount;
     }
 
     function tokenX() external view returns (IERC20);
@@ -80,7 +86,7 @@ interface ILBPair is IERC165 {
     function pendingFees(address _account, uint256[] memory _ids)
         external
         view
-        returns (Amounts memory);
+        returns (UnclaimedFees memory);
 
     function swap(bool sentTokenY, address to) external;
 
@@ -92,7 +98,7 @@ interface ILBPair is IERC165 {
     ) external;
 
     function mint(
-        int256[] memory _deltaIds,
+        uint256[] memory _ids,
         uint256[] memory _distributionX,
         uint256[] memory _distributionY,
         address _to

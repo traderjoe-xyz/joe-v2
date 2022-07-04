@@ -52,7 +52,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     ILBPair[] public override allLBPairs;
     mapping(IERC20 => mapping(IERC20 => ILBPair)) private _LBPairs;
 
-    event PairCreated(
+    event LBPairCreated(
         IERC20 indexed tokenX,
         IERC20 indexed tokenY,
         ILBPair LBPair,
@@ -167,7 +167,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         allLBPairs.push(_LBPair);
 
-        emit PairCreated(_tokenX, _tokenY, _LBPair, allLBPairs.length - 1);
+        emit LBPairCreated(_tokenX, _tokenY, _LBPair, allLBPairs.length - 1);
     }
 
     /// @notice Function to set the recipient of the fees. This address needs to be able to receive ERC20s.

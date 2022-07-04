@@ -15,14 +15,31 @@ import "./libraries/Math512Bits.sol";
 import "./libraries/SwapHelper.sol";
 import "./libraries/Constants.sol";
 
-error LBRouter__SenderIsNotWavax();
-error LBRouter__PairIsNotCreated(IERC20 tokenX, IERC20 tokenY);
+error LBRouter__SenderIsNotWAVAX();
+error LBRouter__LBPairNotCreated(IERC20 tokenX, IERC20 tokenY);
 error LBRouter__WrongAmounts(uint256 amount, uint256 reserve);
 error LBRouter__SwapOverflows(uint256 id);
 error LBRouter__BrokenSwapSafetyCheck();
 error LBRouter__NotFactoryOwner();
 error LBRouter__TooMuchTokensIn(uint256 excess);
 error LBRouter__BinReserveOverflows(uint256 id);
+error LBRouter__IdOverflows(uint256 id);
+error LBRouter__LengthsMismatch();
+error LBRouter__IdSlippageCaught(
+    uint256 activeIdDesired,
+    uint256 idSlippage,
+    uint256 activeId
+);
+error LBRouter__AmountSlippageCaught(
+    uint256 amountXMin,
+    uint256 amountYMin,
+    uint256 amountX,
+    uint256 amountY,
+    uint256 amountSlippage
+);
+error LBRouter__IdDesiredOverflows(uint256 idDesired, uint256 idSlippage);
+error LBRouter__FailedToSendAVAX(address recipient, uint256 amount);
+error LBRouter__DeadlineExceeded(uint256 deadline, uint256 currentTimestamp);
 
 contract LBRouter is ILBRouter {
     using SafeERC20 for IERC20;
@@ -43,8 +60,9 @@ contract LBRouter is ILBRouter {
         wavax = _wavax;
     }
 
+    ///@dev Receive function that only accept AVAX from the WAVAX contract
     receive() external payable {
-        if (msg.sender != address(wavax)) revert LBRouter__SenderIsNotWavax(); // only accept AVAX via fallback from the WAVAX contract
+        if (msg.sender != address(wavax)) revert LBRouter__SenderIsNotWAVAX();
     }
 
     /// @notice Returns the approximate id corresponding to the inputted price.
@@ -102,7 +120,7 @@ contract LBRouter is ILBRouter {
 
         FeeHelper.FeeParameters memory _fp = _LBPair.feeParameters();
         _fp.updateAccumulatorValue();
-        uint256 _startId = _pair.id;
+        uint256 _startId = _pair.activeId;
 
         uint256 _amountOutOfBin;
         uint256 _amountInWithFees;
@@ -113,11 +131,14 @@ contract LBRouter is ILBRouter {
         while (true) {
             {
                 (uint256 _reserveX, uint256 _reserveY) = _LBPair.getBin(
-                    _pair.id
+                    _pair.activeId
                 );
                 _reserve = _swapForY ? _reserveY : _reserveX;
             }
-            uint256 _price = BinHelper.getPriceFromId(_pair.id, _fp.binStep);
+            uint256 _price = BinHelper.getPriceFromId(
+                _pair.activeId,
+                _fp.binStep
+            );
             if (_reserve != 0) {
                 _amountOutOfBin = _amountOut > _reserve ? _reserve : _amountOut;
 
@@ -129,19 +150,21 @@ contract LBRouter is ILBRouter {
                     _amountInToBin +
                     _fp.getFees(
                         _amountInToBin,
-                        _startId > _pair.id
-                            ? _startId - _pair.id
-                            : _pair.id - _startId
+                        _startId > _pair.activeId
+                            ? _startId - _pair.activeId
+                            : _pair.activeId - _startId
                     );
 
                 if (_amountInWithFees + _reserve > type(uint112).max)
-                    revert LBRouter__SwapOverflows(_pair.id);
+                    revert LBRouter__SwapOverflows(_pair.activeId);
                 amountIn += _amountInWithFees;
                 _amountOut -= _amountOutOfBin;
             }
 
             if (_amountOut != 0) {
-                _pair.id = uint24(_LBPair.findFirstBin(_pair.id, _swapForY));
+                _pair.activeId = uint24(
+                    _LBPair.findFirstBin(_pair.activeId, _swapForY)
+                );
             } else {
                 break;
             }
@@ -165,7 +188,7 @@ contract LBRouter is ILBRouter {
         _fp.updateAccumulatorValue();
         ILBPair.Bin memory _bin;
 
-        uint256 _startId = _pair.id;
+        uint256 _startId = _pair.activeId;
 
         // Performs the actual swap, bin per bin
         // It uses the findFirstBin function to make sure the bin we're currently looking at
@@ -173,7 +196,7 @@ contract LBRouter is ILBRouter {
         while (true) {
             {
                 (uint256 _reserveX, uint256 _reserveY) = _LBPair.getBin(
-                    _pair.id
+                    _pair.activeId
                 );
                 _bin = ILBPair.Bin(
                     uint112(_reserveX),
@@ -196,14 +219,16 @@ contract LBRouter is ILBRouter {
                     );
 
                 if (_amountInToBin > type(uint112).max)
-                    revert LBRouter__BinReserveOverflows(_pair.id);
+                    revert LBRouter__BinReserveOverflows(_pair.activeId);
 
                 _amountIn -= _amountInToBin + _fees.total;
                 _amountOut += _amountOutOfBin;
             }
 
             if (_amountIn != 0) {
-                _pair.id = uint24(_LBPair.findFirstBin(_pair.id, _swapForY));
+                _pair.activeId = uint24(
+                    _LBPair.findFirstBin(_pair.activeId, _swapForY)
+                );
             } else {
                 break;
             }
@@ -211,13 +236,237 @@ contract LBRouter is ILBRouter {
         if (_amountIn != 0) revert LBRouter__TooMuchTokensIn(_amountIn);
     }
 
+    /// @notice Unstuck tokens that are sent to this contract by mistake
+    /// @dev Only callable by the factory owner
+    /// @param _token THe address of the token
+    /// @param _to The address of the user to send back the tokens
+    /// @param _amount The amount to send
     function sweep(
         IERC20 _token,
         address _to,
         uint256 _amount
     ) external onlyFactoryOwner {
-        if (_amount == type(uint256).max)
-            _amount = _token.balanceOf(address(this));
-        _token.safeTransfer(_to, _amount);
+        if (address(_token) == address(0)) {
+            if (_amount == type(uint256).max) _amount = address(this).balance;
+            (bool success, ) = _to.call{value: _amount}("");
+            if (!success) revert LBRouter__FailedToSendAVAX(_to, _amount);
+        } else {
+            if (_amount == type(uint256).max)
+                _amount = _token.balanceOf(address(this));
+            _token.safeTransfer(_to, _amount);
+        }
+    }
+
+    function createLBPair(
+        IERC20 _tokenX,
+        IERC20 _tokenY,
+        uint256 _id,
+        uint168 _maxAccumulator,
+        uint16 _filterPeriod,
+        uint16 _decayPeriod,
+        uint16 _binStep,
+        uint16 _baseFactor,
+        uint16 _protocolShare
+    ) external {
+        factory.createLBPair(
+            _tokenX,
+            _tokenY,
+            _id,
+            _maxAccumulator,
+            _filterPeriod,
+            _decayPeriod,
+            _binStep,
+            _baseFactor,
+            _protocolShare
+        );
+    }
+
+    function addLiquidity(
+        IERC20 _tokenX,
+        IERC20 _tokenY,
+        uint256 _amountXDesired,
+        uint256 _amountYDesired,
+        uint256 _amountSlippage,
+        uint256 _activeIdDesired,
+        uint256 _idSlippage,
+        int256[] memory _deltaIds,
+        uint256[] memory _distributionX,
+        uint256[] memory _distributionY,
+        address _to,
+        uint256 _deadline
+    ) external {
+        _addLiquidity(
+            _tokenX,
+            _tokenY,
+            _amountXDesired,
+            _amountYDesired,
+            _amountSlippage,
+            _activeIdDesired,
+            _idSlippage,
+            _deltaIds,
+            _distributionX,
+            _distributionY,
+            _to,
+            _deadline
+        );
+    }
+
+    function addLiquidityAvax(
+        IERC20 _token,
+        uint256 _amountDesired,
+        uint256 _amountSlippage,
+        uint256 _activeIdDesired,
+        uint256 _idSlippage,
+        int256[] memory _deltaIds,
+        uint256[] memory _distributionAVAX,
+        uint256[] memory _distributionToken,
+        address _to,
+        uint256 _deadline
+    ) external payable {
+        wavax.deposit{value: msg.value}();
+        _addLiquidity(
+            IERC20(wavax),
+            _token,
+            msg.value,
+            _amountDesired,
+            _amountSlippage,
+            _activeIdDesired,
+            _idSlippage,
+            _deltaIds,
+            _distributionAVAX,
+            _distributionToken,
+            _to,
+            _deadline
+        );
+    }
+
+    function _addLiquidity(
+        IERC20 _tokenX,
+        IERC20 _tokenY,
+        uint256 _amountXDesired,
+        uint256 _amountYDesired,
+        uint256 _amountSlippage,
+        uint256 _activeIdDesired,
+        uint256 _idSlippage,
+        int256[] memory _deltaIds,
+        uint256[] memory _distributionX,
+        uint256[] memory _distributionY,
+        address _to,
+        uint256 _deadline
+    ) private {
+        (ILBPair _LBPair, uint256[] memory _ids) = _verifyLiquidityValues(
+            _tokenX,
+            _tokenY,
+            _activeIdDesired,
+            _idSlippage,
+            _deltaIds,
+            _distributionX,
+            _distributionY,
+            _deadline
+        );
+
+        _transferAndAddLiquidity(
+            _tokenX,
+            _tokenY,
+            _LBPair,
+            _amountXDesired,
+            _amountYDesired,
+            _amountSlippage,
+            _ids,
+            _distributionX,
+            _distributionY,
+            _to
+        );
+    }
+
+    function _verifyLiquidityValues(
+        IERC20 _tokenX,
+        IERC20 _tokenY,
+        uint256 _activeIdDesired,
+        uint256 _idSlippage,
+        int256[] memory _deltaIds,
+        uint256[] memory _distributionX,
+        uint256[] memory _distributionY,
+        uint256 _deadline
+    ) private view returns (ILBPair, uint256[] memory) {
+        unchecked {
+            if (block.timestamp > _deadline)
+                revert LBRouter__DeadlineExceeded(_deadline, block.timestamp);
+            if (
+                _deltaIds.length != _distributionX.length &&
+                _deltaIds.length != _distributionY.length
+            ) revert LBRouter__LengthsMismatch();
+
+            ILBPair _LBPair = factory.getLBPair(_tokenX, _tokenY);
+            if (address(_LBPair) == address(0))
+                revert LBRouter__LBPairNotCreated(_tokenX, _tokenY);
+
+            if (
+                _activeIdDesired > type(uint24).max &&
+                _idSlippage > type(uint24).max
+            )
+                revert LBRouter__IdDesiredOverflows(
+                    _activeIdDesired,
+                    _idSlippage
+                );
+
+            uint256 _activeId = _LBPair.pairInformation().activeId;
+            if (
+                _activeIdDesired + _idSlippage < _activeId ||
+                _activeId + _idSlippage < _activeIdDesired
+            )
+                revert LBRouter__IdSlippageCaught(
+                    _activeIdDesired,
+                    _idSlippage,
+                    _activeId
+                );
+
+            uint256[] memory _ids = new uint256[](_deltaIds.length);
+            for (uint256 i; i < _ids.length; ++i) {
+                uint256 _id = uint256(int256(_activeId) + _deltaIds[i]);
+                if (_id > type(uint256).max) revert LBRouter__IdOverflows(_id);
+                _ids[i] = _id;
+            }
+            return (_LBPair, _ids);
+        }
+    }
+
+    function _transferAndAddLiquidity(
+        IERC20 _tokenX,
+        IERC20 _tokenY,
+        ILBPair _LBPair,
+        uint256 _amountXDesired,
+        uint256 _amountYDesired,
+        uint256 _amountSlippage,
+        uint256[] memory _ids,
+        uint256[] memory _distributionX,
+        uint256[] memory _distributionY,
+        address _to
+    ) private {
+        unchecked {
+            _tokenX.transferFrom(msg.sender, address(_LBPair), _amountXDesired);
+            _tokenY.transferFrom(msg.sender, address(_LBPair), _amountYDesired);
+
+            (uint256 _amountX, uint256 _amountY) = _LBPair.mint(
+                _ids,
+                _distributionX,
+                _distributionY,
+                _to
+            );
+
+            if (
+                _amountXDesired * _amountSlippage <
+                _amountX * Constants.BASIS_POINT_MAX ||
+                _amountYDesired * _amountSlippage <
+                _amountY * Constants.BASIS_POINT_MAX
+            )
+                revert LBRouter__AmountSlippageCaught(
+                    _amountXDesired,
+                    _amountYDesired,
+                    _amountX,
+                    _amountY,
+                    _amountSlippage
+                );
+        }
     }
 }

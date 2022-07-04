@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.9;
 
-interface IWAVAX {
-    function deposit() external payable;
+import "openzeppelin/token/ERC20/IERC20.sol";
 
-    function transfer(address to, uint256 value) external returns (bool);
+interface IWAVAX is IERC20 {
+    function deposit() external payable;
 
     function withdraw(uint256) external;
 }

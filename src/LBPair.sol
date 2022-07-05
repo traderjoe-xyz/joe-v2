@@ -253,6 +253,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         external
         override
         nonReentrant
+        returns (uint256, uint256)
     {
         PairInformation memory _pair = _pairInformation;
 
@@ -326,9 +327,11 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         if (_sentTokenY) {
             tokenX.safeTransfer(_to, _amountOut);
             emit Swap(msg.sender, _to, _pair.activeId, _amountOut, 0);
+            return (_amountOut, 0);
         } else {
             tokenY.safeTransfer(_to, _amountOut);
             emit Swap(msg.sender, _to, _pair.activeId, 0, _amountOut);
+            return (0, _amountOut);
         }
     }
 
@@ -555,7 +558,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint256[] memory _ids,
         uint256[] memory _amounts,
         address _to
-    ) external override nonReentrant {
+    ) external override nonReentrant returns (uint256, uint256) {
         uint256 _len = _ids.length;
 
         PairInformation memory _pair = _pairInformation;
@@ -627,6 +630,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         tokenY.safeTransfer(_to, _amountsY);
 
         emit Burn(msg.sender, _to, _ids, _amounts);
+
+        return (_amountsX, _amountsY);
     }
 
     /// @notice Collect fees of an user

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity >=0.8.9;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/utils/introspection/IERC165.sol";
@@ -88,7 +88,9 @@ interface ILBPair is IERC165 {
         view
         returns (UnclaimedFees memory);
 
-    function swap(bool sentTokenY, address to) external;
+    function swap(bool sentTokenY, address to)
+        external
+        returns (uint256, uint256);
 
     function flashLoan(
         address to,
@@ -108,7 +110,7 @@ interface ILBPair is IERC165 {
         uint256[] memory ids,
         uint256[] memory _amounts,
         address to
-    ) external;
+    ) external returns (uint256, uint256);
 
     function setFeesParameters(bytes32 packedFeeParameters) external;
 }

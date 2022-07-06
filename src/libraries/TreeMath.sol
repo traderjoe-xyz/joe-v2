@@ -28,10 +28,7 @@ library TreeMath {
             _binId /= 256;
 
             // Search in depth 2
-            if (
-                (_isSearchingRight && bit != 0) ||
-                (!_isSearchingRight && bit < 255)
-            ) {
+            if ((_isSearchingRight && bit != 0) || (!_isSearchingRight && bit < 255)) {
                 current = _tree[2][_binId];
                 (bit, found) = current.closestBit(bit, _isSearchingRight);
                 if (found) {
@@ -43,10 +40,7 @@ library TreeMath {
             _binId /= 256;
 
             // Search in depth 1
-            if (
-                (_isSearchingRight && _binId % 256 != 0) ||
-                (!_isSearchingRight && _binId % 256 != 255)
-            ) {
+            if ((_isSearchingRight && _binId % 256 != 0) || (!_isSearchingRight && _binId % 256 != 255)) {
                 current = _tree[1][_binId];
                 (bit, found) = current.closestBit(bit, _isSearchingRight);
                 if (found) {

@@ -68,29 +68,15 @@ interface ILBPair is IERC165 {
 
     function pairInformation() external view returns (PairInformation memory);
 
-    function feeParameters()
-        external
-        view
-        returns (FeeHelper.FeeParameters memory);
+    function feeParameters() external view returns (FeeHelper.FeeParameters memory);
 
-    function findFirstBin(uint24 id, bool isSearchingRight)
-        external
-        view
-        returns (uint256);
+    function findFirstBin(uint24 id, bool isSearchingRight) external view returns (uint256);
 
-    function getBin(uint24 id)
-        external
-        view
-        returns (uint112 reserveX, uint112 reserveY);
+    function getBin(uint24 id) external view returns (uint112 reserveX, uint112 reserveY);
 
-    function pendingFees(address _account, uint256[] memory _ids)
-        external
-        view
-        returns (UnclaimedFees memory);
+    function pendingFees(address _account, uint256[] memory _ids) external view returns (UnclaimedFees memory);
 
-    function swap(bool sentTokenY, address to)
-        external
-        returns (uint256, uint256);
+    function swap(bool sentTokenY, address to) external returns (uint256, uint256);
 
     function flashLoan(
         address to,

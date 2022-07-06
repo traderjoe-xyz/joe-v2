@@ -5,13 +5,7 @@ pragma solidity >=0.8.9;
 import "openzeppelin/utils/introspection/IERC165.sol";
 
 interface ILBToken is IERC165 {
-    event TransferSingle(
-        address indexed sender,
-        address indexed from,
-        address indexed to,
-        uint256 id,
-        uint256 amount
-    );
+    event TransferSingle(address indexed sender, address indexed from, address indexed to, uint256 id, uint256 amount);
 
     event TransferBatch(
         address indexed sender,
@@ -21,11 +15,7 @@ interface ILBToken is IERC165 {
         uint256[] amounts
     );
 
-    event ApprovalForAll(
-        address indexed account,
-        address indexed sender,
-        bool approved
-    );
+    event ApprovalForAll(address indexed account, address indexed sender, bool approved);
 
     function name() external view returns (string memory);
 
@@ -33,22 +23,13 @@ interface ILBToken is IERC165 {
 
     function decimals() external view returns (uint8);
 
-    function balanceOf(address account, uint256 id)
-        external
-        view
-        returns (uint256);
+    function balanceOf(address account, uint256 id) external view returns (uint256);
 
-    function balanceOfBatch(address[] memory accounts, uint256[] memory ids)
-        external
-        view
-        returns (uint256[] memory);
+    function balanceOfBatch(address[] memory accounts, uint256[] memory ids) external view returns (uint256[] memory);
 
     function totalSupply(uint256 id) external view returns (uint256);
 
-    function isApprovedForAll(address owner, address spender)
-        external
-        view
-        returns (bool);
+    function isApprovedForAll(address owner, address spender) external view returns (bool);
 
     function setApprovalForAll(address sender, bool approved) external;
 

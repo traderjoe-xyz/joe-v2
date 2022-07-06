@@ -20,21 +20,15 @@ library BinHelper {
     /// @param _price The price of y per x (with 36 decimals)
     /// @param _bp The bin step
     /// @return The _id corresponding to this price
-    function getIdFromPrice(uint256 _price, uint256 _bp)
-        internal
-        pure
-        returns (uint24)
-    {
+    function getIdFromPrice(uint256 _price, uint256 _bp) internal pure returns (uint24) {
         unchecked {
-            if (_price > uint256(type(int256).max))
-                revert BinHelper__PriceOverflows(_price);
+            if (_price > uint256(type(int256).max)) revert BinHelper__PriceOverflows(_price);
 
             int256 _bpValue = int256(_getBPValue(_bp));
 
             int256 _id = INT24_SHIFT + int256(_price).log2() / _bpValue.log2();
 
-            if (_id < 0 || uint256(_id) > type(uint24).max)
-                revert BinHelper__IdOverflows(_id);
+            if (_id < 0 || uint256(_id) > type(uint24).max) revert BinHelper__IdOverflows(_id);
             return uint24(uint256(_id));
         }
     }
@@ -44,11 +38,7 @@ library BinHelper {
     /// @param _id The _id.
     /// @param _bp The bin step
     /// @return The price corresponding to this _id (with 36 decimals)
-    function getPriceFromId(uint256 _id, uint256 _bp)
-        internal
-        pure
-        returns (uint256)
-    {
+    function getPriceFromId(uint256 _id, uint256 _bp) internal pure returns (uint256) {
         unchecked {
             int256 _realId = int256(uint256(_id)) - INT24_SHIFT;
             return _getPrice(_realId, _bp);
@@ -60,11 +50,7 @@ library BinHelper {
     /// @param _id The _id.
     /// @param _bp The bin step
     /// @return The price corresponding to this _id (with 36 decimals)
-    function _getPrice(int256 _id, uint256 _bp)
-        internal
-        pure
-        returns (uint256)
-    {
+    function _getPrice(int256 _id, uint256 _bp) internal pure returns (uint256) {
         unchecked {
             uint256 pow = Constants.DOUBLE_SCALE / _getBPValue(_bp);
             uint256 absId = _id >= 0 ? uint256(_id) : uint256(-_id);
@@ -123,8 +109,7 @@ library BinHelper {
     /// @param _bp The bp value [1; 10_000]
     /// @return The (1+bp) value
     function _getBPValue(uint256 _bp) internal pure returns (uint256) {
-        if (_bp == 0 || _bp > Constants.BASIS_POINT_MAX)
-            revert BinHelper__WrongBPValue(_bp);
+        if (_bp == 0 || _bp > Constants.BASIS_POINT_MAX) revert BinHelper__WrongBPValue(_bp);
         return Constants.SCALE + _bp * 1e32;
     }
 }

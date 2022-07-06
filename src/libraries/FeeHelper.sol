@@ -69,8 +69,7 @@ library FeeHelper {
             // This equation can't overflow
             _accumulator += _binCrossed * Constants.BASIS_POINT_MAX;
 
-            if (_accumulator > _fp.maxAccumulator)
-                _accumulator = _fp.maxAccumulator;
+            if (_accumulator > _fp.maxAccumulator) _accumulator = _fp.maxAccumulator;
 
             assembly {
                 sstore(_fp.slot, add(shl(168, timestamp()), _accumulator))
@@ -81,11 +80,7 @@ library FeeHelper {
     /// @notice Returns the base fee added to a swap in basis point squared (100% is 100_000_000)
     /// @param _fp The current fee parameters
     /// @return The fee
-    function getBaseFeeBP2(FeeParameters memory _fp)
-        internal
-        pure
-        returns (uint256)
-    {
+    function getBaseFeeBP2(FeeParameters memory _fp) internal pure returns (uint256) {
         unchecked {
             return _fp.baseFactor * _fp.binStep;
         }
@@ -95,19 +90,13 @@ library FeeHelper {
     /// @param _fp The current fee parameters
     /// @param _binCrossed The current number of bin crossed
     /// @return The variable fee
-    function getVariableFeeBP2(FeeParameters memory _fp, uint256 _binCrossed)
-        internal
-        pure
-        returns (uint256)
-    {
+    function getVariableFeeBP2(FeeParameters memory _fp, uint256 _binCrossed) internal pure returns (uint256) {
         unchecked {
             if (_fp.variableFeeDisabled != 0) {
                 return 0;
             }
 
-            uint256 _acc = _fp.accumulator +
-                _binCrossed *
-                Constants.BASIS_POINT_MAX;
+            uint256 _acc = _fp.accumulator + _binCrossed * Constants.BASIS_POINT_MAX;
 
             if (_acc > _fp.maxAccumulator) _acc = _fp.maxAccumulator;
 
@@ -127,12 +116,9 @@ library FeeHelper {
         uint256 _amount,
         uint256 _binCrossed
     ) internal pure returns (uint256) {
-        uint256 _feeBP2 = getBaseFeeBP2(_fp) +
-            getVariableFeeBP2(_fp, _binCrossed);
+        uint256 _feeBP2 = getBaseFeeBP2(_fp) + getVariableFeeBP2(_fp, _binCrossed);
 
-        return
-            (_amount * _feeBP2) /
-            (Constants.BASIS_POINT_MAX * Constants.BASIS_POINT_MAX);
+        return (_amount * _feeBP2) / (Constants.BASIS_POINT_MAX * Constants.BASIS_POINT_MAX);
     }
 
     /// @notice Return the fees from an amount
@@ -145,12 +131,9 @@ library FeeHelper {
         uint256 _amountPlusFee,
         uint256 _binCrossed
     ) internal pure returns (uint256) {
-        uint256 _feeBP2 = getBaseFeeBP2(_fp) +
-            getVariableFeeBP2(_fp, _binCrossed);
+        uint256 _feeBP2 = getBaseFeeBP2(_fp) + getVariableFeeBP2(_fp, _binCrossed);
 
-        return
-            (_amountPlusFee * _feeBP2) /
-            (Constants.BASIS_POINT_MAX * Constants.BASIS_POINT_MAX + _feeBP2);
+        return (_amountPlusFee * _feeBP2) / (Constants.BASIS_POINT_MAX * Constants.BASIS_POINT_MAX + _feeBP2);
     }
 
     /// @notice Return the fees distribution added to an amount
@@ -162,12 +145,7 @@ library FeeHelper {
         pure
         returns (FeesDistribution memory)
     {
-        uint256 _protocolFees = (_fees * _fp.protocolShare) /
-            Constants.BASIS_POINT_MAX;
-        return
-            FeesDistribution({
-                total: _fees.safe128(),
-                protocol: uint128(_protocolFees)
-            });
+        uint256 _protocolFees = (_fees * _fp.protocolShare) / Constants.BASIS_POINT_MAX;
+        return FeesDistribution({total: _fees.safe128(), protocol: uint128(_protocolFees)});
     }
 }

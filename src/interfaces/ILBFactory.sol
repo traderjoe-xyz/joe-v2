@@ -31,10 +31,7 @@ interface ILBFactory is IPendingOwnable {
 
     function allPairsLength() external view returns (uint256);
 
-    function getLBPair(IERC20 tokenA, IERC20 tokenB)
-        external
-        view
-        returns (ILBPair);
+    function getLBPair(IERC20 tokenA, IERC20 tokenB) external view returns (ILBPair);
 
     function setFactoryHelper() external;
 

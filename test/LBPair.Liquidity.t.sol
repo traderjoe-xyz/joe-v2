@@ -10,7 +10,7 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
 
         factory = new LBFactory(DEV);
         new LBFactoryHelper(factory);
-        router = new LBRouter(ILBFactory(DEV), IWAVAX(DEV));
+        router = new LBRouter(ILBFactory(DEV), IJoeFactory(DEV), IWAVAX(DEV));
 
         pair = createLBPairDefaultFees(token6D, token18D);
     }
@@ -36,12 +36,7 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
             )
         );
 
-        LBPair LBPair = new LBPair(
-            ILBFactory(DEV),
-            token6D,
-            token18D,
-            _packedFeeParameters
-        );
+        LBPair LBPair = new LBPair(ILBFactory(DEV), token6D, token18D, ID_ONE, _packedFeeParameters);
         assertEq(address(LBPair.factory()), DEV);
         assertEq(address(LBPair.tokenX()), address(token6D));
         assertEq(address(LBPair.tokenY()), address(token18D));
@@ -70,14 +65,15 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
 
         (
             uint256[] memory _ids,
-            uint256[] memory _liquidities,
+            uint256[] memory _distributionX,
+            uint256[] memory _distributionY,
             uint256 amount0In
         ) = spreadLiquidity(amount1In * 2, startId, 3, 0);
 
         token6D.mint(address(pair), amount0In + 10);
         token18D.mint(address(pair), amount1In);
 
-        pair.mint(_ids, _liquidities, DEV);
+        pair.mint(_ids, _distributionX, _distributionY, DEV);
 
         console2.log("startId", startId);
 
@@ -93,20 +89,10 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         assertApproxEqRel(bin0Reserve1, amount1In / 3, 1e16, "bin0Reserve1");
 
         assertEq(binYReserve0, 0, "binYReserve0");
-        assertApproxEqRel(
-            binYReserve1,
-            (amount1In * 2) / 3,
-            1e16,
-            "binYReserve1"
-        );
+        assertApproxEqRel(binYReserve1, (amount1In * 2) / 3, 1e16, "binYReserve1");
 
         assertEq(binXReserve1, 0, "binXReserve0");
-        assertApproxEqRel(
-            binXReserve0,
-            (amount0In * 2) / 3,
-            1e16,
-            "binXReserve1"
-        );
+        assertApproxEqRel(binXReserve0, (amount0In * 2) / 3, 1e16, "binXReserve1");
         assertEq(binXReserve1, 0, "binXReserve0");
     }
 
@@ -114,28 +100,29 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         uint256 amount1In = 3e12;
         (
             uint256[] memory _ids,
-            uint256[] memory _liquidities,
+            uint256[] memory _distributionX,
+            uint256[] memory _distributionY,
             uint256 amount0In
-        ) = spreadLiquidity(amount1In * 2, ID_ONE, 3, 0);
+        ) = spreadLiquidity(amount1In * 2, ID_ONE, 5, 0);
 
         token6D.mint(address(pair), amount0In);
         token18D.mint(address(pair), amount1In);
 
-        pair.mint(_ids, _liquidities, ALICE);
+        pair.mint(_ids, _distributionX, _distributionY, ALICE);
 
         token6D.mint(address(pair), amount0In);
         token18D.mint(address(pair), amount1In);
 
-        pair.mint(_ids, _liquidities, BOB);
+        pair.mint(_ids, _distributionX, _distributionY, BOB);
 
-        uint256[] memory amounts = new uint256[](3);
-        for (uint256 i; i < 3; i++) {
+        uint256[] memory amounts = new uint256[](5);
+        for (uint256 i; i < 5; i++) {
             amounts[i] = pair.balanceOf(BOB, _ids[i]);
         }
 
         vm.startPrank(BOB);
         pair.safeBatchTransferFrom(BOB, address(pair), _ids, amounts);
-        pair.burn(_ids, _liquidities, BOB);
+        pair.burn(_ids, amounts, BOB);
         vm.stopPrank();
 
         assertEq(token6D.balanceOf(BOB), amount0In);

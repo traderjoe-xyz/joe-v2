@@ -12,7 +12,7 @@ contract LiquidityBinPairFlashLoansTest is TestHelper {
 
         factory = new LBFactory(DEV);
         new LBFactoryHelper(factory);
-        router = new LBRouter(ILBFactory(DEV), IWAVAX(DEV));
+        router = new LBRouter(ILBFactory(DEV), IJoeFactory(DEV), IWAVAX(DEV));
 
         pair = createLBPairDefaultFees(token6D, token18D);
 

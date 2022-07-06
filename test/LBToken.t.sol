@@ -24,7 +24,7 @@ contract LiquidityBinTokenTest is TestHelper {
         liquidities[0] = 0;
         liquidities[1] = amountIn;
 
-        pair.mint(ids, liquidities, DEV);
+        pair.mint(ids, liquidities, new uint256[](2), DEV);
 
         assertEq(pair.balanceOf(DEV, ID_ONE - 1), amountIn);
         pair.safeBatchTransferFrom(DEV, ALICE, ids, liquidities);
@@ -66,7 +66,7 @@ contract LiquidityBinTokenTest is TestHelper {
         liquidities[0] = 0;
         liquidities[1] = amountIn;
 
-        pair.mint(ids, liquidities, DEV);
+        pair.mint(ids, liquidities, new uint256[](2), DEV);
 
         pair.safeBatchTransferFrom(DEV, ALICE, ids, liquidities);
 
@@ -85,7 +85,7 @@ contract LiquidityBinTokenTest is TestHelper {
         liquidities[0] = 0;
         liquidities[1] = amountIn;
 
-        pair.mint(ids, liquidities, DEV);
+        pair.mint(ids, liquidities, new uint256[](2), DEV);
 
         ids[1] = ID_ONE - 2;
         pair.safeBatchTransferFrom(DEV, ALICE, ids, liquidities);

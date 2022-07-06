@@ -46,6 +46,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             token6D,
             token12D,
             keccak256(abi.encode(token6D, token12D)),
+            ID_ONE,
             bytes32(
                 abi.encodePacked(
                     DEFAULT_VARIABLEFEE_STATE,
@@ -87,6 +88,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.createLBPair(
             token6D,
             token6D,
+            ID_ONE,
             DEFAULT_MAX_ACCUMULATOR,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
@@ -100,6 +102,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.createLBPair(
             token6D,
             IERC20(address(0)),
+            ID_ONE,
             DEFAULT_MAX_ACCUMULATOR,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
@@ -118,6 +121,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.createLBPair(
             token6D,
             token12D,
+            ID_ONE,
             DEFAULT_MAX_ACCUMULATOR,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,

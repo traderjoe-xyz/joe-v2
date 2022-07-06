@@ -44,8 +44,7 @@ abstract contract TestHelper is Test {
         );
 
     address internal constant DEV = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
-    address internal constant ALICE =
-        0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+    address internal constant ALICE = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
     address internal constant BOB = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
 
     WAVAX internal wavax;
@@ -65,15 +64,13 @@ abstract contract TestHelper is Test {
         id = BinHelper.getIdFromPrice(_price, DEFAULT_BIN_STEP);
     }
 
-    function createLBPairDefaultFees(IERC20 _tokenX, IERC20 _tokenY)
-        internal
-        returns (LBPair newPair)
-    {
+    function createLBPairDefaultFees(IERC20 _tokenX, IERC20 _tokenY) internal returns (LBPair newPair) {
         newPair = LBPair(
             address(
                 factory.createLBPair(
                     _tokenX,
                     _tokenY,
+                    ID_ONE,
                     DEFAULT_MAX_ACCUMULATOR,
                     DEFAULT_FILTER_PERIOD,
                     DEFAULT_DECAY_PERIOD,
@@ -94,21 +91,17 @@ abstract contract TestHelper is Test {
         internal
         returns (
             uint256[] memory _ids,
-            uint256[] memory _liquidities,
+            uint256[] memory _distributionX,
+            uint256[] memory _distributionY,
             uint256 amountXIn
         )
     {
-        (_ids, _liquidities, amountXIn) = spreadLiquidity(
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap
-        );
+        (_ids, _distributionX, _distributionY, amountXIn) = spreadLiquidity(_amountYIn, _startId, _numberBins, _gap);
 
         token6D.mint(address(pair), amountXIn);
         token18D.mint(address(pair), _amountYIn / 2);
 
-        pair.mint(_ids, _liquidities, DEV);
+        pair.mint(_ids, _distributionX, _distributionY, DEV);
     }
 
     function spreadLiquidity(
@@ -121,7 +114,8 @@ abstract contract TestHelper is Test {
         pure
         returns (
             uint256[] memory _ids,
-            uint256[] memory _liquidities,
+            uint256[] memory _distributionX,
+            uint256[] memory _distributionY,
             uint256 amountXIn
         )
     {
@@ -137,21 +131,19 @@ abstract contract TestHelper is Test {
             _ids[2 * i + 2] = _startId + i * (1 + _gap) + 1;
         }
 
-        _liquidities = new uint256[](_numberBins);
-        uint256 binLiquidity = _amountYIn / _numberBins;
-        _liquidities[0] = binLiquidity;
-        amountXIn += binLiquidity.mulDivRoundUp(
-            SCALE,
-            2 * getPriceFromId(_startId)
-        );
+        _distributionX = new uint256[](_numberBins);
+        _distributionY = new uint256[](_numberBins);
+        uint256 binDistribution = SCALE / (spread + 1);
+        uint256 binLiquidity = _amountYIn / (spread + 1);
+
+        _distributionX[0] = binDistribution;
+        _distributionY[0] = binDistribution;
+        amountXIn += binLiquidity.mulDivRoundUp(SCALE, getPriceFromId(_startId));
 
         for (uint24 i; i < spread; i++) {
-            _liquidities[2 * i + 1] = binLiquidity;
-            _liquidities[2 * i + 2] = binLiquidity;
-            amountXIn += binLiquidity.mulDivRoundUp(
-                SCALE,
-                getPriceFromId(_startId + i * (1 + _gap) + 1)
-            );
+            _distributionY[2 * i + 1] = binDistribution;
+            _distributionX[2 * i + 2] = binDistribution;
+            amountXIn += binLiquidity.mulDivRoundUp(SCALE, getPriceFromId(uint24(_ids[2 * i + 2])));
         }
     }
 }

@@ -13,7 +13,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         factory = new LBFactory(DEV);
         new LBFactoryHelper(factory);
-        router = new LBRouter(ILBFactory(DEV), IWAVAX(DEV));
+        router = new LBRouter(ILBFactory(DEV), IJoeFactory(DEV), IWAVAX(DEV));
 
         pair = createLBPairDefaultFees(token6D, token18D);
     }
@@ -23,18 +23,9 @@ contract LiquidityBinPairFeesTest is TestHelper {
         uint256 amountXOutForSwap = 1e18;
         uint24 startId = ID_ONE;
 
-        (uint256[] memory _ids, , ) = addLiquidity(
-            amountYInLiquidity,
-            startId,
-            5,
-            0
-        );
+        (uint256[] memory _ids, , , ) = addLiquidity(amountYInLiquidity, startId, 5, 0);
 
-        uint256 amountYInForSwap = router.getSwapIn(
-            pair,
-            amountXOutForSwap,
-            false
-        );
+        uint256 amountYInForSwap = router.getSwapIn(pair, amountXOutForSwap, false);
 
         token18D.mint(address(pair), amountYInForSwap);
         vm.prank(ALICE);
@@ -42,14 +33,13 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         LBPair.PairInformation memory pairInfo = pair.pairInformation();
 
-        uint256 accumulatedYfees = pairInfo.feesY.total -
-            pairInfo.feesY.protocol;
+        uint256 accumulatedYfees = pairInfo.feesY.total - pairInfo.feesY.protocol;
 
         uint256[] memory orderedIds = new uint256[](5);
         for (uint256 i; i < 5; i++) {
             orderedIds[i] = startId - 2 + i;
         }
-        ILBPair.Amounts memory fees = pair.pendingFees(DEV, orderedIds);
+        ILBPair.UnclaimedFees memory fees = pair.pendingFees(DEV, orderedIds);
 
         assertEq(accumulatedYfees, fees.tokenY);
 
@@ -71,12 +61,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         console2.log(token18D.balanceOf(address(pair)));
 
-        (uint256[] memory _ids, uint256[] memory _liquidities, ) = addLiquidity(
-            amountYInLiquidity,
-            startId,
-            5,
-            0
-        );
+        (uint256[] memory _ids, uint256[] memory _liquidities, , ) = addLiquidity(amountYInLiquidity, startId, 5, 0);
 
         console2.log(token18D.balanceOf(address(pair)));
 
@@ -94,16 +79,15 @@ contract LiquidityBinPairFeesTest is TestHelper {
         for (uint256 i; i < 5; i++) {
             orderedIds[i] = startId - 2 + i;
         }
-        ILBPair.Amounts memory feesForDev = pair.pendingFees(DEV, orderedIds);
-        ILBPair.Amounts memory feesForBob = pair.pendingFees(BOB, orderedIds);
+        ILBPair.UnclaimedFees memory feesForDev = pair.pendingFees(DEV, orderedIds);
+        ILBPair.UnclaimedFees memory feesForBob = pair.pendingFees(BOB, orderedIds);
 
         assertGt(feesForDev.tokenY, 0);
         assertGt(feesForBob.tokenY, 0);
 
         LBPair.PairInformation memory pairInfo = pair.pairInformation();
 
-        uint256 accumulatedYfees = pairInfo.feesY.total -
-            pairInfo.feesY.protocol;
+        uint256 accumulatedYfees = pairInfo.feesY.total - pairInfo.feesY.protocol;
 
         assertEq(feesForDev.tokenY + feesForBob.tokenY, accumulatedYfees);
 
@@ -120,11 +104,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         addLiquidity(amountYInLiquidity, startId, 5, 0);
 
-        uint256 amountYInForSwap = router.getSwapIn(
-            pair,
-            amountXOutForSwap,
-            false
-        );
+        uint256 amountYInForSwap = router.getSwapIn(pair, amountXOutForSwap, false);
 
         token18D.mint(address(pair), amountYInForSwap);
         vm.prank(ALICE);
@@ -134,16 +114,10 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         address protocolFeesReceiver = factory.feeRecipient();
         pair.distributeProtocolFees();
-        assertEq(
-            token18D.balanceOf(protocolFeesReceiver),
-            pairInfo.feesY.protocol - 1
-        );
+        assertEq(token18D.balanceOf(protocolFeesReceiver), pairInfo.feesY.protocol - 1);
 
         // Claiming twice
         pair.distributeProtocolFees();
-        assertEq(
-            token18D.balanceOf(protocolFeesReceiver),
-            pairInfo.feesY.protocol - 1
-        );
+        assertEq(token18D.balanceOf(protocolFeesReceiver), pairInfo.feesY.protocol - 1);
     }
 }

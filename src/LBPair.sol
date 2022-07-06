@@ -332,7 +332,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 if (_mintInfo.id > uint256(type(uint24).max)) revert LBPair__IdOverflows(i);
                 Bin memory _bin = _bins[_mintInfo.id];
 
-                if (_bin.reserveX != 0 && _bin.reserveY != 0) {
+                if (_bin.reserveX == 0 && _bin.reserveY == 0) {
                     // add 1 at the right indices if the _pairInformation was empty
                     uint256 _idDepth2 = _mintInfo.id / 256;
                     uint256 _idDepth1 = _mintInfo.id / 65_536;

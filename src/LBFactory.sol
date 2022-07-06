@@ -17,16 +17,8 @@ error LBFactory__DecreasingPeriods(uint16 filterPeriod, uint16 decayPeriod);
 error LBFactory__BaseFactorExceedsBP(uint16 baseFactor, uint256 maxBP);
 error LBFactory__BaseFeesBelowMin(uint256 baseFees, uint256 minBaseFees);
 error LBFactory__FeesAboveMax(uint256 fees, uint256 maxFees);
-error LBFactory__BinStepRequirementsBreached(
-    uint256 lowerBound,
-    uint16 binStep,
-    uint256 higherBound
-);
-error LBFactory___ProtocolShareRequirementsBreached(
-    uint256 lowerBound,
-    uint16 protocolShare,
-    uint256 higherBound
-);
+error LBFactory__BinStepRequirementsBreached(uint256 lowerBound, uint16 binStep, uint256 higherBound);
+error LBFactory___ProtocolShareRequirementsBreached(uint256 lowerBound, uint16 protocolShare, uint256 higherBound);
 error LBFactory__FunctionIsLockedForUsers(address user);
 error LBFactory__FactoryLockIsAlreadyInTheSameState();
 
@@ -52,12 +44,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     ILBPair[] public override allLBPairs;
     mapping(IERC20 => mapping(IERC20 => ILBPair)) private _LBPairs;
 
-    event LBPairCreated(
-        IERC20 indexed tokenX,
-        IERC20 indexed tokenY,
-        ILBPair LBPair,
-        uint256 pid
-    );
+    event LBPairCreated(IERC20 indexed tokenX, IERC20 indexed tokenY, ILBPair LBPair, uint256 pid);
 
     event FeeRecipientChanged(address oldRecipient, address newRecipient);
 
@@ -76,8 +63,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     event FactoryLocked(bool unlocked);
 
     modifier onlyOwnerIfLocked() {
-        if (!unlocked && msg.sender != owner())
-            revert LBFactory__FunctionIsLockedForUsers(msg.sender);
+        if (!unlocked && msg.sender != owner()) revert LBFactory__FunctionIsLockedForUsers(msg.sender);
         _;
     }
 
@@ -90,8 +76,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @notice Set the factory helper address
     /// @dev Needs to be called by the factory helper
     function setFactoryHelper() external override {
-        if (address(factoryHelper) != address(0))
-            revert LBFactory__FactoryHelperAlreadyInitialized();
+        if (address(factoryHelper) != address(0)) revert LBFactory__FactoryHelperAlreadyInitialized();
         factoryHelper = ILBFactoryHelper(msg.sender);
     }
 
@@ -106,12 +91,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _tokenX The address of the first token
     /// @param _tokenY The address of the second token
     /// @return The address of the LBPair
-    function getLBPair(IERC20 _tokenX, IERC20 _tokenY)
-        external
-        view
-        override
-        returns (ILBPair)
-    {
+    function getLBPair(IERC20 _tokenX, IERC20 _tokenY) external view override returns (ILBPair) {
         return _LBPairs[_tokenX][_tokenY];
     }
 
@@ -138,11 +118,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 _protocolShare
     ) external override onlyOwnerIfLocked returns (ILBPair _LBPair) {
         if (_tokenX == _tokenY) revert LBFactory__IdenticalAddresses(_tokenX);
-        if (address(_tokenX) == address(0) || address(_tokenY) == address(0))
-            revert LBFactory__ZeroAddress();
+        if (address(_tokenX) == address(0) || address(_tokenY) == address(0)) revert LBFactory__ZeroAddress();
         // single check is sufficient
-        if (address(_LBPairs[_tokenX][_tokenY]) != address(0))
-            revert LBFactory__LBPairAlreadyExists(_tokenX, _tokenY);
+        if (address(_LBPairs[_tokenX][_tokenY]) != address(0)) revert LBFactory__LBPairAlreadyExists(_tokenX, _tokenY);
 
         bytes32 _packedFeeParameters = _getPackedFeeParameters(
             _maxAccumulator,
@@ -172,19 +150,14 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /// @notice Function to set the recipient of the fees. This address needs to be able to receive ERC20s.
     /// @param _feeRecipient The address of the recipient
-    function setFeeRecipient(address _feeRecipient)
-        external
-        override
-        onlyOwner
-    {
+    function setFeeRecipient(address _feeRecipient) external override onlyOwner {
         _setFeeRecipient(_feeRecipient);
     }
 
     /// @notice Function to lock the Factory and prevent anyone but the owner to create pairs.
     /// @param _locked The new lock state
     function setFactoryLocked(bool _locked) external onlyOwner {
-        if (unlocked == !_locked)
-            revert LBFactory__FactoryLockIsAlreadyInTheSameState();
+        if (unlocked == !_locked) revert LBFactory__FactoryLockIsAlreadyInTheSameState();
         unlocked = !_locked;
         emit FactoryLocked(_locked);
     }
@@ -263,26 +236,15 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 _protocolShare,
         uint8 _variableFeesDisabled
     ) private pure returns (bytes32) {
-        if (_filterPeriod >= _decayPeriod)
-            revert LBFactory__DecreasingPeriods(_filterPeriod, _decayPeriod);
+        if (_filterPeriod >= _decayPeriod) revert LBFactory__DecreasingPeriods(_filterPeriod, _decayPeriod);
 
         if (_binStep < MIN_BIN_STEP || _binStep > MAX_BIN_STEP)
-            revert LBFactory__BinStepRequirementsBreached(
-                MIN_BIN_STEP,
-                _binStep,
-                MAX_BIN_STEP
-            );
+            revert LBFactory__BinStepRequirementsBreached(MIN_BIN_STEP, _binStep, MAX_BIN_STEP);
 
         if (_baseFactor > Constants.BASIS_POINT_MAX)
-            revert LBFactory__BaseFactorExceedsBP(
-                _binStep,
-                Constants.BASIS_POINT_MAX
-            );
+            revert LBFactory__BaseFactorExceedsBP(_binStep, Constants.BASIS_POINT_MAX);
 
-        if (
-            _protocolShare < MIN_PROTOCOL_SHARE ||
-            _protocolShare > MAX_PROTOCOL_SHARE
-        )
+        if (_protocolShare < MIN_PROTOCOL_SHARE || _protocolShare > MAX_PROTOCOL_SHARE)
             revert LBFactory___ProtocolShareRequirementsBreached(
                 MIN_PROTOCOL_SHARE,
                 _protocolShare,
@@ -292,18 +254,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
         if (_variableFeesDisabled > 1) _variableFeesDisabled = 1;
 
         {
-            uint256 _baseFee = (uint256(_baseFactor) * uint256(_binStep)) /
-                Constants.BASIS_POINT_MAX;
-            if (_baseFee < MIN_FEE)
-                revert LBFactory__BaseFeesBelowMin(_baseFee, MIN_FEE);
+            uint256 _baseFee = (uint256(_baseFactor) * uint256(_binStep)) / Constants.BASIS_POINT_MAX;
+            if (_baseFee < MIN_FEE) revert LBFactory__BaseFeesBelowMin(_baseFee, MIN_FEE);
 
-            uint256 _maxVariableFee = (uint256(_maxAccumulator) *
-                uint256(_binStep)) / Constants.BASIS_POINT_MAX;
+            uint256 _maxVariableFee = (uint256(_maxAccumulator) * uint256(_binStep)) / Constants.BASIS_POINT_MAX;
             if (_baseFee + _maxVariableFee > MAX_FEE)
-                revert LBFactory__FeesAboveMax(
-                    _baseFee + _maxVariableFee,
-                    MAX_FEE
-                );
+                revert LBFactory__FeesAboveMax(_baseFee + _maxVariableFee, MAX_FEE);
         }
 
         /// @dev It's very important that the sum of the sizes of those values is exactly 256 bits

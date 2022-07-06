@@ -41,30 +41,19 @@ library SwapHelper {
         )
     {
         unchecked {
-            uint256 _price = BinHelper.getPriceFromId(
-                pair.activeId,
-                fp.binStep
-            );
+            uint256 _price = BinHelper.getPriceFromId(pair.activeId, fp.binStep);
 
             uint256 _reserve;
             uint256 _maxAmountInToBin;
             if (sentTokenY) {
                 _reserve = bin.reserveX;
-                _maxAmountInToBin = _price.mulDivRoundUp(
-                    _reserve,
-                    Constants.SCALE
-                );
+                _maxAmountInToBin = _price.mulDivRoundUp(_reserve, Constants.SCALE);
             } else {
                 _reserve = bin.reserveY;
-                _maxAmountInToBin = Constants.SCALE.mulDivRoundUp(
-                    _reserve,
-                    _price
-                );
+                _maxAmountInToBin = Constants.SCALE.mulDivRoundUp(_reserve, _price);
             }
 
-            uint256 _deltaId = startId > pair.activeId
-                ? startId - pair.activeId
-                : pair.activeId - startId;
+            uint256 _deltaId = startId > pair.activeId ? startId - pair.activeId : pair.activeId - startId;
 
             fees = fp.getFeesDistribution(fp.getFees(_reserve, _deltaId));
 
@@ -72,14 +61,9 @@ library SwapHelper {
                 amountInToBin = _maxAmountInToBin;
                 amountOutOfBin = _reserve;
             } else {
-                fees = fp.getFeesDistribution(
-                    fp.getFeesFrom(amountIn, _deltaId)
-                );
+                fees = fp.getFeesDistribution(fp.getFeesFrom(amountIn, _deltaId));
                 amountInToBin = amountIn.sub(fees.total);
-                amountOutOfBin = amountInToBin.mulDivRoundDown(
-                    _reserve,
-                    _maxAmountInToBin
-                );
+                amountOutOfBin = amountInToBin.mulDivRoundDown(_reserve, _maxAmountInToBin);
                 // Safety check in case rounding returns a higher value because of rounding
                 if (amountOutOfBin > _reserve) amountOutOfBin = _reserve;
             }
@@ -107,9 +91,7 @@ library SwapHelper {
             pair.feesY.total += fees.total;
             pair.feesY.protocol += fees.protocol;
 
-            bin.accTokenYPerShare +=
-                ((fees.total - fees.protocol) * Constants.SCALE) /
-                totalSupply;
+            bin.accTokenYPerShare += ((fees.total - fees.protocol) * Constants.SCALE) / totalSupply;
 
             bin.reserveY += uint112(amountInToBin);
             unchecked {
@@ -122,9 +104,7 @@ library SwapHelper {
             pair.feesX.total += fees.total;
             pair.feesX.protocol += fees.protocol;
 
-            bin.accTokenXPerShare +=
-                ((fees.total - fees.protocol) * Constants.SCALE) /
-                totalSupply;
+            bin.accTokenXPerShare += ((fees.total - fees.protocol) * Constants.SCALE) / totalSupply;
 
             bin.reserveX += uint112(amountInToBin);
             unchecked {

@@ -30,10 +30,7 @@ contract PendingOwnable is IPendingOwnable {
     address private _pendingOwner;
 
     event PendingOwnerSet(address indexed pendingOwner);
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     /// @notice Throws if called by any account other than the owner.
     modifier onlyOwner() {
@@ -43,8 +40,7 @@ contract PendingOwnable is IPendingOwnable {
 
     /// @notice Throws if called by any account other than the pending owner.
     modifier onlyPendingOwner() {
-        if (msg.sender != _pendingOwner || msg.sender == address(0))
-            revert PendingOwnable__NotPendingOwner();
+        if (msg.sender != _pendingOwner || msg.sender == address(0)) revert PendingOwnable__NotPendingOwner();
         _;
     }
 
@@ -68,8 +64,7 @@ contract PendingOwnable is IPendingOwnable {
     /// @notice Sets the pending owner address. This address will be able to become
     /// the owner of this contract by calling {becomeOwner}
     function setPendingOwner(address pendingOwner_) public override onlyOwner {
-        if (_pendingOwner != address(0))
-            revert PendingOwnable__PendingOwnerAlreadySet();
+        if (_pendingOwner != address(0)) revert PendingOwnable__PendingOwnerAlreadySet();
         _setPendingOwner(pendingOwner_);
     }
 
@@ -77,8 +72,7 @@ contract PendingOwnable is IPendingOwnable {
     /// call {becomeOwner} to become the owner anymore.
     /// Can only be called by the owner
     function revokePendingOwner() public override onlyOwner {
-        if (_pendingOwner == address(0))
-            revert PendingOwnable__NoPendingOwner();
+        if (_pendingOwner == address(0)) revert PendingOwnable__NoPendingOwner();
         _setPendingOwner(address(0));
     }
 

@@ -4,11 +4,7 @@ pragma solidity 0.8.9;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 
-error TokenHelper__TransferFailed(
-    IERC20 token,
-    address recipient,
-    uint256 amount
-);
+error TokenHelper__TransferFailed(IERC20 token, address recipient, uint256 amount);
 error TokenHelper__ReserveUnderflow();
 
 /// @title Safe Transfer
@@ -31,11 +27,7 @@ library TokenHelper {
     ) internal {
         if (amount != 0) {
             (bool success, bytes memory data) = address(token).call(
-                abi.encodeWithSelector(
-                    token.transfer.selector,
-                    recipient,
-                    amount
-                )
+                abi.encodeWithSelector(token.transfer.selector, recipient, amount)
             );
             if (!(success && (data.length == 0 || abi.decode(data, (bool)))))
                 revert TokenHelper__TransferFailed(token, recipient, amount);

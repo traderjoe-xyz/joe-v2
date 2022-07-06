@@ -40,16 +40,8 @@ contract LBToken is ILBToken, ERC165 {
 
     /// @notice Whether this contract implements the interface defined by `_interfaceId`.
     /// @param _interfaceId The interfaceId as a bytes4
-    function supportsInterface(bytes4 _interfaceId)
-        public
-        view
-        virtual
-        override(ERC165, IERC165)
-        returns (bool)
-    {
-        return
-            _interfaceId == type(ILBToken).interfaceId ||
-            super.supportsInterface(_interfaceId);
+    function supportsInterface(bytes4 _interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
+        return _interfaceId == type(ILBToken).interfaceId || super.supportsInterface(_interfaceId);
     }
 
     /// @notice Returns the name of the token
@@ -73,13 +65,7 @@ contract LBToken is ILBToken, ERC165 {
     /// @notice Returns the number of decimals used to get its user representation
     /// @param _id The token id
     /// @return The total supply of that token id
-    function totalSupply(uint256 _id)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function totalSupply(uint256 _id) public view virtual override returns (uint256) {
         return _totalSupplies[_id];
     }
 
@@ -87,13 +73,7 @@ contract LBToken is ILBToken, ERC165 {
     /// @param _account The address of the owner
     /// @param _id The token id
     /// @return The amount of tokens of type `id` owned by `_account`
-    function balanceOf(address _account, uint256 _id)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function balanceOf(address _account, uint256 _id) public view virtual override returns (uint256) {
         return _balances[_id][_account];
     }
 
@@ -109,8 +89,7 @@ contract LBToken is ILBToken, ERC165 {
         returns (uint256[] memory batchBalances)
     {
         uint256 _len = _accounts.length;
-        if (_len != _ids.length)
-            revert LBToken__LengthMismatch(_len, _ids.length);
+        if (_len != _ids.length) revert LBToken__LengthMismatch(_len, _ids.length);
 
         batchBalances = new uint256[](_len);
         for (uint256 i; i < _len; ++i) {
@@ -122,24 +101,14 @@ contract LBToken is ILBToken, ERC165 {
     /// @param _owner The address of the owner
     /// @param _spender The address of the spender
     /// @return True if `spender` is approved to transfer `_account`'s tokens
-    function isApprovedForAll(address _owner, address _spender)
-        public
-        view
-        virtual
-        override
-        returns (bool)
-    {
+    function isApprovedForAll(address _owner, address _spender) public view virtual override returns (bool) {
         return _isApprovedForAll(_owner, _spender);
     }
 
     /// @notice Grants or revokes permission to `spender` to transfer the caller's tokens, according to `approved`
     /// @param _spender The address of the spender
     /// @param _approved The boolean value to grant or revoke permission
-    function setApprovalForAll(address _spender, bool _approved)
-        public
-        virtual
-        override
-    {
+    function setApprovalForAll(address _spender, bool _approved) public virtual override {
         _setApprovalForAll(msg.sender, _spender, _approved);
     }
 
@@ -155,22 +124,18 @@ contract LBToken is ILBToken, ERC165 {
         uint256[] memory _amounts
     ) public virtual override {
         address _spender = msg.sender;
-        if (!_isApprovedForAll(_from, _spender))
-            revert LBToken__SpenderNotApproved(_from, _spender);
+        if (!_isApprovedForAll(_from, _spender)) revert LBToken__SpenderNotApproved(_from, _spender);
 
-        if (_from == address(0) || _to == address(0))
-            revert LBToken__TransferFromOrToAddress0();
+        if (_from == address(0) || _to == address(0)) revert LBToken__TransferFromOrToAddress0();
         uint256 _len = _ids.length;
-        if (_len != _amounts.length)
-            revert LBToken__LengthMismatch(_len, _amounts.length);
+        if (_len != _amounts.length) revert LBToken__LengthMismatch(_len, _amounts.length);
 
         for (uint256 i; i < _len; ++i) {
             uint256 _id = _ids[i];
             uint256 _amount = _amounts[i];
 
             uint256 _fromBalance = _balances[_id][_from];
-            if (_fromBalance < _amount)
-                revert LBToken__TransferExceedsBalance(_from, _id, _amount);
+            if (_fromBalance < _amount) revert LBToken__TransferExceedsBalance(_from, _id, _amount);
 
             _beforeTokenTransfer(_from, _to, _id, _amount);
 
@@ -216,8 +181,7 @@ contract LBToken is ILBToken, ERC165 {
         if (_account == address(0)) revert LBToken__BurnFromAddress0();
 
         uint256 _accountBalance = _balances[_id][_account];
-        if (_accountBalance < _amount)
-            revert LBToken__BurnExceedsBalance(_account, _id, _amount);
+        if (_accountBalance < _amount) revert LBToken__BurnExceedsBalance(_account, _id, _amount);
 
         _beforeTokenTransfer(address(0), _account, _id, _amount);
 
@@ -250,12 +214,7 @@ contract LBToken is ILBToken, ERC165 {
     /// @param _owner The address of the owner
     /// @param _spender The address of the spender
     /// @return True if `spender` is approved to transfer `owner`'s tokens
-    function _isApprovedForAll(address _owner, address _spender)
-        internal
-        view
-        virtual
-        returns (bool)
-    {
+    function _isApprovedForAll(address _owner, address _spender) internal view virtual returns (bool) {
         return _owner == _spender || _spenderApprovals[_owner][_spender];
     }
 

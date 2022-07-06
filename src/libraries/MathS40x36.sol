@@ -39,10 +39,7 @@ library MathS40x36 {
                 sign = -1;
                 // Do the fixed-point inversion inline to save gas. The numerator is Constants.S_SCALE * Constants.S_SCALE.
                 assembly {
-                    x := div(
-                        1000000000000000000000000000000000000000000000000000000000000000000000000,
-                        x
-                    )
+                    x := div(1000000000000000000000000000000000000000000000000000000000000000000000000, x)
                 }
             }
 
@@ -63,17 +60,8 @@ library MathS40x36 {
 
             // Calculate the fractional part via the iterative approximation.
             // The "delta >>= 1" part is equivalent to "delta /= 2", but shifting bits is faster.
-            for (
-                int256 delta = int256(Constants.S_HALF_SCALE);
-                delta > 0;
-                delta >>= 1
-            ) {
-                y = int256(
-                    uint256(y).mulDivRoundDown(
-                        uint256(y),
-                        uint256(Constants.S_SCALE)
-                    )
-                );
+            for (int256 delta = int256(Constants.S_HALF_SCALE); delta > 0; delta >>= 1) {
+                y = int256(uint256(y).mulDivRoundDown(uint256(y), uint256(Constants.S_SCALE)));
 
                 // Is y^2 > 2 and so in the range [2,4)?
                 if (y >= 2 * Constants.S_SCALE) {

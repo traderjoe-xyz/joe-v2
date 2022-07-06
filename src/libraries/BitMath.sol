@@ -26,11 +26,7 @@ library BitMath {
     /// @param _integer The integer
     /// @param _isMostSignificant Whether we want the most (true) or the least (false) significant bit
     /// @return The index of the most (or least) significant bit
-    function significantBit(uint256 _integer, bool _isMostSignificant)
-        internal
-        pure
-        returns (uint256)
-    {
+    function significantBit(uint256 _integer, bool _isMostSignificant) internal pure returns (uint256) {
         if (_isMostSignificant) {
             return mostSignificantBit(_integer);
         }
@@ -43,11 +39,7 @@ library BitMath {
     /// @param bit The index of the bit to start searching at
     /// @return id The index of the closest non null bit on the right of x
     /// @return found If the index was found
-    function closestBitRight(uint256 x, uint256 bit)
-        internal
-        pure
-        returns (uint256 id, bool found)
-    {
+    function closestBitRight(uint256 x, uint256 bit) internal pure returns (uint256 id, bool found) {
         unchecked {
             x <<= 255 - bit;
 
@@ -65,11 +57,7 @@ library BitMath {
     /// @param bit The index of the bit to start searching at
     /// @return id The index of the closest non null bit on the left of x
     /// @return found If the index was found
-    function closestBitLeft(uint256 x, uint256 bit)
-        internal
-        pure
-        returns (uint256 id, bool found)
-    {
+    function closestBitLeft(uint256 x, uint256 bit) internal pure returns (uint256 id, bool found) {
         unchecked {
             x >>= bit;
 
@@ -123,11 +111,7 @@ library BitMath {
     /// @notice Returns the index of the least significant bit of x
     /// @param x The value as a uint256
     /// @return lsb The index of the least significant bit of x
-    function leastSignificantBit(uint256 x)
-        internal
-        pure
-        returns (uint256 lsb)
-    {
+    function leastSignificantBit(uint256 x) internal pure returns (uint256 lsb) {
         unchecked {
             if (x << 128 != 0) {
                 x <<= 128;

@@ -11,8 +11,7 @@ contract LBFactoryHelper is ILBFactoryHelper {
     ILBFactory public immutable factory;
 
     modifier OnlyFactory() {
-        if (msg.sender != address(factory))
-            revert LBFactoryHelper__CallerIsNotFactory();
+        if (msg.sender != address(factory)) revert LBFactoryHelper__CallerIsNotFactory();
         _;
     }
 
@@ -37,13 +36,6 @@ contract LBFactoryHelper is ILBFactoryHelper {
         uint256 _id,
         bytes32 _packedFeeParameters
     ) external override OnlyFactory returns (ILBPair) {
-        return
-            new LBPair{salt: _salt}(
-                factory,
-                _tokenX,
-                _tokenY,
-                _id,
-                _packedFeeParameters
-            );
+        return new LBPair{salt: _salt}(factory, _tokenX, _tokenY, _id, _packedFeeParameters);
     }
 }

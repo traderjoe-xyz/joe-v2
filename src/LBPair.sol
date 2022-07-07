@@ -404,6 +404,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
                 _fees.tokenX = uint128(_fees.tokenX + _excessX);
                 _fees.tokenY = uint128(_fees.tokenY + _excessY);
+
+                _unclaimedFees[_to] = _fees;
             }
         }
 

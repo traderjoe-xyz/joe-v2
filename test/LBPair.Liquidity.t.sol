@@ -11,8 +11,6 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         factory = new LBFactory(DEV);
         new LBFactoryHelper(factory);
         router = new LBRouter(ILBFactory(DEV), IJoeFactory(DEV), IWAVAX(DEV));
-
-        pair = createLBPairDefaultFees(token6D, token18D);
     }
 
     function testConstructor(
@@ -60,43 +58,35 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         vm.assume(_price > 1e15);
 
         uint24 startId = getIdFromPrice(_price);
+        pair = createLBPairDefaultFeesFromStartId(token6D, token18D, startId);
 
-        uint256 amount1In = 1e12;
+        uint256 amountYIn = 1e12;
 
-        (
-            uint256[] memory _ids,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
-            uint256 amount0In
-        ) = spreadLiquidity(amount1In * 2, startId, 3, 0);
-
-        token6D.mint(address(pair), amount0In + 10);
-        token18D.mint(address(pair), amount1In);
-
-        pair.mint(_ids, _distributionX, _distributionY, DEV);
+        (, , , uint256 amountXIn) = addLiquidity(amountYIn, startId, 3, 0);
 
         console2.log("startId", startId);
 
-        (uint112 bin0Reserve0, uint112 bin0Reserve1) = pair.getBin(startId);
+        (uint112 currentBinReserveX, uint112 currentBinReserveY) = pair.getBin(startId);
         (uint112 binYReserve0, uint112 binYReserve1) = pair.getBin(startId - 1);
         (uint112 binXReserve0, uint112 binXReserve1) = pair.getBin(startId + 1);
 
-        console2.log("bin0", bin0Reserve0, bin0Reserve1);
+        console2.log("bin0", currentBinReserveX, currentBinReserveY);
         console2.log("binY", binYReserve0, binYReserve1);
         console2.log("binX", binXReserve0, binXReserve1);
 
-        assertApproxEqRel(bin0Reserve0, amount0In / 3, 1e16, "bin0Reserve0");
-        assertApproxEqRel(bin0Reserve1, amount1In / 3, 1e16, "bin0Reserve1");
+        assertApproxEqRel(currentBinReserveX, amountXIn / 2, 1e3, "currentBinReserveX");
+        assertApproxEqRel(currentBinReserveY, amountYIn / 2, 1e3, "currentBinReserveY");
 
         assertEq(binYReserve0, 0, "binYReserve0");
-        assertApproxEqRel(binYReserve1, (amount1In * 2) / 3, 1e16, "binYReserve1");
+        assertApproxEqRel(binYReserve1, amountYIn / 2, 1e3, "binYReserve1");
 
         assertEq(binXReserve1, 0, "binXReserve0");
-        assertApproxEqRel(binXReserve0, (amount0In * 2) / 3, 1e16, "binXReserve1");
+        assertApproxEqRel(binXReserve0, amountXIn / 2, 1e3, "binXReserve1");
         assertEq(binXReserve1, 0, "binXReserve0");
     }
 
     function testBurnLiquidity() public {
+        pair = createLBPairDefaultFees(token6D, token18D);
         uint256 amount1In = 3e12;
         (
             uint256[] memory _ids,

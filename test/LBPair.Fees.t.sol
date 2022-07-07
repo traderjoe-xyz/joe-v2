@@ -41,7 +41,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         }
         ILBPair.UnclaimedFees memory fees = pair.pendingFees(DEV, orderedIds);
 
-        assertEq(accumulatedYfees, fees.tokenY);
+        assertApproxEqAbs(accumulatedYfees, fees.tokenY, 1);
 
         pair.collectFees(DEV, orderedIds);
         assertEq(fees.tokenY, token18D.balanceOf(DEV));
@@ -59,42 +59,43 @@ contract LiquidityBinPairFeesTest is TestHelper {
         uint256 amountYForSwap = 1e6;
         uint24 startId = ID_ONE;
 
-        console2.log(token18D.balanceOf(address(pair)));
-
-        (uint256[] memory _ids, uint256[] memory _liquidities, , ) = addLiquidity(amountYInLiquidity, startId, 5, 0);
-
-        console2.log(token18D.balanceOf(address(pair)));
+        (uint256[] memory _ids, , , ) = addLiquidity(amountYInLiquidity, startId, 5, 0);
 
         token18D.mint(address(pair), amountYForSwap);
 
-        console2.log(token18D.balanceOf(address(pair)));
         pair.swap(true, ALICE);
 
-        pair.safeBatchTransferFrom(DEV, BOB, _ids, _liquidities);
-
-        token18D.mint(address(pair), amountYForSwap);
-        pair.swap(true, ALICE);
-
-        uint256[] memory orderedIds = new uint256[](5);
+        uint256[] memory amounts = new uint256[](5);
         for (uint256 i; i < 5; i++) {
-            orderedIds[i] = startId - 2 + i;
+            amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
-        ILBPair.UnclaimedFees memory feesForDev = pair.pendingFees(DEV, orderedIds);
-        ILBPair.UnclaimedFees memory feesForBob = pair.pendingFees(BOB, orderedIds);
 
-        assertGt(feesForDev.tokenY, 0);
-        assertGt(feesForBob.tokenY, 0);
+        pair.safeBatchTransferFrom(DEV, BOB, _ids, amounts);
+
+        token18D.mint(address(pair), amountYForSwap);
+        pair.swap(true, ALICE);
+
+        ILBPair.UnclaimedFees memory feesForDev = pair.pendingFees(DEV, _ids);
+        ILBPair.UnclaimedFees memory feesForBob = pair.pendingFees(BOB, _ids);
+
+        assertGt(feesForDev.tokenY, 0, "DEV should have fees on token Y");
+        assertGt(feesForBob.tokenY, 0, "BOB should also have fees on token Y");
 
         LBPair.PairInformation memory pairInfo = pair.pairInformation();
 
         uint256 accumulatedYfees = pairInfo.feesY.total - pairInfo.feesY.protocol;
 
-        assertEq(feesForDev.tokenY + feesForBob.tokenY, accumulatedYfees);
+        assertApproxEqAbs(
+            feesForDev.tokenY + feesForBob.tokenY,
+            accumulatedYfees,
+            1,
+            "Sum of users fees = accumulated fees"
+        );
 
-        pair.collectFees(DEV, orderedIds);
-        assertEq(feesForDev.tokenY, token18D.balanceOf(DEV));
-        pair.collectFees(BOB, orderedIds);
-        assertEq(feesForBob.tokenY, token18D.balanceOf(BOB));
+        pair.collectFees(DEV, _ids);
+        assertEq(feesForDev.tokenY, token18D.balanceOf(DEV), "DEV gets the expected amount when withdrawing fees");
+        pair.collectFees(BOB, _ids);
+        assertEq(feesForBob.tokenY, token18D.balanceOf(BOB), "BOB gets the expected amount when withdrawing fees");
     }
 
     function testClaimProtocolFees() public {

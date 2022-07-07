@@ -324,7 +324,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         MintInfo memory _mintInfo;
 
         _mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total).safe128();
-        _mintInfo.amountYIn = tokenY.received(_pair.reserveX, _pair.feesY.total).safe128();
+        _mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total).safe128();
 
         unchecked {
             for (uint256 i; i < _len; ++i) {

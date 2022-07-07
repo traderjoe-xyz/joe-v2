@@ -400,7 +400,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 uint256 _excessY = (_mintInfo.amountYIn - _mintInfo.amountYAddedToPair);
 
                 _pair.feesX.total = (_pair.feesX.total + _excessX).safe128();
-                _pair.feesY.total = (_pair.feesX.total + _excessX).safe128();
+                _pair.feesY.total = (_pair.feesY.total + _excessY).safe128();
 
                 _fees.tokenX = uint128(_fees.tokenX + _excessX);
                 _fees.tokenY = uint128(_fees.tokenY + _excessY);

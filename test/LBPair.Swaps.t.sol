@@ -154,7 +154,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         pair.swap(true, ALICE);
 
-        assertGt(token6D.balanceOf(ALICE), amountXOutForSwap);
+        assertGe(token6D.balanceOf(ALICE), amountXOutForSwap);
         assertApproxEqRel(token6D.balanceOf(ALICE), amountXOutForSwap, 1e14);
     }
 
@@ -171,7 +171,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         pair.swap(false, ALICE);
 
-        assertGt(token18D.balanceOf(ALICE), amountYOutForSwap);
+        assertGe(token18D.balanceOf(ALICE), amountYOutForSwap);
         assertApproxEqRel(token18D.balanceOf(ALICE), amountYOutForSwap, 1e14);
     }
 
@@ -220,7 +220,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         pair.swap(true, ALICE);
 
-        assertGt(token6D.balanceOf(ALICE), amountXOutForSwap);
+        assertGe(token6D.balanceOf(ALICE), amountXOutForSwap);
         assertApproxEqRel(token6D.balanceOf(ALICE), amountXOutForSwap, 1e14);
     }
 
@@ -237,7 +237,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         pair.swap(false, ALICE);
 
-        assertGt(token18D.balanceOf(ALICE), amountYOutForSwap);
+        assertGe(token18D.balanceOf(ALICE), amountYOutForSwap);
         assertApproxEqRel(token18D.balanceOf(ALICE), amountYOutForSwap, 1e14);
     }
 

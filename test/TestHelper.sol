@@ -65,12 +65,20 @@ abstract contract TestHelper is Test {
     }
 
     function createLBPairDefaultFees(IERC20 _tokenX, IERC20 _tokenY) internal returns (LBPair newPair) {
+        newPair = createLBPairDefaultFeesFromStartId(_tokenX, _tokenY, ID_ONE);
+    }
+
+    function createLBPairDefaultFeesFromStartId(
+        IERC20 _tokenX,
+        IERC20 _tokenY,
+        uint24 _startId
+    ) internal returns (LBPair newPair) {
         newPair = LBPair(
             address(
                 factory.createLBPair(
                     _tokenX,
                     _tokenY,
-                    ID_ONE,
+                    _startId,
                     DEFAULT_MAX_ACCUMULATOR,
                     DEFAULT_FILTER_PERIOD,
                     DEFAULT_DECAY_PERIOD,
@@ -99,7 +107,7 @@ abstract contract TestHelper is Test {
         (_ids, _distributionX, _distributionY, amountXIn) = spreadLiquidity(_amountYIn, _startId, _numberBins, _gap);
 
         token6D.mint(address(pair), amountXIn);
-        token18D.mint(address(pair), _amountYIn / 2);
+        token18D.mint(address(pair), _amountYIn);
 
         pair.mint(_ids, _distributionX, _distributionY, DEV);
     }
@@ -125,25 +133,22 @@ abstract contract TestHelper is Test {
 
         uint24 spread = _numberBins / 2;
         _ids = new uint256[](_numberBins);
-        _ids[0] = _startId;
-        for (uint24 i; i < spread; i++) {
-            _ids[2 * i + 1] = _startId - i * (1 + _gap) - 1;
-            _ids[2 * i + 2] = _startId + i * (1 + _gap) + 1;
-        }
 
         _distributionX = new uint256[](_numberBins);
         _distributionY = new uint256[](_numberBins);
         uint256 binDistribution = SCALE / (spread + 1);
         uint256 binLiquidity = _amountYIn / (spread + 1);
 
-        _distributionX[0] = binDistribution;
-        _distributionY[0] = binDistribution;
-        amountXIn += binLiquidity.mulDivRoundUp(SCALE, getPriceFromId(_startId));
+        for (uint256 i; i < _numberBins; i++) {
+            _ids[i] = _startId - spread * (1 + _gap) + i * (1 + _gap);
 
-        for (uint24 i; i < spread; i++) {
-            _distributionY[2 * i + 1] = binDistribution;
-            _distributionX[2 * i + 2] = binDistribution;
-            amountXIn += binLiquidity.mulDivRoundUp(SCALE, getPriceFromId(uint24(_ids[2 * i + 2])));
+            if (i <= spread) {
+                _distributionY[i] = binDistribution;
+            }
+            if (i >= spread) {
+                _distributionX[i] = binDistribution;
+                amountXIn += binLiquidity.mulDivRoundUp(SCALE, getPriceFromId(uint24(_ids[i])));
+            }
         }
     }
 }

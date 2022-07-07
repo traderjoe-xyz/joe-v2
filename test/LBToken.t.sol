@@ -15,21 +15,18 @@ contract LiquidityBinTokenTest is TestHelper {
 
     function testSafeBatchTransferFrom() public {
         uint256 amountIn = 1e18;
-        token18D.mint(address(pair), amountIn);
 
-        uint256[] memory ids = new uint256[](2);
-        ids[0] = ID_ONE;
-        ids[1] = ID_ONE - 1;
-        uint256[] memory liquidities = new uint256[](2);
-        liquidities[0] = 0;
-        liquidities[1] = amountIn;
+        (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, 5, 0);
 
-        pair.mint(ids, liquidities, new uint256[](2), DEV);
+        uint256[] memory amounts = new uint256[](5);
+        for (uint256 i; i < 5; i++) {
+            amounts[i] = pair.balanceOf(DEV, _ids[i]);
+        }
 
-        assertEq(pair.balanceOf(DEV, ID_ONE - 1), amountIn);
-        pair.safeBatchTransferFrom(DEV, ALICE, ids, liquidities);
+        assertEq(pair.balanceOf(DEV, ID_ONE - 1), amountIn / 3);
+        pair.safeBatchTransferFrom(DEV, ALICE, _ids, amounts);
         assertEq(pair.balanceOf(DEV, ID_ONE - 1), 0);
-        assertEq(pair.balanceOf(ALICE, ID_ONE - 1), amountIn);
+        assertEq(pair.balanceOf(ALICE, ID_ONE - 1), amountIn / 3);
 
         vm.prank(ALICE);
         pair.setApprovalForAll(BOB, true);
@@ -37,22 +34,22 @@ contract LiquidityBinTokenTest is TestHelper {
         assertFalse(pair.isApprovedForAll(BOB, ALICE));
 
         vm.prank(BOB);
-        pair.safeBatchTransferFrom(ALICE, BOB, ids, liquidities);
+        pair.safeBatchTransferFrom(ALICE, BOB, _ids, amounts);
         assertEq(pair.balanceOf(ALICE, ID_ONE - 1), 0);
-        assertEq(pair.balanceOf(BOB, ID_ONE - 1), amountIn);
+        assertEq(pair.balanceOf(BOB, ID_ONE - 1), amountIn / 3);
 
         address[] memory accounts = new address[](3);
         accounts[0] = DEV;
         accounts[1] = ALICE;
         accounts[2] = BOB;
-        ids = new uint256[](3);
+        uint256[] memory ids = new uint256[](3);
         ids[0] = ID_ONE - 1;
         ids[1] = ID_ONE - 1;
         ids[2] = ID_ONE - 1;
         uint256[] memory batchBalances = pair.balanceOfBatch(accounts, ids);
         assertEq(batchBalances[0], 0); // DEV
         assertEq(batchBalances[1], 0); // ALICE
-        assertEq(batchBalances[2], amountIn); // BOB
+        assertEq(batchBalances[2], amountIn / 3); // BOB
     }
 
     function testFailTransferNotApproved() public {

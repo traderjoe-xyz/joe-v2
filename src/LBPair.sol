@@ -223,7 +223,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         // has liquidity in it.
         while (true) {
             Bin memory _bin = _bins[_pair.activeId];
-            if (_bin.reserveX != 0 || _bin.reserveY != 0) {
+            if ((_sentTokenY && _bin.reserveX != 0) || (!_sentTokenY && _bin.reserveY != 0)) {
                 (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) = _pair
                     .getAmounts(_bin, _fp, _sentTokenY, _startId, _amountIn);
 

@@ -63,7 +63,9 @@ library SwapHelper {
             } else {
                 fees = fp.getFeesDistribution(fp.getFeesFrom(amountIn, _deltaId));
                 amountInToBin = amountIn.sub(fees.total);
-                amountOutOfBin = amountInToBin.mulDivRoundDown(_reserve, _maxAmountInToBin);
+                amountOutOfBin = sentTokenY
+                    ? Constants.SCALE.mulDivRoundDown(amountInToBin, _price)
+                    : _price.mulDivRoundDown(amountInToBin, Constants.SCALE);
                 // Safety check in case rounding returns a higher value because of rounding
                 if (amountOutOfBin > _reserve) amountOutOfBin = _reserve;
             }

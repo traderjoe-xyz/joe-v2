@@ -11,6 +11,8 @@ import "./libraries/SafeCast.sol";
 import "./libraries/TreeMath.sol";
 import "./libraries/Constants.sol";
 import "./libraries/ReentrancyGuard.sol";
+import "./libraries/Oracle.sol";
+import "./libraries/Decoder.sol";
 import "./libraries/SwapHelper.sol";
 import "./libraries/TokenHelper.sol";
 import "./interfaces/ILBFactoryHelper.sol";
@@ -36,8 +38,11 @@ error LBPair__OnlyStrictlyIncreasingId();
 error LBPair__OnlyFactory();
 error LBPair__DepthTooDeep();
 error LBPair__DistributionOverflow(uint256 id, uint256 distribution);
+error LBPair__OracleOverflow(uint256 currentOracleSize, uint256 increase);
+error Oracle__RequestTooOld(uint256 minTimestamp, uint256 requestedTimestamp);
+error Oracle__InvalidRequest(uint256 currentTimestamp, uint256 requestedAgo);
 
-// TODO add oracle price, distribute fees protocol / sJoe
+// TODO add oracle price, Add oracle id and size to pair info
 /// @title Liquidity Bin Exchange
 /// @author Trader Joe
 /// @notice DexV2 POC
@@ -50,6 +55,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     using TokenHelper for IERC20;
     using FeeHelper for FeeHelper.FeeParameters;
     using SwapHelper for PairInformation;
+    using Decoder for bytes32;
 
     /** Events **/
 
@@ -81,7 +87,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     event ProtocolFeesCollected(address indexed sender, address indexed recipient, uint256 amountX, uint256 amountY);
 
-    event FeesParametersSet(bytes32 packedFeeParameters);
+    event OracleSizeIncreased(uint256 previousSize, uint256 newSize);
 
     /** Modifiers **/
 
@@ -111,6 +117,17 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @notice mappings from account to id to user's accruedDebt.
     mapping(address => mapping(uint256 => Debts)) private _accruedDebts;
 
+    /** OffSets */
+
+    uint256 private constant _OFFSET_ACTIVE_ID = 0;
+    uint256 private constant _OFFSET_RESERVE_X = 24;
+    uint256 private constant _OFFSET_RESERVE_Y = 0;
+    uint256 private constant _OFFSET_ORACLE_SAMPLE_LIFETIME = 136;
+    uint256 private constant _OFFSET_ORACLE_SIZE = 152;
+    uint256 private constant _OFFSET_ORACLE_ACTIVE_SIZE = 168;
+    uint256 private constant _OFFSET_ORACLE_LAST_TIMESTAMP = 184;
+    uint256 private constant _OFFSET_ORACLE_ID = 224;
+
     /** Constructor **/
 
     /// @notice Initialize the parameters
@@ -121,28 +138,159 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @param _tokenX The address of the tokenX. Can't be address 0
     /// @param _tokenY The address of the tokenY. Can't be address 0
     /// @param _id The active id of the pair
+    /// @param _sampleLifetime The lifetime of a sample. It's the min time between 2 oracle's sample
     /// @param _packedFeeParameters The fee parameters packed in a single 256 bits slot
     constructor(
         ILBFactory _factory,
         IERC20 _tokenX,
         IERC20 _tokenY,
         uint256 _id,
+        uint256 _sampleLifetime,
         bytes32 _packedFeeParameters
     ) LBToken("Liquidity Book Token", "LBT") {
         factory = _factory;
         tokenX = _tokenX;
         tokenY = _tokenY;
-        _pairInformation.activeId = (_id).safe24();
 
+        _pairInformation.activeId = _id.safe24();
+        _pairInformation.oracleSampleLifetime = _sampleLifetime.safe16();
+
+        _increaseOracle(2);
         _setFeesParameters(_packedFeeParameters);
     }
 
     /** External View Functions **/
 
-    /// @notice View function to get the _pairInformation information
-    /// @return The _pairInformation information
-    function pairInformation() external view override returns (PairInformation memory) {
-        return _pairInformation;
+    /// @notice View function to get the reserves and active id
+    /// @return reserveX The reserve of asset X
+    /// @return reserveY The reserve of asset Y
+    /// @return activeId The active id of the pair
+    function getReservesAndId()
+        external
+        view
+        override
+        returns (
+            uint256 reserveX,
+            uint256 reserveY,
+            uint256 activeId
+        )
+    {
+        bytes32 _slot0;
+        bytes32 _slot1;
+        assembly {
+            _slot0 := sload(_pairInformation.slot)
+            _slot1 := sload(add(_pairInformation.slot, 1))
+        }
+        activeId = _slot0.decode(type(uint24).max, _OFFSET_ACTIVE_ID);
+        reserveX = _slot0.decode(type(uint136).max, _OFFSET_RESERVE_X);
+        reserveY = _slot1.decode(type(uint136).max, _OFFSET_RESERVE_Y);
+    }
+
+    /// @notice View function to get the global fees information, the total fees and those for protocol
+    /// @dev The fees for users are `total - protocol`
+    /// @return feesX the fees distribution of asset X
+    /// @return feesY the fees distribution of asset Y
+    function getGlobalFees()
+        external
+        view
+        override
+        returns (FeeHelper.FeesDistribution memory feesX, FeeHelper.FeesDistribution memory feesY)
+    {
+        feesX = _pairInformation.feesX;
+        feesY = _pairInformation.feesY;
+    }
+
+    /// @notice View function to get the oracle parameters
+    /// @return oracleSampleLifetime The lifetime of a sample, it accumulates information for up to this timestamp
+    /// @return oracleSize The size of the oracle (last ids can be empty)
+    /// @return oracleActiveSize The active size of the oracle (no empty data)
+    /// @return oracleLastTimestamp The timestamp of the creation of the oracle's latest sample
+    /// @return oracleId The index of the oracle's latest sample.
+    function getOracleParameters()
+        external
+        view
+        override
+        returns (
+            uint256 oracleSampleLifetime,
+            uint256 oracleSize,
+            uint256 oracleActiveSize,
+            uint256 oracleLastTimestamp,
+            uint256 oracleId
+        )
+    {
+        return _getOracleParameters();
+    }
+
+    /// @notice View function to get the safe query windows of the oracle
+    /// Outside of these bounds, it might not be returned every time
+    /// @return min The min delta time of two samples
+    /// @return min The safe max delta time of two samples
+    function getSafeQueryWindows() external view returns (uint256 min, uint256 max) {
+        (uint256 _oracleSampleLifetime, , uint256 _oracleActiveSize, , ) = _getOracleParameters();
+
+        min = _oracleActiveSize == 0 ? 0 : _oracleSampleLifetime;
+        max = _oracleSampleLifetime * _oracleActiveSize;
+    }
+
+    /// @notice View function to get the oracle's sample at `_ago` seconds
+    /// @dev 
+    function getOracleSampleAt(uint256 _ago)
+        external
+        view
+        returns (
+            uint256 cumulativeId,
+            uint256 cumulativeAccumulator,
+            uint256 cumulativeBinCrossed
+        )
+    {
+        if (_ago >= block.timestamp) revert Oracle__InvalidRequest(block.timestamp, _ago);
+
+        unchecked {
+            uint256 _lookUpTimestamp = block.timestamp - _ago;
+
+            (, , uint256 _oracleActiveSize, , uint256 _oracleId) = _getOracleParameters();
+
+            {
+                Oracle.Sample memory _sample = Oracle.getSample(_oracleId);
+
+                if (_sample.timestamp < _lookUpTimestamp) {
+                    FeeHelper.FeeParameters memory _fp = _feeParameters;
+                    _fp.updateAccumulatorValue();
+                    uint256 _activeId = _pairInformation.activeId;
+
+                    uint256 _delta = _lookUpTimestamp - _sample.timestamp;
+                    return (
+                        _sample.cumulativeId + _activeId * _delta,
+                        _sample.cumulativeAccumulator + _fp.accumulator * _delta,
+                        _sample.cumulativeBinCrossed
+                    );
+                }
+            }
+
+            // We use active size to search inside the samples that have non empty data
+            (bytes32 prev_, bytes32 next_) = Oracle.binarySearch(_oracleId, _lookUpTimestamp, _oracleActiveSize);
+
+            Oracle.Sample memory _prev = Oracle.decodeSample(prev_);
+
+            Oracle.Sample memory _next = Oracle.decodeSample(next_);
+
+            if (_prev.timestamp > _next.timestamp) revert Oracle__RequestTooOld(_prev.timestamp, _lookUpTimestamp);
+
+            if (_prev.timestamp == _next.timestamp)
+                return (_next.cumulativeId, _next.cumulativeAccumulator, _next.cumulativeBinCrossed);
+
+            uint256 _weightPrev = _next.timestamp - _lookUpTimestamp; // _next.timestamp - _prev.timestamp - (_lookUpTimestamp - _prev.timestamp)
+            uint256 _weightNext = _lookUpTimestamp - _prev.timestamp; // _next.timestamp - _prev.timestamp - (_next.timestamp - _lookUpTimestamp)
+            uint256 _totalWeight = _weightPrev + _weightNext;
+
+            cumulativeId = (_prev.cumulativeId * _weightPrev + _next.cumulativeId * _weightNext) / _totalWeight;
+            cumulativeAccumulator =
+                (_prev.cumulativeAccumulator * _weightPrev + _next.cumulativeAccumulator * _weightNext) /
+                _totalWeight;
+            cumulativeBinCrossed =
+                (_prev.cumulativeBinCrossed * _weightPrev + _next.cumulativeBinCrossed * _weightNext) /
+                _totalWeight;
+        }
     }
 
     /// @notice View function to get the fee parameters
@@ -153,7 +301,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /// @notice View function to get the tree
     /// @param _id The bin id
-    /// @param _isSearchingRight Wether to search right or left
+    /// @param _isSearchingRight whether to search right or left
     /// @return The value of the leaf at (depth, id)
     function findFirstBin(uint24 _id, bool _isSearchingRight) external view override returns (uint256) {
         return _tree.findFirstBin(_id, _isSearchingRight);
@@ -168,6 +316,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     }
 
     /// @notice View function to get the pending fees of a user
+    /// @dev The array must be strictly increasing to ensure uniqueness
     /// @param _account The address of the user
     /// @param _ids The list of ids
     /// @return The unclaimed fees
@@ -202,7 +351,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /** External Functions **/
 
     /// @notice Performs a low level swap, this needs to be called from a contract which performs important safety checks
-    /// @param _sentTokenY Wether the token sent was Y (true) or X (false)
+    /// @param _sentTokenY whether the token sent was Y (true) or X (false)
     /// @param _to The address of the recipient
     function swap(bool _sentTokenY, address _to) external override nonReentrant returns (uint256, uint256) {
         PairInformation memory _pair = _pairInformation;
@@ -244,14 +393,33 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             }
         }
 
-        _pairInformation = _pair;
-        unchecked {
-            _feeParameters.updateStoredFeeParameters(
-                _fp.accumulator,
-                _startId > _pair.activeId ? _startId - _pair.activeId : _pair.activeId - _startId
-            );
-        }
         if (_amountOut == 0) revert LBPair__BrokenSwapSafetyCheck(); // Safety check
+
+        uint256 _binCrossed = _startId > _pair.activeId ? _startId - _pair.activeId : _pair.activeId - _startId;
+        _fp.updateFeeParameters(_binCrossed);
+
+        // We use oracleSize so it can start filling empty slot that were added recently
+        uint256 _updatedOracleId = Oracle.update(
+            _pair.oracleSize,
+            _pair.oracleSampleLifetime,
+            _pair.oracleLastTimestamp,
+            _pair.oracleId,
+            _pair.activeId,
+            _fp.accumulator,
+            _binCrossed
+        );
+
+        // We update the oracleId and lastTimestamp if the sample write on another slot
+        if (_updatedOracleId != _pair.oracleId) {
+            _pair.oracleId = uint24(_updatedOracleId);
+            _pair.oracleLastTimestamp = block.timestamp.safe40();
+
+            // We increase the activeSize if the updated sample is written in a new slot
+            if (_updatedOracleId == _pair.oracleActiveSize) _pair.oracleActiveSize += 1;
+        }
+
+        _feeParameters = _fp;
+        _pairInformation = _pair;
 
         if (_sentTokenY) {
             tokenX.safeTransfer(_to, _amountOut);
@@ -535,7 +703,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     }
 
     /// @notice Distribute the protocol fees to the feeRecipient
-    /// @dev The balances are not zeroed to save gas by not resetting the memory slot
+    /// @dev The balances are not zeroed to save gas by not resetting the storage slot
     function distributeProtocolFees() external nonReentrant {
         FeeHelper.FeesDistribution memory _feesX = _pairInformation.feesX;
         FeeHelper.FeesDistribution memory _feesY = _pairInformation.feesY;
@@ -561,18 +729,25 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             }
         }
 
-        tokenX.safeTransfer(_feeRecipient, _feesXOut);
-        tokenY.safeTransfer(_feeRecipient, _feesYOut);
+        if (_feesXOut != 0) tokenX.safeTransfer(_feeRecipient, _feesXOut);
+        if (_feesYOut != 0) tokenY.safeTransfer(_feeRecipient, _feesYOut);
 
         emit ProtocolFeesCollected(msg.sender, _feeRecipient, _feesXOut, _feesYOut);
     }
 
+    /// @notice Set the fees parameters
+    /// @dev Needs to be called by the factory that will validate the values
+    /// @dev The bin step will not change
+    /// @param _packedFeeParameters The packed fee parameters
     function setFeesParameters(bytes32 _packedFeeParameters) external override OnlyFactory {
         _setFeesParameters(_packedFeeParameters);
     }
 
     /** Public Functions **/
 
+    /// @notice Function to support EIP165
+    /// @param _interfaceId The id of the interface
+    /// @return Whether the interface is supported (true), or not (false)
     function supportsInterface(bytes4 _interfaceId) public view override(LBToken, IERC165) returns (bool) {
         return _interfaceId == type(ILBPair).interfaceId || super.supportsInterface(_interfaceId);
     }
@@ -681,9 +856,48 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @notice Internal function to set the fee parameters of the pair
     /// @param _packedFeeParameters The packed fee parameters
     function _setFeesParameters(bytes32 _packedFeeParameters) internal {
+        uint256 mask = type(uint104).max;
         assembly {
-            sstore(add(_feeParameters.slot, 1), _packedFeeParameters)
+            let variableParameters := sload(_feeParameters.slot)
+            let parameters := add(and(variableParameters, mask), _packedFeeParameters)
+            sstore(_feeParameters.slot, parameters)
         }
-        emit FeesParametersSet(_packedFeeParameters);
+    }
+
+    function _increaseOracle(uint256 _nb) private {
+        uint256 _oracleSize = _pairInformation.oracleSize;
+        uint256 _newSize = _oracleSize + _nb;
+
+        if (_newSize > type(uint16).max) revert LBPair__OracleOverflow(_oracleSize, _nb);
+
+        unchecked {
+            _pairInformation.oracleSize = uint16(_newSize);
+            for (uint256 i; i < _nb; ++i) {
+                Oracle.initialize(_oracleSize + i);
+            }
+        }
+        emit OracleSizeIncreased(_oracleSize, _newSize);
+    }
+
+    function _getOracleParameters()
+        internal
+        view
+        returns (
+            uint256 oracleSampleLifetime,
+            uint256 oracleSize,
+            uint256 oracleActiveSize,
+            uint256 oracleLastTimestamp,
+            uint256 oracleId
+        )
+    {
+        bytes32 _slot;
+        assembly {
+            _slot := sload(add(_pairInformation.slot, 1))
+        }
+        oracleSampleLifetime = _slot.decode(type(uint16).max, _OFFSET_ORACLE_SAMPLE_LIFETIME);
+        oracleSize = _slot.decode(type(uint16).max, _OFFSET_ORACLE_SIZE);
+        oracleActiveSize = _slot.decode(type(uint16).max, _OFFSET_ORACLE_ACTIVE_SIZE);
+        oracleLastTimestamp = _slot.decode(type(uint40).max, _OFFSET_ORACLE_LAST_TIMESTAMP);
+        oracleId = _slot.decode(type(uint24).max, _OFFSET_ORACLE_ID);
     }
 }

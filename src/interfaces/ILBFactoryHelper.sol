@@ -14,7 +14,8 @@ interface ILBFactoryHelper {
         IERC20 _tokenX,
         IERC20 _tokenY,
         bytes32 _salt,
-        uint256 _id,
+        uint256 _activeId,
+        uint256 _sampleTime,
         bytes32 _packedFeeParameters
     ) external returns (ILBPair);
 }

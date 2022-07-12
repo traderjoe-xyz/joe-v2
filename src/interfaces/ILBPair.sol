@@ -20,15 +20,29 @@ interface ILBPair is IERC165 {
     }
 
     /// @dev Structure to store the information of the pair such as:
+    /// slot0:
     /// - activeId: The current id used for swaps, this is also linked with the price
     /// - reserveX: The sum of amounts of tokenX across all bins
+    /// slot1:
     /// - reserveY: The sum of amounts of tokenY across all bins
+    /// - oracleSampleLifetime: The lifetime of an oracle sample
+    /// - oracleSize: The current size of the oracle, can be increase by users
+    /// - oracleActiveSize: The current active size of the oracle, composed only from non empty data sample
+    /// - oracleLastTimestamp: The current last timestamp at which a sample was added to the circular buffer
+    /// - oracleId: The current id of the oracle
+    /// slot2:
     /// - feesX: The current amount of fees to distribute in tokenX (total, protocol)
+    /// slot3:
     /// - feesY: The current amount of fees to distribute in tokenY (total, protocol)
     struct PairInformation {
         uint24 activeId;
         uint136 reserveX;
         uint136 reserveY;
+        uint16 oracleSampleLifetime;
+        uint16 oracleSize;
+        uint16 oracleActiveSize;
+        uint40 oracleLastTimestamp;
+        uint24 oracleId;
         FeeHelper.FeesDistribution feesX;
         FeeHelper.FeesDistribution feesY;
     }
@@ -66,7 +80,30 @@ interface ILBPair is IERC165 {
 
     function factory() external view returns (ILBFactory);
 
-    function pairInformation() external view returns (PairInformation memory);
+    function getReservesAndId()
+        external
+        view
+        returns (
+            uint256 reserveX,
+            uint256 reserveY,
+            uint256 activeId
+        );
+
+    function getGlobalFees()
+        external
+        view
+        returns (FeeHelper.FeesDistribution memory feesX, FeeHelper.FeesDistribution memory feesY);
+
+    function getOracleInformation()
+        external
+        view
+        returns (
+            uint256 oracleSampleLifetime,
+            uint256 oracleSize,
+            uint256 oracleActiveSize,
+            uint256 oracleLastTimestamp,
+            uint256 oracleId
+        );
 
     function feeParameters() external view returns (FeeHelper.FeeParameters memory);
 

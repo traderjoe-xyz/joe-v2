@@ -18,7 +18,7 @@ library SwapHelper {
     /// @param pair The pair information
     /// @param bin The bin information
     /// @param fp The fee parameters
-    /// @param sentTokenY Wether the token sent was Y (true) or X (false)
+    /// @param sentTokenY whether the token sent was Y (true) or X (false)
     /// @param startId The id at which the swap started
     /// @param amountIn The amount sent to the user
     /// @return amountInToBin The amount of token that is added to the bin without the fees
@@ -76,7 +76,7 @@ library SwapHelper {
     /// @param pair The pair information
     /// @param bin The bin information
     /// @param fees The fees amounts
-    /// @param sentTokenY Wether the token sent was Y (true) or X (false)
+    /// @param sentTokenY whether the token sent was Y (true) or X (false)
     /// @param totalSupply The total supply of the token id
     /// @param amountInToBin The amount of token that is added to the bin without fees
     /// @param amountOutOfBin The amount of token that is removed from the bin

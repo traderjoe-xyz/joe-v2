@@ -55,7 +55,7 @@ interface ILBPair is IERC165 {
         uint256 debtY;
     }
 
-    /// Structure to store fees:
+    /// Structure to store unclaimed fees:
     /// - tokenX: The amount of fees of token X
     /// - tokenY: The amount of fees of token Y
     struct UnclaimedFees {
@@ -94,7 +94,7 @@ interface ILBPair is IERC165 {
         view
         returns (FeeHelper.FeesDistribution memory feesX, FeeHelper.FeesDistribution memory feesY);
 
-    function getOracleInformation()
+    function getOracleParameters()
         external
         view
         returns (
@@ -107,7 +107,7 @@ interface ILBPair is IERC165 {
 
     function feeParameters() external view returns (FeeHelper.FeeParameters memory);
 
-    function findFirstBin(uint24 id, bool isSearchingRight) external view returns (uint256);
+    function findFirstNonEmptyBinId(uint24 id, bool sentTokenY) external view returns (uint256);
 
     function getBin(uint24 id) external view returns (uint112 reserveX, uint112 reserveY);
 

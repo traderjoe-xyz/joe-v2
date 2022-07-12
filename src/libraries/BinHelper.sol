@@ -14,12 +14,12 @@ library BinHelper {
 
     int256 private constant INT24_SHIFT = 2**23;
 
-    /// @notice Returns the _id corresponding to the given price
-    /// @dev The _id may be inaccurate due to rounding issues, always trust getPriceFromId rather than
+    /// @notice Returns the id corresponding to the given price
+    /// @dev The id may be inaccurate due to rounding issues, always trust getPriceFromId rather than
     /// getIdFromPrice
     /// @param _price The price of y per x (with 36 decimals)
     /// @param _bp The bin step
-    /// @return The _id corresponding to this price
+    /// @return The id corresponding to this price
     function getIdFromPrice(uint256 _price, uint256 _bp) internal pure returns (uint24) {
         unchecked {
             if (_price > uint256(type(int256).max)) revert BinHelper__PriceOverflows(_price);
@@ -34,10 +34,10 @@ library BinHelper {
     }
 
     /// @notice Returns the price corresponding to the given ID (with 36 decimals)
-    /// @dev This is the trusted function to link _id to price, the other way may be inaccurate
-    /// @param _id The _id.
+    /// @dev This is the trusted function to link id to price, the other way may be inaccurate
+    /// @param _id The id
     /// @param _bp The bin step
-    /// @return The price corresponding to this _id (with 36 decimals)
+    /// @return The price corresponding to this id (with 36 decimals)
     function getPriceFromId(uint256 _id, uint256 _bp) internal pure returns (uint256) {
         unchecked {
             int256 _realId = int256(uint256(_id)) - INT24_SHIFT;
@@ -45,9 +45,9 @@ library BinHelper {
         }
     }
 
-    /// @notice Returns the value of (1+bp)^i. It's calculated using 1 / (1+bp)^-i to have the same precision
-    /// when i is negative or positive.
-    /// @param _id The _id.
+    /// @notice Returns the value of (1+bp)^id. It's calculated using 1 / (1+bp)^-id to have the same precision
+    /// whether id is negative or positive.
+    /// @param _id The id
     /// @param _bp The bin step
     /// @return The price corresponding to this _id (with 36 decimals)
     function _getPrice(int256 _id, uint256 _bp) internal pure returns (uint256) {
@@ -106,7 +106,7 @@ library BinHelper {
     }
 
     /// @notice Returns the (1 + bp) value
-    /// @param _bp The bp value [1; 10_000]
+    /// @param _bp The bp value in [1; 10_000]
     /// @return The (1+bp) value
     function _getBPValue(uint256 _bp) internal pure returns (uint256) {
         if (_bp == 0 || _bp > Constants.BASIS_POINT_MAX) revert BinHelper__WrongBPValue(_bp);

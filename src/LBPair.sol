@@ -279,7 +279,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
             Oracle.Sample memory _next = Oracle.decodeSample(next_);
 
-            if (_prev.timestamp > _next.timestamp)
+            if (_prev.timestamp > _lookUpTimestamp)
                 revert LBPair__OracleRequestTooOld(_prev.timestamp, _lookUpTimestamp);
 
             if (_prev.timestamp == _next.timestamp)

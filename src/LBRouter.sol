@@ -104,14 +104,14 @@ contract LBRouter is ILBRouter {
         uint256 _amountOut,
         bool _swapForY
     ) public view override returns (uint256 amountIn) {
-        ILBPair.PairInformation memory _pair = _LBPair.pairInformation();
+        (uint256 _pairReserveX, uint256 _pairReserveY, uint256 _activeId) = _LBPair.getReservesAndId();
 
-        if (_amountOut == 0 || (_swapForY ? _amountOut > _pair.reserveY : _amountOut > _pair.reserveX))
-            revert LBRouter__WrongAmounts(_amountOut, _swapForY ? _pair.reserveY : _pair.reserveX); // If this is wrong, then we're sure the amounts sent are wrong
+        if (_amountOut == 0 || (_swapForY ? _amountOut > _pairReserveY : _amountOut > _pairReserveX))
+            revert LBRouter__WrongAmounts(_amountOut, _swapForY ? _pairReserveY : _pairReserveX); // If this is wrong, then we're sure the amounts sent are wrong
 
         FeeHelper.FeeParameters memory _fp = _LBPair.feeParameters();
         _fp.updateAccumulatorValue();
-        uint256 _startId = _pair.activeId;
+        uint256 _startId = _activeId;
 
         uint256 _amountOutOfBin;
         uint256 _amountInWithFees;
@@ -121,10 +121,10 @@ contract LBRouter is ILBRouter {
         // has liquidity in it.
         while (true) {
             {
-                (uint256 _reserveX, uint256 _reserveY) = _LBPair.getBin(_pair.activeId);
+                (uint256 _reserveX, uint256 _reserveY) = _LBPair.getBin(uint24(_activeId));
                 _reserve = _swapForY ? _reserveY : _reserveX;
             }
-            uint256 _price = BinHelper.getPriceFromId(_pair.activeId, _fp.binStep);
+            uint256 _price = BinHelper.getPriceFromId(_activeId, _fp.binStep);
             if (_reserve != 0) {
                 _amountOutOfBin = _amountOut > _reserve ? _reserve : _amountOut;
 
@@ -134,18 +134,15 @@ contract LBRouter is ILBRouter {
 
                 _amountInWithFees =
                     _amountInToBin +
-                    _fp.getFees(
-                        _amountInToBin,
-                        _startId > _pair.activeId ? _startId - _pair.activeId : _pair.activeId - _startId
-                    );
+                    _fp.getFees(_amountInToBin, _startId > _activeId ? _startId - _activeId : _activeId - _startId);
 
-                if (_amountInWithFees + _reserve > type(uint112).max) revert LBRouter__SwapOverflows(_pair.activeId);
+                if (_amountInWithFees + _reserve > type(uint112).max) revert LBRouter__SwapOverflows(_activeId);
                 amountIn += _amountInWithFees;
                 _amountOut -= _amountOutOfBin;
             }
 
             if (_amountOut != 0) {
-                _pair.activeId = uint24(_LBPair.findFirstBin(_pair.activeId, _swapForY));
+                _activeId = uint24(_LBPair.findFirstBin(uint24(_activeId), _swapForY));
             } else {
                 break;
             }
@@ -163,7 +160,11 @@ contract LBRouter is ILBRouter {
         uint256 _amountIn,
         bool _swapForY
     ) external view override returns (uint256 _amountOut) {
-        ILBPair.PairInformation memory _pair = _LBPair.pairInformation();
+        ILBPair.PairInformation memory _pair;
+        {
+            (, , uint256 _activeId) = _LBPair.getReservesAndId();
+            _pair.activeId = uint24(_activeId);
+        }
 
         FeeHelper.FeeParameters memory _fp = _LBPair.feeParameters();
         _fp.updateAccumulatorValue();
@@ -202,7 +203,8 @@ contract LBRouter is ILBRouter {
         IERC20 _tokenX,
         IERC20 _tokenY,
         uint256 _activeId,
-        uint168 _maxAccumulator,
+        uint256 sampleLifetime,
+        uint64 _maxAccumulator,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
         uint16 _binStep,
@@ -213,6 +215,7 @@ contract LBRouter is ILBRouter {
             _tokenX,
             _tokenY,
             _activeId,
+            sampleLifetime,
             _maxAccumulator,
             _filterPeriod,
             _decayPeriod,
@@ -599,7 +602,7 @@ contract LBRouter is ILBRouter {
             if (_liq.activeIdDesired > type(uint24).max && _liq.idSlippage > type(uint24).max)
                 revert LBRouter__IdDesiredOverflows(_liq.activeIdDesired, _liq.idSlippage);
 
-            uint256 _activeId = _liq.LBPair.pairInformation().activeId;
+            (, , uint256 _activeId) = _liq.LBPair.getReservesAndId();
             if (
                 _liq.activeIdDesired + _liq.idSlippage < _activeId || _activeId + _liq.idSlippage < _liq.activeIdDesired
             ) revert LBRouter__IdSlippageCaught(_liq.activeIdDesired, _liq.idSlippage, _activeId);

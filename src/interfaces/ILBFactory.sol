@@ -38,8 +38,9 @@ interface ILBFactory is IPendingOwnable {
     function createLBPair(
         IERC20 tokenX,
         IERC20 tokenY,
-        uint256 _id,
-        uint168 maxAccumulator,
+        uint256 activeId,
+        uint256 sampleLifetime,
+        uint64 maxAccumulator,
         uint16 filterPeriod,
         uint16 decayPeriod,
         uint16 binStep,
@@ -52,7 +53,7 @@ interface ILBFactory is IPendingOwnable {
     function setFeeParametersOnPair(
         IERC20 tokenX,
         IERC20 tokenY,
-        uint168 maxAccumulator,
+        uint64 maxAccumulator,
         uint16 filterPeriod,
         uint16 decayPeriod,
         uint16 baseFactor,

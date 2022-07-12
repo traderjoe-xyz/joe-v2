@@ -99,6 +99,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _tokenX The address of the first token
     /// @param _tokenY The address of the second token
     /// @param _activeId The active id of the pair
+    /// @param _sampleLifetime The lifetime of a sample. It's the min time between 2 oracle's sample
     /// @param _maxAccumulator The max value of the accumulator
     /// @param _filterPeriod The period where the accumulator value is untouched, prevent spam
     /// @param _decayPeriod The period where the accumulator value is halved
@@ -110,7 +111,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
         IERC20 _tokenX,
         IERC20 _tokenY,
         uint256 _activeId,
-        uint168 _maxAccumulator,
+        uint256 _sampleLifetime,
+        uint64 _maxAccumulator,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
         uint16 _binStep,
@@ -137,6 +139,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _tokenY,
             keccak256(abi.encode(_tokenX, _tokenY)),
             _activeId,
+            _sampleLifetime,
             _packedFeeParameters
         );
 
@@ -146,6 +149,18 @@ contract LBFactory is PendingOwnable, ILBFactory {
         allLBPairs.push(_LBPair);
 
         emit LBPairCreated(_tokenX, _tokenY, _LBPair, allLBPairs.length - 1);
+
+        emit PackedFeeParametersSet(
+            msg.sender,
+            _LBPair,
+            _maxAccumulator,
+            _filterPeriod,
+            _decayPeriod,
+            _binStep,
+            _baseFactor,
+            _protocolShare,
+            0
+        );
     }
 
     /// @notice Function to set the recipient of the fees. This address needs to be able to receive ERC20s.
@@ -173,7 +188,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     function setFeeParametersOnPair(
         IERC20 _tokenX,
         IERC20 _tokenY,
-        uint168 _maxAccumulator,
+        uint64 _maxAccumulator,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
         uint16 _baseFactor,
@@ -228,7 +243,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _protocolShare The share of the fees received by the protocol
     /// @param _variableFeesDisabled Whether the variable fees are disabled. (any value other than 0, means disabled)
     function _getPackedFeeParameters(
-        uint168 _maxAccumulator,
+        uint64 _maxAccumulator,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
         uint16 _binStep,
@@ -262,9 +277,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
                 revert LBFactory__FeesAboveMax(_baseFee + _maxVariableFee, MAX_FEE);
         }
 
-        /// @dev It's very important that the sum of the sizes of those values is exactly 256 bits
-        /// here, 168 + 16 + 16 + 16 + 16 + 16 = 256
+        /// @dev It's very important that the sum of the sizes of those values is exactly 152 bits
+        /// here, 64 + 16 + 16 + 16 + 16 + 16 + 8 = 152
         return
+            // We don't need to shift it 104 bits, as bytes32 already does it
             bytes32(
                 abi.encodePacked(
                     _variableFeesDisabled,
@@ -274,6 +290,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
                     _decayPeriod,
                     _filterPeriod,
                     _maxAccumulator
+                    /** uint40(0) */
+                    /** uint64(0) */
                 )
             );
     }

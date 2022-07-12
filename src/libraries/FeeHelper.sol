@@ -19,9 +19,9 @@ library FeeHelper {
     /// - protocolShare: The share of fees sent to protocol
     /// - variableFeeDisabled: Whether the fees are disabled or not
     struct FeeParameters {
-        uint168 accumulator;
-        uint88 time;
-        uint168 maxAccumulator;
+        uint64 accumulator;
+        uint40 time;
+        uint64 maxAccumulator;
         uint16 filterPeriod;
         uint16 decayPeriod;
         uint16 binStep;
@@ -44,36 +44,29 @@ library FeeHelper {
         unchecked {
             uint256 deltaT = block.timestamp - _fp.time;
 
-            uint168 _accumulator; // Can't overflow as _accumulator <= _fp.accumulator <= _fp.maxAccumulator < 2**168
+            uint256 _accumulator; // Can't overflow as _accumulator <= _fp.accumulator <= _fp.maxAccumulator < 2**64
             if (deltaT < _fp.filterPeriod) {
                 _accumulator = _fp.accumulator;
             } else if (deltaT < _fp.decayPeriod) {
                 _accumulator = _fp.accumulator / 2;
-            } // else _accumulator = 0
+            } // else _accumulator = 0;
 
-            _fp.accumulator = _accumulator;
+            _fp.accumulator = uint64(_accumulator);
         }
     }
 
     /// @notice Update the accumulator and the timestamp
-    /// @dev This is done in assembly to save some gas, be very cautious if you change this
-    /// @param _fp The stored fee parameters
-    /// @param _accumulator The current accumulator (the one in memory)
+    /// @param _fp The fee parameter
     /// @param _binCrossed The current number of bin crossed
-    function updateStoredFeeParameters(
-        FeeParameters storage _fp,
-        uint256 _accumulator,
-        uint256 _binCrossed
-    ) internal {
+    function updateFeeParameters(FeeParameters memory _fp, uint256 _binCrossed) internal view {
         unchecked {
             // This equation can't overflow
-            _accumulator += _binCrossed * Constants.BASIS_POINT_MAX;
+            uint256 _accumulator = uint256(_fp.accumulator) + _binCrossed * Constants.BASIS_POINT_MAX;
 
-            if (_accumulator > _fp.maxAccumulator) _accumulator = _fp.maxAccumulator;
+            if (_accumulator > uint256(_fp.maxAccumulator)) _accumulator = _fp.maxAccumulator;
 
-            assembly {
-                sstore(_fp.slot, add(shl(168, timestamp()), _accumulator))
-            }
+            _fp.accumulator = _accumulator.safe64();
+            _fp.time = block.timestamp.safe40();
         }
     }
 
@@ -118,7 +111,7 @@ library FeeHelper {
     ) internal pure returns (uint256) {
         uint256 _feeBP2 = getBaseFeeBP2(_fp) + getVariableFeeBP2(_fp, _binCrossed);
 
-        return (_amount * _feeBP2) / (Constants.BASIS_POINT_MAX * Constants.BASIS_POINT_MAX);
+        return (_amount * _feeBP2) / (Constants.BASIS_POINT_MAX_SQUARED);
     }
 
     /// @notice Return the fees from an amount
@@ -133,7 +126,7 @@ library FeeHelper {
     ) internal pure returns (uint256) {
         uint256 _feeBP2 = getBaseFeeBP2(_fp) + getVariableFeeBP2(_fp, _binCrossed);
 
-        return (_amountPlusFee * _feeBP2) / (Constants.BASIS_POINT_MAX * Constants.BASIS_POINT_MAX + _feeBP2);
+        return (_amountPlusFee * _feeBP2) / (Constants.BASIS_POINT_MAX_SQUARED + _feeBP2);
     }
 
     /// @notice Return the fees distribution added to an amount

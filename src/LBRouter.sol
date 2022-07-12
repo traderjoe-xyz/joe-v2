@@ -411,7 +411,7 @@ contract LBRouter is ILBRouter {
         _swapExactTokensForTokens(_amountIn, _amountOutMin, _pair, _pairVersions, _tokenPath, _to);
     }
 
-    function swapExactTokensForAvax(
+    function swapExactTokensForAVAX(
         uint256 _amountIn,
         uint256 _amountOutMin,
         uint256[] memory _pairVersions,
@@ -573,7 +573,7 @@ contract LBRouter is ILBRouter {
             uint256 _version = _pairVersions[i];
 
             address _pair = _getPair(_version, _token, _tokenPath[i]);
-            _pairs[i] = _pair;
+            _pairs[i - 1] = _pair;
 
             if (_version == 2) {
                 _amountsIn[i - 1] = getSwapIn(ILBPair(_pair), _amountsIn[i], ILBPair(_pair).tokenX() == _token);
@@ -639,6 +639,7 @@ contract LBRouter is ILBRouter {
         uint256 _version = _pairVersions[0];
         uint256 _amountOut = _amountIn;
         address _recipient = _pair;
+        if (_pairVersions.length == 2) _recipient = _to;
 
         unchecked {
             for (uint256 i; i < _pairVersions.length - 1; ++i) {

@@ -23,7 +23,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         uint256 amountXOutForSwap = 1e18;
         uint24 startId = ID_ONE;
 
-        (uint256[] memory _ids, , , ) = addLiquidity(amountYInLiquidity, startId, 5, 0);
+        addLiquidity(amountYInLiquidity, startId, 5, 0);
 
         uint256 amountYInForSwap = router.getSwapIn(pair, amountXOutForSwap, false);
 

@@ -34,12 +34,12 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
             )
         );
 
-        LBPair LBPair = new LBPair(ILBFactory(DEV), token6D, token18D, ID_ONE, _packedFeeParameters);
-        assertEq(address(LBPair.factory()), DEV);
-        assertEq(address(LBPair.tokenX()), address(token6D));
-        assertEq(address(LBPair.tokenY()), address(token18D));
+        pair = new LBPair(ILBFactory(DEV), token6D, token18D, ID_ONE, _packedFeeParameters);
+        assertEq(address(pair.factory()), DEV);
+        assertEq(address(pair.tokenX()), address(token6D));
+        assertEq(address(pair.tokenY()), address(token18D));
 
-        FeeHelper.FeeParameters memory feeParameters = LBPair.feeParameters();
+        FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();
         assertEq(feeParameters.accumulator, 0);
         assertEq(feeParameters.time, 0);
         assertEq(feeParameters.maxAccumulator, _maxAccumulator);

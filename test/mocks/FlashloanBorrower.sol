@@ -3,56 +3,64 @@
 pragma solidity 0.8.9;
 
 import "openzeppelin/interfaces/IERC20.sol";
-import "openzeppelin/interfaces/IERC3156FlashBorrower.sol";
-import "openzeppelin/interfaces/IERC3156FlashLender.sol";
 
-contract FlashBorrower is IERC3156FlashBorrower {
+import "src/LBPair.sol";
+
+error FlashBorrower__UntrustedLender();
+error FlashBorrower__UntrustedLoanInitiator();
+
+contract FlashBorrower {
     enum Action {
         NORMAL,
         OTHER
     }
 
-    IERC3156FlashLender private lender;
+    event CalldataTransmitted();
 
-    constructor(IERC3156FlashLender lender_) {
+    ILBPair private lender;
+
+    constructor(ILBPair lender_) {
         lender = lender_;
     }
 
-    /// @dev ERC-3156 Flash loan callback
-    function onFlashLoan(
+    function LBFlashLoanCallback(
         address initiator,
-        address token,
-        uint256 amount,
-        uint256 fee,
+        uint256 feeX,
+        uint256 feeY,
         bytes calldata data
-    ) external override returns (bytes32) {
-        require(
-            msg.sender == address(lender),
-            "FlashBorrower: Untrusted lender"
-        );
-        require(
-            initiator == address(this),
-            "FlashBorrower: Untrusted loan initiator"
-        );
-        Action action = abi.decode(data, (Action));
-        if (action == Action.NORMAL) {
-            // do one thing
-        } else if (action == Action.OTHER) {
-            // do another
+    ) external returns (bytes32) {
+        if (msg.sender != address(lender)) {
+            revert FlashBorrower__UntrustedLender();
         }
+        if (initiator != address(this)) {
+            revert FlashBorrower__UntrustedLoanInitiator();
+        }
+        (Action action, uint256 amountXBorrowed, uint256 amountYBorrowed, bool isReentrant) = abi.decode(
+            data,
+            (Action, uint256, uint256, bool)
+        );
+        if (isReentrant) {
+            lender.flashLoan(address(this), amountXBorrowed, amountYBorrowed, data);
+        }
+        if (action == Action.NORMAL) {
+            emit CalldataTransmitted();
+        }
+
+        IERC20(lender.tokenX()).transfer(address(lender), amountXBorrowed + feeX);
+        IERC20(lender.tokenY()).transfer(address(lender), amountYBorrowed + feeY);
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 
     /// @dev Initiate a flash loan
-    function flashBorrow(address token, uint256 amount) public {
-        bytes memory data = abi.encode(Action.NORMAL);
-        uint256 _allowance = IERC20(token).allowance(
-            address(this),
-            address(lender)
-        );
-        uint256 _fee = lender.flashFee(token, amount);
-        uint256 _repayment = amount + _fee;
-        IERC20(token).approve(address(lender), _allowance + _repayment);
-        lender.flashLoan(this, token, amount, data);
+    function flashBorrow(uint256 amountXBorrowed, uint256 amountYBorrowed) public {
+        bytes memory data = abi.encode(Action.NORMAL, amountXBorrowed, amountYBorrowed, false);
+
+        lender.flashLoan(address(this), amountXBorrowed, amountYBorrowed, data);
+    }
+
+    function flashBorrowWithReentrancy(uint256 amountXBorrowed, uint256 amountYBorrowed) public {
+        bytes memory data = abi.encode(Action.NORMAL, amountXBorrowed, amountYBorrowed, true);
+
+        lender.flashLoan(address(this), amountXBorrowed, amountYBorrowed, data);
     }
 }

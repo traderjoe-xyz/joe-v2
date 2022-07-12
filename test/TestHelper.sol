@@ -47,6 +47,9 @@ abstract contract TestHelper is Test {
     address internal constant ALICE = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
     address internal constant BOB = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
 
+    address internal constant JOE_V1_FACTORY_ADDRESS = 0x9Ad6C38BE94206cA50bb0d90783181662f0Cfa10;
+    address internal constant WAVAX_AVALANCHE_ADDRESS = 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7;
+
     WAVAX internal wavax;
     ERC20MockDecimals internal token6D;
     ERC20MockDecimals internal token12D;
@@ -54,7 +57,9 @@ abstract contract TestHelper is Test {
 
     LBFactory internal factory;
     LBRouter internal router;
+    LBRouter internal routerV1 = LBRouter(payable(JOE_V1_FACTORY_ADDRESS));
     LBPair internal pair;
+    LBPair internal pairWavax;
 
     function getPriceFromId(uint24 _id) internal pure returns (uint256 price) {
         price = BinHelper.getPriceFromId(_id, DEFAULT_BIN_STEP);
@@ -148,6 +153,92 @@ abstract contract TestHelper is Test {
             if (i >= spread) {
                 _distributionX[i] = binDistribution;
                 amountXIn += binLiquidity.mulDivRoundUp(SCALE, getPriceFromId(uint24(_ids[i])));
+            }
+        }
+    }
+
+    function addLiquidityFromRouter(
+        uint256 _amountYIn,
+        uint24 _startId,
+        uint24 _numberBins,
+        uint24 _gap,
+        uint256 _slippage
+    )
+        internal
+        returns (
+            int256[] memory _deltaIds,
+            uint256[] memory _distributionX,
+            uint256[] memory _distributionY,
+            uint256 amountXIn
+        )
+    {
+        (_deltaIds, _distributionX, _distributionY, amountXIn) = spreadLiquidityForRouter(
+            _amountYIn,
+            _startId,
+            _numberBins,
+            _gap
+        );
+
+        token6D.mint(DEV, amountXIn);
+        token6D.approve(address(router), amountXIn);
+        token18D.mint(DEV, _amountYIn);
+        token18D.approve(address(router), _amountYIn);
+
+        router.addLiquidity(
+            token6D,
+            token18D,
+            amountXIn,
+            _amountYIn,
+            0,
+            _startId,
+            _slippage,
+            _deltaIds,
+            _distributionX,
+            _distributionY,
+            DEV,
+            block.timestamp
+        );
+    }
+
+    function spreadLiquidityForRouter(
+        uint256 _amountYIn,
+        uint24 _startId,
+        uint24 _numberBins,
+        uint24 _gap
+    )
+        internal
+        pure
+        returns (
+            int256[] memory _deltaIds,
+            uint256[] memory _distributionX,
+            uint256[] memory _distributionY,
+            uint256 amountXIn
+        )
+    {
+        if (_numberBins % 2 == 0) {
+            revert("Pls put an uneven number of bins");
+        }
+
+        uint256 spread = _numberBins / 2;
+        _deltaIds = new int256[](_numberBins);
+
+        _distributionX = new uint256[](_numberBins);
+        _distributionY = new uint256[](_numberBins);
+        uint256 binDistribution = SCALE / (spread + 1);
+        uint256 binLiquidity = _amountYIn / (spread + 1);
+
+        for (uint256 i; i < _numberBins; i++) {
+            _deltaIds[i] = int256(i * (1 + _gap)) - int256(spread * (1 + _gap));
+
+            if (i <= spread) {
+                _distributionY[i] = binDistribution;
+            }
+            if (i >= spread) {
+                _distributionX[i] = binDistribution;
+                amountXIn += binLiquidity.mulDivRoundUp(
+                    SCALE,
+                    getPriceFromId(uint24(int24(_startId) + int24(_deltaIds[i])))
+                );
             }
         }
     }

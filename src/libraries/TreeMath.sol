@@ -11,6 +11,7 @@ library TreeMath {
 
     /// @notice Returns the first id that is non zero, corresponding to a bin with
     /// liquidity in it
+    /// @param _tree The storage slot of the tree
     /// @param _binId the binId to start searching
     /// @param _isSearchingRight The boolean value to decide if the algorithm will look
     /// for the closest non zero bit on the right or the left

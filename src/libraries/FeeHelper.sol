@@ -72,7 +72,7 @@ library FeeHelper {
 
     /// @notice Returns the base fee added to a swap in basis point squared (100% is 100_000_000)
     /// @param _fp The current fee parameters
-    /// @return The fee
+    /// @return The fee in basis point squared
     function getBaseFeeBP2(FeeParameters memory _fp) internal pure returns (uint256) {
         unchecked {
             return _fp.baseFactor * _fp.binStep;
@@ -82,7 +82,7 @@ library FeeHelper {
     /// @notice Returns the variable fee added to a swap in basis point squared (100% is 100_000_000)
     /// @param _fp The current fee parameters
     /// @param _binCrossed The current number of bin crossed
-    /// @return The variable fee
+    /// @return The variable fee in basis point squared
     function getVariableFeeBP2(FeeParameters memory _fp, uint256 _binCrossed) internal pure returns (uint256) {
         unchecked {
             if (_fp.variableFeeDisabled != 0) {

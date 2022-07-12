@@ -39,8 +39,9 @@ error LBPair__OnlyFactory();
 error LBPair__DepthTooDeep();
 error LBPair__DistributionOverflow(uint256 id, uint256 distribution);
 error LBPair__OracleOverflow(uint256 currentOracleSize, uint256 increase);
-error Oracle__RequestTooOld(uint256 minTimestamp, uint256 requestedTimestamp);
-error Oracle__InvalidRequest(uint256 currentTimestamp, uint256 requestedAgo);
+error LBPair__OracleRequestTooOld(uint256 minTimestamp, uint256 requestedTimestamp);
+error LBPair__OracleInvalidRequest(uint256 currentTimestamp, uint256 requestedAgo);
+error LBPair__OnlyFeeRecipient(address feeRecipient, address sender);
 
 // TODO add oracle price, Add oracle id and size to pair info
 /// @title Liquidity Bin Exchange
@@ -205,7 +206,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @return oracleSize The size of the oracle (last ids can be empty)
     /// @return oracleActiveSize The active size of the oracle (no empty data)
     /// @return oracleLastTimestamp The timestamp of the creation of the oracle's latest sample
-    /// @return oracleId The index of the oracle's latest sample.
+    /// @return oracleId The index of the oracle's latest sample
     function getOracleParameters()
         external
         view
@@ -224,7 +225,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @notice View function to get the safe query windows of the oracle
     /// Outside of these bounds, it might not be returned every time
     /// @return min The min delta time of two samples
-    /// @return min The safe max delta time of two samples
+    /// @return max The safe max delta time of two samples
     function getSafeQueryWindows() external view returns (uint256 min, uint256 max) {
         (uint256 _oracleSampleLifetime, , uint256 _oracleActiveSize, , ) = _getOracleParameters();
 
@@ -233,7 +234,11 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     }
 
     /// @notice View function to get the oracle's sample at `_ago` seconds
-    /// @dev 
+    /// @dev Return a linearized sample, the weighted average of 2 neighboring samples
+    /// @param _ago The number of seconds before the current timestamp
+    /// @return cumulativeId The weighted average cumulative id
+    /// @return cumulativeAccumulator The weighted average cumulative accumulator
+    /// @return cumulativeBinCrossed The weighted average cumulative bin crossed
     function getOracleSampleAt(uint256 _ago)
         external
         view
@@ -243,7 +248,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             uint256 cumulativeBinCrossed
         )
     {
-        if (_ago >= block.timestamp) revert Oracle__InvalidRequest(block.timestamp, _ago);
+        if (_ago >= block.timestamp) revert LBPair__OracleInvalidRequest(block.timestamp, _ago);
 
         unchecked {
             uint256 _lookUpTimestamp = block.timestamp - _ago;
@@ -274,7 +279,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
             Oracle.Sample memory _next = Oracle.decodeSample(next_);
 
-            if (_prev.timestamp > _next.timestamp) revert Oracle__RequestTooOld(_prev.timestamp, _lookUpTimestamp);
+            if (_prev.timestamp > _next.timestamp)
+                revert LBPair__OracleRequestTooOld(_prev.timestamp, _lookUpTimestamp);
 
             if (_prev.timestamp == _next.timestamp)
                 return (_next.cumulativeId, _next.cumulativeAccumulator, _next.cumulativeBinCrossed);
@@ -299,12 +305,12 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         return _feeParameters;
     }
 
-    /// @notice View function to get the tree
+    /// @notice View function to get the first bin that isn't empty, will not be `_id` itself
     /// @param _id The bin id
-    /// @param _isSearchingRight whether to search right or left
-    /// @return The value of the leaf at (depth, id)
-    function findFirstBin(uint24 _id, bool _isSearchingRight) external view override returns (uint256) {
-        return _tree.findFirstBin(_id, _isSearchingRight);
+    /// @param _sentTokenY Wether you've sent tokenY (true) or X (false), i.e., if you want to swap for X or for X
+    /// @return The id of the non empty bin
+    function findFirstNonEmptyBinId(uint24 _id, bool _sentTokenY) external view override returns (uint256) {
+        return _tree.findFirstBin(_id, !_sentTokenY);
     }
 
     /// @notice View function to get the bin at `id`
@@ -351,6 +357,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /** External Functions **/
 
     /// @notice Performs a low level swap, this needs to be called from a contract which performs important safety checks
+    /// @dev Will swap the full amount that this contract received of token X or Y
     /// @param _sentTokenY whether the token sent was Y (true) or X (false)
     /// @param _to The address of the recipient
     function swap(bool _sentTokenY, address _to) external override nonReentrant returns (uint256, uint256) {
@@ -702,13 +709,17 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         emit FeesCollected(msg.sender, _account, _fees.tokenX, _fees.tokenY);
     }
 
-    /// @notice Distribute the protocol fees to the feeRecipient
+    /// @notice Collect the protocol fees and send them to the feeRecipient
     /// @dev The balances are not zeroed to save gas by not resetting the storage slot
-    function distributeProtocolFees() external nonReentrant {
+    /// Only callable by the fee recipient
+    function collectProtocolFees() external nonReentrant {
+        address _feeRecipient = factory.feeRecipient();
+
+        if (msg.sender != _feeRecipient) revert LBPair__OnlyFeeRecipient(_feeRecipient, msg.sender);
+
         FeeHelper.FeesDistribution memory _feesX = _pairInformation.feesX;
         FeeHelper.FeesDistribution memory _feesY = _pairInformation.feesY;
 
-        address _feeRecipient = factory.feeRecipient();
         uint256 _feesXOut;
         uint256 _feesYOut;
 
@@ -737,7 +748,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /// @notice Set the fees parameters
     /// @dev Needs to be called by the factory that will validate the values
-    /// @dev The bin step will not change
+    /// The bin step will not change
+    /// Only callable by the factory
     /// @param _packedFeeParameters The packed fee parameters
     function setFeesParameters(bytes32 _packedFeeParameters) external override OnlyFactory {
         _setFeesParameters(_packedFeeParameters);
@@ -793,7 +805,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /** Private Functions **/
 
-    /// @notice Collect fees of a given bin
+    /// @notice View function to collect fees of a given bin to memory
     /// @param _fees The user's unclaimed fees
     /// @param _bin  The bin where the user is collecting fees
     /// @param _account The address of the user
@@ -864,6 +876,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         }
     }
 
+    /// @notice Private function to increase the oracle's number of sample
+    /// @param _nb The number of sample to add to the oracle
     function _increaseOracle(uint256 _nb) private {
         uint256 _oracleSize = _pairInformation.oracleSize;
         uint256 _newSize = _oracleSize + _nb;
@@ -879,6 +893,12 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         emit OracleSizeIncreased(_oracleSize, _newSize);
     }
 
+    /// @notice Private view function to return the oracle's parameters
+    /// @return oracleSampleLifetime The lifetime of a sample, it accumulates information for up to this timestamp
+    /// @return oracleSize The size of the oracle (last ids can be empty)
+    /// @return oracleActiveSize The active size of the oracle (no empty data)
+    /// @return oracleLastTimestamp The timestamp of the creation of the oracle's latest sample
+    /// @return oracleId The index of the oracle's latest sample
     function _getOracleParameters()
         internal
         view

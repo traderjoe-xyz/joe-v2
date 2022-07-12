@@ -34,9 +34,11 @@ library TokenHelper {
         }
     }
 
-    /// @notice Returns the balance of the pair
+    /// @notice Returns the amount of token received by the pair
     /// @param token The address of the token
-    /// @return The balance of the pair
+    /// @param reserve The total reserve of token
+    /// @param fees The total fees of token
+    /// @return The amount received by the pair
     function received(
         IERC20 token,
         uint256 reserve,

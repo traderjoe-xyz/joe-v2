@@ -28,7 +28,7 @@ library SwapHelper {
         ILBPair.PairInformation memory pair,
         ILBPair.Bin memory bin,
         FeeHelper.FeeParameters memory fp,
-        bool sentTokenY,
+        bool _swapForY,
         uint256 startId,
         uint256 amountIn
     )
@@ -45,12 +45,12 @@ library SwapHelper {
 
             uint256 _reserve;
             uint256 _maxAmountInToBin;
-            if (sentTokenY) {
-                _reserve = bin.reserveX;
-                _maxAmountInToBin = _price.mulDivRoundUp(_reserve, Constants.SCALE);
-            } else {
+            if (_swapForY) {
                 _reserve = bin.reserveY;
                 _maxAmountInToBin = Constants.SCALE.mulDivRoundUp(_reserve, _price);
+            } else {
+                _reserve = bin.reserveX;
+                _maxAmountInToBin = _price.mulDivRoundUp(_reserve, Constants.SCALE);
             }
 
             uint256 _deltaId = startId > pair.activeId ? startId - pair.activeId : pair.activeId - startId;
@@ -63,9 +63,9 @@ library SwapHelper {
             } else {
                 fees = fp.getFeesDistribution(fp.getFeesFrom(amountIn, _deltaId));
                 amountInToBin = amountIn.sub(fees.total);
-                amountOutOfBin = sentTokenY
-                    ? Constants.SCALE.mulDivRoundDown(amountInToBin, _price)
-                    : _price.mulDivRoundDown(amountInToBin, Constants.SCALE);
+                amountOutOfBin = _swapForY
+                    ? _price.mulDivRoundDown(amountInToBin, Constants.SCALE)
+                    : Constants.SCALE.mulDivRoundDown(amountInToBin, _price);
                 // Safety check in case rounding returns a higher value because of rounding
                 if (amountOutOfBin > _reserve) amountOutOfBin = _reserve;
             }
@@ -76,7 +76,7 @@ library SwapHelper {
     /// @param pair The pair information
     /// @param bin The bin information
     /// @param fees The fees amounts
-    /// @param sentTokenY whether the token sent was Y (true) or X (false)
+    /// @param _swapForY whether the token sent was Y (true) or X (false)
     /// @param totalSupply The total supply of the token id
     /// @param amountInToBin The amount of token that is added to the bin without fees
     /// @param amountOutOfBin The amount of token that is removed from the bin
@@ -84,25 +84,12 @@ library SwapHelper {
         ILBPair.PairInformation memory pair,
         ILBPair.Bin memory bin,
         FeeHelper.FeesDistribution memory fees,
-        bool sentTokenY,
+        bool _swapForY,
         uint256 totalSupply,
         uint256 amountInToBin,
         uint256 amountOutOfBin
     ) internal pure {
-        if (sentTokenY) {
-            pair.feesY.total += fees.total;
-            pair.feesY.protocol += fees.protocol;
-
-            bin.accTokenYPerShare += ((fees.total - fees.protocol) * Constants.SCALE) / totalSupply;
-
-            bin.reserveY += uint112(amountInToBin);
-            unchecked {
-                bin.reserveX -= uint112(amountOutOfBin);
-
-                pair.reserveX -= uint136(amountOutOfBin);
-                pair.reserveY += uint136(amountInToBin);
-            }
-        } else {
+        if (_swapForY) {
             pair.feesX.total += fees.total;
             pair.feesX.protocol += fees.protocol;
 
@@ -114,6 +101,19 @@ library SwapHelper {
 
                 pair.reserveX += uint136(amountInToBin);
                 pair.reserveY -= uint136(amountOutOfBin);
+            }
+        } else {
+            pair.feesY.total += fees.total;
+            pair.feesY.protocol += fees.protocol;
+
+            bin.accTokenYPerShare += ((fees.total - fees.protocol) * Constants.SCALE) / totalSupply;
+
+            bin.reserveY += uint112(amountInToBin);
+            unchecked {
+                bin.reserveX -= uint112(amountOutOfBin);
+
+                pair.reserveX -= uint136(amountOutOfBin);
+                pair.reserveY += uint136(amountInToBin);
             }
         }
     }

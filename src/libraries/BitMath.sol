@@ -6,19 +6,19 @@ library BitMath {
     /// @notice Returns the non-zero bit closest to the `_integer` to the right (or left) of the `bit` index
     /// @param _integer The integer as a uint256
     /// @param _bit The bit index
-    /// @param _isSearchingRight If we're searching to the right (true) or left (false)
+    /// @param _leftSide Whether we're searching in the left side of the tree (true) or the right side (false)
     /// @return The index of the closest non zero bit
     /// @return Whether it was found (true), or not (false)
     function closestBit(
         uint256 _integer,
         uint256 _bit,
-        bool _isSearchingRight
+        bool _leftSide
     ) internal pure returns (uint256, bool) {
         unchecked {
-            if (_isSearchingRight) {
-                return closestBitRight(_integer, _bit - 1);
+            if (_leftSide) {
+                return closestBitLeft(_integer, _bit + 1);
             }
-            return closestBitLeft(_integer, _bit + 1);
+            return closestBitRight(_integer, _bit - 1);
         }
     }
 

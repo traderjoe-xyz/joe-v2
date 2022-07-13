@@ -13,13 +13,13 @@ library TreeMath {
     /// liquidity in it
     /// @param _tree The storage slot of the tree
     /// @param _binId the binId to start searching
-    /// @param _isSearchingRight The boolean value to decide if the algorithm will look
+    /// @param _leftSide Whether we're searching in the left side of the tree (true) or the right side (false)
     /// for the closest non zero bit on the right or the left
     /// @return The closest non zero bit on the right side
     function findFirstBin(
         mapping(uint256 => uint256)[3] storage _tree,
         uint256 _binId,
-        bool _isSearchingRight
+        bool _leftSide
     ) internal view returns (uint256) {
         unchecked {
             uint256 current;
@@ -29,9 +29,9 @@ library TreeMath {
             _binId /= 256;
 
             // Search in depth 2
-            if ((_isSearchingRight && bit != 0) || (!_isSearchingRight && bit < 255)) {
+            if ((_leftSide && bit < 255) || (!_leftSide && bit != 0)) {
                 current = _tree[2][_binId];
-                (bit, found) = current.closestBit(bit, _isSearchingRight);
+                (bit, found) = current.closestBit(bit, _leftSide);
                 if (found) {
                     return _binId * 256 + bit;
                 }
@@ -41,9 +41,9 @@ library TreeMath {
             _binId /= 256;
 
             // Search in depth 1
-            if ((_isSearchingRight && _binId % 256 != 0) || (!_isSearchingRight && _binId % 256 != 255)) {
+            if ((_leftSide && _binId % 256 != 255) || (!_leftSide && _binId % 256 != 0)) {
                 current = _tree[1][_binId];
-                (bit, found) = current.closestBit(bit, _isSearchingRight);
+                (bit, found) = current.closestBit(bit, _leftSide);
                 if (found) {
                     _binId = 256 * _binId + bit;
                     current = _tree[2][_binId];
@@ -54,12 +54,12 @@ library TreeMath {
 
             // Search in depth 0
             current = _tree[0][0];
-            (_binId, found) = current.closestBit(_binId, _isSearchingRight);
+            (_binId, found) = current.closestBit(_binId, _leftSide);
             if (!found) revert TreeMath__ErrorDepthSearch();
             current = _tree[1][_binId];
-            _binId = 256 * _binId + current.significantBit(_isSearchingRight);
+            _binId = 256 * _binId + current.significantBit(_leftSide);
             current = _tree[2][_binId];
-            bit = current.significantBit(_isSearchingRight);
+            bit = current.significantBit(_leftSide);
             return _binId * 256 + bit;
         }
     }

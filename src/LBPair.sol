@@ -287,7 +287,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
             uint256 _weightPrev = _next.timestamp - _lookUpTimestamp; // _next.timestamp - _prev.timestamp - (_lookUpTimestamp - _prev.timestamp)
             uint256 _weightNext = _lookUpTimestamp - _prev.timestamp; // _next.timestamp - _prev.timestamp - (_next.timestamp - _lookUpTimestamp)
-            uint256 _totalWeight = _weightPrev + _weightNext;
+            uint256 _totalWeight = _weightPrev + _weightNext; // _next.timestamp - _prev.timestamp
 
             cumulativeId = (_prev.cumulativeId * _weightPrev + _next.cumulativeId * _weightNext) / _totalWeight;
             cumulativeAccumulator =

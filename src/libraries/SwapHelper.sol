@@ -18,7 +18,7 @@ library SwapHelper {
     /// @param pair The pair information
     /// @param bin The bin information
     /// @param fp The fee parameters
-    /// @param _swapForY Wether you've swapping token X for token Y (true) or token Y for token X (false)
+    /// @param swapForY Wether you've swapping token X for token Y (true) or token Y for token X (false)
     /// @param startId The id at which the swap started
     /// @param amountIn The amount sent to the user
     /// @return amountInToBin The amount of token that is added to the bin without the fees
@@ -28,7 +28,7 @@ library SwapHelper {
         ILBPair.PairInformation memory pair,
         ILBPair.Bin memory bin,
         FeeHelper.FeeParameters memory fp,
-        bool _swapForY,
+        bool swapForY,
         uint256 startId,
         uint256 amountIn
     )
@@ -45,7 +45,7 @@ library SwapHelper {
 
             uint256 _reserve;
             uint256 _maxAmountInToBin;
-            if (_swapForY) {
+            if (swapForY) {
                 _reserve = bin.reserveY;
                 _maxAmountInToBin = Constants.SCALE.mulDivRoundUp(_reserve, _price);
             } else {
@@ -63,7 +63,7 @@ library SwapHelper {
             } else {
                 fees = fp.getFeesDistribution(fp.getFeesFrom(amountIn, _deltaId));
                 amountInToBin = amountIn.sub(fees.total);
-                amountOutOfBin = _swapForY
+                amountOutOfBin = swapForY
                     ? _price.mulDivRoundDown(amountInToBin, Constants.SCALE)
                     : Constants.SCALE.mulDivRoundDown(amountInToBin, _price);
                 // Safety check in case rounding returns a higher value because of rounding
@@ -76,7 +76,7 @@ library SwapHelper {
     /// @param pair The pair information
     /// @param bin The bin information
     /// @param fees The fees amounts
-    /// @param _swapForY whether the token sent was Y (true) or X (false)
+    /// @param swapForY whether the token sent was Y (true) or X (false)
     /// @param totalSupply The total supply of the token id
     /// @param amountInToBin The amount of token that is added to the bin without fees
     /// @param amountOutOfBin The amount of token that is removed from the bin
@@ -84,12 +84,12 @@ library SwapHelper {
         ILBPair.PairInformation memory pair,
         ILBPair.Bin memory bin,
         FeeHelper.FeesDistribution memory fees,
-        bool _swapForY,
+        bool swapForY,
         uint256 totalSupply,
         uint256 amountInToBin,
         uint256 amountOutOfBin
     ) internal pure {
-        if (_swapForY) {
+        if (swapForY) {
             pair.feesX.total += fees.total;
             pair.feesX.protocol += fees.protocol;
 

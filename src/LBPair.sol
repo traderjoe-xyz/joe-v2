@@ -307,10 +307,10 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /// @notice View function to get the first bin that isn't empty, will not be `_id` itself
     /// @param _id The bin id
-    /// @param _sentTokenY Wether you've sent tokenY (true) or X (false), i.e., if you want to swap for X or for X
+    /// @param _swapForY Wether you've swapping token X for token Y (true) or token Y for token X (false)
     /// @return The id of the non empty bin
-    function findFirstNonEmptyBinId(uint24 _id, bool _sentTokenY) external view override returns (uint256) {
-        return _tree.findFirstBin(_id, !_sentTokenY);
+    function findFirstNonEmptyBinId(uint24 _id, bool _swapForY) external view override returns (uint256) {
+        return _tree.findFirstBin(_id, _swapForY);
     }
 
     /// @notice View function to get the bin at `id`
@@ -358,14 +358,14 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /// @notice Performs a low level swap, this needs to be called from a contract which performs important safety checks
     /// @dev Will swap the full amount that this contract received of token X or Y
-    /// @param _sentTokenY whether the token sent was Y (true) or X (false)
+    /// @param _swapForY whether the token sent was Y (true) or X (false)
     /// @param _to The address of the recipient
-    function swap(bool _sentTokenY, address _to) external override nonReentrant returns (uint256, uint256) {
+    function swap(bool _swapForY, address _to) external override nonReentrant returns (uint256, uint256) {
         PairInformation memory _pair = _pairInformation;
 
-        uint256 _amountIn = _sentTokenY
-            ? tokenY.received(_pair.reserveY, _pair.feesY.total)
-            : tokenX.received(_pair.reserveX, _pair.feesX.total);
+        uint256 _amountIn = _swapForY
+            ? tokenX.received(_pair.reserveX, _pair.feesX.total)
+            : tokenY.received(_pair.reserveY, _pair.feesY.total);
 
         if (_amountIn == 0) revert LBPair__InsufficientAmounts();
 
@@ -379,13 +379,13 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         // has liquidity in it.
         while (true) {
             Bin memory _bin = _bins[_pair.activeId];
-            if ((_sentTokenY && _bin.reserveX != 0) || (!_sentTokenY && _bin.reserveY != 0)) {
+            if ((!_swapForY && _bin.reserveX != 0) || (_swapForY && _bin.reserveY != 0)) {
                 (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) = _pair
-                    .getAmounts(_bin, _fp, _sentTokenY, _startId, _amountIn);
+                    .getAmounts(_bin, _fp, _swapForY, _startId, _amountIn);
 
                 if (_amountInToBin > type(uint112).max) revert LBPair__BinReserveOverflows(_pair.activeId);
 
-                _pair.update(_bin, _fees, _sentTokenY, totalSupply(_pair.activeId), _amountInToBin, _amountOutOfBin);
+                _pair.update(_bin, _fees, _swapForY, totalSupply(_pair.activeId), _amountInToBin, _amountOutOfBin);
 
                 _amountIn -= _amountInToBin + _fees.total;
                 _amountOut += _amountOutOfBin;
@@ -394,7 +394,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             }
 
             if (_amountIn != 0) {
-                _pair.activeId = uint24(_tree.findFirstBin(_pair.activeId, !_sentTokenY));
+                _pair.activeId = uint24(_tree.findFirstBin(_pair.activeId, _swapForY));
             } else {
                 break;
             }
@@ -428,14 +428,14 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         _feeParameters = _fp;
         _pairInformation = _pair;
 
-        if (_sentTokenY) {
-            tokenX.safeTransfer(_to, _amountOut);
-            emit Swap(msg.sender, _to, _pair.activeId, _amountOut, 0);
-            return (_amountOut, 0);
-        } else {
+        if (_swapForY) {
             tokenY.safeTransfer(_to, _amountOut);
             emit Swap(msg.sender, _to, _pair.activeId, 0, _amountOut);
             return (0, _amountOut);
+        } else {
+            tokenX.safeTransfer(_to, _amountOut);
+            emit Swap(msg.sender, _to, _pair.activeId, _amountOut, 0);
+            return (_amountOut, 0);
         }
     }
 

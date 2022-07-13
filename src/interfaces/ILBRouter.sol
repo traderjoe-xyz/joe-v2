@@ -162,6 +162,32 @@ interface ILBRouter {
         uint256 _deadline
     ) external payable;
 
+    function swapExactTokensForTokensSupportingFeeOnTransferTokens(
+        uint256 _amountIn,
+        uint256 _amountOutMin,
+        uint256[] memory _pairVersions,
+        IERC20[] memory _tokenPath,
+        address _to,
+        uint256 _deadline
+    ) external;
+
+    function swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+        uint256 _amountIn,
+        uint256 _amountOutMinAVAX,
+        uint256[] memory _pairVersions,
+        IERC20[] memory _tokenPath,
+        address _to,
+        uint256 _deadline
+    ) external;
+
+    function swapExactAVAXForTokensSupportingFeeOnTransferTokens(
+        uint256 _amountOutMin,
+        uint256[] memory _pairVersions,
+        IERC20[] memory _tokenPath,
+        address _to,
+        uint256 _deadline
+    ) external payable;
+
     function sweep(
         IERC20 _token,
         address _to,

@@ -14,7 +14,7 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
     }
 
     function testConstructor(
-        uint168 _maxAccumulator,
+        uint64 _maxAccumulator,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
         uint16 _binStep,
@@ -34,21 +34,25 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
             )
         );
 
-        pair = new LBPair(ILBFactory(DEV), token6D, token18D, ID_ONE, _packedFeeParameters);
+        pair = new LBPair(ILBFactory(DEV), token6D, token18D, ID_ONE, DEFAULT_SAMPLE_LIFETIME, _packedFeeParameters);
         assertEq(address(pair.factory()), DEV);
         assertEq(address(pair.tokenX()), address(token6D));
         assertEq(address(pair.tokenY()), address(token18D));
 
         FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();
-        assertEq(feeParameters.accumulator, 0);
-        assertEq(feeParameters.time, 0);
-        assertEq(feeParameters.maxAccumulator, _maxAccumulator);
-        assertEq(feeParameters.filterPeriod, _filterPeriod);
-        assertEq(feeParameters.decayPeriod, _decayPeriod);
-        assertEq(feeParameters.binStep, _binStep);
-        assertEq(feeParameters.baseFactor, _baseFactor);
-        assertEq(feeParameters.protocolShare, _protocolShare);
-        assertEq(feeParameters.variableFeeDisabled, _variableFeeDisabled);
+        assertEq(feeParameters.accumulator, 0, "Accumulator should be 0");
+        assertEq(feeParameters.time, 0, "Time should be zero");
+        assertEq(feeParameters.maxAccumulator, _maxAccumulator, "Max Accumulator should be correctly set");
+        assertEq(feeParameters.filterPeriod, _filterPeriod, "Filter Period should be correctly set");
+        assertEq(feeParameters.decayPeriod, _decayPeriod, "Decay Period should be correctly set");
+        assertEq(feeParameters.binStep, _binStep, "Bin Step should be correctly set");
+        assertEq(feeParameters.baseFactor, _baseFactor, "Base Factor should be correctly set");
+        assertEq(feeParameters.protocolShare, _protocolShare, "Protocol Share should be correctly set");
+        assertEq(
+            feeParameters.variableFeeDisabled,
+            _variableFeeDisabled,
+            "Variable Fee Disabled should be correctly set"
+        );
     }
 
     function testAddLiquidity(uint256 _price) public {

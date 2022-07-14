@@ -29,11 +29,11 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         token18D.mint(address(pair), amountYInForSwap);
         vm.prank(ALICE);
-        pair.swap(true, DEV);
+        pair.swap(false, DEV);
 
-        LBPair.PairInformation memory pairInfo = pair.pairInformation();
+        (, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
 
-        uint256 accumulatedYfees = pairInfo.feesY.total - pairInfo.feesY.protocol;
+        uint256 accumulatedYfees = feesY.total - feesY.protocol;
 
         uint256[] memory orderedIds = new uint256[](5);
         for (uint256 i; i < 5; i++) {
@@ -63,17 +63,18 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         token18D.mint(address(pair), amountYForSwap);
 
-        pair.swap(true, ALICE);
+        pair.swap(false, ALICE);
 
         uint256[] memory amounts = new uint256[](5);
         for (uint256 i; i < 5; i++) {
             amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
 
+        vm.prank(DEV);
         pair.safeBatchTransferFrom(DEV, BOB, _ids, amounts);
 
         token18D.mint(address(pair), amountYForSwap);
-        pair.swap(true, ALICE);
+        pair.swap(false, ALICE);
 
         ILBPair.UnclaimedFees memory feesForDev = pair.pendingFees(DEV, _ids);
         ILBPair.UnclaimedFees memory feesForBob = pair.pendingFees(BOB, _ids);
@@ -81,9 +82,9 @@ contract LiquidityBinPairFeesTest is TestHelper {
         assertGt(feesForDev.tokenY, 0, "DEV should have fees on token Y");
         assertGt(feesForBob.tokenY, 0, "BOB should also have fees on token Y");
 
-        LBPair.PairInformation memory pairInfo = pair.pairInformation();
+        (, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
 
-        uint256 accumulatedYfees = pairInfo.feesY.total - pairInfo.feesY.protocol;
+        uint256 accumulatedYfees = feesY.total - feesY.protocol;
 
         assertApproxEqAbs(
             feesForDev.tokenY + feesForBob.tokenY,
@@ -109,16 +110,18 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         token18D.mint(address(pair), amountYInForSwap);
         vm.prank(ALICE);
-        pair.swap(true, DEV);
+        pair.swap(false, DEV);
 
-        LBPair.PairInformation memory pairInfo = pair.pairInformation();
+        (, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
 
         address protocolFeesReceiver = factory.feeRecipient();
-        pair.distributeProtocolFees();
-        assertEq(token18D.balanceOf(protocolFeesReceiver), pairInfo.feesY.protocol - 1);
+        vm.prank(DEV);
+        pair.collectProtocolFees();
+        assertEq(token18D.balanceOf(protocolFeesReceiver), feesY.protocol - 1);
 
         // Claiming twice
-        pair.distributeProtocolFees();
-        assertEq(token18D.balanceOf(protocolFeesReceiver), pairInfo.feesY.protocol - 1);
+        vm.prank(DEV);
+        pair.collectProtocolFees();
+        assertEq(token18D.balanceOf(protocolFeesReceiver), feesY.protocol - 1);
     }
 }

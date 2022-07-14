@@ -27,6 +27,9 @@ contract LiquidityBinRouterTest is TestHelper {
         ) = spreadLiquidityForRouter(100e18, ID_ONE, 9, 2);
 
         token6D.mint(DEV, amountTokenIn);
+
+        vm.deal(DEV, 100 ether);
+        vm.startPrank(DEV);
         token6D.approve(address(router), amountTokenIn);
 
         router.addLiquidityAVAX{value: 100e18}(
@@ -41,24 +44,28 @@ contract LiquidityBinRouterTest is TestHelper {
             DEV,
             block.timestamp
         );
+
+        vm.stopPrank();
     }
 
     function testSwapExactTokensForTokensSinglePair() public {
         uint256 amountIn = 1e18;
 
         token6D.mint(DEV, amountIn);
+
+        vm.startPrank(DEV);
         token6D.approve(address(router), amountIn);
 
         IERC20[] memory tokenList = new IERC20[](2);
         tokenList[0] = token6D;
         tokenList[1] = token18D;
-        uint256[] memory pairVersions = new uint256[](2);
+        uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = 2;
-        pairVersions[1] = 2;
 
         uint256 amountOut = router.getSwapOut(pair, amountIn, true);
 
         router.swapExactTokensForTokens(amountIn, 0, pairVersions, tokenList, DEV, block.timestamp);
+        vm.stopPrank();
 
         assertEq(token18D.balanceOf(DEV), amountOut);
     }
@@ -66,22 +73,24 @@ contract LiquidityBinRouterTest is TestHelper {
     function testswapExactTokensForAvaxSinglePair() public {
         uint256 amountIn = 1e18;
 
-        token6D.mint(DEV, amountIn);
+        token6D.mint(ALICE, amountIn);
+
+        vm.startPrank(ALICE);
         token6D.approve(address(router), amountIn);
 
         IERC20[] memory tokenList = new IERC20[](2);
         tokenList[0] = token6D;
         tokenList[1] = wavax;
-        uint256[] memory pairVersions = new uint256[](2);
+        uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = 2;
-        pairVersions[1] = 2;
 
         uint256 amountOut = router.getSwapOut(pair, amountIn, true);
 
-        uint256 devBalanceBefore = address(DEV).balance;
-        router.swapExactTokensForAVAX(amountIn, 0, pairVersions, tokenList, DEV, block.timestamp);
+        uint256 devBalanceBefore = ALICE.balance;
+        router.swapExactTokensForAVAX(amountIn, 0, pairVersions, tokenList, ALICE, block.timestamp);
+        vm.stopPrank();
 
-        assertEq(DEV.balance - devBalanceBefore, amountOut);
+        assertEq(ALICE.balance - devBalanceBefore, amountOut);
     }
 
     function testswapExactAVAXForTokensSinglePair() public {
@@ -90,9 +99,8 @@ contract LiquidityBinRouterTest is TestHelper {
         IERC20[] memory tokenList = new IERC20[](2);
         tokenList[0] = wavax;
         tokenList[1] = token6D;
-        uint256[] memory pairVersions = new uint256[](2);
+        uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = 2;
-        pairVersions[1] = 2;
 
         uint256 amountOut = router.getSwapOut(pairWavax, amountIn, false);
 
@@ -106,15 +114,18 @@ contract LiquidityBinRouterTest is TestHelper {
 
         uint256 amountIn = router.getSwapIn(pair, amountOut, true);
         token6D.mint(DEV, amountIn);
+
+        vm.startPrank(DEV);
         token6D.approve(address(router), amountIn);
 
         IERC20[] memory tokenList = new IERC20[](2);
         tokenList[0] = token6D;
         tokenList[1] = token18D;
-        uint256[] memory pairVersions = new uint256[](2);
+        uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = 2;
-        pairVersions[1] = 2;
+
         router.swapTokensForExactTokens(amountOut, amountIn, pairVersions, tokenList, DEV, block.timestamp);
+        vm.stopPrank();
 
         assertEq(token18D.balanceOf(DEV), amountOut);
     }
@@ -123,20 +134,22 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 amountOut = 1e18;
 
         uint256 amountIn = router.getSwapIn(pairWavax, amountOut, true);
-        token6D.mint(DEV, amountIn);
+        token6D.mint(ALICE, amountIn);
+
+        vm.startPrank(ALICE);
         token6D.approve(address(router), amountIn);
 
         IERC20[] memory tokenList = new IERC20[](2);
         tokenList[0] = token6D;
         tokenList[1] = wavax;
-        uint256[] memory pairVersions = new uint256[](2);
+        uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = 2;
-        pairVersions[1] = 2;
 
-        uint256 devBalanceBefore = address(DEV).balance;
-        router.swapTokensForExactAVAX(amountOut, amountIn, pairVersions, tokenList, DEV, block.timestamp);
+        uint256 devBalanceBefore = ALICE.balance;
+        router.swapTokensForExactAVAX(amountOut, amountIn, pairVersions, tokenList, ALICE, block.timestamp);
+        vm.stopPrank();
 
-        assertEq(DEV.balance - devBalanceBefore, amountOut);
+        assertEq(ALICE.balance - devBalanceBefore, amountOut);
     }
 
     function testSwapAVAXForExactTokensSinglePair() public {
@@ -147,9 +160,8 @@ contract LiquidityBinRouterTest is TestHelper {
         IERC20[] memory tokenList = new IERC20[](2);
         tokenList[0] = wavax;
         tokenList[1] = token6D;
-        uint256[] memory pairVersions = new uint256[](2);
+        uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = 2;
-        pairVersions[1] = 2;
 
         router.swapAVAXForExactTokens{value: amountIn}(amountOut, pairVersions, tokenList, DEV, block.timestamp);
 

@@ -27,6 +27,7 @@ contract LiquidityBinRouterTest is TestHelper {
             token6D,
             token18D,
             ID_ONE,
+            DEFAULT_SAMPLE_LIFETIME,
             DEFAULT_MAX_ACCUMULATOR,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,

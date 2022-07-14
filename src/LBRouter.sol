@@ -736,7 +736,7 @@ contract LBRouter is ILBRouter {
         IERC20[] memory _tokenPath,
         uint256 _amountOut
     ) private view returns (uint256[] memory amountsIn) {
-        amountsIn = new uint256[](_pairVersions.length + 1);
+        amountsIn = new uint256[](_tokenPath.length);
         // Avoid doing -1, as `_pairs.length == _pairVersions.length-1`
         amountsIn[_pairs.length] = _amountOut;
 
@@ -837,7 +837,7 @@ contract LBRouter is ILBRouter {
                 _token = _tokenNext;
                 _tokenNext = _tokenPath[i + 1];
 
-                _recipient = i == _pairs.length - 1 ? _to : _pairs[i + 1];
+                _recipient = i + 1 == _pairs.length ? _to : _pairs[i + 1];
 
                 if (_version == 2) {
                     bool _swapForY = _tokenNext == ILBPair(_pair).tokenY();
@@ -889,7 +889,7 @@ contract LBRouter is ILBRouter {
                 _token = _tokenNext;
                 _tokenNext = _tokenPath[i + 1];
 
-                _recipient = i == _pairs.length - 1 ? _to : _pairs[i + 1];
+                _recipient = i + 1 == _pairs.length ? _to : _pairs[i + 1];
 
                 if (_version == 2) {
                     bool _swapForY = _tokenNext == ILBPair(_pair).tokenY();
@@ -936,7 +936,7 @@ contract LBRouter is ILBRouter {
                 _token = _tokenNext;
                 _tokenNext = _tokenPath[i + 1];
 
-                _recipient = i + 2 != _pairs.length ? _pairs[i + 1] : _to;
+                _recipient = i + 1 == _pairs.length ? _to : _pairs[i + 1];
 
                 if (_version == 2) {
                     ILBPair(_pair).swap(_tokenNext == ILBPair(_pair).tokenY(), _recipient);

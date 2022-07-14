@@ -22,13 +22,14 @@ abstract contract TestHelper is Test {
     uint256 internal constant SCALE = 1e36;
     uint256 internal constant BASIS_POINT_MAX = 10_000;
 
-    uint168 internal constant DEFAULT_MAX_ACCUMULATOR = 5_000;
+    uint64 internal constant DEFAULT_MAX_ACCUMULATOR = 5_000;
     uint16 internal constant DEFAULT_FILTER_PERIOD = 50;
     uint16 internal constant DEFAULT_DECAY_PERIOD = 100;
     uint16 internal constant DEFAULT_BIN_STEP = 25;
     uint16 internal constant DEFAULT_BASE_FACTOR = 5_000;
     uint16 internal constant DEFAULT_PROTOCOL_SHARE = 1_000;
     uint8 internal constant DEFAULT_VARIABLEFEE_STATE = 0;
+    uint256 internal constant DEFAULT_SAMPLE_LIFETIME = 240;
 
     bytes32 internal constant DEFAULT_PACKED_FEES_PARAMETERS =
         bytes32(
@@ -84,6 +85,7 @@ abstract contract TestHelper is Test {
                     _tokenX,
                     _tokenY,
                     _startId,
+                    DEFAULT_SAMPLE_LIFETIME,
                     DEFAULT_MAX_ACCUMULATOR,
                     DEFAULT_FILTER_PERIOD,
                     DEFAULT_DECAY_PERIOD,
@@ -180,8 +182,10 @@ abstract contract TestHelper is Test {
         );
 
         token6D.mint(DEV, amountXIn);
-        token6D.approve(address(router), amountXIn);
         token18D.mint(DEV, _amountYIn);
+
+        vm.startPrank(DEV);
+        token6D.approve(address(router), amountXIn);
         token18D.approve(address(router), _amountYIn);
 
         router.addLiquidity(
@@ -198,6 +202,7 @@ abstract contract TestHelper is Test {
             DEV,
             block.timestamp
         );
+        vm.stopPrank();
     }
 
     function spreadLiquidityForRouter(

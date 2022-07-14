@@ -33,16 +33,16 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         token6D.mint(address(pair), amountXIn);
         vm.prank(DEV);
-        pair.swap(false, DEV);
+        pair.swap(true, DEV);
 
         assertEq(token6D.balanceOf(DEV), 0);
         assertEq(token18D.balanceOf(DEV), amountYOut);
 
         (uint112 binReserveX, uint112 binReserveY) = pair.getBin(ID_ONE);
 
-        LBPair.PairInformation memory pair = pair.pairInformation();
+        (FeeHelper.FeesDistribution memory feesX, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
 
-        assertEq(binReserveX, amountXIn - pair.feesX.total);
+        assertEq(binReserveX, amountXIn - feesX.total);
         assertEq(binReserveY, tokenAmount - amountYOut);
     }
 
@@ -66,17 +66,17 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         token18D.mint(address(pair), amountYIn);
         vm.prank(DEV);
-        pair.swap(true, DEV);
+        pair.swap(false, DEV);
 
         assertEq(token6D.balanceOf(DEV), amountXOut);
         assertEq(token18D.balanceOf(DEV), 0);
 
         (uint112 binReserveX, uint112 binReserveY) = pair.getBin(uint24(_ids[0]));
 
-        LBPair.PairInformation memory pair = pair.pairInformation();
+        (, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
 
         assertEq(binReserveX, tokenAmount - amountXOut);
-        assertEq(binReserveY, amountYIn - pair.feesY.total);
+        assertEq(binReserveY, amountYIn - feesY.total);
     }
 
     function testSwapXtoYSingleBinFromGetSwapIn() public {
@@ -97,16 +97,16 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         token6D.mint(address(pair), amountXIn);
         vm.prank(DEV);
-        pair.swap(false, DEV);
+        pair.swap(true, DEV);
 
         assertEq(token6D.balanceOf(DEV), 0);
         assertEq(token18D.balanceOf(DEV), amountYOut);
 
         (uint112 binReserveX, uint112 binReserveY) = pair.getBin(ID_ONE);
 
-        LBPair.PairInformation memory pair = pair.pairInformation();
+        (FeeHelper.FeesDistribution memory feesX, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
 
-        assertEq(binReserveX, amountXIn - pair.feesX.total);
+        assertEq(binReserveX, amountXIn - feesX.total);
         assertEq(binReserveY, tokenAmount - amountYOut);
     }
 
@@ -128,17 +128,17 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         token18D.mint(address(pair), amountYIn);
         vm.prank(DEV);
-        pair.swap(true, DEV);
+        pair.swap(false, DEV);
 
         assertEq(token6D.balanceOf(DEV), amountXOut);
         assertEq(token18D.balanceOf(DEV), 0);
 
         (uint112 binReserveX, uint112 binReserveY) = pair.getBin(uint24(_ids[0]));
 
-        LBPair.PairInformation memory pair = pair.pairInformation();
+        (, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
 
         assertEq(binReserveX, tokenAmount - amountXOut);
-        assertEq(binReserveY, amountYIn - pair.feesY.total);
+        assertEq(binReserveY, amountYIn - feesY.total);
     }
 
     function testSwapYtoXConsecutiveBinFromGetSwapIn() public {
@@ -152,7 +152,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         token18D.mint(address(pair), amountYInForSwap);
 
-        pair.swap(true, ALICE);
+        pair.swap(false, ALICE);
 
         assertGe(token6D.balanceOf(ALICE), amountXOutForSwap);
         assertApproxEqRel(token6D.balanceOf(ALICE), amountXOutForSwap, 1e14);
@@ -169,7 +169,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         token6D.mint(address(pair), amountXInForSwap);
 
-        pair.swap(false, ALICE);
+        pair.swap(true, ALICE);
 
         assertGe(token18D.balanceOf(ALICE), amountYOutForSwap);
         assertApproxEqRel(token18D.balanceOf(ALICE), amountYOutForSwap, 1e14);
@@ -186,7 +186,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         token18D.mint(address(pair), amountYInForSwap);
 
-        pair.swap(true, ALICE);
+        pair.swap(false, ALICE);
 
         assertApproxEqAbs(token6D.balanceOf(ALICE), amountXOutForSwap, 1);
     }
@@ -202,7 +202,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         token6D.mint(address(pair), amountXInForSwap);
 
-        pair.swap(false, ALICE);
+        pair.swap(true, ALICE);
 
         assertEq(token18D.balanceOf(ALICE), amountYOutForSwap);
     }
@@ -218,7 +218,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         token18D.mint(address(pair), amountYInForSwap);
 
-        pair.swap(true, ALICE);
+        pair.swap(false, ALICE);
 
         assertGe(token6D.balanceOf(ALICE), amountXOutForSwap);
         assertApproxEqRel(token6D.balanceOf(ALICE), amountXOutForSwap, 1e14);
@@ -235,7 +235,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         token6D.mint(address(pair), amountXInForSwap);
 
-        pair.swap(false, ALICE);
+        pair.swap(true, ALICE);
 
         assertGe(token18D.balanceOf(ALICE), amountYOutForSwap);
         assertApproxEqRel(token18D.balanceOf(ALICE), amountYOutForSwap, 1e14);
@@ -252,7 +252,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         token18D.mint(address(pair), amountYInForSwap);
 
-        pair.swap(true, ALICE);
+        pair.swap(false, ALICE);
 
         assertApproxEqAbs(token6D.balanceOf(ALICE), amountXOutForSwap, 1);
     }
@@ -268,7 +268,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         token6D.mint(address(pair), amountXInForSwap);
 
-        pair.swap(false, ALICE);
+        pair.swap(true, ALICE);
 
         assertEq(token18D.balanceOf(ALICE), amountYOutForSwap);
     }

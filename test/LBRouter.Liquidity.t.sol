@@ -40,9 +40,11 @@ contract LiquidityBinRouterTest is TestHelper {
             amounts[i] = pair.balanceOf(DEV, ids[i]);
         }
 
+        vm.startPrank(DEV);
         pair.setApprovalForAll(address(router), true);
 
         router.removeLiquidity(token6D, token18D, amountXIn - 2, _amountYIn, ids, amounts, DEV, block.timestamp);
+        vm.stopPrank();
 
         assertEq(token6D.balanceOf(DEV), amountXIn - 2);
         assertEq(token18D.balanceOf(DEV), _amountYIn);
@@ -63,9 +65,11 @@ contract LiquidityBinRouterTest is TestHelper {
             uint256 amountTokenIn
         ) = spreadLiquidityForRouter(_amountAVAXIn, _startId, _numberBins, _gap);
 
-        token6D.mint(DEV, amountTokenIn);
-        token6D.approve(address(router), amountTokenIn);
+        token6D.mint(ALICE, amountTokenIn);
+        vm.deal(ALICE, _amountAVAXIn);
 
+        vm.startPrank(ALICE);
+        token6D.approve(address(router), amountTokenIn);
         router.addLiquidityAVAX{value: _amountAVAXIn}(
             token6D,
             amountTokenIn,
@@ -75,7 +79,7 @@ contract LiquidityBinRouterTest is TestHelper {
             _deltaIds,
             _distributionToken,
             _distributionAVAX,
-            DEV,
+            ALICE,
             block.timestamp
         );
 
@@ -83,15 +87,17 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256[] memory ids = new uint256[](_numberBins);
         for (uint256 i; i < _numberBins; i++) {
             ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            amounts[i] = pair.balanceOf(DEV, ids[i]);
+            amounts[i] = pair.balanceOf(ALICE, ids[i]);
         }
 
         pair.setApprovalForAll(address(router), true);
 
-        uint256 devBalanceBefore = address(DEV).balance;
-        router.removeLiquidityAVAX(token6D, amountTokenIn - 2, _amountAVAXIn, ids, amounts, DEV, block.timestamp);
-        assertEq(token6D.balanceOf(DEV), amountTokenIn - 2);
-        assertEq(address(DEV).balance - devBalanceBefore, _amountAVAXIn);
+        uint256 devBalanceBefore = address(ALICE).balance;
+        router.removeLiquidityAVAX(token6D, amountTokenIn - 2, _amountAVAXIn, ids, amounts, ALICE, block.timestamp);
+        assertEq(token6D.balanceOf(ALICE), amountTokenIn - 2);
+        assertEq(address(ALICE).balance - devBalanceBefore, _amountAVAXIn);
+
+        vm.stopPrank();
     }
 
     function testFailForIdSlippageCaught() public {

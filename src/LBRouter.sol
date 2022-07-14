@@ -186,7 +186,7 @@ contract LBRouter is ILBRouter {
             }
             if (_bin.reserveX != 0 || _bin.reserveY != 0) {
                 (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) = _pair
-                    .getAmounts(_bin, _fp, !_swapForY, _startId, _amountIn);
+                    .getAmounts(_bin, _fp, _swapForY, _startId, _amountIn);
 
                 if (_amountInToBin > type(uint112).max) revert LBRouter__BinReserveOverflows(_pair.activeId);
 
@@ -736,13 +736,13 @@ contract LBRouter is ILBRouter {
         IERC20[] memory _tokenPath,
         uint256 _amountOut
     ) private view returns (uint256[] memory amountsIn) {
-        amountsIn = new uint256[](_pairVersions.length);
+        amountsIn = new uint256[](_pairVersions.length + 1);
         // Avoid doing -1, as `_pairs.length == _pairVersions.length-1`
         amountsIn[_pairs.length] = _amountOut;
 
         for (uint256 i = _pairs.length; i != 0; i--) {
             IERC20 _token = _tokenPath[i - 1];
-            uint256 _version = _pairVersions[i];
+            uint256 _version = _pairVersions[i - 1];
 
             address _pair = _pairs[i - 1];
 
@@ -837,7 +837,7 @@ contract LBRouter is ILBRouter {
                 _token = _tokenNext;
                 _tokenNext = _tokenPath[i + 1];
 
-                _recipient = i + 2 != _pairs.length ? _pairs[i + 1] : _to;
+                _recipient = i == _pairs.length - 1 ? _to : _pairs[i + 1];
 
                 if (_version == 2) {
                     bool _swapForY = _tokenNext == ILBPair(_pair).tokenY();
@@ -889,7 +889,7 @@ contract LBRouter is ILBRouter {
                 _token = _tokenNext;
                 _tokenNext = _tokenPath[i + 1];
 
-                _recipient = i + 2 != _pairs.length ? _pairs[i + 1] : _to;
+                _recipient = i == _pairs.length - 1 ? _to : _pairs[i + 1];
 
                 if (_version == 2) {
                     bool _swapForY = _tokenNext == ILBPair(_pair).tokenY();
@@ -993,7 +993,7 @@ contract LBRouter is ILBRouter {
         pairs = new address[](_pairVersions.length);
 
         IERC20 _token;
-        IERC20 _tokenNext = _tokenPath[1];
+        IERC20 _tokenNext = _tokenPath[0];
         unchecked {
             for (uint256 i; i < pairs.length; ++i) {
                 _token = _tokenNext;

@@ -5,11 +5,9 @@ pragma solidity 0.8.9;
 import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 
-import "./interfaces/ILBPair.sol";
 import "./interfaces/ILBToken.sol";
 import "./interfaces/IJoePair.sol";
 import "./interfaces/ILBRouter.sol";
-import "./interfaces/ILBFactory.sol";
 import "./libraries/BinHelper.sol";
 import "./libraries/FeeHelper.sol";
 import "./libraries/Math512Bits.sol";
@@ -32,11 +30,8 @@ error LBRouter__IdDesiredOverflows(uint256 idDesired, uint256 idSlippage);
 error LBRouter__FailedToSendAVAX(address recipient, uint256 amount);
 error LBRouter__DeadlineExceeded(uint256 deadline, uint256 currentTimestamp);
 error LBRouter__AmountSlippageBPTooBig(uint256 amountSlippage);
-error LBRouter__AmountsMismatch(uint256 amountAVAX, uint256 msgValue);
 error LBRouter__InsufficientAmountOut(uint256 amountOutMin, uint256 amountOut);
 error LBRouter__MaxAmountInExceeded(uint256 amountInMax, uint256 amountIn);
-error LBRouter__InsufficientAVAXAmount(uint256 amountAVAXNeeded, uint256 amountAVAX);
-error LBRouter__AmountOutOverflows(uint256 amountOut);
 error LBRouter__InvalidTokenPath(IERC20 wrongToken);
 error LBRouter__InvalidVersion(uint256 version);
 

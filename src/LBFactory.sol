@@ -2,10 +2,7 @@
 
 pragma solidity 0.8.9;
 
-import "./LBPair.sol";
-import "./LBFactoryHelper.sol";
 import "./interfaces/ILBFactory.sol";
-import "./libraries/MathS40x36.sol";
 import "./libraries/PendingOwnable.sol";
 import "./libraries/Constants.sol";
 
@@ -23,8 +20,6 @@ error LBFactory__FunctionIsLockedForUsers(address user);
 error LBFactory__FactoryLockIsAlreadyInTheSameState();
 
 contract LBFactory is PendingOwnable, ILBFactory {
-    using MathS40x36 for int256;
-
     uint256 public constant override MIN_FEE = 1; // 0.01%
     uint256 public constant override MAX_FEE = 1_000; // 10%
 

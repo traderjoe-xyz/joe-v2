@@ -47,6 +47,6 @@ library TokenHelper {
         unchecked {
             _internalBalance = reserve + fees;
         }
-        return _internalBalance - token.balanceOf(address(this));
+        return token.balanceOf(address(this)) - _internalBalance;
     }
 }

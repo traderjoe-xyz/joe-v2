@@ -5,6 +5,7 @@ pragma solidity 0.8.9;
 import "forge-std/Test.sol";
 
 import "src/LBFactory.sol";
+import "src/LBFactoryHelper.sol";
 import "src/LBPair.sol";
 import "src/LBRouter.sol";
 import "src/LBToken.sol";
@@ -29,7 +30,7 @@ abstract contract TestHelper is Test {
     uint16 internal constant DEFAULT_BASE_FACTOR = 5_000;
     uint16 internal constant DEFAULT_PROTOCOL_SHARE = 1_000;
     uint8 internal constant DEFAULT_VARIABLEFEE_STATE = 0;
-    uint256 internal constant DEFAULT_SAMPLE_LIFETIME = 240;
+    uint16 internal constant DEFAULT_SAMPLE_LIFETIME = 240;
 
     bytes32 internal constant DEFAULT_PACKED_FEES_PARAMETERS =
         bytes32(

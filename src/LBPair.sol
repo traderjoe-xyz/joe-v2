@@ -300,8 +300,9 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     function getBin(uint24 _id) external view override returns (uint256 reserveX, uint256 reserveY) {
         uint256 _mask = type(uint112).max;
         assembly {
-            mstore(0, _bins.slot)
-            let _data := sload(add(keccak256(0, 32), _id))
+            mstore(0, _id)
+            mstore(32, _bins.slot)
+            let _data := sload(keccak256(0, 64))
 
             reserveX := and(_data, _mask)
             reserveY := and(shr(112, _data), _mask)

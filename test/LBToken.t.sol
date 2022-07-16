@@ -37,21 +37,9 @@ contract LiquidityBinTokenTest is TestHelper {
 
         vm.prank(BOB);
         pair.safeBatchTransferFrom(ALICE, BOB, _ids, amounts);
+        assertEq(pair.balanceOf(DEV, ID_ONE - 1), 0); // DEV
         assertEq(pair.balanceOf(ALICE, ID_ONE - 1), 0);
         assertEq(pair.balanceOf(BOB, ID_ONE - 1), amountIn / 3);
-
-        address[] memory accounts = new address[](3);
-        accounts[0] = DEV;
-        accounts[1] = ALICE;
-        accounts[2] = BOB;
-        uint256[] memory ids = new uint256[](3);
-        ids[0] = ID_ONE - 1;
-        ids[1] = ID_ONE - 1;
-        ids[2] = ID_ONE - 1;
-        uint256[] memory batchBalances = pair.balanceOfBatch(accounts, ids);
-        assertEq(batchBalances[0], 0); // DEV
-        assertEq(batchBalances[1], 0); // ALICE
-        assertEq(batchBalances[2], amountIn / 3); // BOB
     }
 
     function testFailTransferNotApproved() public {

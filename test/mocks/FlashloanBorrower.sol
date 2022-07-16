@@ -24,16 +24,12 @@ contract FlashBorrower {
     }
 
     function LBFlashLoanCallback(
-        address initiator,
         uint256 feeX,
         uint256 feeY,
         bytes calldata data
-    ) external returns (bytes32) {
+    ) external {
         if (msg.sender != address(lender)) {
             revert FlashBorrower__UntrustedLender();
-        }
-        if (initiator != address(this)) {
-            revert FlashBorrower__UntrustedLoanInitiator();
         }
         (Action action, uint256 amountXBorrowed, uint256 amountYBorrowed, bool isReentrant) = abi.decode(
             data,
@@ -48,7 +44,6 @@ contract FlashBorrower {
 
         IERC20(lender.tokenX()).transfer(address(lender), amountXBorrowed + feeX);
         IERC20(lender.tokenY()).transfer(address(lender), amountYBorrowed + feeY);
-        return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 
     /// @dev Initiate a flash loan

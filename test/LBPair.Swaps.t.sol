@@ -16,7 +16,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
     }
 
     function testSwapXtoYSingleBinFromGetSwapOut() public {
-        uint112 tokenAmount = 100e18;
+        uint256 tokenAmount = 100e18;
         token18D.mint(address(pair), tokenAmount);
 
         uint256[] memory _ids = new uint256[](1);
@@ -38,16 +38,16 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         assertEq(token6D.balanceOf(DEV), 0);
         assertEq(token18D.balanceOf(DEV), amountYOut);
 
-        (uint112 binReserveX, uint112 binReserveY) = pair.getBin(ID_ONE);
+        (uint256 binReserveX, uint256 binReserveY) = pair.getBin(ID_ONE);
 
-        (FeeHelper.FeesDistribution memory feesX, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
+        (FeeHelper.FeesDistribution memory feesX, ) = pair.getGlobalFees();
 
         assertEq(binReserveX, amountXIn - feesX.total);
         assertEq(binReserveY, tokenAmount - amountYOut);
     }
 
     function testSwapYtoXSingleBinFromGetSwapOut() public {
-        uint112 tokenAmount = 100e18;
+        uint256 tokenAmount = 100e18;
         token6D.mint(address(pair), tokenAmount);
 
         uint256[] memory _ids = new uint256[](1);
@@ -71,7 +71,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         assertEq(token6D.balanceOf(DEV), amountXOut);
         assertEq(token18D.balanceOf(DEV), 0);
 
-        (uint112 binReserveX, uint112 binReserveY) = pair.getBin(uint24(_ids[0]));
+        (uint256 binReserveX, uint256 binReserveY) = pair.getBin(uint24(_ids[0]));
 
         (, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
 
@@ -80,7 +80,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
     }
 
     function testSwapXtoYSingleBinFromGetSwapIn() public {
-        uint112 tokenAmount = 100e18;
+        uint256 tokenAmount = 100e18;
         token18D.mint(address(pair), tokenAmount);
 
         uint256[] memory _ids = new uint256[](1);
@@ -102,16 +102,16 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         assertEq(token6D.balanceOf(DEV), 0);
         assertEq(token18D.balanceOf(DEV), amountYOut);
 
-        (uint112 binReserveX, uint112 binReserveY) = pair.getBin(ID_ONE);
+        (uint256 binReserveX, uint256 binReserveY) = pair.getBin(ID_ONE);
 
-        (FeeHelper.FeesDistribution memory feesX, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
+        (FeeHelper.FeesDistribution memory feesX, ) = pair.getGlobalFees();
 
         assertEq(binReserveX, amountXIn - feesX.total);
         assertEq(binReserveY, tokenAmount - amountYOut);
     }
 
     function testSwapYtoXSingleBinFromGetSwapIn() public {
-        uint112 tokenAmount = 100e18;
+        uint256 tokenAmount = 100e18;
         token6D.mint(address(pair), tokenAmount);
 
         uint256[] memory _ids = new uint256[](1);
@@ -133,7 +133,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         assertEq(token6D.balanceOf(DEV), amountXOut);
         assertEq(token18D.balanceOf(DEV), 0);
 
-        (uint112 binReserveX, uint112 binReserveY) = pair.getBin(uint24(_ids[0]));
+        (uint256 binReserveX, uint256 binReserveY) = pair.getBin(uint24(_ids[0]));
 
         (, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
 

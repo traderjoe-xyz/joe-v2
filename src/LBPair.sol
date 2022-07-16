@@ -15,26 +15,20 @@ import "./libraries/Oracle.sol";
 import "./libraries/Decoder.sol";
 import "./libraries/SwapHelper.sol";
 import "./libraries/TokenHelper.sol";
-import "./interfaces/ILBFactoryHelper.sol";
 import "./interfaces/ILBFlashLoanCallback.sol";
 import "./interfaces/ILBPair.sol";
 
 /** Errors **/
 
 error LBPair__InsufficientAmounts();
-error LBPair__WrongAmounts(uint256 amountXOut, uint256 amountYOut);
 error LBPair__BrokenSwapSafetyCheck();
 error LBPair__BrokenMintSafetyCheck(uint256 totalDistributionX, uint256 totalDistributionY);
 error LBPair__InsufficientLiquidityMinted(uint256 id);
 error LBPair__InsufficientLiquidityBurned(uint256 id);
 error LBPair__WrongLengths();
-error LBPair__MintExceedsAmountsIn(uint256 id);
-error LBPair__IdOverflows(uint256 index);
 error LBPair__FlashLoanUnderflow(uint256 expectedBalance, uint256 balance);
-error LBPair__BrokenFlashLoanSafetyChecks(uint256 amountXIn, uint256 amountYIn);
 error LBPair__OnlyStrictlyIncreasingId();
 error LBPair__OnlyFactory();
-error LBPair__DepthTooDeep();
 error LBPair__DistributionOverflow(uint256 id, uint256 distribution);
 error LBPair__OnlyFeeRecipient(address feeRecipient, address sender);
 

@@ -38,8 +38,8 @@ interface ILBFactory is IPendingOwnable {
     function createLBPair(
         IERC20 tokenX,
         IERC20 tokenY,
-        uint256 activeId,
-        uint256 sampleLifetime,
+        uint24 activeId,
+        uint16 sampleLifetime,
         uint64 maxAccumulator,
         uint16 filterPeriod,
         uint16 decayPeriod,

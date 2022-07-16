@@ -35,7 +35,7 @@ abstract contract ReentrancyGuard {
     /// `private` function that does the actual work
     modifier nonReentrant() {
         // On the first call to nonReentrant, _notEntered will be true
-        if (_status == _ENTERED) revert();
+        if (_status == _ENTERED) revert ReentrancyGuard__ReentrantCall();
 
         // Any calls to nonReentrant after this point will fail
         _status = _ENTERED;

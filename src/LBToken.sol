@@ -3,7 +3,7 @@
 pragma solidity 0.8.9;
 
 import "./interfaces/ILBToken.sol";
-import "openzeppelin/utils/introspection/ERC165.sol";
+import "openzeppelin/utils/structs/EnumerableSet.sol";
 
 error LBToken__SpenderNotApproved(address owner, address spender);
 error LBToken__TransferFromOrToAddress0();
@@ -18,7 +18,9 @@ error LBToken__TransferExceedsBalance(address from, uint256 id, uint256 amount);
 /// @author Trader Joe
 /// @notice The LBToken is an implementation of a multi-token.
 /// It allows to create multi-ERC20 represented by their ids
-contract LBToken is ILBToken, ERC165 {
+contract LBToken is ILBToken {
+    using EnumerableSet for EnumerableSet.UintSet;
+
     // Mapping from token id to account balances
     mapping(uint256 => mapping(address => uint256)) private _balances;
 
@@ -28,6 +30,9 @@ contract LBToken is ILBToken, ERC165 {
     // Mapping from token id to total supplies
     mapping(uint256 => uint256) private _totalSupplies;
 
+    // Mapping from account to set of ids, where user currently have a non-zero balance
+    mapping(address => EnumerableSet.UintSet) private _userIds;
+
     string private _name;
     string private _symbol;
 
@@ -36,12 +41,6 @@ contract LBToken is ILBToken, ERC165 {
     constructor(string memory name_, string memory symbol_) {
         _name = name_;
         _symbol = symbol_;
-    }
-
-    /// @notice Whether this contract implements the interface defined by `_interfaceId`.
-    /// @param _interfaceId The interfaceId as a bytes4
-    function supportsInterface(bytes4 _interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
-        return _interfaceId == type(ILBToken).interfaceId || super.supportsInterface(_interfaceId);
     }
 
     /// @notice Returns the name of the token
@@ -77,24 +76,19 @@ contract LBToken is ILBToken, ERC165 {
         return _balances[_id][_account];
     }
 
-    /// @notice Returns the list of balance of token of each (account, id) pair
-    /// @param _accounts The list of address of the owners
-    /// @param _ids The list of token ids
-    /// @return batchBalances The list of balance of token of each (account, id) pair
-    function balanceOfBatch(address[] memory _accounts, uint256[] memory _ids)
-        public
-        view
-        virtual
-        override
-        returns (uint256[] memory batchBalances)
-    {
-        uint256 _len = _accounts.length;
-        if (_len != _ids.length) revert LBToken__LengthMismatch(_len, _ids.length);
+    /// @notice Returns the type id at index `_index` where `account` has a non-zero balance
+    /// @param _account The address of the account
+    /// @param _index The position index
+    /// @return The `account` non-zero position at index `_index`
+    function userPositionAt(address _account, uint256 _index) public view virtual override returns (uint256) {
+        return _userIds[_account].at(_index);
+    }
 
-        batchBalances = new uint256[](_len);
-        for (uint256 i; i < _len; ++i) {
-            batchBalances[i] = balanceOf(_accounts[i], _ids[i]);
-        }
+    /// @notice Returns the number of non-zero balances of `account`
+    /// @param _account The address of the account
+    /// @return The number of non-zero balances of `account`
+    function userPositionNb(address _account) public view virtual override returns (uint256) {
+        return _userIds[_account].length();
     }
 
     /// @notice Returns true if `spender` is approved to transfer `_account`'s tokens
@@ -142,7 +136,17 @@ contract LBToken is ILBToken, ERC165 {
             unchecked {
                 _balances[_id][_from] = _fromBalance - _amount;
             }
-            _balances[_id][_to] += _amount;
+
+            if (_fromBalance == _amount) {
+                _userIds[_from].remove(_id);
+            }
+
+            uint256 _toBalance = _balances[_id][_to];
+            _balances[_id][_to] = _toBalance + _amount;
+
+            if (_toBalance == 0) {
+                _userIds[_to].add(_id);
+            }
         }
 
         emit TransferBatch(_spender, _from, _to, _ids, _amounts);
@@ -162,8 +166,13 @@ contract LBToken is ILBToken, ERC165 {
         _beforeTokenTransfer(address(0), _account, _id, _amount);
 
         _totalSupplies[_id] += _amount;
+
+        uint256 _fromBalance = _balances[_id][_account];
         unchecked {
-            _balances[_id][_account] += _amount;
+            _balances[_id][_account] = _fromBalance + _amount;
+        }
+        if (_fromBalance == 0) {
+            _userIds[_account].add(_id);
         }
 
         emit TransferSingle(msg.sender, address(0), _account, _id, _amount);
@@ -190,6 +199,10 @@ contract LBToken is ILBToken, ERC165 {
             _totalSupplies[_id] -= _amount;
         }
 
+        if (_accountBalance == _amount) {
+            _userIds[_account].remove(_id);
+        }
+
         emit TransferSingle(msg.sender, _account, address(0), _id, _amount);
     }
 
@@ -202,9 +215,8 @@ contract LBToken is ILBToken, ERC165 {
         address _spender,
         bool _approved
     ) internal virtual {
-        if (_owner == _spender) {
-            revert LBToken__SelfApproval(_owner);
-        }
+        if (_owner == _spender) revert LBToken__SelfApproval(_owner);
+
         _spenderApprovals[_owner][_spender] = _approved;
         emit ApprovalForAll(_owner, _spender, _approved);
     }

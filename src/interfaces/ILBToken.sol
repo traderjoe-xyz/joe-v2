@@ -2,9 +2,7 @@
 
 pragma solidity >=0.8.9;
 
-import "openzeppelin/utils/introspection/IERC165.sol";
-
-interface ILBToken is IERC165 {
+interface ILBToken {
     event TransferSingle(address indexed sender, address indexed from, address indexed to, uint256 id, uint256 amount);
 
     event TransferBatch(
@@ -25,7 +23,9 @@ interface ILBToken is IERC165 {
 
     function balanceOf(address account, uint256 id) external view returns (uint256);
 
-    function balanceOfBatch(address[] memory accounts, uint256[] memory ids) external view returns (uint256[] memory);
+    function userPositionAt(address _account, uint256 _index) external view returns (uint256);
+
+    function userPositionNb(address _account) external view returns (uint256);
 
     function totalSupply(uint256 id) external view returns (uint256);
 

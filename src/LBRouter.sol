@@ -217,8 +217,8 @@ contract LBRouter is ILBRouter {
     function createLBPair(
         IERC20 _tokenX,
         IERC20 _tokenY,
-        uint256 _activeId,
-        uint256 _sampleLifetime,
+        uint24 _activeId,
+        uint16 _sampleLifetime,
         uint64 _maxAccumulator,
         uint16 _filterPeriod,
         uint16 _decayPeriod,

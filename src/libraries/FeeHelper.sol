@@ -85,9 +85,7 @@ library FeeHelper {
     /// @return The variable fee in basis point squared
     function getVariableFeeBP2(FeeParameters memory _fp, uint256 _binCrossed) internal pure returns (uint256) {
         unchecked {
-            if (_fp.variableFeeDisabled != 0) {
-                return 0;
-            }
+            if (_fp.variableFeeDisabled != 0) return 0;
 
             uint256 _acc = _fp.accumulator + _binCrossed * Constants.BASIS_POINT_MAX;
 
@@ -109,8 +107,10 @@ library FeeHelper {
         uint256 _amount,
         uint256 _binCrossed
     ) internal pure returns (uint256) {
-        uint256 _feeBP2 = getBaseFeeBP2(_fp) + getVariableFeeBP2(_fp, _binCrossed);
-
+        uint256 _feeBP2;
+        unchecked {
+            _feeBP2 = getBaseFeeBP2(_fp) + getVariableFeeBP2(_fp, _binCrossed);
+        }
         return (_amount * _feeBP2) / (Constants.BASIS_POINT_MAX_SQUARED);
     }
 
@@ -124,21 +124,25 @@ library FeeHelper {
         uint256 _amountPlusFee,
         uint256 _binCrossed
     ) internal pure returns (uint256) {
-        uint256 _feeBP2 = getBaseFeeBP2(_fp) + getVariableFeeBP2(_fp, _binCrossed);
-
+        uint256 _feeBP2;
+        unchecked {
+            _feeBP2 = getBaseFeeBP2(_fp) + getVariableFeeBP2(_fp, _binCrossed);
+        }
         return (_amountPlusFee * _feeBP2) / (Constants.BASIS_POINT_MAX_SQUARED + _feeBP2);
     }
 
     /// @notice Return the fees distribution added to an amount
     /// @param _fp The current fee parameter
     /// @param _fees The fee amount
-    /// @return The fee amount
+    /// @return fees The fee distribution
     function getFeesDistribution(FeeParameters memory _fp, uint256 _fees)
         internal
         pure
-        returns (FeesDistribution memory)
+        returns (FeesDistribution memory fees)
     {
-        uint256 _protocolFees = (_fees * _fp.protocolShare) / Constants.BASIS_POINT_MAX;
-        return FeesDistribution({total: _fees.safe128(), protocol: uint128(_protocolFees)});
+        unchecked {
+            fees.total = _fees.safe128();
+            fees.protocol = uint128((_fees * _fp.protocolShare) / Constants.BASIS_POINT_MAX);
+        }
     }
 }

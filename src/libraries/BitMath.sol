@@ -7,13 +7,12 @@ library BitMath {
     /// @param _integer The integer as a uint256
     /// @param _bit The bit index
     /// @param _rightSide Whether we're searching in the right side of the tree (true) or the left side (false)
-    /// @return The index of the closest non zero bit
-    /// @return Whether it was found (true), or not (false)
+    /// @return The index of the closest non zero bit. If there is no closest bit, it returns max(uint256)
     function closestBit(
         uint256 _integer,
         uint256 _bit,
         bool _rightSide
-    ) internal pure returns (uint256, bool) {
+    ) internal pure returns (uint256) {
         unchecked {
             if (_rightSide) {
                 return closestBitRight(_integer, _bit - 1);
@@ -37,17 +36,15 @@ library BitMath {
     /// id is the index of the closest bit on the right of x that is non null
     /// @param x The value as a uint256
     /// @param bit The index of the bit to start searching at
-    /// @return id The index of the closest non null bit on the right of x
-    /// @return found If the index was found
-    function closestBitRight(uint256 x, uint256 bit) internal pure returns (uint256 id, bool found) {
+    /// @return id The index of the closest non null bit on the right of x.
+    /// If there is no closest bit, it returns max(uint256)
+    function closestBitRight(uint256 x, uint256 bit) internal pure returns (uint256 id) {
         unchecked {
             x <<= 255 - bit;
 
-            if (x == 0) {
-                return (0, false);
-            }
+            if (x == 0) return type(uint256).max;
 
-            return (mostSignificantBit(x) - (255 - bit), true);
+            return mostSignificantBit(x) - (255 - bit);
         }
     }
 
@@ -55,17 +52,15 @@ library BitMath {
     /// id is the index of the closest bit on the left of x that is non null
     /// @param x The value as a uint256
     /// @param bit The index of the bit to start searching at
-    /// @return id The index of the closest non null bit on the left of x
-    /// @return found If the index was found
-    function closestBitLeft(uint256 x, uint256 bit) internal pure returns (uint256 id, bool found) {
+    /// @return id The index of the closest non null bit on the left of x.
+    /// If there is no closest bit, it returns max(uint256)
+    function closestBitLeft(uint256 x, uint256 bit) internal pure returns (uint256 id) {
         unchecked {
             x >>= bit;
 
-            if (x == 0) {
-                return (0, false);
-            }
+            if (x == 0) return type(uint256).max;
 
-            return (leastSignificantBit(x) + bit, true);
+            return leastSignificantBit(x) + bit;
         }
     }
 
@@ -74,35 +69,35 @@ library BitMath {
     /// @return msb The index of the most significant bit of x
     function mostSignificantBit(uint256 x) internal pure returns (uint256 msb) {
         unchecked {
-            if (x >= 2**128) {
+            if (x >= 1 << 128) {
                 x >>= 128;
                 msb += 128;
             }
-            if (x >= 2**64) {
+            if (x >= 1 << 64) {
                 x >>= 64;
                 msb += 64;
             }
-            if (x >= 2**32) {
+            if (x >= 1 << 32) {
                 x >>= 32;
                 msb += 32;
             }
-            if (x >= 2**16) {
+            if (x >= 1 << 16) {
                 x >>= 16;
                 msb += 16;
             }
-            if (x >= 2**8) {
+            if (x >= 1 << 8) {
                 x >>= 8;
                 msb += 8;
             }
-            if (x >= 2**4) {
+            if (x >= 1 << 4) {
                 x >>= 4;
                 msb += 4;
             }
-            if (x >= 2**2) {
+            if (x >= 1 << 2) {
                 x >>= 2;
                 msb += 2;
             }
-            if (x >= 2**1) {
+            if (x >= 1 << 1) {
                 msb += 1;
             }
         }

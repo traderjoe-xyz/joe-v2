@@ -27,10 +27,8 @@ error LBPair__BrokenSwapSafetyCheck();
 error LBPair__BrokenMintSafetyCheck(uint256 totalDistributionX, uint256 totalDistributionY);
 error LBPair__InsufficientLiquidityMinted(uint256 id);
 error LBPair__InsufficientLiquidityBurned(uint256 id);
-error LBPair__BurnExceedsReserve(uint256 id);
 error LBPair__WrongLengths();
 error LBPair__MintExceedsAmountsIn(uint256 id);
-error LBPair__BinReserveOverflows(uint256 id);
 error LBPair__IdOverflows(uint256 index);
 error LBPair__FlashLoanUnderflow(uint256 expectedBalance, uint256 balance);
 error LBPair__BrokenFlashLoanSafetyChecks(uint256 amountXIn, uint256 amountYIn);
@@ -38,12 +36,8 @@ error LBPair__OnlyStrictlyIncreasingId();
 error LBPair__OnlyFactory();
 error LBPair__DepthTooDeep();
 error LBPair__DistributionOverflow(uint256 id, uint256 distribution);
-error LBPair__OracleOverflow(uint256 currentOracleSize, uint256 increase);
-error LBPair__OracleRequestTooOld(uint256 minTimestamp, uint256 requestedTimestamp);
-error LBPair__OracleInvalidRequest(uint256 currentTimestamp, uint256 requestedAgo);
 error LBPair__OnlyFeeRecipient(address feeRecipient, address sender);
 
-// TODO add oracle price, Add oracle id and size to pair info
 /// @title Liquidity Bin Exchange
 /// @author Trader Joe
 /// @notice DexV2 POC
@@ -57,6 +51,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     using FeeHelper for FeeHelper.FeeParameters;
     using SwapHelper for PairInformation;
     using Decoder for bytes32;
+    using Oracle for bytes32[65_536];
 
     /** Events **/
 
@@ -86,7 +81,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     event FeesCollected(address indexed sender, address indexed recipient, uint256 amountX, uint256 amountY);
 
-    event ProtocolFeesCollected(address indexed sender, address indexed recipient, uint256 amountX, uint256 amountY);
+    event ProtocolFeeCollected(address indexed sender, address indexed recipient, uint256 amountX, uint256 amountY);
 
     event OracleSizeIncreased(uint256 previousSize, uint256 newSize);
 
@@ -117,6 +112,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     mapping(address => UnclaimedFees) private _unclaimedFees;
     /// @notice mappings from account to id to user's accruedDebt.
     mapping(address => mapping(uint256 => Debts)) private _accruedDebts;
+    /// @notice Oracle array
+    bytes32[65_536] private _oracle;
 
     /** OffSets */
 
@@ -138,23 +135,23 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @param _factory The address of the factory.
     /// @param _tokenX The address of the tokenX. Can't be address 0
     /// @param _tokenY The address of the tokenY. Can't be address 0
-    /// @param _id The active id of the pair
+    /// @param _activeId The active id of the pair
     /// @param _sampleLifetime The lifetime of a sample. It's the min time between 2 oracle's sample
     /// @param _packedFeeParameters The fee parameters packed in a single 256 bits slot
     constructor(
         ILBFactory _factory,
         IERC20 _tokenX,
         IERC20 _tokenY,
-        uint256 _id,
-        uint256 _sampleLifetime,
+        uint24 _activeId,
+        uint16 _sampleLifetime,
         bytes32 _packedFeeParameters
     ) LBToken("Liquidity Book Token", "LBT") {
         factory = _factory;
         tokenX = _tokenX;
         tokenY = _tokenY;
 
-        _pairInformation.activeId = _id.safe24();
-        _pairInformation.oracleSampleLifetime = _sampleLifetime.safe16();
+        _pairInformation.activeId = _activeId;
+        _pairInformation.oracleSampleLifetime = _sampleLifetime;
 
         _increaseOracle(2);
         _setFeesParameters(_packedFeeParameters);
@@ -207,6 +204,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @return oracleActiveSize The active size of the oracle (no empty data)
     /// @return oracleLastTimestamp The timestamp of the creation of the oracle's latest sample
     /// @return oracleId The index of the oracle's latest sample
+    /// @return min The min delta time of two samples
+    /// @return max The safe max delta time of two samples
     function getOracleParameters()
         external
         view
@@ -216,21 +215,14 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             uint256 oracleSize,
             uint256 oracleActiveSize,
             uint256 oracleLastTimestamp,
-            uint256 oracleId
+            uint256 oracleId,
+            uint256 min,
+            uint256 max
         )
     {
-        return _getOracleParameters();
-    }
-
-    /// @notice View function to get the safe query windows of the oracle
-    /// Outside of these bounds, it might not be returned every time
-    /// @return min The min delta time of two samples
-    /// @return max The safe max delta time of two samples
-    function getSafeQueryWindows() external view returns (uint256 min, uint256 max) {
-        (uint256 _oracleSampleLifetime, , uint256 _oracleActiveSize, , ) = _getOracleParameters();
-
-        min = _oracleActiveSize == 0 ? 0 : _oracleSampleLifetime;
-        max = _oracleSampleLifetime * _oracleActiveSize;
+        (oracleSampleLifetime, oracleSize, oracleActiveSize, oracleLastTimestamp, oracleId) = _getOracleParameters();
+        min = oracleSampleLifetime;
+        max = oracleSampleLifetime * oracleActiveSize;
     }
 
     /// @notice View function to get the oracle's sample at `_ago` seconds
@@ -248,54 +240,48 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             uint256 cumulativeBinCrossed
         )
     {
-        if (_ago >= block.timestamp) revert LBPair__OracleInvalidRequest(block.timestamp, _ago);
+        uint256 _lookUpTimestamp = block.timestamp - _ago;
 
         unchecked {
-            uint256 _lookUpTimestamp = block.timestamp - _ago;
-
             (, , uint256 _oracleActiveSize, , uint256 _oracleId) = _getOracleParameters();
 
-            {
-                Oracle.Sample memory _sample = Oracle.getSample(_oracleId);
+            Oracle.Sample memory _sample = _oracle.getSample(_oracleId);
 
-                if (_sample.timestamp < _lookUpTimestamp) {
-                    FeeHelper.FeeParameters memory _fp = _feeParameters;
-                    _fp.updateAccumulatorValue();
-                    uint256 _activeId = _pairInformation.activeId;
+            if (_sample.timestamp < _lookUpTimestamp) {
+                FeeHelper.FeeParameters memory _fp = _feeParameters;
+                _fp.updateAccumulatorValue();
 
-                    uint256 _delta = _lookUpTimestamp - _sample.timestamp;
-                    return (
-                        _sample.cumulativeId + _activeId * _delta,
-                        _sample.cumulativeAccumulator + _fp.accumulator * _delta,
-                        _sample.cumulativeBinCrossed
-                    );
+                uint256 _delta = _lookUpTimestamp - _sample.timestamp;
+
+                cumulativeId = _sample.cumulativeId + _pairInformation.activeId * _delta;
+                cumulativeAccumulator = _sample.cumulativeAccumulator + _fp.accumulator * _delta;
+                cumulativeBinCrossed = _sample.cumulativeBinCrossed;
+            } else {
+                // We use active size to search inside the samples that have non empty data
+                (bytes32 prev_, bytes32 next_) = _oracle.binarySearch(_oracleId, _lookUpTimestamp, _oracleActiveSize);
+
+                Oracle.Sample memory _prev = Oracle.decodeSample(prev_);
+
+                Oracle.Sample memory _next = Oracle.decodeSample(next_);
+
+                if (_prev.timestamp == _next.timestamp) {
+                    cumulativeId = _prev.cumulativeId;
+                    cumulativeAccumulator = _prev.cumulativeAccumulator;
+                    cumulativeBinCrossed = _prev.cumulativeBinCrossed;
+                } else {
+                    uint256 _weightPrev = _next.timestamp - _lookUpTimestamp; // _next.timestamp - _prev.timestamp - (_lookUpTimestamp - _prev.timestamp)
+                    uint256 _weightNext = _lookUpTimestamp - _prev.timestamp; // _next.timestamp - _prev.timestamp - (_next.timestamp - _lookUpTimestamp)
+                    uint256 _totalWeight = _weightPrev + _weightNext; // _next.timestamp - _prev.timestamp
+
+                    cumulativeId = (_prev.cumulativeId * _weightPrev + _next.cumulativeId * _weightNext) / _totalWeight;
+                    cumulativeAccumulator =
+                        (_prev.cumulativeAccumulator * _weightPrev + _next.cumulativeAccumulator * _weightNext) /
+                        _totalWeight;
+                    cumulativeBinCrossed =
+                        (_prev.cumulativeBinCrossed * _weightPrev + _next.cumulativeBinCrossed * _weightNext) /
+                        _totalWeight;
                 }
             }
-
-            // We use active size to search inside the samples that have non empty data
-            (bytes32 prev_, bytes32 next_) = Oracle.binarySearch(_oracleId, _lookUpTimestamp, _oracleActiveSize);
-
-            Oracle.Sample memory _prev = Oracle.decodeSample(prev_);
-
-            Oracle.Sample memory _next = Oracle.decodeSample(next_);
-
-            if (_prev.timestamp > _lookUpTimestamp)
-                revert LBPair__OracleRequestTooOld(_prev.timestamp, _lookUpTimestamp);
-
-            if (_prev.timestamp == _next.timestamp)
-                return (_next.cumulativeId, _next.cumulativeAccumulator, _next.cumulativeBinCrossed);
-
-            uint256 _weightPrev = _next.timestamp - _lookUpTimestamp; // _next.timestamp - _prev.timestamp - (_lookUpTimestamp - _prev.timestamp)
-            uint256 _weightNext = _lookUpTimestamp - _prev.timestamp; // _next.timestamp - _prev.timestamp - (_next.timestamp - _lookUpTimestamp)
-            uint256 _totalWeight = _weightPrev + _weightNext; // _next.timestamp - _prev.timestamp
-
-            cumulativeId = (_prev.cumulativeId * _weightPrev + _next.cumulativeId * _weightNext) / _totalWeight;
-            cumulativeAccumulator =
-                (_prev.cumulativeAccumulator * _weightPrev + _next.cumulativeAccumulator * _weightNext) /
-                _totalWeight;
-            cumulativeBinCrossed =
-                (_prev.cumulativeBinCrossed * _weightPrev + _next.cumulativeBinCrossed * _weightNext) /
-                _totalWeight;
         }
     }
 
@@ -317,41 +303,49 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @param _id The bin id
     /// @return reserveX The reserve of tokenX of the bin
     /// @return reserveY The reserve of tokenY of the bin
-    function getBin(uint24 _id) external view override returns (uint112 reserveX, uint112 reserveY) {
-        return (_bins[_id].reserveX, _bins[_id].reserveY);
+    function getBin(uint24 _id) external view override returns (uint256 reserveX, uint256 reserveY) {
+        uint256 _mask = type(uint112).max;
+        assembly {
+            mstore(0, _bins.slot)
+            let _data := sload(add(keccak256(0, 32), _id))
+
+            reserveX := and(_data, _mask)
+            reserveY := and(shr(112, _data), _mask)
+        }
     }
 
     /// @notice View function to get the pending fees of a user
     /// @dev The array must be strictly increasing to ensure uniqueness
     /// @param _account The address of the user
     /// @param _ids The list of ids
-    /// @return The unclaimed fees
+    /// @return fees The unclaimed fees
     function pendingFees(address _account, uint256[] memory _ids)
         external
         view
         override
-        returns (UnclaimedFees memory)
+        returns (UnclaimedFees memory fees)
     {
-        uint256 _len = _ids.length;
-        UnclaimedFees memory _fees = _unclaimedFees[_account];
+        unchecked {
+            fees = _unclaimedFees[_account];
 
-        uint256 _lastId;
-        for (uint256 i; i < _len; ++i) {
-            uint256 _id = _ids[i];
-            uint256 _balance = balanceOf(_account, _id);
+            uint256 _lastId;
+            uint256 _len = _ids.length;
+            for (uint256 i; i < _len; ++i) {
+                uint256 _id = _ids[i];
 
-            if (_lastId >= _id && i != 0) revert LBPair__OnlyStrictlyIncreasingId();
+                if (_lastId >= _id && i != 0) revert LBPair__OnlyStrictlyIncreasingId();
 
-            if (_balance != 0) {
-                Bin memory _bin = _bins[_id];
+                uint256 _balance = balanceOf(_account, _id);
 
-                _collectFees(_fees, _bin, _account, _id, _balance);
+                if (_balance != 0) {
+                    Bin memory _bin = _bins[_id];
+
+                    _collectFees(fees, _bin, _account, _id, _balance);
+                }
+
+                _lastId = _id;
             }
-
-            _lastId = _id;
         }
-
-        return _fees;
     }
 
     /** External Functions **/
@@ -360,7 +354,14 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @dev Will swap the full amount that this contract received of token X or Y
     /// @param _swapForY whether the token sent was Y (true) or X (false)
     /// @param _to The address of the recipient
-    function swap(bool _swapForY, address _to) external override nonReentrant returns (uint256, uint256) {
+    /// @return amountXOut The amount of token X sent to `_to`
+    /// @return amountYOut The amount of token Y sent to `_to`
+    function swap(bool _swapForY, address _to)
+        external
+        override
+        nonReentrant
+        returns (uint256 amountXOut, uint256 amountYOut)
+    {
         PairInformation memory _pair = _pairInformation;
 
         uint256 _amountIn = _swapForY
@@ -383,9 +384,14 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) = _pair
                     .getAmounts(_bin, _fp, _swapForY, _startId, _amountIn);
 
-                if (_amountInToBin > type(uint112).max) revert LBPair__BinReserveOverflows(_pair.activeId);
-
-                _pair.update(_bin, _fees, _swapForY, totalSupply(_pair.activeId), _amountInToBin, _amountOutOfBin);
+                _pair.updateLiquidity(
+                    _bin,
+                    _fees,
+                    _swapForY,
+                    totalSupply(_pair.activeId),
+                    _amountInToBin.safe112(),
+                    _amountOutOfBin
+                );
 
                 _amountIn -= _amountInToBin + _fees.total;
                 _amountOut += _amountOutOfBin;
@@ -401,42 +407,43 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         }
 
         if (_amountOut == 0) revert LBPair__BrokenSwapSafetyCheck(); // Safety check
+        unchecked {
+            uint256 _binCrossed = _startId > _pair.activeId ? _startId - _pair.activeId : _pair.activeId - _startId;
+            _fp.updateFeeParameters(_binCrossed);
 
-        uint256 _binCrossed = _startId > _pair.activeId ? _startId - _pair.activeId : _pair.activeId - _startId;
-        _fp.updateFeeParameters(_binCrossed);
+            // We use oracleSize so it can start filling empty slot that were added recently
+            uint256 _updatedOracleId = _oracle.update(
+                _pair.oracleSize,
+                _pair.oracleSampleLifetime,
+                _pair.oracleLastTimestamp,
+                _pair.oracleId,
+                _pair.activeId,
+                _fp.accumulator,
+                _binCrossed
+            );
 
-        // We use oracleSize so it can start filling empty slot that were added recently
-        uint256 _updatedOracleId = Oracle.update(
-            _pair.oracleSize,
-            _pair.oracleSampleLifetime,
-            _pair.oracleLastTimestamp,
-            _pair.oracleId,
-            _pair.activeId,
-            _fp.accumulator,
-            _binCrossed
-        );
+            // We update the oracleId and lastTimestamp if the sample write on another slot
+            if (_updatedOracleId != _pair.oracleId) {
+                _pair.oracleId = uint24(_updatedOracleId);
+                _pair.oracleLastTimestamp = block.timestamp.safe40();
 
-        // We update the oracleId and lastTimestamp if the sample write on another slot
-        if (_updatedOracleId != _pair.oracleId) {
-            _pair.oracleId = uint24(_updatedOracleId);
-            _pair.oracleLastTimestamp = block.timestamp.safe40();
-
-            // We increase the activeSize if the updated sample is written in a new slot
-            if (_updatedOracleId == _pair.oracleActiveSize) _pair.oracleActiveSize += 1;
+                // We increase the activeSize if the updated sample is written in a new slot
+                if (_updatedOracleId == _pair.oracleActiveSize) _pair.oracleActiveSize += 1;
+            }
         }
 
         _feeParameters = _fp;
         _pairInformation = _pair;
 
         if (_swapForY) {
+            amountYOut = _amountOut;
             tokenY.safeTransfer(_to, _amountOut);
-            emit Swap(msg.sender, _to, _pair.activeId, 0, _amountOut);
-            return (0, _amountOut);
         } else {
+            amountXOut = _amountOut;
             tokenX.safeTransfer(_to, _amountOut);
-            emit Swap(msg.sender, _to, _pair.activeId, _amountOut, 0);
-            return (_amountOut, 0);
         }
+
+        emit Swap(msg.sender, _to, _pair.activeId, amountXOut, amountYOut);
     }
 
     /// @notice Performs a flash loan
@@ -451,26 +458,25 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         bytes memory _data
     ) external override nonReentrant {
         FeeHelper.FeeParameters memory _fp = _feeParameters;
-        uint256 _reserveX = _pairInformation.reserveX;
-        uint256 _reserveY = _pairInformation.reserveY;
-
         _fp.updateAccumulatorValue();
-
         FeeHelper.FeesDistribution memory _feesX = _fp.getFeesDistribution(_fp.getFees(_amountXOut, 0));
         FeeHelper.FeesDistribution memory _feesY = _fp.getFeesDistribution(_fp.getFees(_amountYOut, 0));
+
+        uint256 _reserveX = _pairInformation.reserveX;
+        uint256 _reserveY = _pairInformation.reserveY;
+        uint256 _id = _pairInformation.activeId;
 
         tokenX.safeTransfer(_to, _amountXOut);
         tokenY.safeTransfer(_to, _amountYOut);
 
-        ILBFlashLoanCallback(_to).LBFlashLoanCallback(msg.sender, _feesX.total, _feesY.total, _data);
+        ILBFlashLoanCallback(msg.sender).LBFlashLoanCallback(_feesX.total, _feesY.total, _data);
 
         _flashLoanHelper(_pairInformation.feesX, _feesX, tokenX, _reserveX);
         _flashLoanHelper(_pairInformation.feesY, _feesY, tokenY, _reserveY);
 
-        uint256 _id = _pairInformation.activeId;
         uint256 _totalSupply = totalSupply(_id);
-        _bins[_id].accTokenXPerShare += ((_feesX.total - _feesX.protocol) * Constants.SCALE) / _totalSupply;
 
+        _bins[_id].accTokenXPerShare += ((_feesX.total - _feesX.protocol) * Constants.SCALE) / _totalSupply;
         _bins[_id].accTokenYPerShare += ((_feesY.total - _feesY.protocol) * Constants.SCALE) / _totalSupply;
 
         emit FlashLoan(msg.sender, _to, _amountXOut, _amountYOut, _feesX.total, _feesY.total);
@@ -489,22 +495,22 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint256[] memory _distributionY,
         address _to
     ) external override nonReentrant returns (uint256, uint256) {
-        uint256 _len = _ids.length;
-        if (_len == 0 || _len != _distributionX.length || _len != _distributionY.length) revert LBPair__WrongLengths();
-
-        PairInformation memory _pair = _pairInformation;
-
-        uint256 _binStep = _feeParameters.binStep;
-
-        MintInfo memory _mintInfo;
-
-        _mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total).safe128();
-        _mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total).safe128();
-
         unchecked {
+            uint256 _len = _ids.length;
+            if (_len == 0 || _len != _distributionX.length || _len != _distributionY.length)
+                revert LBPair__WrongLengths();
+
+            PairInformation memory _pair = _pairInformation;
+
+            uint256 _binStep = _feeParameters.binStep;
+
+            MintInfo memory _mintInfo;
+
+            _mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total).safe128();
+            _mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total).safe128();
+
             for (uint256 i; i < _len; ++i) {
-                _mintInfo.id = _ids[i];
-                if (_mintInfo.id > uint256(type(uint24).max)) revert LBPair__IdOverflows(i);
+                _mintInfo.id = _ids[i].safe24();
                 Bin memory _bin = _bins[_mintInfo.id];
 
                 if (_bin.reserveX == 0 && _bin.reserveY == 0) {
@@ -518,7 +524,6 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 }
 
                 uint256 _liquidity;
-
                 if (_mintInfo.id >= _pair.activeId) {
                     uint256 _distribution = _distributionX[i];
 
@@ -558,91 +563,73 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 _bins[_mintInfo.id] = _bin;
                 _mint(_to, _mintInfo.id, _liquidity);
             }
-        }
 
-        if (
-            _mintInfo.totalDistributionX > 100 * Constants.SCALE || _mintInfo.totalDistributionY > 100 * Constants.SCALE
-        ) revert LBPair__BrokenMintSafetyCheck(_mintInfo.totalDistributionX, _mintInfo.totalDistributionY);
-
-        // If user sent too much tokens, we add them to the claimable fees so they're not lost.
-        unchecked {
             if (
-                _mintInfo.amountXIn > _mintInfo.amountXAddedToPair || _mintInfo.amountYIn > _mintInfo.amountYAddedToPair
-            ) {
-                UnclaimedFees memory _fees = _unclaimedFees[_to];
+                _mintInfo.totalDistributionX > 100 * Constants.SCALE ||
+                _mintInfo.totalDistributionY > 100 * Constants.SCALE
+            ) revert LBPair__BrokenMintSafetyCheck(_mintInfo.totalDistributionX, _mintInfo.totalDistributionY);
 
-                uint256 _excessX = (_mintInfo.amountXIn - _mintInfo.amountXAddedToPair);
-                uint256 _excessY = (_mintInfo.amountYIn - _mintInfo.amountYAddedToPair);
+            _pairInformation = _pair;
 
-                _pair.feesX.total = (_pair.feesX.total + _excessX).safe128();
-                _pair.feesY.total = (_pair.feesY.total + _excessY).safe128();
-
-                _fees.tokenX = uint128(_fees.tokenX + _excessX);
-                _fees.tokenY = uint128(_fees.tokenY + _excessY);
-
-                _unclaimedFees[_to] = _fees;
+            // If user sent too much tokens, We send them back the excess
+            if (_mintInfo.amountXIn > _mintInfo.amountXAddedToPair) {
+                tokenX.safeTransfer(_to, _mintInfo.amountXIn - _mintInfo.amountXAddedToPair);
             }
+            if (_mintInfo.amountYIn > _mintInfo.amountYAddedToPair) {
+                tokenY.safeTransfer(_to, _mintInfo.amountYIn - _mintInfo.amountYAddedToPair);
+            }
+
+            emit Mint(
+                msg.sender,
+                _to,
+                _pair.activeId,
+                _ids,
+                _distributionX,
+                _distributionY,
+                _mintInfo.amountXAddedToPair,
+                _mintInfo.amountYAddedToPair
+            );
+
+            return (_mintInfo.amountXAddedToPair, _mintInfo.amountYAddedToPair);
         }
-
-        _pairInformation = _pair;
-
-        emit Mint(
-            msg.sender,
-            _to,
-            _pair.activeId,
-            _ids,
-            _distributionX,
-            _distributionY,
-            _mintInfo.amountXAddedToPair,
-            _mintInfo.amountYAddedToPair
-        );
-
-        return (_mintInfo.amountXAddedToPair, _mintInfo.amountYAddedToPair);
     }
 
     /// @notice Performs a low level remove, this needs to be called from a contract which performs important safety checks
     /// @param _ids The ids the user want to remove its liquidity
     /// @param _amounts The amount of token to burn
     /// @param _to The address of the recipient
+    /// @return amountX The amount of token X sent to `_to`
+    /// @return amountY The amount of token Y sent to `_to`
     function burn(
         uint256[] memory _ids,
         uint256[] memory _amounts,
         address _to
-    ) external override nonReentrant returns (uint256, uint256) {
-        uint256 _len = _ids.length;
-
-        PairInformation memory _pair = _pairInformation;
-
-        uint256 _amountsX;
-        uint256 _amountsY;
-
+    ) external override nonReentrant returns (uint256 amountX, uint256 amountY) {
         unchecked {
+            PairInformation memory _pair = _pairInformation;
+
+            uint256 _len = _ids.length;
             for (uint256 i; i < _len; ++i) {
-                uint256 _id = _ids[i];
+                uint256 _id = _ids[i].safe24();
                 uint256 _amountToBurn = _amounts[i];
-                if (_id > type(uint24).max) revert LBPair__IdOverflows(i);
 
                 if (_amountToBurn == 0) revert LBPair__InsufficientLiquidityBurned(_id);
 
                 Bin memory _bin = _bins[_id];
 
-                uint256 totalSupply = totalSupply(_id);
+                uint256 _totalSupply = totalSupply(_id);
 
                 if (_id <= _pair.activeId) {
-                    uint256 _amountY = _amountToBurn.mulDivRoundDown(_bin.reserveY, totalSupply);
+                    uint256 _amountY = _amountToBurn.mulDivRoundDown(_bin.reserveY, _totalSupply);
 
-                    if (_bin.reserveY < _amountY) revert LBPair__BurnExceedsReserve(_id);
-
-                    _amountsY += _amountY;
+                    amountY += _amountY;
                     _bin.reserveY -= uint112(_amountY);
                     _pair.reserveY -= uint136(_amountY);
                 }
                 if (_id >= _pair.activeId) {
-                    uint256 _amountX = _amountToBurn.mulDivRoundDown(_bin.reserveX, totalSupply);
+                    uint256 _amountX = _amountToBurn.mulDivRoundDown(_bin.reserveX, _totalSupply);
 
-                    if (_bin.reserveX < _amountX) revert LBPair__BurnExceedsReserve(_id);
-
-                    _amountsX += _amountX;
+                    amountX += _amountX;
                     _bin.reserveX -= uint112(_amountX);
                     _pair.reserveX -= uint136(_amountX);
                 }
@@ -650,12 +637,14 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 if (_bin.reserveX == 0 && _bin.reserveY == 0) {
                     // removes 1 at the right indices
                     uint256 _idDepth2 = _id / 256;
-                    _tree[2][_idDepth2] -= 1 << (_id % 256);
-                    if (_tree[2][_idDepth2] == 0) {
+                    uint256 _newLeafValue = _tree[2][_idDepth2] & (type(uint256).max - (1 << (_id % 256)));
+                    _tree[2][_idDepth2] = _newLeafValue;
+                    if (_newLeafValue == 0) {
                         uint256 _idDepth1 = _id / 65_536;
-                        _tree[1][_idDepth1] -= 1 << (_idDepth2 % 256);
-                        if (_tree[1][_idDepth1] == 0) {
-                            _tree[0][0] -= 1 << _idDepth1;
+                        _newLeafValue = _tree[1][_idDepth1] & (type(uint256).max - (1 << (_idDepth2 % 256)));
+                        _tree[1][_idDepth1] = _newLeafValue;
+                        if (_newLeafValue == 0) {
+                            _tree[0][0] &= type(uint256).max - (1 << _idDepth1);
                         }
                     }
                 }
@@ -663,87 +652,84 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 _bins[_id] = _bin;
                 _burn(address(this), _id, _amountToBurn);
             }
+
+            _pairInformation = _pair;
+
+            tokenX.safeTransfer(_to, amountX);
+            tokenY.safeTransfer(_to, amountY);
+
+            emit Burn(msg.sender, _to, _ids, _amounts);
         }
-
-        _pairInformation = _pair;
-
-        tokenX.safeTransfer(_to, _amountsX);
-        tokenY.safeTransfer(_to, _amountsY);
-
-        emit Burn(msg.sender, _to, _ids, _amounts);
-
-        return (_amountsX, _amountsY);
     }
 
     /// @notice Collect fees of an user
     /// @param _account The address of the user
     /// @param _ids The list of bin ids to collect fees in
-    function collectFees(address _account, uint256[] memory _ids) external nonReentrant {
-        uint256 _len = _ids.length;
+    function collectFees(address _account, uint256[] memory _ids) external override nonReentrant {
+        unchecked {
+            uint256 _len = _ids.length;
 
-        UnclaimedFees memory _fees = _unclaimedFees[_account];
-        delete _unclaimedFees[_account];
+            UnclaimedFees memory _fees = _unclaimedFees[_account];
+            delete _unclaimedFees[_account];
 
-        for (uint256 i; i < _len; ++i) {
-            uint256 _id = _ids[i];
-            uint256 _balance = balanceOf(_account, _id);
+            for (uint256 i; i < _len; ++i) {
+                uint256 _id = _ids[i];
+                uint256 _balance = balanceOf(_account, _id);
 
-            if (_balance != 0) {
-                Bin memory _bin = _bins[_id];
+                if (_balance != 0) {
+                    Bin memory _bin = _bins[_id];
 
-                _collectFees(_fees, _bin, _account, _id, _balance);
-                _updateUserDebts(_bin, _account, _id, _balance);
+                    _collectFees(_fees, _bin, _account, _id, _balance);
+                    _updateUserDebts(_bin, _account, _id, _balance);
+                }
             }
-        }
 
-        if (_fees.tokenX != 0) {
-            _pairInformation.feesX.total -= _fees.tokenX;
-        }
-        if (_fees.tokenY != 0) {
-            _pairInformation.feesY.total -= _fees.tokenY;
-        }
+            if (_fees.tokenX != 0) {
+                _pairInformation.feesX.total -= _fees.tokenX;
+            }
+            if (_fees.tokenY != 0) {
+                _pairInformation.feesY.total -= _fees.tokenY;
+            }
 
-        tokenX.safeTransfer(_account, _fees.tokenX);
-        tokenY.safeTransfer(_account, _fees.tokenY);
+            tokenX.safeTransfer(_account, _fees.tokenX);
+            tokenY.safeTransfer(_account, _fees.tokenY);
 
-        emit FeesCollected(msg.sender, _account, _fees.tokenX, _fees.tokenY);
+            emit FeesCollected(msg.sender, _account, _fees.tokenX, _fees.tokenY);
+        }
     }
 
     /// @notice Collect the protocol fees and send them to the feeRecipient
     /// @dev The balances are not zeroed to save gas by not resetting the storage slot
     /// Only callable by the fee recipient
-    function collectProtocolFees() external nonReentrant {
-        address _feeRecipient = factory.feeRecipient();
+    function collectProtocolFees() external override nonReentrant {
+        unchecked {
+            address _feeRecipient = factory.feeRecipient();
 
-        if (msg.sender != _feeRecipient) revert LBPair__OnlyFeeRecipient(_feeRecipient, msg.sender);
+            if (msg.sender != _feeRecipient) revert LBPair__OnlyFeeRecipient(_feeRecipient, msg.sender);
 
-        FeeHelper.FeesDistribution memory _feesX = _pairInformation.feesX;
-        FeeHelper.FeesDistribution memory _feesY = _pairInformation.feesY;
-
-        uint256 _feesXOut;
-        uint256 _feesYOut;
-
-        if (_feesX.protocol != 0) {
-            unchecked {
+            FeeHelper.FeesDistribution memory _feesX = _pairInformation.feesX;
+            uint256 _feesXOut;
+            if (_feesX.protocol != 0) {
                 _feesXOut = _feesX.protocol - 1;
                 _feesX.total -= uint128(_feesXOut);
                 _feesX.protocol = 1;
                 _pairInformation.feesX = _feesX;
             }
-        }
-        if (_feesY.protocol != 0) {
-            unchecked {
+
+            FeeHelper.FeesDistribution memory _feesY = _pairInformation.feesY;
+            uint256 _feesYOut;
+            if (_feesY.protocol != 0) {
                 _feesYOut = _feesY.protocol - 1;
                 _feesY.total -= uint128(_feesYOut);
                 _feesY.protocol = 1;
                 _pairInformation.feesY = _feesY;
             }
+
+            tokenX.safeTransfer(_feeRecipient, _feesXOut);
+            tokenY.safeTransfer(_feeRecipient, _feesYOut);
+
+            emit ProtocolFeeCollected(msg.sender, _feeRecipient, _feesXOut, _feesYOut);
         }
-
-        if (_feesXOut != 0) tokenX.safeTransfer(_feeRecipient, _feesXOut);
-        if (_feesYOut != 0) tokenY.safeTransfer(_feeRecipient, _feesYOut);
-
-        emit ProtocolFeesCollected(msg.sender, _feeRecipient, _feesXOut, _feesYOut);
     }
 
     /// @notice Set the fees parameters
@@ -753,15 +739,6 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @param _packedFeeParameters The packed fee parameters
     function setFeesParameters(bytes32 _packedFeeParameters) external override OnlyFactory {
         _setFeesParameters(_packedFeeParameters);
-    }
-
-    /** Public Functions **/
-
-    /// @notice Function to support EIP165
-    /// @param _interfaceId The id of the interface
-    /// @return Whether the interface is supported (true), or not (false)
-    function supportsInterface(bytes4 _interfaceId) public view override(LBToken, IERC165) returns (bool) {
-        return _interfaceId == type(ILBPair).interfaceId || super.supportsInterface(_interfaceId);
     }
 
     /** Internal Functions **/
@@ -777,29 +754,31 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint256 _id,
         uint256 _amount
     ) internal override(LBToken) {
-        super._beforeTokenTransfer(_from, _to, _id, _amount);
+        unchecked {
+            super._beforeTokenTransfer(_from, _to, _id, _amount);
 
-        Bin memory _bin = _bins[_id];
+            Bin memory _bin = _bins[_id];
 
-        if (_from != address(0) && _from != address(this)) {
-            UnclaimedFees memory _feesFrom = _unclaimedFees[_from];
-            uint256 _balanceFrom = balanceOf(_from, _id);
+            if (_from != address(0) && _from != address(this)) {
+                UnclaimedFees memory _feesFrom = _unclaimedFees[_from];
+                uint256 _balanceFrom = balanceOf(_from, _id);
 
-            _collectFees(_feesFrom, _bin, _from, _id, _balanceFrom);
-            _updateUserDebts(_bin, _from, _id, _balanceFrom - _amount);
+                _collectFees(_feesFrom, _bin, _from, _id, _balanceFrom);
+                _updateUserDebts(_bin, _from, _id, _balanceFrom - _amount);
 
-            _unclaimedFees[_from] = _feesFrom;
-        }
+                _unclaimedFees[_from] = _feesFrom;
+            }
 
-        if (_to != address(0) && _to != address(this) && _from != _to) {
-            UnclaimedFees memory _feesTo = _unclaimedFees[_to];
+            if (_to != address(0) && _to != address(this) && _to != _from) {
+                UnclaimedFees memory _feesTo = _unclaimedFees[_to];
 
-            uint256 _balanceTo = balanceOf(_to, _id);
+                uint256 _balanceTo = balanceOf(_to, _id);
 
-            _collectFees(_feesTo, _bin, _to, _id, _balanceTo);
-            _updateUserDebts(_bin, _to, _id, _balanceTo + _amount);
+                _collectFees(_feesTo, _bin, _to, _id, _balanceTo);
+                _updateUserDebts(_bin, _to, _id, _balanceTo + _amount);
 
-            _unclaimedFees[_to] = _feesTo;
+                _unclaimedFees[_to] = _feesTo;
+            }
         }
     }
 
@@ -839,7 +818,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint256 _debtX = _bin.accTokenXPerShare.mulDivRoundDown(_balance, Constants.SCALE);
         uint256 _debtY = _bin.accTokenYPerShare.mulDivRoundDown(_balance, Constants.SCALE);
 
-        _accruedDebts[_account][_id] = Debts(_debtX, _debtY);
+        _accruedDebts[_account][_id].debtX = _debtX;
+        _accruedDebts[_account][_id].debtY = _debtY;
     }
 
     /// @notice Checks that the flash loan was done accordingly
@@ -854,9 +834,11 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint256 _reserve
     ) private {
         uint128 _totalFees = _pairFees.total;
-        uint256 _amountSentToPair = _token.received(_reserve, _totalFees);
+        uint256 _amountReceived = _token.received(_reserve, _totalFees);
 
-        if (_fees.total > _amountSentToPair) revert LBPair__FlashLoanUnderflow(_fees.total, _amountSentToPair);
+        if (_fees.total > _amountReceived) revert LBPair__FlashLoanUnderflow(_fees.total, _amountReceived);
+
+        _fees.total = _amountReceived.safe128();
 
         _pairFees.total = _totalFees + _fees.total;
         // unsafe math is fine because total >= protocol
@@ -882,12 +864,10 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint256 _oracleSize = _pairInformation.oracleSize;
         uint256 _newSize = _oracleSize + _nb;
 
-        if (_newSize > type(uint16).max) revert LBPair__OracleOverflow(_oracleSize, _nb);
-
         unchecked {
             _pairInformation.oracleSize = uint16(_newSize);
             for (uint256 i; i < _nb; ++i) {
-                Oracle.initialize(_oracleSize + i);
+                _oracle.initialize(_oracleSize + i);
             }
         }
         emit OracleSizeIncreased(_oracleSize, _newSize);

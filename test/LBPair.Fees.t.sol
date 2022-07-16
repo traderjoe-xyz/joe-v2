@@ -33,7 +33,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         (, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
 
-        uint256 accumulatedYfees = feesY.total - feesY.protocol;
+        uint256 accumulatedYFees = feesY.total - feesY.protocol;
 
         uint256[] memory orderedIds = new uint256[](5);
         for (uint256 i; i < 5; i++) {
@@ -41,13 +41,14 @@ contract LiquidityBinPairFeesTest is TestHelper {
         }
         ILBPair.UnclaimedFees memory fees = pair.pendingFees(DEV, orderedIds);
 
-        assertApproxEqAbs(accumulatedYfees, fees.tokenY, 1);
+        assertApproxEqAbs(accumulatedYFees, fees.tokenY, 1);
 
+        uint256 balanceBefore = token18D.balanceOf(DEV);
         pair.collectFees(DEV, orderedIds);
-        assertEq(fees.tokenY, token18D.balanceOf(DEV));
+        assertEq(fees.tokenY, token18D.balanceOf(DEV) - balanceBefore);
 
         // Trying to claim a second time
-        uint256 balanceBefore = token18D.balanceOf(DEV);
+        balanceBefore = token18D.balanceOf(DEV);
         fees = pair.pendingFees(DEV, orderedIds);
         assertEq(fees.tokenY, 0);
         pair.collectFees(DEV, orderedIds);
@@ -84,19 +85,30 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         (, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
 
-        uint256 accumulatedYfees = feesY.total - feesY.protocol;
+        uint256 accumulatedYFees = feesY.total - feesY.protocol;
 
         assertApproxEqAbs(
             feesForDev.tokenY + feesForBob.tokenY,
-            accumulatedYfees,
+            accumulatedYFees,
             1,
             "Sum of users fees = accumulated fees"
         );
 
+        uint256 balanceBefore = token18D.balanceOf(DEV);
         pair.collectFees(DEV, _ids);
-        assertEq(feesForDev.tokenY, token18D.balanceOf(DEV), "DEV gets the expected amount when withdrawing fees");
+        assertEq(
+            feesForDev.tokenY,
+            token18D.balanceOf(DEV) - balanceBefore,
+            "DEV gets the expected amount when withdrawing fees"
+        );
+
+        balanceBefore = token18D.balanceOf(BOB);
         pair.collectFees(BOB, _ids);
-        assertEq(feesForBob.tokenY, token18D.balanceOf(BOB), "BOB gets the expected amount when withdrawing fees");
+        assertEq(
+            feesForBob.tokenY,
+            token18D.balanceOf(BOB) - balanceBefore,
+            "BOB gets the expected amount when withdrawing fees"
+        );
     }
 
     function testClaimProtocolFees() public {
@@ -116,12 +128,13 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         address protocolFeesReceiver = factory.feeRecipient();
         vm.prank(DEV);
+        uint256 balanceBefore = token18D.balanceOf(protocolFeesReceiver);
         pair.collectProtocolFees();
-        assertEq(token18D.balanceOf(protocolFeesReceiver), feesY.protocol - 1);
+        assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesY.protocol - 1);
 
         // Claiming twice
         vm.prank(DEV);
         pair.collectProtocolFees();
-        assertEq(token18D.balanceOf(protocolFeesReceiver), feesY.protocol - 1);
+        assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesY.protocol - 1);
     }
 }

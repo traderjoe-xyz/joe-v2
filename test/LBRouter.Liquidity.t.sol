@@ -46,7 +46,7 @@ contract LiquidityBinRouterTest is TestHelper {
         router.removeLiquidity(token6D, token18D, amountXIn - 2, _amountYIn, ids, amounts, DEV, block.timestamp);
         vm.stopPrank();
 
-        assertEq(token6D.balanceOf(DEV), amountXIn - 2);
+        assertEq(token6D.balanceOf(DEV), amountXIn);
         assertEq(token18D.balanceOf(DEV), _amountYIn);
     }
 
@@ -92,10 +92,19 @@ contract LiquidityBinRouterTest is TestHelper {
 
         pair.setApprovalForAll(address(router), true);
 
-        uint256 devBalanceBefore = address(ALICE).balance;
-        router.removeLiquidityAVAX(token6D, amountTokenIn - 2, _amountAVAXIn, ids, amounts, ALICE, block.timestamp);
-        assertEq(token6D.balanceOf(ALICE), amountTokenIn - 2);
-        assertEq(address(ALICE).balance - devBalanceBefore, _amountAVAXIn);
+        uint256 AVAXBalanceBefore = address(ALICE).balance;
+        uint256 tokenBalanceBefore = token6D.balanceOf(ALICE);
+        router.removeLiquidityAVAX(
+            token6D,
+            amountTokenIn - tokenBalanceBefore,
+            _amountAVAXIn,
+            ids,
+            amounts,
+            ALICE,
+            block.timestamp
+        );
+        assertEq(token6D.balanceOf(ALICE), amountTokenIn);
+        assertEq(address(ALICE).balance - AVAXBalanceBefore, _amountAVAXIn);
 
         vm.stopPrank();
     }

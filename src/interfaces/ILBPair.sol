@@ -3,12 +3,11 @@
 pragma solidity >=0.8.9;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
-import "openzeppelin/utils/introspection/IERC165.sol";
 
 import "./ILBFactory.sol";
 import "../libraries/FeeHelper.sol";
 
-interface ILBPair is IERC165 {
+interface ILBPair {
     /// @dev Structure to store the reserves of bins:
     /// - reserveX: The current reserve of tokenX of the bin
     /// - reserveY: The current reserve of tokenY of the bin
@@ -102,14 +101,16 @@ interface ILBPair is IERC165 {
             uint256 oracleSize,
             uint256 oracleActiveSize,
             uint256 oracleLastTimestamp,
-            uint256 oracleId
+            uint256 oracleId,
+            uint256 min,
+            uint256 max
         );
 
     function feeParameters() external view returns (FeeHelper.FeeParameters memory);
 
     function findFirstNonEmptyBinId(uint24 id, bool sentTokenY) external view returns (uint256);
 
-    function getBin(uint24 id) external view returns (uint112 reserveX, uint112 reserveY);
+    function getBin(uint24 id) external view returns (uint256 reserveX, uint256 reserveY);
 
     function pendingFees(address _account, uint256[] memory _ids) external view returns (UnclaimedFees memory);
 
@@ -134,6 +135,10 @@ interface ILBPair is IERC165 {
         uint256[] memory _amounts,
         address to
     ) external returns (uint256, uint256);
+
+    function collectFees(address _account, uint256[] memory _ids) external;
+
+    function collectProtocolFees() external;
 
     function setFeesParameters(bytes32 packedFeeParameters) external;
 }

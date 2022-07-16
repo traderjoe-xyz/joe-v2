@@ -18,7 +18,7 @@ error LBFactory__BaseFactorExceedsBP(uint16 baseFactor, uint256 maxBP);
 error LBFactory__BaseFeesBelowMin(uint256 baseFees, uint256 minBaseFees);
 error LBFactory__FeesAboveMax(uint256 fees, uint256 maxFees);
 error LBFactory__BinStepRequirementsBreached(uint256 lowerBound, uint16 binStep, uint256 higherBound);
-error LBFactory___ProtocolShareRequirementsBreached(uint256 lowerBound, uint16 protocolShare, uint256 higherBound);
+error LBFactory__ProtocolShareRequirementsBreached(uint256 lowerBound, uint16 protocolShare, uint256 higherBound);
 error LBFactory__FunctionIsLockedForUsers(address user);
 error LBFactory__FactoryLockIsAlreadyInTheSameState();
 
@@ -28,11 +28,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
     uint256 public constant override MIN_FEE = 1; // 0.01%
     uint256 public constant override MAX_FEE = 1_000; // 10%
 
-    uint256 public constant override MIN_BIN_STEP = 1; // 0.0001
-    uint256 public constant override MAX_BIN_STEP = 100; // 0.01
+    uint256 public constant override MIN_BIN_STEP = 1; // 0.01%
+    uint256 public constant override MAX_BIN_STEP = 100; // 1%
 
     uint256 public constant override MIN_PROTOCOL_SHARE = 1_000; // 10%
-    uint256 public constant override MAX_PROTOCOL_SHARE = 5_000; // 50%
+    uint256 public constant override MAX_PROTOCOL_SHARE = 2_500; // 25%
 
     ILBFactoryHelper public override factoryHelper;
 
@@ -51,7 +51,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     event PackedFeeParametersSet(
         address sender,
         ILBPair indexed LBPair,
-        uint168 maxAccumulator,
+        uint64 maxAccumulator,
         uint16 filterPeriod,
         uint16 decayPeriod,
         uint16 binStep,
@@ -105,13 +105,13 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _decayPeriod The period where the accumulator value is halved
     /// @param _binStep The bin step in basis point, used to calculate log(1 + binStep)
     /// @param _baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
-    /// @param _protocolShare The share of the fees received by the protocol
+    /// @param _protocolShare The share of the fees received by the fee bank
     /// @return _LBPair The address of the newly created LBPair
     function createLBPair(
         IERC20 _tokenX,
         IERC20 _tokenY,
-        uint256 _activeId,
-        uint256 _sampleLifetime,
+        uint24 _activeId,
+        uint16 _sampleLifetime,
         uint64 _maxAccumulator,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
@@ -184,7 +184,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _filterPeriod The period where the accumulator value is untouched, prevent spam
     /// @param _decayPeriod The period where the accumulator value is halved
     /// @param _baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
-    /// @param _protocolShare The share of the fees received by the protocol
+    /// @param _protocolShare The share of the fees received by the fee bank
     function setFeeParametersOnPair(
         IERC20 _tokenX,
         IERC20 _tokenY,
@@ -240,7 +240,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _decayPeriod The period where the accumulator value is halved
     /// @param _binStep The bin step in basis point, used to calculate log(1 + binStep)
     /// @param _baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
-    /// @param _protocolShare The share of the fees received by the protocol
+    /// @param _protocolShare The share of the fees received by the fee bank
     /// @param _variableFeesDisabled Whether the variable fees are disabled. (any value other than 0, means disabled)
     function _getPackedFeeParameters(
         uint64 _maxAccumulator,
@@ -260,11 +260,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             revert LBFactory__BaseFactorExceedsBP(_binStep, Constants.BASIS_POINT_MAX);
 
         if (_protocolShare < MIN_PROTOCOL_SHARE || _protocolShare > MAX_PROTOCOL_SHARE)
-            revert LBFactory___ProtocolShareRequirementsBreached(
-                MIN_PROTOCOL_SHARE,
-                _protocolShare,
-                MAX_PROTOCOL_SHARE
-            );
+            revert LBFactory__ProtocolShareRequirementsBreached(MIN_PROTOCOL_SHARE, _protocolShare, MAX_PROTOCOL_SHARE);
 
         if (_variableFeesDisabled > 1) _variableFeesDisabled = 1;
 

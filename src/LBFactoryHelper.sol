@@ -34,8 +34,8 @@ contract LBFactoryHelper is ILBFactoryHelper {
         IERC20 _tokenX,
         IERC20 _tokenY,
         bytes32 _salt,
-        uint256 _activeId,
-        uint256 _sampleLifetime,
+        uint24 _activeId,
+        uint16 _sampleLifetime,
         bytes32 _packedFeeParameters
     ) external override OnlyFactory returns (ILBPair) {
         return new LBPair{salt: _salt}(factory, _tokenX, _tokenY, _activeId, _sampleLifetime, _packedFeeParameters);

@@ -5,7 +5,6 @@ pragma solidity 0.8.9;
 import "openzeppelin/token/ERC20/IERC20.sol";
 
 error TokenHelper__TransferFailed(IERC20 token, address recipient, uint256 amount);
-error TokenHelper__ReserveUnderflow();
 
 /// @title Safe Transfer
 /// @author Trader Joe
@@ -44,11 +43,10 @@ library TokenHelper {
         uint256 reserve,
         uint256 fees
     ) internal view returns (uint256) {
-        uint256 _internalBalance = reserve + fees;
-        uint256 _balance = token.balanceOf(address(this));
-        if (_internalBalance > _balance) revert TokenHelper__ReserveUnderflow();
+        uint256 _internalBalance;
         unchecked {
-            return _balance - _internalBalance;
+            _internalBalance = reserve + fees;
         }
+        return _internalBalance - token.balanceOf(address(this));
     }
 }

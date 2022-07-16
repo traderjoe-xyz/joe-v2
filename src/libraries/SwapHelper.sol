@@ -72,7 +72,7 @@ library SwapHelper {
         }
     }
 
-    /// @notice Update the memory variables of the bin
+    /// @notice Update the liquidity variables of the bin
     /// @param pair The pair information
     /// @param bin The bin information
     /// @param fees The fees amounts
@@ -80,7 +80,7 @@ library SwapHelper {
     /// @param totalSupply The total supply of the token id
     /// @param amountInToBin The amount of token that is added to the bin without fees
     /// @param amountOutOfBin The amount of token that is removed from the bin
-    function update(
+    function updateLiquidity(
         ILBPair.PairInformation memory pair,
         ILBPair.Bin memory bin,
         FeeHelper.FeesDistribution memory fees,

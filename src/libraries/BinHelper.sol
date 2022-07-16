@@ -109,7 +109,9 @@ library BinHelper {
     /// @param _bp The bp value in [1; 10_000]
     /// @return The (1+bp) value
     function _getBPValue(uint256 _bp) internal pure returns (uint256) {
-        if (_bp == 0 || _bp > Constants.BASIS_POINT_MAX) revert BinHelper__WrongBPValue(_bp);
-        return Constants.SCALE + _bp * 1e32;
+        unchecked {
+            if (_bp == 0 || _bp > Constants.BASIS_POINT_MAX) revert BinHelper__WrongBPValue(_bp);
+            return Constants.SCALE + _bp * 1e32;
+        }
     }
 }

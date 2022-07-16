@@ -32,165 +32,165 @@ interface ILBRouter {
 
     function wavax() external view returns (IWAVAX);
 
-    function getIdFromPrice(ILBPair LBPair, uint256 _price) external view returns (uint24);
+    function getIdFromPrice(ILBPair LBPair, uint256 price) external view returns (uint24);
 
-    function getPriceFromId(ILBPair LBPair, uint24 _id) external view returns (uint256);
+    function getPriceFromId(ILBPair LBPair, uint24 id) external view returns (uint256);
 
     function getSwapIn(
-        ILBPair _LBPair,
-        uint256 _amountOut,
-        bool _swapForY
-    ) external view returns (uint256 _amountIn);
+        ILBPair LBPair,
+        uint256 amountOut,
+        bool swapForY
+    ) external view returns (uint256 amountIn);
 
     function getSwapOut(
-        ILBPair _LBPair,
-        uint256 _amountIn,
-        bool _swapForY
-    ) external view returns (uint256 _amountOut);
+        ILBPair LBPair,
+        uint256 amountIn,
+        bool swapForY
+    ) external view returns (uint256 amountOut);
 
     function createLBPair(
-        IERC20 _tokenX,
-        IERC20 _tokenY,
-        uint256 _activeId,
-        uint256 sampleLifetime,
-        uint64 _maxAccumulator,
-        uint16 _filterPeriod,
-        uint16 _decayPeriod,
-        uint16 _binStep,
-        uint16 _baseFactor,
-        uint16 _protocolShare
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint24 activeId,
+        uint16 sampleLifetime,
+        uint64 maxAccumulator,
+        uint16 filterPeriod,
+        uint16 decayPeriod,
+        uint16 binStep,
+        uint16 baseFactor,
+        uint16 protocolShare
     ) external;
 
     function addLiquidity(
-        IERC20 _tokenX,
-        IERC20 _tokenY,
-        uint256 _amountX,
-        uint256 _amountY,
-        uint256 _amountSlippage,
-        uint256 _activeIdDesired,
-        uint256 _idSlippage,
-        int256[] memory _deltaIds,
-        uint256[] memory _distributionX,
-        uint256[] memory _distributionY,
-        address _to,
-        uint256 _deadline
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint256 amountX,
+        uint256 amountY,
+        uint256 amountSlippage,
+        uint256 activeIdDesired,
+        uint256 idSlippage,
+        int256[] memory deltaIds,
+        uint256[] memory distributionX,
+        uint256[] memory distributionY,
+        address to,
+        uint256 deadline
     ) external;
 
     function addLiquidityAVAX(
-        IERC20 _token,
-        uint256 _amount,
-        uint256 _amountSlippage,
-        uint256 _activeIdDesired,
-        uint256 _idSlippage,
-        int256[] memory _deltaIds,
-        uint256[] memory _distributionToken,
-        uint256[] memory _distributionAVAX,
-        address _to,
-        uint256 _deadline
+        IERC20 token,
+        uint256 amount,
+        uint256 amountSlippage,
+        uint256 activeIdDesired,
+        uint256 idSlippage,
+        int256[] memory deltaIds,
+        uint256[] memory distributionToken,
+        uint256[] memory distributionAVAX,
+        address to,
+        uint256 deadline
     ) external payable;
 
     function removeLiquidity(
-        IERC20 _tokenX,
-        IERC20 _tokenY,
-        uint256 _amountXMin,
-        uint256 _amountYMin,
-        uint256[] memory _ids,
-        uint256[] memory _amounts,
-        address _to,
-        uint256 _deadline
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint256 amountXMin,
+        uint256 amountYMin,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        address to,
+        uint256 deadline
     ) external;
 
     function removeLiquidityAVAX(
-        IERC20 _token,
-        uint256 _amountTokenMin,
-        uint256 _amountAVAXMin,
-        uint256[] memory _ids,
-        uint256[] memory _amounts,
-        address _to,
-        uint256 _deadline
+        IERC20 token,
+        uint256 amountTokenMin,
+        uint256 amountAVAXMin,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        address to,
+        uint256 deadline
     ) external;
 
     function swapExactTokensForTokens(
-        uint256 _amountIn,
-        uint256 _amountOutMin,
-        uint256[] memory _pairVersions,
-        IERC20[] memory _tokenPath,
-        address _to,
-        uint256 _deadline
+        uint256 amountIn,
+        uint256 amountOutMin,
+        uint256[] memory pairVersions,
+        IERC20[] memory tokenPath,
+        address to,
+        uint256 deadline
     ) external;
 
     function swapExactTokensForAVAX(
-        uint256 _amountIn,
-        uint256 _amountOutMinAVAX,
-        uint256[] memory _pairVersions,
-        IERC20[] memory _tokenPath,
-        address _to,
-        uint256 _deadline
+        uint256 amountIn,
+        uint256 amountOutMinAVAX,
+        uint256[] memory pairVersions,
+        IERC20[] memory tokenPath,
+        address to,
+        uint256 deadline
     ) external;
 
     function swapExactAVAXForTokens(
-        uint256 _amountOutMin,
-        uint256[] memory _pairVersions,
-        IERC20[] memory _tokenPath,
-        address _to,
-        uint256 _deadline
+        uint256 amountOutMin,
+        uint256[] memory pairVersions,
+        IERC20[] memory tokenPath,
+        address to,
+        uint256 deadline
     ) external payable;
 
     function swapTokensForExactTokens(
-        uint256 _amountOut,
-        uint256 _amountInMax,
-        uint256[] memory _pairVersions,
-        IERC20[] memory _tokenPath,
-        address _to,
-        uint256 _deadline
+        uint256 amountOut,
+        uint256 amountInMax,
+        uint256[] memory pairVersions,
+        IERC20[] memory tokenPath,
+        address to,
+        uint256 deadline
     ) external;
 
     function swapTokensForExactAVAX(
-        uint256 _amountOut,
-        uint256 _amountInMax,
-        uint256[] memory _pairVersions,
-        IERC20[] memory _tokenPath,
-        address _to,
-        uint256 _deadline
+        uint256 amountOut,
+        uint256 amountInMax,
+        uint256[] memory pairVersions,
+        IERC20[] memory tokenPath,
+        address to,
+        uint256 deadline
     ) external;
 
     function swapAVAXForExactTokens(
-        uint256 _amountOut,
-        uint256[] memory _pairVersions,
-        IERC20[] memory _tokenPath,
-        address _to,
-        uint256 _deadline
+        uint256 amountOut,
+        uint256[] memory pairVersions,
+        IERC20[] memory tokenPath,
+        address to,
+        uint256 deadline
     ) external payable;
 
     function swapExactTokensForTokensSupportingFeeOnTransferTokens(
-        uint256 _amountIn,
-        uint256 _amountOutMin,
-        uint256[] memory _pairVersions,
-        IERC20[] memory _tokenPath,
-        address _to,
-        uint256 _deadline
+        uint256 amountIn,
+        uint256 amountOutMin,
+        uint256[] memory pairVersions,
+        IERC20[] memory tokenPath,
+        address to,
+        uint256 deadline
     ) external;
 
     function swapExactTokensForAVAXSupportingFeeOnTransferTokens(
-        uint256 _amountIn,
-        uint256 _amountOutMinAVAX,
-        uint256[] memory _pairVersions,
-        IERC20[] memory _tokenPath,
-        address _to,
-        uint256 _deadline
+        uint256 amountIn,
+        uint256 amountOutMinAVAX,
+        uint256[] memory pairVersions,
+        IERC20[] memory tokenPath,
+        address to,
+        uint256 deadline
     ) external;
 
     function swapExactAVAXForTokensSupportingFeeOnTransferTokens(
-        uint256 _amountOutMin,
-        uint256[] memory _pairVersions,
-        IERC20[] memory _tokenPath,
-        address _to,
-        uint256 _deadline
+        uint256 amountOutMin,
+        uint256[] memory pairVersions,
+        IERC20[] memory tokenPath,
+        address to,
+        uint256 deadline
     ) external payable;
 
     function sweep(
-        IERC20 _token,
-        address _to,
-        uint256 _amount
+        IERC20 token,
+        address to,
+        uint256 amount
     ) external;
 }

@@ -7,14 +7,14 @@ library Buffer {
     /// @param x The first value
     /// @param y The second value
     /// @param n The modulo value
-    /// @return The result
+    /// @return result The result
     function addMod(
         uint256 x,
         uint256 y,
         uint256 n
-    ) internal pure returns (uint256) {
-        unchecked {
-            return (x + y) % n;
+    ) internal pure returns (uint256 result) {
+        assembly {
+            result := addmod(x, y, n)
         }
     }
 
@@ -22,14 +22,14 @@ library Buffer {
     /// @param x The first value
     /// @param y The second value
     /// @param n The modulo value
-    /// @return The result
+    /// @return result The result
     function subMod(
         uint256 x,
         uint256 y,
         uint256 n
-    ) internal pure returns (uint256) {
+    ) internal pure returns (uint256 result) {
         unchecked {
-            return (x + n - y) % n;
+            result = (x + n - y) % n;
         }
     }
 }

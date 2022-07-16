@@ -11,11 +11,11 @@ interface ILBFactoryHelper {
     function factory() external view returns (ILBFactory);
 
     function createLBPair(
-        IERC20 _tokenX,
-        IERC20 _tokenY,
-        bytes32 _salt,
-        uint256 _activeId,
-        uint256 _sampleTime,
-        bytes32 _packedFeeParameters
+        IERC20 tokenX,
+        IERC20 tokenY,
+        bytes32 salt,
+        uint24 activeId,
+        uint16 sampleLifetime,
+        bytes32 packedFeeParameters
     ) external returns (ILBPair);
 }

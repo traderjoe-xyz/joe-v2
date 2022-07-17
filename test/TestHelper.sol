@@ -51,11 +51,16 @@ abstract contract TestHelper is Test {
 
     address internal constant JOE_V1_FACTORY_ADDRESS = 0x9Ad6C38BE94206cA50bb0d90783181662f0Cfa10;
     address internal constant WAVAX_AVALANCHE_ADDRESS = 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7;
+    address internal constant USDC_AVALANCHE_ADDRESS = 0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E;
 
     WAVAX internal wavax;
+    ERC20MockDecimals internal usdc;
+
     ERC20MockDecimals internal token6D;
+    ERC20MockDecimals internal token10D;
     ERC20MockDecimals internal token12D;
     ERC20MockDecimals internal token18D;
+    ERC20MockDecimals internal token24D;
 
     LBFactory internal factory;
     LBRouter internal router;
@@ -160,7 +165,9 @@ abstract contract TestHelper is Test {
         }
     }
 
-    function addLiquidityFromRouter(
+    function addLiquidityFromRouterForPair(
+        ERC20MockDecimals _tokenX,
+        ERC20MockDecimals _tokenY,
         uint256 _amountYIn,
         uint24 _startId,
         uint24 _numberBins,
@@ -182,16 +189,15 @@ abstract contract TestHelper is Test {
             _gap
         );
 
-        token6D.mint(DEV, amountXIn);
-        token18D.mint(DEV, _amountYIn);
-
+        _tokenX.mint(DEV, amountXIn);
+        _tokenY.mint(DEV, _amountYIn);
         vm.startPrank(DEV);
-        token6D.approve(address(router), amountXIn);
-        token18D.approve(address(router), _amountYIn);
+        _tokenX.approve(address(router), amountXIn);
+        _tokenY.approve(address(router), _amountYIn);
 
         router.addLiquidity(
-            token6D,
-            token18D,
+            _tokenX,
+            _tokenY,
             amountXIn,
             _amountYIn,
             0,
@@ -203,7 +209,61 @@ abstract contract TestHelper is Test {
             DEV,
             block.timestamp
         );
+
         vm.stopPrank();
+    }
+
+    function addLiquidityFromRouter(
+        uint256 _amountYIn,
+        uint24 _startId,
+        uint24 _numberBins,
+        uint24 _gap,
+        uint256 _slippage
+    )
+        internal
+        returns (
+            int256[] memory _deltaIds,
+            uint256[] memory _distributionX,
+            uint256[] memory _distributionY,
+            uint256 amountXIn
+        )
+    {
+        (_deltaIds, _distributionX, _distributionY, amountXIn) = addLiquidityFromRouterForPair(
+            token6D,
+            token18D,
+            _amountYIn,
+            _startId,
+            _numberBins,
+            _gap,
+            _slippage
+        );
+
+        // (_deltaIds, _distributionX, _distributionY, amountXIn) = spreadLiquidityForRouter(
+        //     _amountYIn,
+        //     _startId,
+        //     _numberBins,
+        //     _gap
+        // );
+
+        // token6D.mint(DEV, amountXIn);
+        // token6D.approve(address(router), amountXIn);
+        // token18D.mint(DEV, _amountYIn);
+        // token18D.approve(address(router), _amountYIn);
+
+        // router.addLiquidity(
+        //     token6D,
+        //     token18D,
+        //     amountXIn,
+        //     _amountYIn,
+        //     0,
+        //     _startId,
+        //     _slippage,
+        //     _deltaIds,
+        //     _distributionX,
+        //     _distributionY,
+        //     DEV,
+        //     block.timestamp
+        // );
     }
 
     function spreadLiquidityForRouter(

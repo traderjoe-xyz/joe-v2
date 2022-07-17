@@ -844,10 +844,10 @@ contract LBRouter is ILBRouter {
                 } else if (_version == 1) {
                     (uint256 _reserve0, uint256 _reserve1, ) = IJoePair(_pair).getReserves();
                     if (address(_token) == IJoePair(_pair).token0()) {
-                        amountOut = (_reserve1 * amountOut * 997) / (_reserve0 + amountOut * 1_000);
+                        amountOut = (_reserve1 * amountOut * 997) / (_reserve0 * 1_000 + amountOut * 997);
                         IJoePair(_pair).swap(0, amountOut, _recipient, "");
                     } else {
-                        amountOut = (_reserve0 * amountOut * 997) / (_reserve1 + amountOut * 1_000);
+                        amountOut = (_reserve0 * amountOut * 997) / (_reserve1 * 1_000 + amountOut * 997);
                         IJoePair(_pair).swap(amountOut, 0, _recipient, "");
                     }
                 } else revert LBRouter__InvalidVersion(_version);

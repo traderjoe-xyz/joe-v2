@@ -55,8 +55,6 @@ library BinHelper {
             uint256 pow = Constants.DOUBLE_SCALE / _getBPValue(_bp);
             uint256 absId = _id >= 0 ? uint256(_id) : uint256(-_id);
 
-            if (absId > 0xca62c) revert BinHelper__IdOverflows(_id);
-
             uint256 result = Constants.SCALE;
 
             if (absId & 0x1 != 0) result = (result * pow) / Constants.SCALE;
@@ -99,7 +97,7 @@ library BinHelper {
             pow = (pow * pow) / Constants.SCALE;
             if (absId & 0x80000 != 0) result = (result * pow) / Constants.SCALE;
 
-            if (result == 0) revert BinHelper__PowerUnderflow();
+            if (result == 0 || absId > 0xca62c) revert BinHelper__PowerUnderflow();
 
             return _id <= 0 ? result : Constants.DOUBLE_SCALE / result;
         }
@@ -109,9 +107,6 @@ library BinHelper {
     /// @param _bp The bp value in [1; 10_000]
     /// @return The (1+bp) value
     function _getBPValue(uint256 _bp) internal pure returns (uint256) {
-        unchecked {
-            if (_bp == 0 || _bp > Constants.BASIS_POINT_MAX) revert BinHelper__WrongBPValue(_bp);
-            return Constants.SCALE + _bp * 1e32;
-        }
+        return Constants.SCALE + _bp * 1e32;
     }
 }

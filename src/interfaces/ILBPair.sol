@@ -106,6 +106,15 @@ interface ILBPair {
             uint256 max
         );
 
+    function getOracleSampleFrom(uint256 _ago)
+        external
+        view
+        returns (
+            uint256 cumulativeId,
+            uint256 cumulativeAccumulator,
+            uint256 cumulativeBinCrossed
+        );
+
     function feeParameters() external view returns (FeeHelper.FeeParameters memory);
 
     function findFirstNonEmptyBinId(uint24 id, bool sentTokenY) external view returns (uint256);
@@ -135,6 +144,8 @@ interface ILBPair {
         uint256[] memory _amounts,
         address to
     ) external returns (uint256, uint256);
+
+    function increaseOracleLength(uint16 _nb) external;
 
     function collectFees(address _account, uint256[] memory _ids) external;
 

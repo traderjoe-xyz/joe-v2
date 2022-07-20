@@ -34,8 +34,9 @@ error LBPair__OnlyFeeRecipient(address feeRecipient, address sender);
 
 /// @title Liquidity Bin Exchange
 /// @author Trader Joe
-/// @notice DexV2 POC
+/// @notice Implemention of pair
 contract LBPair is LBToken, ReentrancyGuard, ILBPair {
+
     /** Libraries **/
 
     using Math512Bits for uint256;
@@ -96,15 +97,15 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     PairInformation private _pairInformation;
     FeeHelper.FeeParameters private _feeParameters;
-    /// @dev the reserves of tokens for every bin. This is the amount
+    /// @dev The reserves of tokens for every bin. This is the amount
     /// of tokenY if `id < _pairInformation.activeId`; of tokenX if `id > _pairInformation.activeId`
     /// and a mix of both if `id == _pairInformation.activeId`
     mapping(uint256 => Bin) private _bins;
     /// @dev Tree to find bins with non zero liquidity
     mapping(uint256 => uint256)[3] private _tree;
-    /// @notice mappings from account to user's unclaimed fees.
+    /// @notice Mapping from account to user's unclaimed fees.
     mapping(address => UnclaimedFees) private _unclaimedFees;
-    /// @notice mappings from account to id to user's accruedDebt.
+    /// @notice Mapping from account to id to user's accruedDebt.
     mapping(address => mapping(uint256 => Debts)) private _accruedDebts;
     /// @notice Oracle array
     bytes32[65_536] private _oracle;
@@ -180,8 +181,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /// @notice View function to get the global fees information, the total fees and those for protocol
     /// @dev The fees for users are `total - protocol`
-    /// @return feesX the fees distribution of asset X
-    /// @return feesY the fees distribution of asset Y
+    /// @return feesX The fees distribution of asset X
+    /// @return feesY The fees distribution of asset Y
     function getGlobalFees()
         external
         view

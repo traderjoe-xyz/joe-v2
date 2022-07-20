@@ -180,6 +180,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _decayPeriod The period where the accumulator value is halved
     /// @param _baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
     /// @param _protocolShare The share of the fees received by the protocol
+    /// @param _variableFeesDisabled Whether the variable fees are disabled. (any value other than 0, means disabled)
     function setFeeParametersOnPair(
         IERC20 _tokenX,
         IERC20 _tokenY,

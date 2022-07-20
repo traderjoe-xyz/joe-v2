@@ -92,22 +92,6 @@ contract LiquidityBinPairOracleTest is TestHelper {
 
         vm.expectRevert(abi.encodeWithSelector(Oracle__LookUpTimestampTooOld.selector, 10_000, 9_000));
         pair.getOracleSampleFrom(1_000);
-
-
-
-        // token6D.mint(address(pair), 5e18);
-        // vm.prank(DEV);
-        // pair.swap(true, DEV);
-
-        // uint256 _ago = 130;
-        // uint256 _time = block.timestamp - _ago;
-
-        // (uint256 cumulativeId, uint256 cumulativeAccumulator, uint256 cumulativeBinCrossed) = pair.getOracleSampleFrom(
-        //     _ago
-        // );
-        // assertEq(cumulativeId / _time, ID_ONE);
-        // assertEq(cumulativeAccumulator, 0);
-        // assertEq(cumulativeBinCrossed, 0);
     }
 
     function testOracleSampleFromWith2Samples() public {

@@ -135,24 +135,6 @@ library Oracle {
         _oracle[_index] = bytes32(uint256(1));
     }
 
-    /// @notice Return the sample at index `_index` as Sample
-    /// @param _oracle The oracle storage pointer
-    /// @param _index The index to return
-    /// @return The sample at index `_index`
-    function getSample(bytes32[65_536] storage _oracle, uint256 _index) internal view returns (Sample memory) {
-        return decodeSample(_oracle[_index]);
-    }
-
-    /// @notice Decodes the sample
-    /// @param _packedSample The sample as bytes32
-    /// @return sample The decoded sample
-    function decodeSample(bytes32 _packedSample) internal pure returns (Sample memory sample) {
-        sample.timestamp = _packedSample.timestamp();
-        sample.cumulativeId = _packedSample.cumulativeId();
-        sample.cumulativeAccumulator = _packedSample.cumulativeAccumulator();
-        sample.cumulativeBinCrossed = _packedSample.cumulativeBinCrossed();
-    }
-
     /// @notice Binary search on oracle samples and return the 2 samples (as bytes32) that surrounds the `lookUpTimestamp`
     /// @param _oracle The oracle storage pointer
     /// @param _index The current index of the oracle

@@ -237,8 +237,9 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             uint256 cumulativeBinCrossed
         )
     {
+        uint256 _lookUpTimestamp = block.timestamp - _ago;
+
         unchecked {
-            uint256 _lookUpTimestamp = block.timestamp - _ago;
             (, , uint256 _oracleActiveSize, , uint256 _oracleId) = _getOracleParameters();
 
             uint256 timestamp;
@@ -640,7 +641,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /// @notice Increase the length of the oracle
     /// @param _nb The number of sample to add to the oracle
-    function increaseOracleLength(uint16 _nb) external override{
+    function increaseOracleLength(uint16 _nb) external override {
         _increaseOracle(_nb);
     }
 

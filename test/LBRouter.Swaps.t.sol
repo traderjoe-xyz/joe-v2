@@ -55,33 +55,7 @@ contract LiquidityBinRouterTest is TestHelper {
         );
 
         pairWavax = createLBPairDefaultFees(token6D, wavax);
-        (
-            int256[] memory _deltaIds,
-            uint256[] memory _distributionToken,
-            uint256[] memory _distributionAVAX,
-            uint256 amountTokenIn
-        ) = spreadLiquidityForRouter(100e18, ID_ONE, 9, 2);
-
-        token6D.mint(DEV, amountTokenIn);
-
-        vm.deal(DEV, 100 ether);
-        vm.startPrank(DEV);
-        token6D.approve(address(router), amountTokenIn);
-
-        router.addLiquidityAVAX{value: 100e18}(
-            token6D,
-            amountTokenIn,
-            0,
-            ID_ONE,
-            0,
-            _deltaIds,
-            _distributionToken,
-            _distributionAVAX,
-            DEV,
-            block.timestamp
-        );
-
-        vm.stopPrank();
+        addLiquidityFromRouterForPair(token6D, ERC20MockDecimals(address(wavax)), 100e18, ID_ONE, 9, 2, 0);
     }
 
     function testSwapExactTokensForTokensSinglePair() public {

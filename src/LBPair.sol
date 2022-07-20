@@ -849,8 +849,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             uint256 _newSize = _oracleSize + uint256(_nb);
 
             _pairInformation.oracleSize = uint16(_newSize);
-            for (uint256 i; i < _nb; ++i) {
-                _oracle.initialize(_oracleSize + i);
+            for (uint256 _id = _oracleSize; _id < _newSize; ++_id) {
+                _oracle.initialize(_id);
             }
             emit OracleSizeIncreased(_oracleSize, _newSize);
         }

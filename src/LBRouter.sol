@@ -61,6 +61,10 @@ contract LBRouter is ILBRouter {
         _;
     }
 
+    /// @notice Constructor
+    /// @param _factory LBFactory address
+    /// @param _oldFactory Address of old factory (Joe V1)
+    /// @param _wavax Address of WAVAX
     constructor(
         ILBFactory _factory,
         IJoeFactory _oldFactory,
@@ -71,7 +75,7 @@ contract LBRouter is ILBRouter {
         wavax = _wavax;
     }
 
-    ///@dev Receive function that only accept AVAX from the WAVAX contract
+    /// @dev Receive function that only accept AVAX from the WAVAX contract
     receive() external payable {
         if (msg.sender != address(wavax)) revert LBRouter__SenderIsNotWAVAX();
     }

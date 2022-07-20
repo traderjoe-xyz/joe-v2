@@ -21,16 +21,16 @@ error LBToken__TransferExceedsBalance(address from, uint256 id, uint256 amount);
 contract LBToken is ILBToken {
     using EnumerableSet for EnumerableSet.UintSet;
 
-    /// @notice Mapping from token id to account balances
+    /// @dev Mapping from token id to account balances
     mapping(uint256 => mapping(address => uint256)) private _balances;
 
-    /// @notice Mapping from account to spender approvals
+    /// @dev Mapping from account to spender approvals
     mapping(address => mapping(address => bool)) private _spenderApprovals;
 
-    /// @notice Mapping from token id to total supplies
+    /// @dev Mapping from token id to total supplies
     mapping(uint256 => uint256) private _totalSupplies;
 
-    /// @notice Mapping from account to set of ids, where user currently have a non-zero balance
+    /// @dev  Mapping from account to set of ids, where user currently have a non-zero balance
     mapping(address => EnumerableSet.UintSet) private _userIds;
 
     string private _name;
@@ -39,8 +39,8 @@ contract LBToken is ILBToken {
     event Transfer();
 
     /// @notice Constructor
-    /// @param name_ Name of pair
-    /// @param symbol_ Symbol of pair
+    /// @param name_ Name of token
+    /// @param symbol_ Symbol of token
     constructor(string memory name_, string memory symbol_) {
         _name = name_;
         _symbol = symbol_;

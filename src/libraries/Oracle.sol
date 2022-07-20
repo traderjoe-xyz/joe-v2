@@ -136,6 +136,10 @@ library Oracle {
     }
 
     /// @notice Binary search on oracle samples and return the 2 samples (as bytes32) that surrounds the `lookUpTimestamp`
+    /// @dev The oracle needs to be in increasing order `{_index + 1, _index + 2 ..., _index + _activeSize} % _activeSize`.
+    /// The sample that aren't initialized yet will be skipped as _activeSize only contains the samples that are initialized.
+    /// This function works only if `timestamp(_oracle[_index + 1 % _activeSize] <= _lookUpTimestamp <= timestamp(_oracle[_index]`.
+    /// The edge cases needs to be handled before
     /// @param _oracle The oracle storage pointer
     /// @param _index The current index of the oracle
     /// @param _lookUpTimestamp The looked up timestamp
@@ -149,6 +153,7 @@ library Oracle {
         uint256 _activeSize
     ) private view returns (bytes32 prev, bytes32 next) {
         unchecked {
+            // The sample with the lowest timestamp is the one right after _index
             uint256 _low = 1;
             uint256 _high = _activeSize;
 

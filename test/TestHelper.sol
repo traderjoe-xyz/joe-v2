@@ -15,6 +15,7 @@ import "src/libraries/Constants.sol";
 import "test/mocks/WAVAX.sol";
 import "test/mocks/ERC20MockDecimals.sol";
 import "test/mocks/FlashloanBorrower.sol";
+import "test/mocks/ERC20WithTransferTax.sol";
 
 abstract contract TestHelper is Test {
     using Math512Bits for uint256;
@@ -61,6 +62,8 @@ abstract contract TestHelper is Test {
     ERC20MockDecimals internal token12D;
     ERC20MockDecimals internal token18D;
     ERC20MockDecimals internal token24D;
+
+    ERC20WithTransferTax internal taxToken;
 
     LBFactory internal factory;
     LBRouter internal router;
@@ -190,26 +193,42 @@ abstract contract TestHelper is Test {
         );
 
         _tokenX.mint(DEV, amountXIn);
-        _tokenY.mint(DEV, _amountYIn);
         vm.startPrank(DEV);
         _tokenX.approve(address(router), amountXIn);
         _tokenY.approve(address(router), _amountYIn);
 
-        router.addLiquidity(
-            _tokenX,
-            _tokenY,
-            amountXIn,
-            _amountYIn,
-            0,
-            _startId,
-            _slippage,
-            _deltaIds,
-            _distributionX,
-            _distributionY,
-            DEV,
-            block.timestamp
-        );
+        if (address(_tokenY) == address(wavax)) {
+            vm.deal(DEV, _amountYIn);
+            router.addLiquidityAVAX{value: _amountYIn}(
+                _tokenX,
+                amountXIn,
+                0,
+                ID_ONE,
+                0,
+                _deltaIds,
+                _distributionX,
+                _distributionY,
+                DEV,
+                block.timestamp
+            );
+        } else {
+            _tokenY.mint(DEV, _amountYIn);
 
+            router.addLiquidity(
+                _tokenX,
+                _tokenY,
+                amountXIn,
+                _amountYIn,
+                0,
+                _startId,
+                _slippage,
+                _deltaIds,
+                _distributionX,
+                _distributionY,
+                DEV,
+                block.timestamp
+            );
+        }
         vm.stopPrank();
     }
 

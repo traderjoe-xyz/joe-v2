@@ -8,6 +8,7 @@ contract LiquidityBinRouterTest is TestHelper {
     LBPair internal pair1;
     LBPair internal pair2;
     LBPair internal pair3;
+    LBPair internal taxTokenPair;
 
     function setUp() public {
         token6D = new ERC20MockDecimals(6);
@@ -15,6 +16,8 @@ contract LiquidityBinRouterTest is TestHelper {
         token12D = new ERC20MockDecimals(12);
         token18D = new ERC20MockDecimals(18);
         token24D = new ERC20MockDecimals(24);
+
+        taxToken = new ERC20WithTransferTax();
 
         if (block.number < 1000) {
             wavax = new WAVAX();
@@ -39,6 +42,17 @@ contract LiquidityBinRouterTest is TestHelper {
         addLiquidityFromRouterForPair(token12D, token18D, 100e18, ID_ONE, 9, 2, 0);
         pair3 = createLBPairDefaultFees(token18D, token24D);
         addLiquidityFromRouterForPair(token18D, token24D, 100e18, ID_ONE, 9, 2, 0);
+
+        taxTokenPair = createLBPairDefaultFees(taxToken, wavax);
+        addLiquidityFromRouterForPair(
+            ERC20MockDecimals(address(taxToken)),
+            ERC20MockDecimals(address(wavax)),
+            100e18,
+            ID_ONE,
+            9,
+            2,
+            0
+        );
 
         pairWavax = createLBPairDefaultFees(token6D, wavax);
         (
@@ -190,6 +204,110 @@ contract LiquidityBinRouterTest is TestHelper {
         router.swapAVAXForExactTokens{value: amountIn}(amountOut, pairVersions, tokenList, DEV, block.timestamp);
 
         assertApproxEqAbs(token6D.balanceOf(DEV), amountOut, 10);
+    }
+
+    function testSwapExactTokensForTokensSupportingFeeOnTransferTokens() public {
+        uint256 amountIn = 1e18;
+
+        taxToken.mint(DEV, amountIn);
+
+        vm.startPrank(DEV);
+        taxToken.approve(address(router), amountIn);
+
+        IERC20[] memory tokenList = new IERC20[](2);
+        tokenList[0] = taxToken;
+        tokenList[1] = wavax;
+        uint256[] memory pairVersions = new uint256[](1);
+        pairVersions[0] = 2;
+
+        uint256 amountOut = router.getSwapOut(taxTokenPair, amountIn, true);
+
+        router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            amountIn,
+            0,
+            pairVersions,
+            tokenList,
+            DEV,
+            block.timestamp
+        );
+
+        // 50% tax to take into account
+        assertApproxEqAbs(wavax.balanceOf(DEV), amountOut / 2, 10);
+
+        // Swap back in the other direction
+        amountIn = wavax.balanceOf(DEV);
+        wavax.approve(address(router), amountIn);
+        tokenList[0] = wavax;
+        tokenList[1] = taxToken;
+
+        amountOut = router.getSwapOut(taxTokenPair, amountIn, true);
+
+        uint256 balanceBefore = taxToken.balanceOf(DEV);
+        router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            amountIn,
+            0,
+            pairVersions,
+            tokenList,
+            DEV,
+            block.timestamp
+        );
+
+        assertApproxEqAbs(taxToken.balanceOf(DEV) - balanceBefore, amountOut, 10);
+
+        vm.stopPrank();
+    }
+
+    function testSwapExactTokensForAVAXSupportingFeeOnTransferTokens() public {
+        uint256 amountIn = 1e18;
+
+        taxToken.mint(ALICE, amountIn);
+
+        vm.startPrank(ALICE);
+        taxToken.approve(address(router), amountIn);
+
+        IERC20[] memory tokenList = new IERC20[](2);
+        tokenList[0] = taxToken;
+        tokenList[1] = wavax;
+        uint256[] memory pairVersions = new uint256[](1);
+        pairVersions[0] = 2;
+
+        uint256 amountOut = router.getSwapOut(taxTokenPair, amountIn, true);
+
+        uint256 devBalanceBefore = ALICE.balance;
+        router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+            amountIn,
+            0,
+            pairVersions,
+            tokenList,
+            ALICE,
+            block.timestamp
+        );
+        vm.stopPrank();
+
+        assertEq(ALICE.balance - devBalanceBefore, amountOut / 2);
+    }
+
+    function testSwapExactAVAXForTokensSupportingFeeOnTransferTokens() public {
+        uint256 amountIn = 1e18;
+
+        IERC20[] memory tokenList = new IERC20[](2);
+        tokenList[0] = wavax;
+        tokenList[1] = taxToken;
+        uint256[] memory pairVersions = new uint256[](1);
+        pairVersions[0] = 2;
+
+        uint256 amountOut = router.getSwapOut(taxTokenPair, amountIn, true);
+
+        vm.deal(DEV, amountIn);
+        router.swapExactAVAXForTokensSupportingFeeOnTransferTokens{value: amountIn}(
+            0,
+            pairVersions,
+            tokenList,
+            DEV,
+            block.timestamp
+        );
+
+        assertApproxEqAbs(taxToken.balanceOf(DEV), amountOut, 10);
     }
 
     function testSwapExactTokensForTokensMultiplePairs() public {

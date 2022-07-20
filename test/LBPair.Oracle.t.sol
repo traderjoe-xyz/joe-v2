@@ -67,7 +67,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
         assertEq(newMax, max);
     }
 
-    function testOracleSampleAtWith1Sample() public {
+    function testOracleSampleFromWith2Samples() public {
         uint256 tokenAmount = 100e18;
         token18D.mint(address(pair), tokenAmount);
 
@@ -100,7 +100,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
         assertEq(cumulativeBinCrossed, 0);
     }
 
-    function testOracleSampleAtWith100Samples() public {
+    function testOracleSampleFromWith100Samples() public {
         uint256 amount1In = 101e18;
         (
             uint256[] memory _ids,

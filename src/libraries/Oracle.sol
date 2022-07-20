@@ -58,7 +58,7 @@ library Oracle {
                 _sample = _oracle[_activeId];
                 timestamp = _sample.timestamp();
 
-                if (timestamp > _lookUpTimestamp && _activeSize != 1) {
+                if (timestamp > _lookUpTimestamp) {
                     bytes32 _next;
                     (_sample, _next) = binarySearch(_oracle, _activeId, _lookUpTimestamp, _activeSize);
 
@@ -167,7 +167,7 @@ library Oracle {
         uint256 _activeSize
     ) private view returns (bytes32 prev, bytes32 next) {
         unchecked {
-            uint256 _low;
+            uint256 _low = 1;
             uint256 _high = _activeSize;
 
             uint256 _middle;

@@ -31,6 +31,7 @@ error LBPair__OnlyStrictlyIncreasingId();
 error LBPair__OnlyFactory();
 error LBPair__DistributionOverflow(uint256 id, uint256 distribution);
 error LBPair__OnlyFeeRecipient(address feeRecipient, address sender);
+error LBPair__OracleNotEnoughSample();
 
 /// @title Liquidity Bin Exchange
 /// @author Trader Joe
@@ -216,7 +217,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         )
     {
         (oracleSampleLifetime, oracleSize, oracleActiveSize, oracleLastTimestamp, oracleId) = _getOracleParameters();
-        min = oracleSampleLifetime;
+        min = oracleActiveSize == 0 ? 0 : oracleSampleLifetime;
         max = oracleSampleLifetime * oracleActiveSize;
     }
 
@@ -226,56 +227,35 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @return cumulativeId The weighted average cumulative id
     /// @return cumulativeAccumulator The weighted average cumulative accumulator
     /// @return cumulativeBinCrossed The weighted average cumulative bin crossed
-    function getOracleSampleAt(uint256 _ago)
+    function getOracleSampleFrom(uint256 _ago)
         external
         view
+        override
         returns (
             uint256 cumulativeId,
             uint256 cumulativeAccumulator,
             uint256 cumulativeBinCrossed
         )
     {
-        uint256 _lookUpTimestamp = block.timestamp - _ago;
-
         unchecked {
+            uint256 _lookUpTimestamp = block.timestamp - _ago;
             (, , uint256 _oracleActiveSize, , uint256 _oracleId) = _getOracleParameters();
 
-            Oracle.Sample memory _sample = _oracle.getSample(_oracleId);
+            uint256 timestamp;
+            (timestamp, cumulativeId, cumulativeAccumulator, cumulativeBinCrossed) = _oracle.getSampleAt(
+                _oracleActiveSize,
+                _oracleId,
+                _lookUpTimestamp
+            );
 
-            if (_sample.timestamp < _lookUpTimestamp) {
+            if (timestamp < _lookUpTimestamp) {
                 FeeHelper.FeeParameters memory _fp = _feeParameters;
                 _fp.updateAccumulatorValue();
 
-                uint256 _delta = _lookUpTimestamp - _sample.timestamp;
+                uint256 _delta = _lookUpTimestamp - timestamp;
 
-                cumulativeId = _sample.cumulativeId + _pairInformation.activeId * _delta;
-                cumulativeAccumulator = _sample.cumulativeAccumulator + _fp.accumulator * _delta;
-                cumulativeBinCrossed = _sample.cumulativeBinCrossed;
-            } else {
-                // We use active size to search inside the samples that have non empty data
-                (bytes32 prev_, bytes32 next_) = _oracle.binarySearch(_oracleId, _lookUpTimestamp, _oracleActiveSize);
-
-                Oracle.Sample memory _prev = Oracle.decodeSample(prev_);
-
-                Oracle.Sample memory _next = Oracle.decodeSample(next_);
-
-                if (_prev.timestamp == _next.timestamp) {
-                    cumulativeId = _prev.cumulativeId;
-                    cumulativeAccumulator = _prev.cumulativeAccumulator;
-                    cumulativeBinCrossed = _prev.cumulativeBinCrossed;
-                } else {
-                    uint256 _weightPrev = _next.timestamp - _lookUpTimestamp; // _next.timestamp - _prev.timestamp - (_lookUpTimestamp - _prev.timestamp)
-                    uint256 _weightNext = _lookUpTimestamp - _prev.timestamp; // _next.timestamp - _prev.timestamp - (_next.timestamp - _lookUpTimestamp)
-                    uint256 _totalWeight = _weightPrev + _weightNext; // _next.timestamp - _prev.timestamp
-
-                    cumulativeId = (_prev.cumulativeId * _weightPrev + _next.cumulativeId * _weightNext) / _totalWeight;
-                    cumulativeAccumulator =
-                        (_prev.cumulativeAccumulator * _weightPrev + _next.cumulativeAccumulator * _weightNext) /
-                        _totalWeight;
-                    cumulativeBinCrossed =
-                        (_prev.cumulativeBinCrossed * _weightPrev + _next.cumulativeBinCrossed * _weightNext) /
-                        _totalWeight;
-                }
+                cumulativeId += _pairInformation.activeId * _delta;
+                cumulativeAccumulator += _fp.accumulator * _delta;
             }
         }
     }
@@ -419,7 +399,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             );
 
             // We update the oracleId and lastTimestamp if the sample write on another slot
-            if (_updatedOracleId != _pair.oracleId) {
+            if (_updatedOracleId != _pair.oracleId || _pair.oracleLastTimestamp == 0) {
                 _pair.oracleId = uint24(_updatedOracleId);
                 _pair.oracleLastTimestamp = block.timestamp.safe40();
 
@@ -658,6 +638,12 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         }
     }
 
+    /// @notice Increase the length of the oracle
+    /// @param _nb The number of sample to add to the oracle
+    function increaseOracleLength(uint16 _nb) external override{
+        _increaseOracle(_nb);
+    }
+
     /// @notice Collect fees of an user
     /// @param _account The address of the user
     /// @param _ids The list of bin ids to collect fees in
@@ -856,17 +842,17 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /// @notice Private function to increase the oracle's number of sample
     /// @param _nb The number of sample to add to the oracle
-    function _increaseOracle(uint256 _nb) private {
-        uint256 _oracleSize = _pairInformation.oracleSize;
-        uint256 _newSize = _oracleSize + _nb;
-
+    function _increaseOracle(uint16 _nb) private {
         unchecked {
+            uint256 _oracleSize = _pairInformation.oracleSize;
+            uint256 _newSize = _oracleSize + uint256(_nb);
+
             _pairInformation.oracleSize = uint16(_newSize);
             for (uint256 i; i < _nb; ++i) {
                 _oracle.initialize(_oracleSize + i);
             }
+            emit OracleSizeIncreased(_oracleSize, _newSize);
         }
-        emit OracleSizeIncreased(_oracleSize, _newSize);
     }
 
     /// @notice Private view function to return the oracle's parameters

@@ -6,8 +6,8 @@ import "./Samples.sol";
 import "./Buffer.sol";
 
 error Oracle__AlreadyInitialized(uint256 _index);
-error Oracle__LookUpTimestampTooRecent(uint256 _maxTimestamp, uint256 _lookUpTimestamp);
 error Oracle__LookUpTimestampTooOld(uint256 _minTimestamp, uint256 _lookUpTimestamp);
+error Oracle__NotInitialized();
 
 library Oracle {
     using Samples for bytes32;
@@ -18,6 +18,80 @@ library Oracle {
         uint256 cumulativeId;
         uint256 cumulativeAccumulator;
         uint256 cumulativeBinCrossed;
+    }
+
+    /// @notice View function to get the oracle's sample at `_ago` seconds
+    /// @dev Return a linearized sample, the weighted average of 2 neighboring samples
+    /// @param _oracle The oracle storage pointer
+    /// @param _activeSize The size of the oracle (without empty data)
+    /// @param _activeId The active index of the oracle
+    /// @param _lookUpTimestamp The looked up date
+    /// @return timestamp The timestamp of the sample
+    /// @return cumulativeId The weighted average cumulative id
+    /// @return cumulativeAccumulator The weighted average cumulative accumulator
+    /// @return cumulativeBinCrossed The weighted average cumulative bin crossed
+    function getSampleAt(
+        bytes32[65_536] storage _oracle,
+        uint256 _activeSize,
+        uint256 _activeId,
+        uint256 _lookUpTimestamp
+    )
+        internal
+        view
+        returns (
+            uint256 timestamp,
+            uint256 cumulativeId,
+            uint256 cumulativeAccumulator,
+            uint256 cumulativeBinCrossed
+        )
+    {
+        unchecked {
+            if (_activeSize == 0) revert Oracle__NotInitialized();
+
+            // Oldest sample
+            bytes32 _sample = _oracle[_activeId.addMod(1, _activeSize)];
+            timestamp = _sample.timestamp();
+            if (timestamp > _lookUpTimestamp) revert Oracle__LookUpTimestampTooOld(timestamp, _lookUpTimestamp);
+
+            // Most recent sample
+            if (_activeSize != 1) {
+                _sample = _oracle[_activeId];
+                timestamp = _sample.timestamp();
+
+                if (timestamp > _lookUpTimestamp && _activeSize != 1) {
+                    bytes32 _next;
+                    (_sample, _next) = binarySearch(_oracle, _activeId, _lookUpTimestamp, _activeSize);
+
+                    if (_sample != _next) {
+                        uint256 _weightPrev = _next.timestamp() - _lookUpTimestamp; // _next.timestamp() - _sample.timestamp() - (_lookUpTimestamp - _sample.timestamp())
+                        uint256 _weightNext = _lookUpTimestamp - _sample.timestamp(); // _next.timestamp() - _sample.timestamp() - (_next.timestamp() - _lookUpTimestamp)
+                        uint256 _totalWeight = _weightPrev + _weightNext; // _next.timestamp() - _sample.timestamp()
+
+                        cumulativeId =
+                            (_sample.cumulativeId() * _weightPrev + _next.cumulativeId() * _weightNext) /
+                            _totalWeight;
+                        cumulativeAccumulator =
+                            (_sample.cumulativeAccumulator() *
+                                _weightPrev +
+                                _next.cumulativeAccumulator() *
+                                _weightNext) /
+                            _totalWeight;
+                        cumulativeBinCrossed =
+                            (_sample.cumulativeBinCrossed() *
+                                _weightPrev +
+                                _next.cumulativeBinCrossed() *
+                                _weightNext) /
+                            _totalWeight;
+                        return (_lookUpTimestamp, cumulativeId, cumulativeAccumulator, cumulativeBinCrossed);
+                    }
+                }
+            }
+
+            timestamp = _sample.timestamp();
+            cumulativeId = _sample.cumulativeId();
+            cumulativeAccumulator = _sample.cumulativeAccumulator();
+            cumulativeBinCrossed = _sample.cumulativeBinCrossed();
+        }
     }
 
     /// @notice Function to update a sample
@@ -42,8 +116,7 @@ library Oracle {
     ) internal returns (uint256 updatedIndex) {
         unchecked {
             bytes32 _updatedPackedSample = _oracle[_lastIndex].update(_activeId, _accumulator, _binCrossed);
-
-            updatedIndex = block.timestamp - _lastTimestamp >= _sampleLifetime
+            updatedIndex = block.timestamp - _lastTimestamp >= _sampleLifetime && _lastTimestamp != 0
                 ? _lastIndex.addMod(1, _size)
                 : _lastIndex;
 
@@ -70,9 +143,19 @@ library Oracle {
         return decodeSample(_oracle[_index]);
     }
 
+    /// @notice Decodes the sample
+    /// @param _packedSample The sample as bytes32
+    /// @return sample The decoded sample
+    function decodeSample(bytes32 _packedSample) internal pure returns (Sample memory sample) {
+        sample.timestamp = _packedSample.timestamp();
+        sample.cumulativeId = _packedSample.cumulativeId();
+        sample.cumulativeAccumulator = _packedSample.cumulativeAccumulator();
+        sample.cumulativeBinCrossed = _packedSample.cumulativeBinCrossed();
+    }
+
     /// @notice Binary search on oracle samples and return the 2 samples (as bytes32) that surrounds the `lookUpTimestamp`
     /// @param _oracle The oracle storage pointer
-    /// @param _index The index
+    /// @param _index The current index of the oracle
     /// @param _lookUpTimestamp The looked up timestamp
     /// @param _activeSize The size of the oracle (without empty data)
     /// @return prev The last sample with a timestamp lower than the lookUpTimestamp
@@ -82,50 +165,33 @@ library Oracle {
         uint256 _index,
         uint256 _lookUpTimestamp,
         uint256 _activeSize
-    ) internal view returns (bytes32 prev, bytes32 next) {
+    ) private view returns (bytes32 prev, bytes32 next) {
         unchecked {
             uint256 _low;
-            uint256 _high = _activeSize - 1;
+            uint256 _high = _activeSize;
 
             uint256 _middle;
+            uint256 _id;
 
             bytes32 _sample;
             uint256 _sampleTimestamp;
             while (_high >= _low) {
                 _middle = (_low + _high) / 2;
-                _sample = _oracle[_middle.addMod(_index, _activeSize)];
+                _id = _middle.addMod(_index, _activeSize);
+                _sample = _oracle[_id];
                 _sampleTimestamp = _sample.timestamp();
                 if (_sampleTimestamp < _lookUpTimestamp) {
                     _low = _middle + 1;
-                } else if (_sampleTimestamp > _lookUpTimestamp || _sampleTimestamp == 0) {
+                } else if (_sampleTimestamp > _lookUpTimestamp) {
                     _high = _middle - 1;
                 } else {
                     return (_sample, _sample);
                 }
             }
 
-            if (_sampleTimestamp < _lookUpTimestamp) {
-                next = _oracle[_middle.addMod(1, _activeSize)];
-                if (next.timestamp() < _sampleTimestamp)
-                    // This edge case should be handled by the contract that calls this function
-                    revert Oracle__LookUpTimestampTooRecent(_sampleTimestamp, _lookUpTimestamp);
-                prev = _sample;
-            } else {
-                prev = _oracle[_middle.subMod(1, _activeSize)];
-                if (prev.timestamp() > _sampleTimestamp)
-                    revert Oracle__LookUpTimestampTooOld(_sampleTimestamp, _lookUpTimestamp);
-                next = _sample;
-            }
+            (prev, next) = _sampleTimestamp < _lookUpTimestamp
+                ? (_sample, _oracle[_id.addMod(1, _activeSize)])
+                : (_oracle[_id.subMod(1, _activeSize)], _sample);
         }
-    }
-
-    /// @notice Decodes the sample
-    /// @param _packedSample The sample as bytes32
-    /// @return sample The decoded sample
-    function decodeSample(bytes32 _packedSample) internal pure returns (Sample memory sample) {
-        sample.timestamp = _packedSample.timestamp();
-        sample.cumulativeId = _packedSample.cumulativeId();
-        sample.cumulativeAccumulator = _packedSample.cumulativeAccumulator();
-        sample.cumulativeBinCrossed = _packedSample.cumulativeBinCrossed();
     }
 }

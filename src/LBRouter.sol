@@ -630,13 +630,13 @@ contract LBRouter is ILBRouter {
 
         address[] memory _pairs = _getPairs(_pairVersions, _tokenPath);
 
-        uint256 _balanceBefore = wavax.balanceOf(_to);
+        uint256 _balanceBefore = wavax.balanceOf(address(this));
 
         _tokenPath[0].safeTransferFrom(msg.sender, _pairs[0], _amountIn);
 
         _swapSupportingFeeOnTransferTokens(_pairs, _pairVersions, _tokenPath, address(this));
 
-        uint256 _amountOut = wavax.balanceOf(_to) - _balanceBefore;
+        uint256 _amountOut = wavax.balanceOf(address(this)) - _balanceBefore;
         if (_amountOutMinAVAX > _amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMinAVAX, _amountOut);
 
         wavax.withdraw(_amountOut);

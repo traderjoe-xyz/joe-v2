@@ -31,7 +31,13 @@ interface ILBFactory is IPendingOwnable {
 
     function allPairsLength() external view returns (uint256);
 
-    function getLBPair(IERC20 tokenA, IERC20 tokenB) external view returns (ILBPair);
+    function getLBPair(
+        IERC20 tokenA,
+        IERC20 tokenB,
+        uint256 binStep
+    ) external view returns (ILBPair);
+
+    function LBPairBlacklists(ILBPair _LBPair) external view returns (bool);
 
     function setFactoryHelper() external;
 
@@ -50,9 +56,12 @@ interface ILBFactory is IPendingOwnable {
 
     function setFeeRecipient(address feeRecipient) external;
 
+    function setLBPairBlacklist(ILBPair LBPair, bool blacklist) external;
+
     function setFeeParametersOnPair(
         IERC20 tokenX,
         IERC20 tokenY,
+        uint256 binStep,
         uint64 maxAccumulator,
         uint16 filterPeriod,
         uint16 decayPeriod,

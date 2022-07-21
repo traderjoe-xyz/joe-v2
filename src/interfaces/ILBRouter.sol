@@ -8,10 +8,23 @@ import "./IWAVAX.sol";
 import "./IJoeFactory.sol";
 
 interface ILBRouter {
-    struct LiquidityParam {
+    /// @param _tokenX The address of token X
+    /// @param _tokenY The address of token Y
+    /// @param _amountX The amount to send of token X
+    /// @param _amountY The amount to send of token Y
+    /// @param _amountSlippageBP The slippage of amounts in basis point (1 is 0.01%, 10_000 is 100%)
+    /// @param _activeIdDesired The active id that user wants to add liquidity from
+    /// @param _idSlippage The number of id that are allowed to slip
+    /// @param _deltaIds The list of delta ids to add liquidity (`deltaId = activeId - desiredId`)
+    /// @param _distributionX The distribution of tokenX with sum(_distributionX) = 100e36 (100%) or 0 (0%)
+    /// @param _distributionY The distribution of tokenY with sum(_distributionY) = 100e36 (100%) or 0 (0%)
+    /// @param _to The address of the recipient
+    /// @param _deadline The deadline of the tx
+    //TODO comments
+    struct LiquidityParameters {
         IERC20 tokenX;
         IERC20 tokenY;
-        ILBPair LBPair;
+        uint256 binStep;
         uint256 amountX;
         uint256 amountY;
         uint256 amountXMin;
@@ -19,7 +32,6 @@ interface ILBRouter {
         uint256 activeIdDesired;
         uint256 idSlippage;
         int256[] deltaIds;
-        uint256[] ids;
         uint256[] distributionX;
         uint256[] distributionY;
         address to;
@@ -61,33 +73,9 @@ interface ILBRouter {
         uint16 protocolShare
     ) external;
 
-    function addLiquidity(
-        IERC20 tokenX,
-        IERC20 tokenY,
-        uint256 amountX,
-        uint256 amountY,
-        uint256 amountSlippage,
-        uint256 activeIdDesired,
-        uint256 idSlippage,
-        int256[] memory deltaIds,
-        uint256[] memory distributionX,
-        uint256[] memory distributionY,
-        address to,
-        uint256 deadline
-    ) external;
+    function addLiquidity(LiquidityParameters memory liquidityParameters) external;
 
-    function addLiquidityAVAX(
-        IERC20 token,
-        uint256 amount,
-        uint256 amountSlippage,
-        uint256 activeIdDesired,
-        uint256 idSlippage,
-        int256[] memory deltaIds,
-        uint256[] memory distributionToken,
-        uint256[] memory distributionAVAX,
-        address to,
-        uint256 deadline
-    ) external payable;
+    function addLiquidityAVAX(LiquidityParameters memory liquidityParameters) external payable;
 
     function removeLiquidity(
         IERC20 tokenX,

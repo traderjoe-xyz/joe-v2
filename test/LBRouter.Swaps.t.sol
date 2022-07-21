@@ -326,7 +326,9 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.prank(DEV);
         token6D.approve(address(router), amountIn);
 
-        (IERC20[] memory tokenList, uint256[] memory pairVersions) = _buildComplexSwapRoute();
+        IERC20[] memory tokenList;
+        uint256[] memory pairVersions;
+
         tokenList = new IERC20[](3);
         tokenList[0] = token6D;
         tokenList[1] = wavax;
@@ -336,10 +338,26 @@ contract LiquidityBinRouterTest is TestHelper {
         pairVersions[0] = 2;
         pairVersions[1] = 1;
 
-        vm.prank(DEV);
+        vm.startPrank(DEV);
         router.swapExactTokensForTokens(amountIn, 0, pairVersions, tokenList, DEV, block.timestamp);
 
         assertGt(usdc.balanceOf(DEV), 0);
+
+        tokenList[0] = usdc;
+        tokenList[1] = wavax;
+        tokenList[2] = token6D;
+
+        pairVersions[0] = 1;
+        pairVersions[1] = 2;
+
+        uint256 balanceBefore = token6D.balanceOf(DEV);
+
+        usdc.approve(address(router), usdc.balanceOf(DEV));
+        router.swapExactTokensForTokens(usdc.balanceOf(DEV), 0, pairVersions, tokenList, DEV, block.timestamp);
+
+        assertGt(token6D.balanceOf(DEV) - balanceBefore, 0);
+
+        vm.stopPrank();
     }
 
     function testSwapTokensForExactTokensMultiplePairsWithV1() public {
@@ -354,7 +372,9 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.prank(DEV);
         token6D.approve(address(router), 100e18);
 
-        (IERC20[] memory tokenList, uint256[] memory pairVersions) = _buildComplexSwapRoute();
+        IERC20[] memory tokenList;
+        uint256[] memory pairVersions;
+
         tokenList = new IERC20[](3);
         tokenList[0] = token6D;
         tokenList[1] = wavax;
@@ -368,6 +388,22 @@ contract LiquidityBinRouterTest is TestHelper {
         router.swapTokensForExactTokens(amountOut, 100e18, pairVersions, tokenList, DEV, block.timestamp);
 
         assertEq(usdc.balanceOf(DEV), amountOut);
+
+        tokenList[0] = usdc;
+        tokenList[1] = wavax;
+        tokenList[2] = token6D;
+
+        pairVersions[0] = 1;
+        pairVersions[1] = 2;
+
+        uint256 balanceBefore = token6D.balanceOf(DEV);
+
+        usdc.approve(address(router), usdc.balanceOf(DEV));
+        router.swapTokensForExactTokens(amountOut, usdc.balanceOf(DEV), pairVersions, tokenList, DEV, block.timestamp);
+
+        assertEq(token6D.balanceOf(DEV) - balanceBefore, amountOut);
+
+        vm.stopPrank();
     }
 
     function _buildComplexSwapRoute() private view returns (IERC20[] memory tokenList, uint256[] memory pairVersions) {

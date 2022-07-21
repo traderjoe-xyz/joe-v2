@@ -9,7 +9,7 @@ import "./libraries/Constants.sol";
 error LBFactory__IdenticalAddresses(IERC20 token);
 error LBFactory__ZeroAddress();
 error LBFactory__FactoryHelperAlreadyInitialized();
-error LBFactory__LBPairAlreadyExists(IERC20 tokenX, IERC20 tokenY);
+error LBFactory__LBPairAlreadyExists(IERC20 tokenX, IERC20 tokenY, uint256 _binStep);
 error LBFactory__DecreasingPeriods(uint16 filterPeriod, uint16 decayPeriod);
 error LBFactory__BaseFactorExceedsBP(uint16 baseFactor, uint256 maxBP);
 error LBFactory__BaseFeesBelowMin(uint256 baseFees, uint256 minBaseFees);
@@ -18,6 +18,7 @@ error LBFactory__BinStepRequirementsBreached(uint256 lowerBound, uint16 binStep,
 error LBFactory__ProtocolShareRequirementsBreached(uint256 lowerBound, uint16 protocolShare, uint256 higherBound);
 error LBFactory__FunctionIsLockedForUsers(address user);
 error LBFactory__FactoryLockIsAlreadyInTheSameState();
+error LBFactory__LBPairBlacklistIsAlreadyInTheSameState();
 
 contract LBFactory is PendingOwnable, ILBFactory {
     uint256 public constant override MIN_FEE = 1; // 0.01%
@@ -33,11 +34,14 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     address public override feeRecipient;
 
+    mapping(ILBPair => bool) public override LBPairBlacklists;
+
     /// @notice Whether the createLBPair function is unlocked and can be called by anyone or only by owner
     bool public override unlocked;
 
     ILBPair[] public override allLBPairs;
-    mapping(IERC20 => mapping(IERC20 => ILBPair)) private _LBPairs;
+
+    mapping(IERC20 => mapping(IERC20 => mapping(uint256 => ILBPair))) private _LBPairs;
 
     event LBPairCreated(IERC20 indexed tokenX, IERC20 indexed tokenY, ILBPair LBPair, uint256 pid);
 
@@ -56,6 +60,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
     );
 
     event FactoryLocked(bool unlocked);
+
+    event LBPairBlacklisted(ILBPair LBPair, bool blacklist);
 
     modifier onlyOwnerIfLocked() {
         if (!unlocked && msg.sender != owner()) revert LBFactory__FunctionIsLockedForUsers(msg.sender);
@@ -85,9 +91,14 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// if not, then the address 0 is returned. The order doesn't matter
     /// @param _tokenX The address of the first token
     /// @param _tokenY The address of the second token
+    /// @param _binStep The bin step of the LBPair
     /// @return The address of the LBPair
-    function getLBPair(IERC20 _tokenX, IERC20 _tokenY) external view override returns (ILBPair) {
-        return _LBPairs[_tokenX][_tokenY];
+    function getLBPair(
+        IERC20 _tokenX,
+        IERC20 _tokenY,
+        uint256 _binStep
+    ) external view override returns (ILBPair) {
+        return _LBPairs[_tokenX][_tokenY][_binStep];
     }
 
     /// @notice Create a liquidity bin LBPair for _tokenX and _tokenY
@@ -117,7 +128,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
         if (_tokenX == _tokenY) revert LBFactory__IdenticalAddresses(_tokenX);
         if (address(_tokenX) == address(0) || address(_tokenY) == address(0)) revert LBFactory__ZeroAddress();
         // single check is sufficient
-        if (address(_LBPairs[_tokenX][_tokenY]) != address(0)) revert LBFactory__LBPairAlreadyExists(_tokenX, _tokenY);
+        if (address(_LBPairs[_tokenX][_tokenY][_binStep]) != address(0))
+            revert LBFactory__LBPairAlreadyExists(_tokenX, _tokenY, _binStep);
 
         bytes32 _packedFeeParameters = _getPackedFeeParameters(
             _maxAccumulator,
@@ -138,8 +150,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _packedFeeParameters
         );
 
-        _LBPairs[_tokenX][_tokenY] = _LBPair;
-        _LBPairs[_tokenY][_tokenX] = _LBPair;
+        _LBPairs[_tokenX][_tokenY][_binStep] = _LBPair;
+        _LBPairs[_tokenY][_tokenX][_binStep] = _LBPair;
 
         allLBPairs.push(_LBPair);
 
@@ -164,6 +176,17 @@ contract LBFactory is PendingOwnable, ILBFactory {
         _setFeeRecipient(_feeRecipient);
     }
 
+    /// @notice Function to set the recipient of the fees. This address needs to be able to receive ERC20s.
+    /// @param _LBPair The address of the LBPair
+    function setLBPairBlacklist(ILBPair _LBPair, bool _blacklist) external override onlyOwner {
+        bool _isBlacklisted = LBPairBlacklists[_LBPair];
+        if (_isBlacklisted == _blacklist) revert LBFactory__LBPairBlacklistIsAlreadyInTheSameState();
+
+        LBPairBlacklists[_LBPair] = _blacklist;
+
+        emit LBPairBlacklisted(_LBPair, _blacklist);
+    }
+
     /// @notice Function to lock the Factory and prevent anyone but the owner to create pairs.
     /// @param _locked The new lock state
     function setFactoryLocked(bool _locked) external onlyOwner {
@@ -175,6 +198,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @notice Function to set the fee parameter of a LBPair
     /// @param _tokenX The address of the first token
     /// @param _tokenY The address of the second token
+    /// @param _binStep The bin step of the LBPair
     /// @param _maxAccumulator The max value of the accumulator
     /// @param _filterPeriod The period where the accumulator value is untouched, prevent spam
     /// @param _decayPeriod The period where the accumulator value is halved
@@ -184,6 +208,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     function setFeeParametersOnPair(
         IERC20 _tokenX,
         IERC20 _tokenY,
+        uint256 _binStep,
         uint64 _maxAccumulator,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
@@ -191,7 +216,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 _protocolShare,
         uint8 _variableFeesDisabled
     ) external override onlyOwner {
-        ILBPair _LBPair = _LBPairs[_tokenX][_tokenY];
+        ILBPair _LBPair = _LBPairs[_tokenX][_tokenY][_binStep];
 
         FeeHelper.FeeParameters memory _fp = _LBPair.feeParameters();
 

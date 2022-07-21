@@ -103,11 +103,11 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     mapping(uint256 => Bin) private _bins;
     /// @dev Tree to find bins with non zero liquidity
     mapping(uint256 => uint256)[3] private _tree;
-    /// @notice Mapping from account to user's unclaimed fees.
+    /// @dev Mapping from account to user's unclaimed fees.
     mapping(address => UnclaimedFees) private _unclaimedFees;
-    /// @notice Mapping from account to id to user's accruedDebt.
+    /// @dev Mapping from account to id to user's accruedDebt.
     mapping(address => mapping(uint256 => Debts)) private _accruedDebts;
-    /// @notice Oracle array
+    /// @dev Oracle array
     bytes32[65_536] private _oracle;
 
     /** OffSets */

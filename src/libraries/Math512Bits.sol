@@ -186,7 +186,7 @@ library Math512Bits {
                 if (prod0 != 0) {
                     // Handle underflow
                     // This can't overflow
-                    result = roundDown ? (prod0 - 1) / denominator + 1 : prod0 / denominator; // Rounds up the division
+                    result = roundDown ? prod0 / denominator : (prod0 - 1) / denominator + 1; // Rounds up the division
                 } // else result = 0;
             } else {
                 // Make sure the result is less than 2^256. Also prevents denominator == 0.

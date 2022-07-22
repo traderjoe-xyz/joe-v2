@@ -28,11 +28,8 @@ library TokenHelper {
             (bool success, bytes memory result) = address(token).call(
                 abi.encodeWithSelector(token.transfer.selector, recipient, amount)
             );
+            // Look for revert reason and bubble it up if present
             if (!(success && (result.length == 0 || abi.decode(result, (bool))))) {
-                // No revert reason, we revert with the generic error
-                if (result.length < 68) revert TokenHelper__TransferFailed(token, recipient, amount);
-
-                // Look for revert reason and bubble it up if present
                 assembly {
                     revert(add(32, result), mload(result))
                 }

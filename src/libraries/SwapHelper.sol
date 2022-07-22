@@ -93,7 +93,7 @@ library SwapHelper {
             pair.feesX.total += fees.total;
             pair.feesX.protocol += fees.protocol;
 
-            bin.accTokenXPerShare += ((fees.total - fees.protocol) << Constants.SCALE_OFFSET) / totalSupply;
+            bin.accTokenXPerShare += (uint256(fees.total - fees.protocol) << Constants.SCALE_OFFSET) / totalSupply;
 
             bin.reserveX += uint112(amountInToBin);
             unchecked {
@@ -106,7 +106,7 @@ library SwapHelper {
             pair.feesY.total += fees.total;
             pair.feesY.protocol += fees.protocol;
 
-            bin.accTokenYPerShare += ((fees.total - fees.protocol) << Constants.SCALE_OFFSET) / totalSupply;
+            bin.accTokenYPerShare += (uint256(fees.total - fees.protocol) << Constants.SCALE_OFFSET) / totalSupply;
 
             bin.reserveY += uint112(amountInToBin);
             unchecked {

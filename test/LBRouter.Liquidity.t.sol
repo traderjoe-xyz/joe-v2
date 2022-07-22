@@ -109,6 +109,77 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.stopPrank();
     }
 
+    function testAddLiquidityTaxToken() public {
+        taxToken = new ERC20WithTransferTax();
+        pair = createLBPairDefaultFees(taxToken, wavax);
+
+        uint256 _amountAVAXIn = 100e18;
+        uint24 _startId = ID_ONE;
+        uint24 _numberBins = 9;
+        uint24 _gap = 2;
+
+        (
+            int256[] memory _deltaIds,
+            uint256[] memory _distributionToken,
+            uint256[] memory _distributionAVAX,
+            uint256 amountTokenIn
+        ) = spreadLiquidityForRouter(_amountAVAXIn, _startId, _numberBins, _gap);
+
+        taxToken.mint(ALICE, amountTokenIn);
+        vm.deal(ALICE, _amountAVAXIn);
+
+        vm.startPrank(ALICE);
+        taxToken.approve(address(router), amountTokenIn);
+        router.addLiquidityAVAX{value: _amountAVAXIn}(
+            taxToken,
+            amountTokenIn,
+            4_999,
+            ID_ONE,
+            0,
+            _deltaIds,
+            _distributionToken,
+            _distributionAVAX,
+            ALICE,
+            block.timestamp
+        );
+
+        uint256[] memory amounts = new uint256[](_numberBins);
+        uint256[] memory ids = new uint256[](_numberBins);
+        for (uint256 i; i < _numberBins; i++) {
+            ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
+            amounts[i] = pair.balanceOf(ALICE, ids[i]);
+        }
+
+        pair.setApprovalForAll(address(router), true);
+
+        vm.expectRevert(bytes("ERC20: burn amount exceeds balance"));
+        router.removeLiquidityAVAX(
+            taxToken,
+            amountTokenIn / 2 - 1,
+            _amountAVAXIn,
+            ids,
+            amounts,
+            ALICE,
+            block.timestamp
+        );
+
+        router.removeLiquidity(
+            taxToken,
+            wavax,
+            amountTokenIn / 2 - 1,
+            _amountAVAXIn,
+            ids,
+            amounts,
+            ALICE,
+            block.timestamp
+        );
+
+        assertEq(taxToken.balanceOf(ALICE), amountTokenIn / 4 + 1);
+        assertEq(wavax.balanceOf(ALICE), _amountAVAXIn);
+
+        vm.stopPrank();
+    }
+
     function testFailForIdSlippageCaught() public {
         uint256 _amountYIn = 100e18;
         uint24 _startId = ID_ONE;

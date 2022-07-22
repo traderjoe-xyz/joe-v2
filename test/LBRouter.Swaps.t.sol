@@ -226,7 +226,7 @@ contract LiquidityBinRouterTest is TestHelper {
             block.timestamp
         );
 
-        assertApproxEqAbs(taxToken.balanceOf(DEV) - balanceBefore, amountOut, 10);
+        assertApproxEqAbs(taxToken.balanceOf(DEV) - balanceBefore, amountOut / 2, 10);
 
         vm.stopPrank();
     }
@@ -281,7 +281,7 @@ contract LiquidityBinRouterTest is TestHelper {
             block.timestamp
         );
 
-        assertApproxEqAbs(taxToken.balanceOf(DEV), amountOut, 10);
+        assertApproxEqAbs(taxToken.balanceOf(DEV), amountOut / 2, 10);
     }
 
     function testSwapExactTokensForTokensMultiplePairs() public {

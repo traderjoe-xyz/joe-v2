@@ -109,7 +109,7 @@ library BinHelper {
     /// @return The (1+bp) value
     function _getBPValue(uint256 _bp) internal pure returns (uint256) {
         unchecked {
-            return Constants.SCALE + (_bp << Constants.SCALE_OFFSET) / Constants.HUNDRED_PERCENT;
+            return Constants.SCALE + (_bp << Constants.SCALE_OFFSET) / Constants.BASIS_POINT_MAX;
         }
     }
 }

@@ -9,6 +9,7 @@ contract LiquidityBinRouterTest is TestHelper {
         token18D = new ERC20MockDecimals(18);
 
         factory = new LBFactory(DEV);
+        setDefaultFactoryPresets();
         new LBFactoryHelper(factory);
 
         router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(WAVAX_AVALANCHE_ADDRESS));
@@ -23,21 +24,10 @@ contract LiquidityBinRouterTest is TestHelper {
     function testCreateLBPair() public {
         factory.setFactoryLocked(false);
 
-        router.createLBPair(
-            token6D,
-            token18D,
-            ID_ONE,
-            DEFAULT_SAMPLE_LIFETIME,
-            DEFAULT_MAX_ACCUMULATOR,
-            DEFAULT_FILTER_PERIOD,
-            DEFAULT_DECAY_PERIOD,
-            DEFAULT_BIN_STEP,
-            DEFAULT_BASE_FACTOR,
-            DEFAULT_PROTOCOL_SHARE
-        );
+        router.createLBPair(token6D, token18D, ID_ONE, DEFAULT_BIN_STEP);
 
         assertEq(factory.allPairsLength(), 1);
-        pair = LBPair(address(factory.getLBPair(token6D, token18D)));
+        pair = LBPair(address(factory.getLBPair(token6D, token18D, DEFAULT_BIN_STEP)));
 
         assertEq(address(pair.factory()), address(factory));
         assertEq(address(pair.tokenX()), address(token6D));
@@ -52,6 +42,5 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(feeParameters.binStep, DEFAULT_BIN_STEP);
         assertEq(feeParameters.baseFactor, DEFAULT_BASE_FACTOR);
         assertEq(feeParameters.protocolShare, DEFAULT_PROTOCOL_SHARE);
-        assertEq(feeParameters.variableFeeDisabled, DEFAULT_VARIABLEFEE_STATE);
     }
 }

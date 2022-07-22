@@ -9,6 +9,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         token18D = new ERC20MockDecimals(18);
 
         factory = new LBFactory(DEV);
+        setDefaultFactoryPresets();
         new LBFactoryHelper(factory);
         router = new LBRouter(ILBFactory(DEV), IJoeFactory(DEV), IWAVAX(DEV));
 
@@ -23,7 +24,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         _ids[0] = ID_ONE;
 
         uint256[] memory _liquidities = new uint256[](1);
-        _liquidities[0] = SCALE;
+        _liquidities[0] = Constants.PRECISION;
 
         pair.mint(_ids, new uint256[](1), _liquidities, DEV);
 
@@ -56,7 +57,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         // uint256 price = router.getPriceFromId(pair, uint24(_ids[0]));
 
         uint256[] memory _liquidities = new uint256[](1);
-        _liquidities[0] = SCALE;
+        _liquidities[0] = Constants.PRECISION;
 
         pair.mint(_ids, _liquidities, new uint256[](1), DEV);
 
@@ -87,7 +88,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         _ids[0] = ID_ONE;
 
         uint256[] memory _liquidities = new uint256[](1);
-        _liquidities[0] = SCALE;
+        _liquidities[0] = Constants.PRECISION;
 
         pair.mint(_ids, new uint256[](1), _liquidities, DEV);
 
@@ -118,7 +119,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         _ids[0] = ID_ONE + 1;
 
         uint256[] memory _liquidities = new uint256[](1);
-        _liquidities[0] = SCALE;
+        _liquidities[0] = Constants.PRECISION;
 
         pair.mint(_ids, _liquidities, new uint256[](1), DEV);
 

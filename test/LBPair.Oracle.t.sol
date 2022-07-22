@@ -10,6 +10,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
         token18D = new ERC20MockDecimals(18);
 
         factory = new LBFactory(DEV);
+        setDefaultFactoryPresets();
         new LBFactoryHelper(factory);
         router = new LBRouter(ILBFactory(DEV), IJoeFactory(DEV), IWAVAX(DEV));
 
@@ -76,7 +77,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
         _ids[0] = ID_ONE;
 
         uint256[] memory _liquidities = new uint256[](1);
-        _liquidities[0] = SCALE;
+        _liquidities[0] = Constants.PRECISION;
 
         pair.mint(_ids, new uint256[](1), _liquidities, DEV);
 
@@ -102,7 +103,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
         _ids[0] = ID_ONE;
 
         uint256[] memory _liquidities = new uint256[](1);
-        _liquidities[0] = SCALE;
+        _liquidities[0] = Constants.PRECISION;
 
         pair.mint(_ids, new uint256[](1), _liquidities, DEV);
 
@@ -128,7 +129,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
     }
 
     function testOracleSampleFromWith100Samples() public {
-        uint256 amount1In = 101e18;
+        uint256 amount1In = 200e18;
         (
             uint256[] memory _ids,
             uint256[] memory _distributionX,

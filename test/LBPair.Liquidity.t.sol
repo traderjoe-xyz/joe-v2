@@ -9,28 +9,31 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         token18D = new ERC20MockDecimals(18);
 
         factory = new LBFactory(DEV);
+        setDefaultFactoryPresets();
         new LBFactoryHelper(factory);
         router = new LBRouter(ILBFactory(DEV), IJoeFactory(DEV), IWAVAX(DEV));
     }
 
     function testConstructor(
-        uint64 _maxAccumulator,
+        uint8 _binStep,
+        uint8 _baseFactor,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
-        uint16 _binStep,
-        uint16 _baseFactor,
-        uint16 _protocolShare,
-        uint8 _variableFeeDisabled
+        uint8 _reductionFactor,
+        uint8 _variableFeeControl,
+        uint8 _protocolShare,
+        uint72 _maxAccumulator
     ) public {
         bytes32 _packedFeeParameters = bytes32(
             abi.encodePacked(
-                _variableFeeDisabled,
+                uint184(_maxAccumulator),
                 _protocolShare,
-                _baseFactor,
-                _binStep,
+                _variableFeeControl,
+                _reductionFactor,
                 _decayPeriod,
                 _filterPeriod,
-                _maxAccumulator
+                _baseFactor,
+                _binStep
             )
         );
 
@@ -48,18 +51,13 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         assertEq(feeParameters.binStep, _binStep, "Bin Step should be correctly set");
         assertEq(feeParameters.baseFactor, _baseFactor, "Base Factor should be correctly set");
         assertEq(feeParameters.protocolShare, _protocolShare, "Protocol Share should be correctly set");
-        assertEq(
-            feeParameters.variableFeeDisabled,
-            _variableFeeDisabled,
-            "Variable Fee Disabled should be correctly set"
-        );
     }
 
     function testAddLiquidity(uint256 _price) public {
         // Avoids Math__Exp2InputTooBig and very small x amounts
         vm.assume(_price < 5e42);
         // Avoids LBPair__BinReserveOverflows (very big x amounts)
-        vm.assume(_price > 1e15);
+        vm.assume(_price > 1e18);
 
         uint24 startId = getIdFromPrice(_price);
         pair = createLBPairDefaultFeesFromStartId(token6D, token18D, startId);

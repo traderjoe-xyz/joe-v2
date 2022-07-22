@@ -12,7 +12,9 @@ contract LiquidityBinRouterTest is TestHelper {
         wavax = new WAVAX();
 
         factory = new LBFactory(DEV);
+        setDefaultFactoryPresets();
         new LBFactoryHelper(factory);
+        setDefaultFactoryPresets();
 
         router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(address(wavax)));
 
@@ -43,7 +45,17 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.startPrank(DEV);
         pair.setApprovalForAll(address(router), true);
 
-        router.removeLiquidity(token6D, token18D, amountXIn - 2, _amountYIn, ids, amounts, DEV, block.timestamp);
+        router.removeLiquidity(
+            token6D,
+            token18D,
+            DEFAULT_BIN_STEP,
+            amountXIn - 10,
+            _amountYIn,
+            ids,
+            amounts,
+            DEV,
+            block.timestamp
+        );
         vm.stopPrank();
 
         assertEq(token6D.balanceOf(DEV), amountXIn);
@@ -55,7 +67,6 @@ contract LiquidityBinRouterTest is TestHelper {
 
         uint256 _amountAVAXIn = 100e18;
         uint24 _startId = ID_ONE;
-        uint24 _numberBins = 9;
         uint24 _gap = 2;
 
         (
@@ -63,16 +74,21 @@ contract LiquidityBinRouterTest is TestHelper {
             uint256[] memory _distributionToken,
             uint256[] memory _distributionAVAX,
             uint256 amountTokenIn
-        ) = spreadLiquidityForRouter(_amountAVAXIn, _startId, _numberBins, _gap);
+        ) = spreadLiquidityForRouter(_amountAVAXIn, _startId, 9, _gap);
 
         token6D.mint(ALICE, amountTokenIn);
         vm.deal(ALICE, _amountAVAXIn);
 
         vm.startPrank(ALICE);
         token6D.approve(address(router), amountTokenIn);
-        router.addLiquidityAVAX{value: _amountAVAXIn}(
+
+        ILBRouter.LiquidityParameters memory _liquidityParameters = ILBRouter.LiquidityParameters(
             token6D,
+            wavax,
+            DEFAULT_BIN_STEP,
             amountTokenIn,
+            _amountAVAXIn,
+            0,
             0,
             ID_ONE,
             0,
@@ -82,10 +98,11 @@ contract LiquidityBinRouterTest is TestHelper {
             ALICE,
             block.timestamp
         );
+        router.addLiquidityAVAX{value: _amountAVAXIn}(_liquidityParameters);
 
-        uint256[] memory amounts = new uint256[](_numberBins);
-        uint256[] memory ids = new uint256[](_numberBins);
-        for (uint256 i; i < _numberBins; i++) {
+        uint256[] memory amounts = new uint256[](9);
+        uint256[] memory ids = new uint256[](9);
+        for (uint256 i; i < 9; i++) {
             ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
             amounts[i] = pair.balanceOf(ALICE, ids[i]);
         }
@@ -93,16 +110,18 @@ contract LiquidityBinRouterTest is TestHelper {
         pair.setApprovalForAll(address(router), true);
 
         uint256 AVAXBalanceBefore = address(ALICE).balance;
-        uint256 tokenBalanceBefore = token6D.balanceOf(ALICE);
-        router.removeLiquidityAVAX(
-            token6D,
-            amountTokenIn - tokenBalanceBefore,
-            _amountAVAXIn,
-            ids,
-            amounts,
-            ALICE,
-            block.timestamp
-        );
+        {
+            router.removeLiquidityAVAX(
+                token6D,
+                DEFAULT_BIN_STEP,
+                amountTokenIn - 10,
+                _amountAVAXIn,
+                ids,
+                amounts,
+                ALICE,
+                block.timestamp
+            );
+        }
         assertEq(token6D.balanceOf(ALICE), amountTokenIn);
         assertEq(address(ALICE).balance - AVAXBalanceBefore, _amountAVAXIn);
 
@@ -114,8 +133,6 @@ contract LiquidityBinRouterTest is TestHelper {
         pair = createLBPairDefaultFees(taxToken, wavax);
 
         uint256 _amountAVAXIn = 100e18;
-        uint24 _startId = ID_ONE;
-        uint24 _numberBins = 9;
         uint24 _gap = 2;
 
         (
@@ -123,17 +140,22 @@ contract LiquidityBinRouterTest is TestHelper {
             uint256[] memory _distributionToken,
             uint256[] memory _distributionAVAX,
             uint256 amountTokenIn
-        ) = spreadLiquidityForRouter(_amountAVAXIn, _startId, _numberBins, _gap);
+        ) = spreadLiquidityForRouter(_amountAVAXIn, ID_ONE, 9, _gap);
 
         taxToken.mint(ALICE, amountTokenIn);
         vm.deal(ALICE, _amountAVAXIn);
 
         vm.startPrank(ALICE);
         taxToken.approve(address(router), amountTokenIn);
-        router.addLiquidityAVAX{value: _amountAVAXIn}(
+
+        ILBRouter.LiquidityParameters memory _liquidityParameters = ILBRouter.LiquidityParameters(
             taxToken,
+            wavax,
+            DEFAULT_BIN_STEP,
             amountTokenIn,
-            4_999,
+            _amountAVAXIn,
+            0,
+            0,
             ID_ONE,
             0,
             _deltaIds,
@@ -142,10 +164,11 @@ contract LiquidityBinRouterTest is TestHelper {
             ALICE,
             block.timestamp
         );
+        router.addLiquidityAVAX{value: _amountAVAXIn}(_liquidityParameters);
 
-        uint256[] memory amounts = new uint256[](_numberBins);
-        uint256[] memory ids = new uint256[](_numberBins);
-        for (uint256 i; i < _numberBins; i++) {
+        uint256[] memory amounts = new uint256[](9);
+        uint256[] memory ids = new uint256[](9);
+        for (uint256 i; i < 9; i++) {
             ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
             amounts[i] = pair.balanceOf(ALICE, ids[i]);
         }
@@ -155,7 +178,8 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.expectRevert(bytes("ERC20: burn amount exceeds balance"));
         router.removeLiquidityAVAX(
             taxToken,
-            amountTokenIn / 2 - 1,
+            DEFAULT_BIN_STEP,
+            amountTokenIn / 2 - 10,
             _amountAVAXIn,
             ids,
             amounts,
@@ -166,7 +190,8 @@ contract LiquidityBinRouterTest is TestHelper {
         router.removeLiquidity(
             taxToken,
             wavax,
-            amountTokenIn / 2 - 1,
+            DEFAULT_BIN_STEP,
+            amountTokenIn / 2 - 10,
             _amountAVAXIn,
             ids,
             amounts,
@@ -221,20 +246,24 @@ contract LiquidityBinRouterTest is TestHelper {
         token18D.mint(DEV, _amountYIn);
         token18D.approve(address(router), _amountYIn);
 
-        router.addLiquidity(
+        ILBRouter.LiquidityParameters memory _liquidityParameters = ILBRouter.LiquidityParameters(
             token6D,
             token18D,
+            DEFAULT_BIN_STEP,
             amountXIn,
             _amountYIn,
-            10_000,
+            0,
+            0,
             ID_ONE,
-            3,
+            0,
             _deltaIds,
             _distributionX,
             _distributionY,
             DEV,
             block.timestamp
         );
+
+        router.addLiquidity(_liquidityParameters);
     }
 
     function testFailForLengthsMismatch() public {
@@ -260,20 +289,24 @@ contract LiquidityBinRouterTest is TestHelper {
         token18D.mint(DEV, _amountYIn);
         token18D.approve(address(router), _amountYIn);
 
-        router.addLiquidity(
+        ILBRouter.LiquidityParameters memory _liquidityParameters = ILBRouter.LiquidityParameters(
             token6D,
             token18D,
+            DEFAULT_BIN_STEP,
             amountXIn,
             _amountYIn,
             0,
+            0,
             ID_ONE,
-            3,
+            0,
             _wrongLengthDeltaIds,
             _distributionX,
             _distributionY,
             DEV,
             block.timestamp
         );
+
+        router.addLiquidity(_liquidityParameters);
     }
 
     receive() external payable {}

@@ -453,8 +453,12 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         uint256 _totalSupply = totalSupply(_id);
 
-        _bins[_id].accTokenXPerShare += (uint256(_feesX.total - _feesX.protocol) << Constants.SCALE_OFFSET) / _totalSupply;
-        _bins[_id].accTokenYPerShare += (uint256(_feesY.total - _feesY.protocol) << Constants.SCALE_OFFSET) / _totalSupply;
+        _bins[_id].accTokenXPerShare +=
+            (uint256(_feesX.total - _feesX.protocol) << Constants.SCALE_OFFSET) /
+            _totalSupply;
+        _bins[_id].accTokenYPerShare +=
+            (uint256(_feesY.total - _feesY.protocol) << Constants.SCALE_OFFSET) /
+            _totalSupply;
 
         emit FlashLoan(msg.sender, _to, _amountXOut, _amountYOut, _feesX.total, _feesY.total);
     }
@@ -535,7 +539,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                     _mintInfo.amountYAddedToPair += _mintInfo.amount;
                 }
 
-                if (_liquidity == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
+                // we shift the liquidity to increase the precision of the accTokenPerShare
+                if ((_liquidity >>= 32) == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
 
                 _bins[_mintInfo.id] = _bin;
                 _mint(_to, _mintInfo.id, _liquidity);

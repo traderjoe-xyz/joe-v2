@@ -229,9 +229,9 @@ contract LBRouter is ILBRouter {
     /// @param _liquidityParameters The liquidity parameters
     function addLiquidityAVAX(LiquidityParameters memory _liquidityParameters) external payable override {
         //TODO swap tokens if avax isn't Y
-        address(_liquidityParameters.tokenY) == address(0);
-        _liquidityParameters.amountY == msg.value;
-        _liquidityParameters.amountYMin == msg.value; //TODO assert that
+        _liquidityParameters.tokenY = IERC20(address(0));
+        _liquidityParameters.amountY = msg.value;
+        _liquidityParameters.amountYMin = msg.value; //TODO assert that
         _addLiquidity(_liquidityParameters);
     }
 
@@ -248,6 +248,7 @@ contract LBRouter is ILBRouter {
     function removeLiquidity(
         IERC20 _tokenX,
         IERC20 _tokenY,
+        uint8 _binStep,
         uint256 _amountXMin,
         uint256 _amountYMin,
         uint256[] memory _ids,
@@ -255,7 +256,7 @@ contract LBRouter is ILBRouter {
         address _to,
         uint256 _deadline
     ) external override ensure(_deadline) {
-        ILBPair _LBPair = _getLBPair(_tokenX, _tokenY, 1);
+        ILBPair _LBPair = _getLBPair(_tokenX, _tokenY, _binStep);
         if (_tokenX != _LBPair.tokenX()) {
             (_tokenX, _tokenY) = (_tokenY, _tokenX);
             (_amountXMin, _amountYMin) = (_amountYMin, _amountXMin);
@@ -277,6 +278,7 @@ contract LBRouter is ILBRouter {
     /// @param _deadline The deadline of the tx
     function removeLiquidityAVAX(
         IERC20 _token,
+        uint8 _binStep,
         uint256 _amountTokenMin,
         uint256 _amountAVAXMin,
         uint256[] memory _ids,
@@ -284,7 +286,7 @@ contract LBRouter is ILBRouter {
         address _to,
         uint256 _deadline
     ) external override ensure(_deadline) {
-        ILBPair _LBPair = _getLBPair(_token, IERC20(wavax), 1);
+        ILBPair _LBPair = _getLBPair(_token, IERC20(wavax), _binStep);
 
         bool _isAVAXTokenY = IERC20(wavax) == _LBPair.tokenY();
 
@@ -599,14 +601,15 @@ contract LBRouter is ILBRouter {
     /// @param _liq The liquidity parameter
     function _addLiquidity(LiquidityParameters memory _liq) private ensure(_liq.deadline) {
         unchecked {
+            if (_liq.tokenY == IERC20(address(0))) {
+                _liq.tokenY = IERC20(wavax);
+                _liq.amountY = msg.value;
+            }
             ILBPair _LBPair = _getLBPair(_liq.tokenX, _liq.tokenY, _liq.binStep);
 
             _liq.tokenX.safeTransferFrom(msg.sender, address(_LBPair), _liq.amountX);
 
-            if (_liq.tokenY == IERC20(address(0))) {
-                _liq.tokenY = IERC20(wavax);
-                _liq.amountY = msg.value;
-
+            if (_liq.tokenY == IERC20(wavax)) {
                 _wavaxDepositAndTransfer(_liq.amountY, address(_LBPair));
             } else {
                 _liq.tokenY.safeTransferFrom(msg.sender, address(_LBPair), _liq.amountY);

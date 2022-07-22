@@ -76,6 +76,7 @@ interface ILBRouter {
     function removeLiquidity(
         IERC20 tokenX,
         IERC20 tokenY,
+        uint8 binStep,
         uint256 amountXMin,
         uint256 amountYMin,
         uint256[] memory ids,
@@ -86,6 +87,7 @@ interface ILBRouter {
 
     function removeLiquidityAVAX(
         IERC20 token,
+        uint8 binStep,
         uint256 amountTokenMin,
         uint256 amountAVAXMin,
         uint256[] memory ids,

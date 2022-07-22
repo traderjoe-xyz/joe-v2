@@ -14,7 +14,7 @@ library FeeHelper {
     /// - filterPeriod: The filter period, where the fees stays constant
     /// - decayPeriod: The decay period, where the fees are halved
     /// - reductionFactor: The reduction factor, used to calculate the reduction of the accumulator
-    /// - variableFeeRegulation: The variable fee control, used to control the variable fee, can be 0 to disable them
+    /// - variableFeeControl: The variable fee control, used to control the variable fee, can be 0 to disable them
     /// - protocolShare: The share of fees sent to protocol
     /// - maxAccumulator: The max value of the accumulator
     /// - accumulator: The value of the accumulator
@@ -25,7 +25,7 @@ library FeeHelper {
         uint16 filterPeriod;
         uint16 decayPeriod;
         uint8 reductionFactor;
-        uint8 variableFeeRegulation;
+        uint8 variableFeeControl;
         uint8 protocolShare;
         uint72 maxAccumulator;
         uint72 accumulator;

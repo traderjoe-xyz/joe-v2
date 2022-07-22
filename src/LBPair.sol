@@ -453,8 +453,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         uint256 _totalSupply = totalSupply(_id);
 
-        _bins[_id].accTokenXPerShare += ((_feesX.total - _feesX.protocol) << Constants.SCALE_OFFSET) / _totalSupply;
-        _bins[_id].accTokenYPerShare += ((_feesY.total - _feesY.protocol) << Constants.SCALE_OFFSET) / _totalSupply;
+        _bins[_id].accTokenXPerShare += (uint256(_feesX.total - _feesX.protocol) << Constants.SCALE_OFFSET) / _totalSupply;
+        _bins[_id].accTokenYPerShare += (uint256(_feesY.total - _feesY.protocol) << Constants.SCALE_OFFSET) / _totalSupply;
 
         emit FlashLoan(msg.sender, _to, _amountXOut, _amountYOut, _feesX.total, _feesY.total);
     }
@@ -835,10 +835,11 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @notice Internal function to set the fee parameters of the pair
     /// @param _packedFeeParameters The packed fee parameters
     function _setFeesParameters(bytes32 _packedFeeParameters) internal {
-        uint256 mask = type(uint104).max;
+        uint256 _mask112 = type(uint112).max;
+        uint256 _mask144 = type(uint144).max;
         assembly {
-            let variableParameters := sload(_feeParameters.slot)
-            let parameters := add(and(variableParameters, mask), _packedFeeParameters)
+            let variableParameters := and(sload(_feeParameters.slot), shl(144, _mask112))
+            let parameters := add(variableParameters, and(_packedFeeParameters, _mask144))
             sstore(_feeParameters.slot, parameters)
         }
     }

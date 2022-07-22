@@ -133,11 +133,11 @@ contract LiquidityBinPairFeesTest is TestHelper {
         vm.prank(DEV);
         uint256 balanceBefore = token18D.balanceOf(protocolFeesReceiver);
         pair.collectProtocolFees();
-        assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesY.protocol);
+        assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesY.protocol - 1);
 
         // Claiming twice
         vm.prank(DEV);
         pair.collectProtocolFees();
-        assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesY.protocol);
+        assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesY.protocol - 1);
     }
 }

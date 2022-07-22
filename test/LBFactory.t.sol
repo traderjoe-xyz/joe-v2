@@ -50,13 +50,14 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_SAMPLE_LIFETIME,
             bytes32(
                 abi.encodePacked(
-                    DEFAULT_VARIABLEFEE_STATE,
+                    DEFAULT_MAX_ACCUMULATOR,
                     DEFAULT_PROTOCOL_SHARE,
-                    DEFAULT_BASE_FACTOR,
-                    DEFAULT_BIN_STEP,
+                    DEFAULT_VARIABLE_FEE_CONTROL,
+                    DEFAULT_REDUCTION_FACTOR,
                     DEFAULT_DECAY_PERIOD,
                     DEFAULT_FILTER_PERIOD,
-                    DEFAULT_MAX_ACCUMULATOR
+                    DEFAULT_BASE_FACTOR,
+                    DEFAULT_BIN_STEP
                 )
             )
         );
@@ -154,8 +155,8 @@ contract LiquidityBinFactoryTest is TestHelper {
             token6D,
             token12D,
             DEFAULT_BIN_STEP,
-            DEFAULT_FILTER_PERIOD,
             DEFAULT_BASE_FACTOR,
+            DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,

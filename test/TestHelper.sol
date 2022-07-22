@@ -25,28 +25,14 @@ abstract contract TestHelper is Test {
     uint256 internal constant BASIS_POINT_MAX = 10_000;
 
     uint64 internal constant DEFAULT_MAX_ACCUMULATOR = 5_000;
-    uint8 internal constant DEFAULT_FILTER_PERIOD = 50;
+    uint16 internal constant DEFAULT_FILTER_PERIOD = 50;
     uint16 internal constant DEFAULT_DECAY_PERIOD = 100;
     uint8 internal constant DEFAULT_BIN_STEP = 25;
     uint8 internal constant DEFAULT_BASE_FACTOR = 50;
     uint8 internal constant DEFAULT_PROTOCOL_SHARE = 10;
-    uint8 internal constant DEFAULT_VARIABLEFEE_STATE = 0;
     uint8 internal constant DEFAULT_SAMPLE_LIFETIME = 240;
-    uint8 internal constant DEFAULT_REDUCTION_FACTOR = 0;
-    uint8 internal constant DEFAULT_VARIABLE_FEE_CONTROL = 0;
-
-    bytes32 internal constant DEFAULT_PACKED_FEES_PARAMETERS =
-        bytes32(
-            abi.encodePacked(
-                DEFAULT_VARIABLEFEE_STATE,
-                DEFAULT_PROTOCOL_SHARE,
-                DEFAULT_BASE_FACTOR,
-                DEFAULT_BIN_STEP,
-                DEFAULT_DECAY_PERIOD,
-                DEFAULT_FILTER_PERIOD,
-                DEFAULT_MAX_ACCUMULATOR
-            )
-        );
+    uint8 internal constant DEFAULT_REDUCTION_FACTOR = 50;
+    uint8 internal constant DEFAULT_VARIABLE_FEE_CONTROL = 50;
 
     address internal constant DEV = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
     address internal constant ALICE = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;

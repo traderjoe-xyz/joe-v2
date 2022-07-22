@@ -55,7 +55,7 @@ library SwapHelper {
 
             uint256 _deltaId = startId > pair.activeId ? startId - pair.activeId : pair.activeId - startId;
 
-            fees = fp.getFeesDistribution(fp.getFees(_reserve, _deltaId));
+            fees = fp.getFeesDistribution(fp.getFees(_maxAmountInToBin, _deltaId));
 
             if (_maxAmountInToBin.add(fees.total) <= amountIn) {
                 amountInToBin = _maxAmountInToBin;

@@ -453,8 +453,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         uint256 _totalSupply = totalSupply(_id);
 
-        _bins[_id].accTokenXPerShare += ((_feesX.total - _feesX.protocol) * Constants.SCALE) / _totalSupply;
-        _bins[_id].accTokenYPerShare += ((_feesY.total - _feesY.protocol) * Constants.SCALE) / _totalSupply;
+        _bins[_id].accTokenXPerShare += ((_feesX.total - _feesX.protocol) << Constants.SCALE_OFFSET) / _totalSupply;
+        _bins[_id].accTokenYPerShare += ((_feesY.total - _feesY.protocol) << Constants.SCALE_OFFSET) / _totalSupply;
 
         emit FlashLoan(msg.sender, _to, _amountXOut, _amountYOut, _feesX.total, _feesY.total);
     }
@@ -504,13 +504,13 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 if (_mintInfo.id >= _pair.activeId) {
                     uint256 _distribution = _distributionX[i];
 
-                    if (_distribution > Constants.SCALE)
+                    if (_distribution > Constants.PRECISION)
                         revert LBPair__DistributionOverflow(_mintInfo.id, _distribution);
 
-                    uint256 _price = BinHelper.getPriceFromId(uint24(_mintInfo.id), _binStep);
+                    uint256 _price = BinHelper.getPriceFromId(_mintInfo.id, _binStep);
 
-                    _mintInfo.amount = (_mintInfo.amountXIn * _distribution) / Constants.SCALE;
-                    _liquidity = _price.mulDivRoundDown(_mintInfo.amount, Constants.SCALE);
+                    _mintInfo.amount = (_mintInfo.amountXIn * _distribution) / Constants.PRECISION;
+                    _liquidity = _price.mulDivRoundDown(_mintInfo.amount, Constants.PRECISION);
 
                     _bin.reserveX = (_bin.reserveX + _mintInfo.amount).safe112();
                     _pair.reserveX += uint136(_mintInfo.amount);
@@ -522,10 +522,10 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 if (_mintInfo.id <= _pair.activeId) {
                     uint256 _distribution = _distributionY[i];
 
-                    if (_distribution > Constants.SCALE)
+                    if (_distribution > Constants.PRECISION)
                         revert LBPair__DistributionOverflow(_mintInfo.id, _distribution);
 
-                    _mintInfo.amount = (_mintInfo.amountYIn * _distribution) / Constants.SCALE;
+                    _mintInfo.amount = (_mintInfo.amountYIn * _distribution) / Constants.PRECISION;
                     _liquidity = _liquidity + _mintInfo.amount;
 
                     _bin.reserveY = (_bin.reserveY + _mintInfo.amount).safe112();
@@ -542,8 +542,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             }
 
             if (
-                _mintInfo.totalDistributionX > 100 * Constants.SCALE ||
-                _mintInfo.totalDistributionY > 100 * Constants.SCALE
+                _mintInfo.totalDistributionX > 100 * Constants.PRECISION ||
+                _mintInfo.totalDistributionY > 100 * Constants.PRECISION
             ) revert LBPair__BrokenMintSafetyCheck(_mintInfo.totalDistributionX, _mintInfo.totalDistributionY);
 
             _pairInformation = _pair;
@@ -782,9 +782,11 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     ) private view {
         Debts memory _debts = _accruedDebts[_account][_id];
 
-        _fees.tokenX += (_bin.accTokenXPerShare.mulDivRoundDown(_balance, Constants.SCALE) - _debts.debtX).safe128();
+        _fees.tokenX += (_bin.accTokenXPerShare.mulShift(_balance, Constants.SCALE_OFFSET, true) - _debts.debtX)
+            .safe128();
 
-        _fees.tokenY += (_bin.accTokenYPerShare.mulDivRoundDown(_balance, Constants.SCALE) - _debts.debtY).safe128();
+        _fees.tokenY += (_bin.accTokenYPerShare.mulShift(_balance, Constants.SCALE_OFFSET, true) - _debts.debtY)
+            .safe128();
     }
 
     /// @notice Update fees of a given user
@@ -798,8 +800,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint256 _id,
         uint256 _balance
     ) private {
-        uint256 _debtX = _bin.accTokenXPerShare.mulDivRoundDown(_balance, Constants.SCALE);
-        uint256 _debtY = _bin.accTokenYPerShare.mulDivRoundDown(_balance, Constants.SCALE);
+        uint256 _debtX = _bin.accTokenXPerShare.mulShift(_balance, Constants.SCALE_OFFSET, true);
+        uint256 _debtY = _bin.accTokenYPerShare.mulShift(_balance, Constants.SCALE_OFFSET, true);
 
         _accruedDebts[_account][_id].debtX = _debtX;
         _accruedDebts[_account][_id].debtY = _debtY;

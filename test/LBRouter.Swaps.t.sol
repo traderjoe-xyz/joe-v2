@@ -27,6 +27,7 @@ contract LiquidityBinRouterTest is TestHelper {
         }
 
         factory = new LBFactory(DEV);
+        setDefaultFactoryPresets();
         new LBFactoryHelper(factory);
 
         router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(address(wavax)));
@@ -70,7 +71,7 @@ contract LiquidityBinRouterTest is TestHelper {
         tokenList[0] = token6D;
         tokenList[1] = token18D;
         uint256[] memory pairVersions = new uint256[](1);
-        pairVersions[0] = 2;
+        pairVersions[0] = DEFAULT_BIN_STEP;
 
         uint256 amountOut = router.getSwapOut(pair, amountIn, true);
 
@@ -92,7 +93,7 @@ contract LiquidityBinRouterTest is TestHelper {
         tokenList[0] = token6D;
         tokenList[1] = wavax;
         uint256[] memory pairVersions = new uint256[](1);
-        pairVersions[0] = 2;
+        pairVersions[0] = DEFAULT_BIN_STEP;
 
         uint256 amountOut = router.getSwapOut(pair, amountIn, true);
 
@@ -110,7 +111,7 @@ contract LiquidityBinRouterTest is TestHelper {
         tokenList[0] = wavax;
         tokenList[1] = token6D;
         uint256[] memory pairVersions = new uint256[](1);
-        pairVersions[0] = 2;
+        pairVersions[0] = DEFAULT_BIN_STEP;
 
         uint256 amountOut = router.getSwapOut(pairWavax, amountIn, false);
 
@@ -133,7 +134,7 @@ contract LiquidityBinRouterTest is TestHelper {
         tokenList[0] = token6D;
         tokenList[1] = token18D;
         uint256[] memory pairVersions = new uint256[](1);
-        pairVersions[0] = 2;
+        pairVersions[0] = DEFAULT_BIN_STEP;
 
         router.swapTokensForExactTokens(amountOut, amountIn, pairVersions, tokenList, DEV, block.timestamp);
         vm.stopPrank();
@@ -154,7 +155,7 @@ contract LiquidityBinRouterTest is TestHelper {
         tokenList[0] = token6D;
         tokenList[1] = wavax;
         uint256[] memory pairVersions = new uint256[](1);
-        pairVersions[0] = 2;
+        pairVersions[0] = DEFAULT_BIN_STEP;
 
         uint256 devBalanceBefore = ALICE.balance;
         router.swapTokensForExactAVAX(amountOut, amountIn, pairVersions, tokenList, ALICE, block.timestamp);
@@ -172,7 +173,7 @@ contract LiquidityBinRouterTest is TestHelper {
         tokenList[0] = wavax;
         tokenList[1] = token6D;
         uint256[] memory pairVersions = new uint256[](1);
-        pairVersions[0] = 2;
+        pairVersions[0] = DEFAULT_BIN_STEP;
 
         vm.deal(DEV, amountIn);
         router.swapAVAXForExactTokens{value: amountIn}(amountOut, pairVersions, tokenList, DEV, block.timestamp);
@@ -192,7 +193,7 @@ contract LiquidityBinRouterTest is TestHelper {
         tokenList[0] = taxToken;
         tokenList[1] = wavax;
         uint256[] memory pairVersions = new uint256[](1);
-        pairVersions[0] = 2;
+        pairVersions[0] = DEFAULT_BIN_STEP;
 
         uint256 amountOut = router.getSwapOut(taxTokenPair, amountIn, true);
 
@@ -243,7 +244,7 @@ contract LiquidityBinRouterTest is TestHelper {
         tokenList[0] = taxToken;
         tokenList[1] = wavax;
         uint256[] memory pairVersions = new uint256[](1);
-        pairVersions[0] = 2;
+        pairVersions[0] = DEFAULT_BIN_STEP;
 
         uint256 amountOut = router.getSwapOut(taxTokenPair, amountIn, true);
 
@@ -268,7 +269,7 @@ contract LiquidityBinRouterTest is TestHelper {
         tokenList[0] = wavax;
         tokenList[1] = taxToken;
         uint256[] memory pairVersions = new uint256[](1);
-        pairVersions[0] = 2;
+        pairVersions[0] = DEFAULT_BIN_STEP;
 
         uint256 amountOut = router.getSwapOut(taxTokenPair, amountIn, true);
 
@@ -335,7 +336,7 @@ contract LiquidityBinRouterTest is TestHelper {
         tokenList[2] = usdc;
 
         pairVersions = new uint256[](2);
-        pairVersions[0] = 2;
+        pairVersions[0] = DEFAULT_BIN_STEP;
         pairVersions[1] = 1;
 
         vm.startPrank(DEV);
@@ -381,7 +382,7 @@ contract LiquidityBinRouterTest is TestHelper {
         tokenList[2] = usdc;
 
         pairVersions = new uint256[](2);
-        pairVersions[0] = 2;
+        pairVersions[0] = DEFAULT_BIN_STEP;
         pairVersions[1] = 1;
 
         vm.prank(DEV);
@@ -415,10 +416,10 @@ contract LiquidityBinRouterTest is TestHelper {
         tokenList[4] = token24D;
 
         pairVersions = new uint256[](4);
-        pairVersions[0] = 2;
-        pairVersions[1] = 2;
-        pairVersions[2] = 2;
-        pairVersions[3] = 2;
+        pairVersions[0] = DEFAULT_BIN_STEP;
+        pairVersions[1] = DEFAULT_BIN_STEP;
+        pairVersions[2] = DEFAULT_BIN_STEP;
+        pairVersions[3] = DEFAULT_BIN_STEP;
     }
 
     receive() external payable {}

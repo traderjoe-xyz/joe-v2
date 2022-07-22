@@ -10,6 +10,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         token18D = new ERC20MockDecimals(18);
 
         factory = new LBFactory(DEV);
+        setDefaultFactoryPresets();
         new LBFactoryHelper(factory);
     }
 
@@ -21,7 +22,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         ILBPair pair = createLBPairDefaultFees(token6D, token12D);
 
         assertEq(factory.allPairsLength(), 1);
-        assertEq(address(factory.getLBPair(token6D, token12D)), address(pair));
+        assertEq(address(factory.getLBPair(token6D, token12D, DEFAULT_BIN_STEP)), address(pair));
 
         assertEq(address(pair.factory()), address(factory));
         assertEq(address(pair.tokenX()), address(token6D));
@@ -36,7 +37,6 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(feeParameters.binStep, DEFAULT_BIN_STEP);
         assertEq(feeParameters.baseFactor, DEFAULT_BASE_FACTOR);
         assertEq(feeParameters.protocolShare, DEFAULT_PROTOCOL_SHARE);
-        assertEq(feeParameters.variableFeeDisabled, DEFAULT_VARIABLEFEE_STATE);
     }
 
     function testFailFactoryHelperCalledDirectly() public {
@@ -86,33 +86,11 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testFailForIdenticalAddresses() public {
-        factory.createLBPair(
-            token6D,
-            token6D,
-            ID_ONE,
-            DEFAULT_SAMPLE_LIFETIME,
-            DEFAULT_MAX_ACCUMULATOR,
-            DEFAULT_FILTER_PERIOD,
-            DEFAULT_DECAY_PERIOD,
-            DEFAULT_BIN_STEP,
-            DEFAULT_BASE_FACTOR,
-            DEFAULT_PROTOCOL_SHARE
-        );
+        factory.createLBPair(token6D, token6D, ID_ONE, DEFAULT_BIN_STEP);
     }
 
     function testFailForZeroAddressPair() public {
-        factory.createLBPair(
-            token6D,
-            IERC20(address(0)),
-            ID_ONE,
-            DEFAULT_SAMPLE_LIFETIME,
-            DEFAULT_MAX_ACCUMULATOR,
-            DEFAULT_FILTER_PERIOD,
-            DEFAULT_DECAY_PERIOD,
-            DEFAULT_BIN_STEP,
-            DEFAULT_BASE_FACTOR,
-            DEFAULT_PROTOCOL_SHARE
-        );
+        factory.createLBPair(token6D, IERC20(address(0)), ID_ONE, DEFAULT_BIN_STEP);
     }
 
     function testFailIfPairAlreadyExists() public {
@@ -121,18 +99,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testFailForInvalidBinStep() public {
-        factory.createLBPair(
-            token6D,
-            token12D,
-            ID_ONE,
-            DEFAULT_SAMPLE_LIFETIME,
-            DEFAULT_MAX_ACCUMULATOR,
-            DEFAULT_FILTER_PERIOD,
-            DEFAULT_DECAY_PERIOD,
-            150,
-            DEFAULT_BASE_FACTOR,
-            DEFAULT_PROTOCOL_SHARE
-        );
+        factory.createLBPair(token6D, token12D, ID_ONE, 150);
     }
 
     function testSetFeeParametersOnPair() public {
@@ -141,12 +108,14 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setFeeParametersOnPair(
             token6D,
             token12D,
-            DEFAULT_MAX_ACCUMULATOR + 1,
+            DEFAULT_BIN_STEP,
+            DEFAULT_BASE_FACTOR + 1,
             DEFAULT_FILTER_PERIOD + 1,
             DEFAULT_DECAY_PERIOD + 1,
-            DEFAULT_BASE_FACTOR + 1,
+            DEFAULT_REDUCTION_FACTOR + 1,
+            DEFAULT_VARIABLE_FEE_CONTROL + 1,
             DEFAULT_PROTOCOL_SHARE + 1,
-            1
+            DEFAULT_MAX_ACCUMULATOR + 1
         );
 
         FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();
@@ -158,7 +127,6 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(feeParameters.binStep, DEFAULT_BIN_STEP);
         assertEq(feeParameters.baseFactor, DEFAULT_BASE_FACTOR + 1);
         assertEq(feeParameters.protocolShare, DEFAULT_PROTOCOL_SHARE + 1);
-        assertEq(feeParameters.variableFeeDisabled, 1);
     }
 
     function testFailSetFeeParametersOnPairNotByOwner() public {
@@ -168,12 +136,14 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setFeeParametersOnPair(
             token6D,
             token12D,
-            DEFAULT_MAX_ACCUMULATOR,
-            DEFAULT_DECAY_PERIOD,
+            DEFAULT_BIN_STEP,
             DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,
+            DEFAULT_DECAY_PERIOD,
+            DEFAULT_REDUCTION_FACTOR,
+            DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_VARIABLEFEE_STATE
+            DEFAULT_MAX_ACCUMULATOR
         );
     }
 
@@ -183,12 +153,14 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setFeeParametersOnPair(
             token6D,
             token12D,
-            DEFAULT_MAX_ACCUMULATOR,
-            DEFAULT_DECAY_PERIOD,
-            DEFAULT_FILTER_PERIOD, // Filter and base perionds switched
+            DEFAULT_BIN_STEP,
+            DEFAULT_FILTER_PERIOD,
             DEFAULT_BASE_FACTOR,
+            DEFAULT_DECAY_PERIOD,
+            DEFAULT_REDUCTION_FACTOR,
+            DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_VARIABLEFEE_STATE
+            DEFAULT_MAX_ACCUMULATOR
         );
     }
 
@@ -198,12 +170,14 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setFeeParametersOnPair(
             token6D,
             token12D,
-            DEFAULT_MAX_ACCUMULATOR,
+            DEFAULT_BIN_STEP,
+            101,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
-            10_001,
+            DEFAULT_REDUCTION_FACTOR,
+            DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_VARIABLEFEE_STATE
+            DEFAULT_MAX_ACCUMULATOR
         );
     }
 
@@ -213,12 +187,14 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setFeeParametersOnPair(
             token6D,
             token12D,
-            DEFAULT_MAX_ACCUMULATOR,
+            DEFAULT_BIN_STEP,
+            DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
-            DEFAULT_BASE_FACTOR,
+            DEFAULT_REDUCTION_FACTOR,
+            DEFAULT_VARIABLE_FEE_CONTROL,
             0,
-            DEFAULT_VARIABLEFEE_STATE
+            DEFAULT_MAX_ACCUMULATOR
         );
     }
 
@@ -228,12 +204,14 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setFeeParametersOnPair(
             token6D,
             token12D,
-            DEFAULT_MAX_ACCUMULATOR,
+            DEFAULT_BIN_STEP,
+            0,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
-            0,
+            DEFAULT_REDUCTION_FACTOR,
+            DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_VARIABLEFEE_STATE
+            DEFAULT_MAX_ACCUMULATOR
         );
     }
 
@@ -243,12 +221,14 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setFeeParametersOnPair(
             token6D,
             token12D,
-            50_000,
+            DEFAULT_BIN_STEP,
+            DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
-            50_000,
+            DEFAULT_REDUCTION_FACTOR,
+            DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_VARIABLEFEE_STATE
+            101
         );
     }
 }

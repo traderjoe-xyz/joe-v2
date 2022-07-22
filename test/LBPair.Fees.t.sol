@@ -12,6 +12,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         token18D = new ERC20MockDecimals(18);
 
         factory = new LBFactory(DEV);
+        setDefaultFactoryPresets();
         new LBFactoryHelper(factory);
         router = new LBRouter(ILBFactory(DEV), IJoeFactory(DEV), IWAVAX(DEV));
 
@@ -126,15 +127,17 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         (, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
 
+        assertGt(feesY.total, 0);
+
         address protocolFeesReceiver = factory.feeRecipient();
         vm.prank(DEV);
         uint256 balanceBefore = token18D.balanceOf(protocolFeesReceiver);
         pair.collectProtocolFees();
-        assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesY.protocol - 1);
+        assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesY.protocol);
 
         // Claiming twice
         vm.prank(DEV);
         pair.collectProtocolFees();
-        assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesY.protocol - 1);
+        assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesY.protocol);
     }
 }

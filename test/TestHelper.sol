@@ -8,6 +8,7 @@ import "src/LBFactory.sol";
 import "src/LBFactoryHelper.sol";
 import "src/LBPair.sol";
 import "src/LBRouter.sol";
+import "src/interfaces/ILBRouter.sol";
 import "src/LBToken.sol";
 import "src/libraries/Math512Bits.sol";
 import "src/libraries/Constants.sol";
@@ -21,17 +22,18 @@ abstract contract TestHelper is Test {
     using Math512Bits for uint256;
 
     uint24 internal constant ID_ONE = 2**23;
-    uint256 internal constant SCALE = 1e36;
     uint256 internal constant BASIS_POINT_MAX = 10_000;
 
     uint64 internal constant DEFAULT_MAX_ACCUMULATOR = 5_000;
-    uint16 internal constant DEFAULT_FILTER_PERIOD = 50;
+    uint8 internal constant DEFAULT_FILTER_PERIOD = 50;
     uint16 internal constant DEFAULT_DECAY_PERIOD = 100;
-    uint16 internal constant DEFAULT_BIN_STEP = 25;
-    uint16 internal constant DEFAULT_BASE_FACTOR = 5_000;
-    uint16 internal constant DEFAULT_PROTOCOL_SHARE = 1_000;
+    uint8 internal constant DEFAULT_BIN_STEP = 25;
+    uint8 internal constant DEFAULT_BASE_FACTOR = 50;
+    uint8 internal constant DEFAULT_PROTOCOL_SHARE = 10;
     uint8 internal constant DEFAULT_VARIABLEFEE_STATE = 0;
-    uint16 internal constant DEFAULT_SAMPLE_LIFETIME = 240;
+    uint8 internal constant DEFAULT_SAMPLE_LIFETIME = 240;
+    uint8 internal constant DEFAULT_REDUCTION_FACTOR = 0;
+    uint8 internal constant DEFAULT_VARIABLE_FEE_CONTROL = 0;
 
     bytes32 internal constant DEFAULT_PACKED_FEES_PARAMETERS =
         bytes32(
@@ -83,27 +85,26 @@ abstract contract TestHelper is Test {
         newPair = createLBPairDefaultFeesFromStartId(_tokenX, _tokenY, ID_ONE);
     }
 
+    function setDefaultFactoryPresets() internal {
+        factory.setPreset(
+            DEFAULT_BIN_STEP,
+            DEFAULT_BASE_FACTOR,
+            DEFAULT_FILTER_PERIOD,
+            DEFAULT_DECAY_PERIOD,
+            DEFAULT_REDUCTION_FACTOR,
+            DEFAULT_VARIABLE_FEE_CONTROL,
+            DEFAULT_PROTOCOL_SHARE,
+            DEFAULT_MAX_ACCUMULATOR,
+            DEFAULT_SAMPLE_LIFETIME
+        );
+    }
+
     function createLBPairDefaultFeesFromStartId(
         IERC20 _tokenX,
         IERC20 _tokenY,
         uint24 _startId
     ) internal returns (LBPair newPair) {
-        newPair = LBPair(
-            address(
-                factory.createLBPair(
-                    _tokenX,
-                    _tokenY,
-                    _startId,
-                    DEFAULT_SAMPLE_LIFETIME,
-                    DEFAULT_MAX_ACCUMULATOR,
-                    DEFAULT_FILTER_PERIOD,
-                    DEFAULT_DECAY_PERIOD,
-                    DEFAULT_BIN_STEP,
-                    DEFAULT_BASE_FACTOR,
-                    DEFAULT_PROTOCOL_SHARE
-                )
-            )
-        );
+        newPair = LBPair(address(factory.createLBPair(_tokenX, _tokenY, _startId, DEFAULT_BIN_STEP)));
     }
 
     function addLiquidity(
@@ -152,7 +153,7 @@ abstract contract TestHelper is Test {
 
         _distributionX = new uint256[](_numberBins);
         _distributionY = new uint256[](_numberBins);
-        uint256 binDistribution = SCALE / (spread + 1);
+        uint256 binDistribution = Constants.PRECISION / (spread + 1);
         uint256 binLiquidity = _amountYIn / (spread + 1);
 
         for (uint256 i; i < _numberBins; i++) {
@@ -163,7 +164,7 @@ abstract contract TestHelper is Test {
             }
             if (i >= spread) {
                 _distributionX[i] = binDistribution;
-                amountXIn += binLiquidity.mulDivRoundUp(SCALE, getPriceFromId(uint24(_ids[i])));
+                amountXIn += (binLiquidity * Constants.SCALE) / getPriceFromId(uint24(_ids[i]));
             }
         }
     }
@@ -197,37 +198,30 @@ abstract contract TestHelper is Test {
         _tokenX.approve(address(router), amountXIn);
         _tokenY.approve(address(router), _amountYIn);
 
+        ILBRouter.LiquidityParameters memory _liquidityParameters = ILBRouter.LiquidityParameters(
+            _tokenX,
+            _tokenY,
+            DEFAULT_BIN_STEP,
+            amountXIn,
+            _amountYIn,
+            0,
+            0,
+            ID_ONE,
+            0,
+            _deltaIds,
+            _distributionX,
+            _distributionY,
+            DEV,
+            block.timestamp
+        );
+
         if (address(_tokenY) == address(wavax)) {
             vm.deal(DEV, _amountYIn);
-            router.addLiquidityAVAX{value: _amountYIn}(
-                _tokenX,
-                amountXIn,
-                0,
-                ID_ONE,
-                0,
-                _deltaIds,
-                _distributionX,
-                _distributionY,
-                DEV,
-                block.timestamp
-            );
+            router.addLiquidityAVAX{value: _amountYIn}(_liquidityParameters);
         } else {
             _tokenY.mint(DEV, _amountYIn);
 
-            router.addLiquidity(
-                _tokenX,
-                _tokenY,
-                amountXIn,
-                _amountYIn,
-                0,
-                _startId,
-                _slippage,
-                _deltaIds,
-                _distributionX,
-                _distributionY,
-                DEV,
-                block.timestamp
-            );
+            router.addLiquidity(_liquidityParameters);
         }
         vm.stopPrank();
     }
@@ -256,33 +250,6 @@ abstract contract TestHelper is Test {
             _gap,
             _slippage
         );
-
-        // (_deltaIds, _distributionX, _distributionY, amountXIn) = spreadLiquidityForRouter(
-        //     _amountYIn,
-        //     _startId,
-        //     _numberBins,
-        //     _gap
-        // );
-
-        // token6D.mint(DEV, amountXIn);
-        // token6D.approve(address(router), amountXIn);
-        // token18D.mint(DEV, _amountYIn);
-        // token18D.approve(address(router), _amountYIn);
-
-        // router.addLiquidity(
-        //     token6D,
-        //     token18D,
-        //     amountXIn,
-        //     _amountYIn,
-        //     0,
-        //     _startId,
-        //     _slippage,
-        //     _deltaIds,
-        //     _distributionX,
-        //     _distributionY,
-        //     DEV,
-        //     block.timestamp
-        // );
     }
 
     function spreadLiquidityForRouter(
@@ -309,7 +276,7 @@ abstract contract TestHelper is Test {
 
         _distributionX = new uint256[](_numberBins);
         _distributionY = new uint256[](_numberBins);
-        uint256 binDistribution = SCALE / (spread + 1);
+        uint256 binDistribution = Constants.PRECISION / (spread + 1);
         uint256 binLiquidity = _amountYIn / (spread + 1);
 
         for (uint256 i; i < _numberBins; i++) {
@@ -320,10 +287,9 @@ abstract contract TestHelper is Test {
             }
             if (i >= spread) {
                 _distributionX[i] = binDistribution;
-                amountXIn += binLiquidity.mulDivRoundUp(
-                    SCALE,
-                    getPriceFromId(uint24(int24(_startId) + int24(_deltaIds[i])))
-                );
+                amountXIn +=
+                    (binLiquidity * Constants.SCALE) /
+                    getPriceFromId(uint24(int24(_startId) + int24(_deltaIds[i])));
             }
         }
     }

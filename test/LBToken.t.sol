@@ -9,6 +9,7 @@ contract LiquidityBinTokenTest is TestHelper {
         token18D = new ERC20MockDecimals(18);
 
         factory = new LBFactory(DEV);
+        setDefaultFactoryPresets();
         new LBFactoryHelper(factory);
         pair = createLBPairDefaultFees(token6D, token18D);
     }

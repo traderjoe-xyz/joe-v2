@@ -17,8 +17,6 @@ interface ILBFactory is IPendingOwnable {
 
     function MAX_BIN_STEP() external pure returns (uint256);
 
-    function MIN_PROTOCOL_SHARE() external pure returns (uint256);
-
     function MAX_PROTOCOL_SHARE() external pure returns (uint256);
 
     function factoryHelper() external view returns (ILBFactoryHelper);
@@ -37,7 +35,7 @@ interface ILBFactory is IPendingOwnable {
         uint256 binStep
     ) external view returns (ILBPair);
 
-    function LBPairBlacklists(ILBPair _LBPair) external view returns (bool);
+    function LBPairBlacklists(ILBPair LBPair) external view returns (bool);
 
     function setFactoryHelper() external;
 
@@ -45,28 +43,53 @@ interface ILBFactory is IPendingOwnable {
         IERC20 tokenX,
         IERC20 tokenY,
         uint24 activeId,
-        uint16 sampleLifetime,
-        uint64 maxAccumulator,
-        uint16 filterPeriod,
-        uint16 decayPeriod,
-        uint16 binStep,
-        uint16 baseFactor,
-        uint16 protocolShare
+        uint16 binStep
     ) external returns (ILBPair pair);
 
     function setFeeRecipient(address feeRecipient) external;
 
     function setLBPairBlacklist(ILBPair LBPair, bool blacklist) external;
 
+    function setPreset(
+        uint8 _binStep,
+        uint8 _baseFactor,
+        uint16 _filterPeriod,
+        uint16 _decayPeriod,
+        uint8 _reductionFactor,
+        uint8 _variableFeeControl,
+        uint8 _protocolShare,
+        uint72 _maxAccumulator,
+        uint8 _sampleLifetime
+    ) external;
+
+    function removePreset(uint16 binStep) external;
+
+    function getPreset(uint16 _binStep)
+        external
+        view
+        returns (
+            uint256 baseFactor,
+            uint256 filterPeriod,
+            uint256 decayPeriod,
+            uint256 reductionFactor,
+            uint256 variableFeeControl,
+            uint256 protocolShare,
+            uint256 maxAccumulator,
+            uint256 sampleLifetime
+        );
+
+    function getAvailableBinSteps() external view returns (uint256[] memory binSteps);
+
     function setFeeParametersOnPair(
-        IERC20 tokenX,
-        IERC20 tokenY,
-        uint256 binStep,
-        uint64 maxAccumulator,
-        uint16 filterPeriod,
-        uint16 decayPeriod,
-        uint16 baseFactor,
-        uint16 protocolShare,
-        uint8 variableFeesDisabled
+        IERC20 _tokenX,
+        IERC20 _tokenY,
+        uint8 _binStep,
+        uint8 _baseFactor,
+        uint16 _filterPeriod,
+        uint16 _decayPeriod,
+        uint8 _reductionFactor,
+        uint8 _variableFeeControl,
+        uint8 _protocolShare,
+        uint72 _maxAccumulator
     ) external;
 }

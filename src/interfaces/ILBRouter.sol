@@ -8,19 +8,21 @@ import "./IWAVAX.sol";
 import "./IJoeFactory.sol";
 
 interface ILBRouter {
-    /// @param _tokenX The address of token X
-    /// @param _tokenY The address of token Y
-    /// @param _amountX The amount to send of token X
-    /// @param _amountY The amount to send of token Y
-    /// @param _amountSlippageBP The slippage of amounts in basis point (1 is 0.01%, 10_000 is 100%)
-    /// @param _activeIdDesired The active id that user wants to add liquidity from
-    /// @param _idSlippage The number of id that are allowed to slip
-    /// @param _deltaIds The list of delta ids to add liquidity (`deltaId = activeId - desiredId`)
-    /// @param _distributionX The distribution of tokenX with sum(_distributionX) = 100e36 (100%) or 0 (0%)
-    /// @param _distributionY The distribution of tokenY with sum(_distributionY) = 100e36 (100%) or 0 (0%)
-    /// @param _to The address of the recipient
-    /// @param _deadline The deadline of the tx
-    //TODO comments
+    /// - The liquidity parameters, such as:
+    /// - tokenX: The address of token X
+    /// - tokenY: The address of token Y
+    /// - binStep: The bin step of the pair
+    /// - amountX: The amount to send of token X
+    /// - amountY: The amount to send of token Y
+    /// - amountXMin: The min amount of token X added to liquidity
+    /// - amountYMin: The min amount of token Y added to liquidity
+    /// - activeIdDesired: The active id that user wants to add liquidity from
+    /// - idSlippage: The number of id that are allowed to slip
+    /// - deltaIds: The list of delta ids to add liquidity (`deltaId = activeId - desiredId`)
+    /// - distributionX: The distribution of tokenX with sum(distributionX) = 100e36 (100%) or 0 (0%)
+    /// - distributionY: The distribution of tokenY with sum(distributionY) = 100e36 (100%) or 0 (0%)
+    /// - to: The address of the recipient
+    /// - deadline: The deadline of the tx
     struct LiquidityParameters {
         IERC20 tokenX;
         IERC20 tokenY;
@@ -64,13 +66,7 @@ interface ILBRouter {
         IERC20 tokenX,
         IERC20 tokenY,
         uint24 activeId,
-        uint16 sampleLifetime,
-        uint64 maxAccumulator,
-        uint16 filterPeriod,
-        uint16 decayPeriod,
-        uint16 binStep,
-        uint16 baseFactor,
-        uint16 protocolShare
+        uint16 binStep
     ) external;
 
     function addLiquidity(LiquidityParameters memory liquidityParameters) external;

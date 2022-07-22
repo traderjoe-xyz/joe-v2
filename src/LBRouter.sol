@@ -207,37 +207,14 @@ contract LBRouter is ILBRouter {
     /// @param _tokenX The address of the first token
     /// @param _tokenY The address of the second token
     /// @param _activeId The active id of the pair
-    /// @param _sampleLifetime The lifetime of a sample. It's the min time between 2 oracle's sample
-    /// @param _maxAccumulator The max value of the accumulator
-    /// @param _filterPeriod The period where the accumulator value is untouched, prevent spam
-    /// @param _decayPeriod The period where the accumulator value is halved
     /// @param _binStep The bin step in basis point, used to calculate log(1 + binStep)
-    /// @param _baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
-    /// @param _protocolShare The share of the fees received by the protocol
     function createLBPair(
         IERC20 _tokenX,
         IERC20 _tokenY,
         uint24 _activeId,
-        uint16 _sampleLifetime,
-        uint64 _maxAccumulator,
-        uint16 _filterPeriod,
-        uint16 _decayPeriod,
-        uint16 _binStep,
-        uint16 _baseFactor,
-        uint16 _protocolShare
+        uint16 _binStep
     ) external override {
-        factory.createLBPair(
-            _tokenX,
-            _tokenY,
-            _activeId,
-            _sampleLifetime,
-            _maxAccumulator,
-            _filterPeriod,
-            _decayPeriod,
-            _binStep,
-            _baseFactor,
-            _protocolShare
-        );
+        factory.createLBPair(_tokenX, _tokenY, _activeId, _binStep);
     }
 
     /// @notice Add liquidity while performing safety checks

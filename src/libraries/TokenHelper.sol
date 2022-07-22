@@ -25,11 +25,18 @@ library TokenHelper {
         uint256 amount
     ) internal {
         if (amount != 0) {
-            (bool success, bytes memory data) = address(token).call(
+            (bool success, bytes memory result) = address(token).call(
                 abi.encodeWithSelector(token.transfer.selector, recipient, amount)
             );
-            if (!(success && (data.length == 0 || abi.decode(data, (bool)))))
-                revert TokenHelper__TransferFailed(token, recipient, amount);
+            if (!(success && (result.length == 0 || abi.decode(result, (bool))))) {
+                // No revert reason, we revert with the generic error
+                if (result.length < 68) revert TokenHelper__TransferFailed(token, recipient, amount);
+
+                // Look for revert reason and bubble it up if present
+                assembly {
+                    revert(add(32, result), mload(result))
+                }
+            }
         }
     }
 

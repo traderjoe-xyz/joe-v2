@@ -37,7 +37,6 @@ error LBPair__OracleNotEnoughSample();
 /// @author Trader Joe
 /// @notice Implemention of pair
 contract LBPair is LBToken, ReentrancyGuard, ILBPair {
-
     /** Libraries **/
 
     using Math512Bits for uint256;
@@ -281,6 +280,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @return reserveY The reserve of tokenY of the bin
     function getBin(uint24 _id) external view override returns (uint256 reserveX, uint256 reserveY) {
         uint256 _mask = type(uint112).max;
+        // low level read of mapping to only load 1 storage slot
         assembly {
             mstore(0, _id)
             mstore(32, _bins.slot)

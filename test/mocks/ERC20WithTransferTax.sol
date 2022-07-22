@@ -30,4 +30,11 @@ contract ERC20WithTransferTax is ERC20 {
         _burn(from, tax);
         return true;
     }
+
+    function transfer(address to, uint256 amount) public override returns (bool) {
+        uint256 tax = amount / 2;
+        _transfer(msg.sender, to, amount - tax);
+        _burn(msg.sender, tax);
+        return true;
+    }
 }

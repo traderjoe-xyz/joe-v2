@@ -150,7 +150,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         uint256 _sampleLifetime = _preset.decode(type(uint16).max, 240);
         // We remove the bits that are not part of the feeParameters
-        _preset &= bytes32(uint256(type(uint144).max) << 112);
+        _preset &= bytes32(uint256(type(uint144).max));
 
         _LBPair = factoryHelper.createLBPair(
             _tokenX,

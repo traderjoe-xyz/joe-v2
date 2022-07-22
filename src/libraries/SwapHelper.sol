@@ -47,10 +47,10 @@ library SwapHelper {
             uint256 _maxAmountInToBin;
             if (swapForY) {
                 _reserve = bin.reserveY;
-                _maxAmountInToBin = Constants.SCALE.mulDivRoundUp(_reserve, _price);
+                _maxAmountInToBin = _reserve.shiftDiv(Constants.SCALE_OFFSET, _price, false);
             } else {
                 _reserve = bin.reserveX;
-                _maxAmountInToBin = _price.mulDivRoundUp(_reserve, Constants.SCALE);
+                _maxAmountInToBin = _price.mulShift(_reserve, Constants.SCALE_OFFSET, false);
             }
 
             uint256 _deltaId = startId > pair.activeId ? startId - pair.activeId : pair.activeId - startId;
@@ -64,8 +64,8 @@ library SwapHelper {
                 fees = fp.getFeesDistribution(fp.getFeesFrom(amountIn, _deltaId));
                 amountInToBin = amountIn.sub(fees.total);
                 amountOutOfBin = swapForY
-                    ? _price.mulDivRoundDown(amountInToBin, Constants.SCALE)
-                    : Constants.SCALE.mulDivRoundDown(amountInToBin, _price);
+                    ? _price.mulShift(amountInToBin, Constants.SCALE_OFFSET, true)
+                    : amountInToBin.shiftDiv(Constants.SCALE_OFFSET, _price, true);
                 // Safety check in case rounding returns a higher value because of rounding
                 if (amountOutOfBin > _reserve) amountOutOfBin = _reserve;
             }
@@ -93,7 +93,7 @@ library SwapHelper {
             pair.feesX.total += fees.total;
             pair.feesX.protocol += fees.protocol;
 
-            bin.accTokenXPerShare += ((fees.total - fees.protocol) * Constants.SCALE) / totalSupply;
+            bin.accTokenXPerShare += ((fees.total - fees.protocol) << Constants.SCALE_OFFSET) / totalSupply;
 
             bin.reserveX += uint112(amountInToBin);
             unchecked {
@@ -106,7 +106,7 @@ library SwapHelper {
             pair.feesY.total += fees.total;
             pair.feesY.protocol += fees.protocol;
 
-            bin.accTokenYPerShare += ((fees.total - fees.protocol) * Constants.SCALE) / totalSupply;
+            bin.accTokenYPerShare += ((fees.total - fees.protocol) << Constants.SCALE_OFFSET) / totalSupply;
 
             bin.reserveY += uint112(amountInToBin);
             unchecked {

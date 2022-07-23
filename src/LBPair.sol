@@ -514,7 +514,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                     uint256 _price = BinHelper.getPriceFromId(_mintInfo.id, _binStep);
 
                     _mintInfo.amount = (_mintInfo.amountXIn * _distribution) / Constants.PRECISION;
-                    _liquidity = _price.mulDivRoundDown(_mintInfo.amount, Constants.PRECISION);
+                    _liquidity = _price.mulShift(_mintInfo.amount, Constants.SCALE_OFFSET, true);
 
                     _bin.reserveX = (_bin.reserveX + _mintInfo.amount).safe112();
                     _pair.reserveX += uint136(_mintInfo.amount);
@@ -540,7 +540,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 }
 
                 // we shift the liquidity to increase the precision of the accTokenPerShare
-                if ((_liquidity >>= 32) == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
+                if (_liquidity == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
 
                 _bins[_mintInfo.id] = _bin;
                 _mint(_to, _mintInfo.id, _liquidity);

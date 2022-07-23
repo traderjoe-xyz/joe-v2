@@ -28,11 +28,11 @@ abstract contract TestHelper is Test {
     uint16 internal constant DEFAULT_FILTER_PERIOD = 50;
     uint16 internal constant DEFAULT_DECAY_PERIOD = 100;
     uint8 internal constant DEFAULT_BIN_STEP = 25;
-    uint8 internal constant DEFAULT_BASE_FACTOR = 50;
+    uint8 internal constant DEFAULT_BASE_FACTOR = 10;
     uint8 internal constant DEFAULT_PROTOCOL_SHARE = 10;
     uint8 internal constant DEFAULT_SAMPLE_LIFETIME = 240;
-    uint8 internal constant DEFAULT_REDUCTION_FACTOR = 50;
-    uint8 internal constant DEFAULT_VARIABLE_FEE_CONTROL = 50;
+    uint8 internal constant DEFAULT_REDUCTION_FACTOR = 30;
+    uint8 internal constant DEFAULT_VARIABLE_FEE_CONTROL = 3;
 
     address internal constant DEV = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
     address internal constant ALICE = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
@@ -71,9 +71,9 @@ abstract contract TestHelper is Test {
         newPair = createLBPairDefaultFeesFromStartId(_tokenX, _tokenY, ID_ONE);
     }
 
-    function setDefaultFactoryPresets() internal {
+    function setDefaultFactoryPresets(uint8 _binStep) internal {
         factory.setPreset(
-            DEFAULT_BIN_STEP,
+            _binStep,
             DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
@@ -90,7 +90,16 @@ abstract contract TestHelper is Test {
         IERC20 _tokenY,
         uint24 _startId
     ) internal returns (LBPair newPair) {
-        newPair = LBPair(address(factory.createLBPair(_tokenX, _tokenY, _startId, DEFAULT_BIN_STEP)));
+        newPair = createLBPairDefaultFeesFromStartIdAndBinStep(_tokenX, _tokenY, _startId, DEFAULT_BIN_STEP);
+    }
+
+    function createLBPairDefaultFeesFromStartIdAndBinStep(
+        IERC20 _tokenX,
+        IERC20 _tokenY,
+        uint24 _startId,
+        uint8 _binStep
+    ) internal returns (LBPair newPair) {
+        newPair = LBPair(address(factory.createLBPair(_tokenX, _tokenY, _startId, _binStep)));
     }
 
     function addLiquidity(

@@ -240,7 +240,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         allLBPairs.push(_LBPair);
 
         {
-            bytes32 _avLBPairBinSteps = _availableLBPairBinSteps[_tokenX][_tokenY];
+            bytes32 _avLBPairBinSteps = _availableLBPairBinSteps[_tokenA][_tokenB];
             // We add a 1 at bit `_binStep` as this binStep is now set
             _avLBPairBinSteps = bytes32(uint256(_avLBPairBinSteps) | (1 << _binStep));
 
@@ -248,7 +248,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _avLBPairBinSteps = bytes32(uint256(_avLBPairBinSteps) + (1 << 248));
 
             // Save the changes
-            _availableLBPairBinSteps[_tokenX][_tokenY] = _avLBPairBinSteps;
+            _availableLBPairBinSteps[_tokenA][_tokenB] = _avLBPairBinSteps;
         }
 
         emit LBPairCreated(_tokenX, _tokenY, _LBPair, allLBPairs.length - 1);

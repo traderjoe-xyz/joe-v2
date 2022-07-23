@@ -124,6 +124,75 @@ contract LBFactory is PendingOwnable, ILBFactory {
         return _getLBPairInfo(_tokenA, _tokenB, _binStep);
     }
 
+    function getPreset(uint16 _binStep)
+        external
+        view
+        override
+        returns (
+            uint256 baseFactor,
+            uint256 filterPeriod,
+            uint256 decayPeriod,
+            uint256 reductionFactor,
+            uint256 variableFeeControl,
+            uint256 protocolShare,
+            uint256 maxAccumulator,
+            uint256 sampleLifetime
+        )
+    {
+        bytes32 _preset = _presets[_binStep];
+        if (_preset == bytes32(0)) revert LBFactory__BinStepHasNoPreset(_binStep);
+
+        baseFactor = _preset.decode(type(uint8).max, 8);
+        filterPeriod = _preset.decode(type(uint16).max, 16);
+        decayPeriod = _preset.decode(type(uint16).max, 32);
+        reductionFactor = _preset.decode(type(uint8).max, 48);
+        variableFeeControl = _preset.decode(type(uint8).max, 56);
+        protocolShare = _preset.decode(type(uint8).max, 64);
+        maxAccumulator = _preset.decode(type(uint72).max, 72);
+
+        sampleLifetime = _preset.decode(type(uint16).max, 240);
+    }
+
+    function getAvailablePresetsBinStep() external view override returns (uint256[] memory presetsBinStep) {
+        unchecked {
+            bytes32 _avPresets = _availablePresets;
+            uint256 _nbPresets = _avPresets.decode(type(uint8).max, 248);
+
+            presetsBinStep = new uint256[](_nbPresets);
+
+            uint256 _index;
+            for (uint256 i = MIN_BIN_STEP; i <= MAX_BIN_STEP; ++i) {
+                if (_avPresets.decode(1, i) == 1) {
+                    presetsBinStep[_index] = i;
+                    if (++_index == _nbPresets) break;
+                }
+            }
+        }
+    }
+
+    function getAvailableLBPairsBinStep(IERC20 _tokenX, IERC20 _tokenY)
+        external
+        view
+        override
+        returns (uint256[] memory LBPairsBinStep)
+    {
+        unchecked {
+            (_tokenX, _tokenY) = _sortTokens(_tokenX, _tokenY);
+            bytes32 _avLBPairBinSteps = _availableLBPairBinSteps[_tokenX][_tokenY];
+            uint256 _nbBinSteps = _avLBPairBinSteps.decode(type(uint8).max, 248);
+
+            LBPairsBinStep = new uint256[](_nbBinSteps);
+
+            uint256 _index;
+            for (uint256 i = MIN_BIN_STEP; i <= MAX_BIN_STEP; ++i) {
+                if (_avLBPairBinSteps.decode(1, i) == 1) {
+                    LBPairsBinStep[_index] = i;
+                    if (++_index == _nbBinSteps) break;
+                }
+            }
+        }
+    }
+
     /// @notice Create a liquidity bin LBPair for _tokenX and _tokenY
     /// @param _tokenX The address of the first token
     /// @param _tokenY The address of the second token
@@ -287,75 +356,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
         delete _presets[_binStep];
 
         emit PresetRemoved(_binStep);
-    }
-
-    function getPreset(uint16 _binStep)
-        external
-        view
-        override
-        returns (
-            uint256 baseFactor,
-            uint256 filterPeriod,
-            uint256 decayPeriod,
-            uint256 reductionFactor,
-            uint256 variableFeeControl,
-            uint256 protocolShare,
-            uint256 maxAccumulator,
-            uint256 sampleLifetime
-        )
-    {
-        bytes32 _preset = _presets[_binStep];
-        if (_preset == bytes32(0)) revert LBFactory__BinStepHasNoPreset(_binStep);
-
-        baseFactor = _preset.decode(type(uint8).max, 8);
-        filterPeriod = _preset.decode(type(uint16).max, 16);
-        decayPeriod = _preset.decode(type(uint16).max, 32);
-        reductionFactor = _preset.decode(type(uint8).max, 48);
-        variableFeeControl = _preset.decode(type(uint8).max, 56);
-        protocolShare = _preset.decode(type(uint8).max, 64);
-        maxAccumulator = _preset.decode(type(uint72).max, 72);
-
-        sampleLifetime = _preset.decode(type(uint16).max, 240);
-    }
-
-    function getAvailablePresetsBinStep() external view override returns (uint256[] memory presetsBinStep) {
-        unchecked {
-            bytes32 _avPresets = _availablePresets;
-            uint256 _nbPresets = _avPresets.decode(type(uint8).max, 248);
-
-            presetsBinStep = new uint256[](_nbPresets);
-
-            uint256 _index;
-            for (uint256 i = MIN_BIN_STEP; i <= MAX_BIN_STEP; ++i) {
-                if (_avPresets.decode(1, i) == 1) {
-                    presetsBinStep[_index] = i;
-                    if (++_index == _nbPresets) break;
-                }
-            }
-        }
-    }
-
-    function getAvailableLBPairsBinStep(IERC20 _tokenX, IERC20 _tokenY)
-        external
-        view
-        override
-        returns (uint256[] memory LBPairsBinStep)
-    {
-        unchecked {
-            (_tokenX, _tokenY) = _sortTokens(_tokenX, _tokenY);
-            bytes32 _avLBPairBinSteps = _availableLBPairBinSteps[_tokenX][_tokenY];
-            uint256 _nbBinSteps = _avLBPairBinSteps.decode(type(uint8).max, 248);
-
-            LBPairsBinStep = new uint256[](_nbBinSteps);
-
-            uint256 _index;
-            for (uint256 i = MIN_BIN_STEP; i <= MAX_BIN_STEP; ++i) {
-                if (_avLBPairBinSteps.decode(1, i) == 1) {
-                    LBPairsBinStep[_index] = i;
-                    if (++_index == _nbBinSteps) break;
-                }
-            }
-        }
     }
 
     /// @notice Function to lock the Factory and prevent anyone but the owner to create pairs.

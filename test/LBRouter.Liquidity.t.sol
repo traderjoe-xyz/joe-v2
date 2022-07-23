@@ -157,6 +157,18 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(wavax.balanceOf(DEV), _amountAVAXIn);
     }
 
+    function testFailAddLiquidityBlacklistedPair() public {
+        uint256 _amountYIn = 100e18;
+        uint24 _startId = ID_ONE;
+        uint24 _numberBins = 9;
+        uint24 _gap = 2;
+
+        ILBPair pairBlacklisted = factory.getLBPair(token6D, token18D, DEFAULT_BIN_STEP);
+        factory.setLBPairBlacklist(pairBlacklisted, true);
+
+        addLiquidityFromRouter(token6D, token18D, _amountYIn, _startId, _numberBins, _gap, DEFAULT_BIN_STEP);
+    }
+
     function testFailForIdSlippageCaught() public {
         uint256 _amountYIn = 100e18;
         uint24 _startId = ID_ONE;

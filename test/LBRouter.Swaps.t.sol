@@ -306,6 +306,49 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(token24D.balanceOf(DEV), amountOut);
     }
 
+    function testSwapWithDifferentBinSteps() public {
+        factory.setPreset(
+            75,
+            DEFAULT_BASE_FACTOR,
+            DEFAULT_FILTER_PERIOD,
+            DEFAULT_DECAY_PERIOD,
+            5,
+            10,
+            DEFAULT_PROTOCOL_SHARE,
+            DEFAULT_MAX_ACCUMULATOR,
+            DEFAULT_SAMPLE_LIFETIME
+        );
+        createLBPairDefaultFeesFromStartIdAndBinStep(token6D, token18D, ID_ONE, 75);
+        addLiquidityFromRouter(token6D, token18D, 100e18, ID_ONE, 9, 2, 75);
+
+        uint256 amountIn = 1e18;
+
+        token6D.mint(DEV, amountIn);
+        token6D.approve(address(router), amountIn);
+
+        IERC20[] memory tokenList;
+        uint256[] memory pairVersions;
+        tokenList = new IERC20[](2);
+        tokenList[0] = token6D;
+        tokenList[1] = token18D;
+        pairVersions = new uint256[](1);
+        pairVersions[0] = DEFAULT_BIN_STEP;
+
+        router.swapExactTokensForTokens(amountIn, 0, pairVersions, tokenList, DEV, block.timestamp);
+
+        assertGt(token18D.balanceOf(DEV), 0);
+
+        token18D.approve(address(router), token18D.balanceOf(DEV));
+
+        tokenList[0] = token18D;
+        tokenList[1] = token6D;
+        pairVersions = new uint256[](1);
+        pairVersions[0] = 75;
+
+        router.swapExactTokensForTokens(token18D.balanceOf(DEV), 0, pairVersions, tokenList, DEV, block.timestamp);
+        assertGt(token6D.balanceOf(DEV), 0);
+    }
+
     function testSwapExactTokensForTokensMultiplePairsWithV1() public {
         if (block.number < 1000) {
             console.log("fork mainnet for V1 testing support");

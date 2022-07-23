@@ -175,8 +175,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
         _setFeeRecipient(_feeRecipient);
     }
 
-    /// @notice Function to set the recipient of the fees. This address needs to be able to receive ERC20s.
+    /// @notice Function to make the pair unusable by the router
     /// @param _LBPair The address of the LBPair
+    /// @param _blacklist True if the pair needs to be blacklisted
     function setLBPairBlacklist(ILBPair _LBPair, bool _blacklist) external override onlyOwner {
         bool _isBlacklisted = LBPairBlacklists[_LBPair];
         if (_isBlacklisted == _blacklist) revert LBFactory__LBPairBlacklistIsAlreadyInTheSameState();

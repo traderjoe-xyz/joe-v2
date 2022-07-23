@@ -21,8 +21,10 @@ contract LiquidityBinTokenTest is TestHelper {
 
         uint256[] memory amounts = new uint256[](5);
         for (uint256 i; i < 5; i++) {
+            assertEq(pair.userPositionAt(DEV, i), _ids[i]);
             amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
+        assertEq(pair.userPositionNb(DEV), 5);
 
         assertEq(pair.balanceOf(DEV, ID_ONE - 1), amountIn / 3);
 

@@ -88,7 +88,6 @@ contract LiquidityBinPairOracleTest is TestHelper {
 
         vm.warp(10_000);
 
-        vm.prank(DEV);
         pair.swap(true, DEV);
 
         vm.expectRevert(abi.encodeWithSelector(Oracle__LookUpTimestampTooOld.selector, 10_000, 9_000));
@@ -108,13 +107,13 @@ contract LiquidityBinPairOracleTest is TestHelper {
         pair.mint(_ids, new uint256[](1), _liquidities, DEV);
 
         token6D.mint(address(pair), 5e18);
-        vm.prank(DEV);
+
         pair.swap(true, DEV);
 
         vm.warp(block.timestamp + 250);
 
         token6D.mint(address(pair), 5e18);
-        vm.prank(DEV);
+
         pair.swap(true, DEV);
 
         uint256 _ago = 130;
@@ -148,7 +147,6 @@ contract LiquidityBinPairOracleTest is TestHelper {
         for (uint256 i; i < 200; ++i) {
             token6D.mint(address(pair), 1e18);
 
-            vm.prank(DEV);
             vm.warp(1500 + 100 * i);
             pair.swap(true, DEV);
 
@@ -191,7 +189,6 @@ contract LiquidityBinPairOracleTest is TestHelper {
 
             pair.increaseOracleLength(2);
 
-            vm.prank(DEV);
             vm.warp(1500 + 100 * i);
             pair.swap(true, DEV);
 

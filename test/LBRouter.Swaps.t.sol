@@ -259,7 +259,7 @@ contract LiquidityBinRouterTest is TestHelper {
         );
         vm.stopPrank();
 
-        assertEq(ALICE.balance - devBalanceBefore, amountOut / 2);
+        assertGe(ALICE.balance - devBalanceBefore, amountOut / 2);
     }
 
     function testSwapExactAVAXForTokensSupportingFeeOnTransferTokens() public {

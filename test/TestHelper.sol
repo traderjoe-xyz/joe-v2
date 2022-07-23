@@ -28,11 +28,11 @@ abstract contract TestHelper is Test {
     uint16 internal constant DEFAULT_FILTER_PERIOD = 50;
     uint16 internal constant DEFAULT_DECAY_PERIOD = 100;
     uint8 internal constant DEFAULT_BIN_STEP = 25;
-    uint8 internal constant DEFAULT_BASE_FACTOR = 10;
+    uint8 internal constant DEFAULT_BASE_FACTOR = 50;
     uint8 internal constant DEFAULT_PROTOCOL_SHARE = 10;
     uint8 internal constant DEFAULT_SAMPLE_LIFETIME = 240;
-    uint8 internal constant DEFAULT_REDUCTION_FACTOR = 30;
-    uint8 internal constant DEFAULT_VARIABLE_FEE_CONTROL = 3;
+    uint8 internal constant DEFAULT_REDUCTION_FACTOR = 50;
+    uint8 internal constant DEFAULT_VARIABLE_FEE_CONTROL = 50;
 
     address internal constant DEV = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
     address internal constant ALICE = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;

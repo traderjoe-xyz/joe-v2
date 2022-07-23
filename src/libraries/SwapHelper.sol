@@ -89,11 +89,12 @@ library SwapHelper {
         uint256 amountInToBin,
         uint256 amountOutOfBin
     ) internal pure {
+        uint256 tokenPerShare = (uint256(fees.total - fees.protocol) << Constants.SCALE_OFFSET) / totalSupply;
         if (swapForY) {
             pair.feesX.total += fees.total;
             pair.feesX.protocol += fees.protocol;
 
-            bin.accTokenXPerShare += (uint256(fees.total - fees.protocol) << Constants.SCALE_OFFSET) / totalSupply;
+            bin.accTokenXPerShare += tokenPerShare;
 
             bin.reserveX += uint112(amountInToBin);
             unchecked {
@@ -106,7 +107,7 @@ library SwapHelper {
             pair.feesY.total += fees.total;
             pair.feesY.protocol += fees.protocol;
 
-            bin.accTokenYPerShare += (uint256(fees.total - fees.protocol) << Constants.SCALE_OFFSET) / totalSupply;
+            bin.accTokenYPerShare += tokenPerShare;
 
             bin.reserveY += uint112(amountInToBin);
             unchecked {

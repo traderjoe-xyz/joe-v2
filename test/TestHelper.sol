@@ -24,7 +24,7 @@ abstract contract TestHelper is Test {
     uint24 internal constant ID_ONE = 2**23;
     uint256 internal constant BASIS_POINT_MAX = 10_000;
 
-    uint64 internal constant DEFAULT_MAX_ACCUMULATOR = 5_000;
+    uint64 internal constant DEFAULT_MAX_ACCUMULATOR = 1_248_999;
     uint16 internal constant DEFAULT_FILTER_PERIOD = 50;
     uint16 internal constant DEFAULT_DECAY_PERIOD = 100;
     uint8 internal constant DEFAULT_BIN_STEP = 25;

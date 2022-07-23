@@ -72,30 +72,29 @@ library FeeHelper {
         }
     }
 
-    /// @notice Returns the base fee added to a swap in percent squared, so in BP (100% is 10_000)
+    /// @notice Returns the base fee added to a swap, with 18 decimals
     /// @param _fp The current fee parameters
     /// @return The fee in basis point squared
-    function getBaseFeeBP(FeeParameters memory _fp) internal pure returns (uint256) {
+    function getBaseFee(FeeParameters memory _fp) internal pure returns (uint256) {
         unchecked {
-            return _fp.baseFactor * _fp.binStep;
+            return uint256(_fp.baseFactor) * _fp.binStep * 1e12;
         }
     }
 
-    /// @notice Returns the variable fee added to a swap in percent squared, so in BP (100% is 10_000)
+    /// @notice Returns the variable fee added to a swap, with 18 decimals
     /// @param _fp The current fee parameters
     /// @param _binCrossed The current number of bin crossed
     /// @return The variable fee in basis point squared
-    function getVariableFeeBP(FeeParameters memory _fp, uint256 _binCrossed) internal pure returns (uint256) {
+    function getVariableFee(FeeParameters memory _fp, uint256 _binCrossed) internal pure returns (uint256) {
         unchecked {
-            if (_fp.reductionFactor != 0) return 0;
+            if (_fp.reductionFactor == 0) return 0;
 
             uint256 _acc = _fp.accumulator + _binCrossed * Constants.BASIS_POINT_MAX;
 
             if (_acc > _fp.maxAccumulator) _acc = _fp.maxAccumulator;
 
             // decimals(_fp.reductionFactor * (_acc * _fp.binStep)**2) = 2 + (4 + 4) * 2 = 18
-            // The result should use 4 decimals, so we divide it by 1e14
-            return (_fp.reductionFactor * ((_acc * _fp.binStep) * (_acc * _fp.binStep))) / 1e14;
+            return (_fp.reductionFactor * ((_acc * _fp.binStep) * (_acc * _fp.binStep)));
         }
     }
 
@@ -111,9 +110,9 @@ library FeeHelper {
     ) internal pure returns (uint256) {
         uint256 _feeBP;
         unchecked {
-            _feeBP = getBaseFeeBP(_fp) + getVariableFeeBP(_fp, _binCrossed);
+            _feeBP = getBaseFee(_fp) + getVariableFee(_fp, _binCrossed);
         }
-        return (_amount * _feeBP) / (Constants.BASIS_POINT_MAX);
+        return (_amount * _feeBP) / (Constants.PRECISION);
     }
 
     /// @notice Return the fees from an amount
@@ -128,9 +127,9 @@ library FeeHelper {
     ) internal pure returns (uint256) {
         uint256 _feeBP;
         unchecked {
-            _feeBP = getBaseFeeBP(_fp) + getVariableFeeBP(_fp, _binCrossed);
+            _feeBP = getBaseFee(_fp) + getVariableFee(_fp, _binCrossed);
         }
-        return (_amountPlusFee * _feeBP) / (Constants.BASIS_POINT_MAX + _feeBP);
+        return (_amountPlusFee * _feeBP) / (Constants.PRECISION + _feeBP);
     }
 
     /// @notice Return the fees distribution added to an amount

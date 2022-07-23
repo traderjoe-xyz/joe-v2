@@ -103,14 +103,14 @@ contract LiquidityBinFactoryTestM is TestHelper {
     }
 
     function testAddRemovePresets() public {
-        uint256[] memory binSteps = factory.getAvailableBinSteps();
+        uint256[] memory binSteps = factory.getAvailablePresetsBinStep();
         assertEq(binSteps.length, 3);
         assertEq(binSteps[0], DEFAULT_BIN_STEP);
         assertEq(binSteps[1], 75);
         assertEq(binSteps[2], 98);
 
         setDefaultFactoryPresets(12);
-        binSteps = factory.getAvailableBinSteps();
+        binSteps = factory.getAvailablePresetsBinStep();
         assertEq(binSteps.length, 4);
         assertEq(binSteps[0], 12);
         assertEq(binSteps[1], DEFAULT_BIN_STEP);
@@ -118,7 +118,7 @@ contract LiquidityBinFactoryTestM is TestHelper {
         assertEq(binSteps[3], 98);
 
         factory.removePreset(75);
-        binSteps = factory.getAvailableBinSteps();
+        binSteps = factory.getAvailablePresetsBinStep();
         assertEq(binSteps.length, 3);
         assertEq(binSteps[0], 12);
         assertEq(binSteps[1], DEFAULT_BIN_STEP);

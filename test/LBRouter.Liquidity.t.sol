@@ -163,8 +163,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint24 _numberBins = 9;
         uint24 _gap = 2;
 
-        ILBPair pairBlacklisted = factory.getLBPair(token6D, token18D, DEFAULT_BIN_STEP);
-        factory.setLBPairBlacklist(pairBlacklisted, true);
+        factory.setLBPairBlacklist(token6D, token18D, DEFAULT_BIN_STEP, true);
 
         addLiquidityFromRouter(token6D, token18D, _amountYIn, _startId, _numberBins, _gap, DEFAULT_BIN_STEP);
     }

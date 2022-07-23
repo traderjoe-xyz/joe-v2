@@ -22,7 +22,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         ILBPair pair = createLBPairDefaultFees(token6D, token12D);
 
         assertEq(factory.allPairsLength(), 1);
-        assertEq(address(factory.getLBPair(token6D, token12D, DEFAULT_BIN_STEP)), address(pair));
+        assertEq(address(factory.getLBPairInfo(token6D, token12D, DEFAULT_BIN_STEP).LBPair), address(pair));
 
         assertEq(address(pair.factory()), address(factory));
         assertEq(address(pair.tokenX()), address(token6D));

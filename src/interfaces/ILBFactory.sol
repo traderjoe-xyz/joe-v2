@@ -9,6 +9,12 @@ import "./ILBFactoryHelper.sol";
 import "./IPendingOwnable.sol";
 
 interface ILBFactory is IPendingOwnable {
+    struct LBPairInfo {
+        ILBPair LBPair;
+        bool createdByOwner;
+        bool isBlacklisted;
+    }
+
     function MIN_FEE() external pure returns (uint256);
 
     function MAX_FEE() external pure returns (uint256);
@@ -29,13 +35,11 @@ interface ILBFactory is IPendingOwnable {
 
     function allPairsLength() external view returns (uint256);
 
-    function getLBPair(
+    function getLBPairInfo(
         IERC20 tokenA,
         IERC20 tokenB,
         uint256 binStep
-    ) external view returns (ILBPair);
-
-    function LBPairBlacklists(ILBPair LBPair) external view returns (bool);
+    ) external view returns (LBPairInfo memory);
 
     function setFactoryHelper() external;
 
@@ -48,7 +52,12 @@ interface ILBFactory is IPendingOwnable {
 
     function setFeeRecipient(address feeRecipient) external;
 
-    function setLBPairBlacklist(ILBPair LBPair, bool blacklist) external;
+    function setLBPairBlacklist(
+        IERC20 _tokenX,
+        IERC20 _tokenY,
+        uint256 _binStep,
+        bool _blacklisted
+    ) external;
 
     function setPreset(
         uint8 _binStep,
@@ -78,7 +87,12 @@ interface ILBFactory is IPendingOwnable {
             uint256 sampleLifetime
         );
 
-    function getAvailableBinSteps() external view returns (uint256[] memory binSteps);
+    function getAvailablePresetsBinStep() external view returns (uint256[] memory presetsBinStep);
+
+    function getAvailableLBPairsBinStep(IERC20 _tokenX, IERC20 _tokenY)
+        external
+        view
+        returns (uint256[] memory LBPairsBinStep);
 
     function setFeeParametersOnPair(
         IERC20 _tokenX,

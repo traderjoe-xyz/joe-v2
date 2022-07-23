@@ -27,7 +27,7 @@ contract LiquidityBinRouterTest is TestHelper {
         router.createLBPair(token6D, token18D, ID_ONE, DEFAULT_BIN_STEP);
 
         assertEq(factory.allPairsLength(), 1);
-        pair = LBPair(address(factory.getLBPair(token6D, token18D, DEFAULT_BIN_STEP)));
+        pair = LBPair(address(factory.getLBPairInfo(token6D, token18D, DEFAULT_BIN_STEP).LBPair));
 
         assertEq(address(pair.factory()), address(factory));
         assertEq(address(pair.tokenX()), address(token6D));

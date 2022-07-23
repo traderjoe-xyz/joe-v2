@@ -19,9 +19,29 @@ contract LiquidityBinFactoryTestM is TestHelper {
 
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
         pair0 = createLBPairDefaultFeesFromStartIdAndBinStep(token6D, token18D, ID_ONE, DEFAULT_BIN_STEP);
-        setDefaultFactoryPresets(75);
+        factory.setPreset(
+            75,
+            DEFAULT_BASE_FACTOR,
+            DEFAULT_FILTER_PERIOD,
+            DEFAULT_DECAY_PERIOD,
+            5,
+            10,
+            DEFAULT_PROTOCOL_SHARE,
+            DEFAULT_MAX_ACCUMULATOR,
+            DEFAULT_SAMPLE_LIFETIME
+        );
         pair1 = createLBPairDefaultFeesFromStartIdAndBinStep(token6D, token18D, ID_ONE, 75);
-        setDefaultFactoryPresets(98);
+        factory.setPreset(
+            98,
+            DEFAULT_BASE_FACTOR,
+            DEFAULT_FILTER_PERIOD,
+            DEFAULT_DECAY_PERIOD,
+            5,
+            5,
+            DEFAULT_PROTOCOL_SHARE,
+            DEFAULT_MAX_ACCUMULATOR,
+            DEFAULT_SAMPLE_LIFETIME
+        );
         pair2 = createLBPairDefaultFeesFromStartIdAndBinStep(token6D, token18D, ID_ONE, 98);
     }
 

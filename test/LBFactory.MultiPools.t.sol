@@ -127,4 +127,21 @@ contract LiquidityBinFactoryTestM is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(LBFactory__BinStepHasNoPreset.selector, 75));
         factory.removePreset(75);
     }
+
+    function testAvailableBinSteps() public {
+        uint256[] memory LBPairBinSteps = factory.getAvailableLBPairsBinStep(token6D, token18D);
+        assertEq(LBPairBinSteps.length, 3);
+        assertEq(LBPairBinSteps[0], DEFAULT_BIN_STEP);
+        assertEq(LBPairBinSteps[1], 75);
+        assertEq(LBPairBinSteps[2], 98);
+
+        uint256[] memory LBPairBinStepsReversed = factory.getAvailableLBPairsBinStep(token18D, token6D);
+        assertEq(LBPairBinStepsReversed.length, 3);
+
+        factory.removePreset(75);
+        factory.removePreset(98);
+
+        uint256[] memory LBPairBinStepsAfterRemoval = factory.getAvailableLBPairsBinStep(token6D, token18D);
+        assertEq(LBPairBinStepsAfterRemoval.length, 3);
+    }
 }

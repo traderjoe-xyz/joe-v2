@@ -26,7 +26,6 @@ contract LiquidityBinTokenTest is TestHelper {
 
         assertEq(pair.balanceOf(DEV, ID_ONE - 1), amountIn / 3);
 
-        vm.prank(DEV);
         pair.safeBatchTransferFrom(DEV, ALICE, _ids, amounts);
         assertEq(pair.balanceOf(DEV, ID_ONE - 1), 0);
         assertEq(pair.balanceOf(ALICE, ID_ONE - 1), amountIn / 3);

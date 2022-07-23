@@ -33,30 +33,30 @@ contract LiquidityBinRouterTest is TestHelper {
         router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(address(wavax)));
 
         pair = createLBPairDefaultFees(token6D, token18D);
-        addLiquidityFromRouter(100e18, ID_ONE, 9, 2, 0);
+        addLiquidityFromRouter(token6D, token18D, 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
 
         pair0 = createLBPairDefaultFees(token6D, token10D);
-        addLiquidityFromRouterForPair(token6D, token10D, 100e18, ID_ONE, 9, 2, 0);
+        addLiquidityFromRouter(token6D, token10D, 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
         pair1 = createLBPairDefaultFees(token10D, token12D);
-        addLiquidityFromRouterForPair(token10D, token12D, 100e18, ID_ONE, 9, 2, 0);
+        addLiquidityFromRouter(token10D, token12D, 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
         pair2 = createLBPairDefaultFees(token12D, token18D);
-        addLiquidityFromRouterForPair(token12D, token18D, 100e18, ID_ONE, 9, 2, 0);
+        addLiquidityFromRouter(token12D, token18D, 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
         pair3 = createLBPairDefaultFees(token18D, token24D);
-        addLiquidityFromRouterForPair(token18D, token24D, 100e18, ID_ONE, 9, 2, 0);
+        addLiquidityFromRouter(token18D, token24D, 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
 
         taxTokenPair = createLBPairDefaultFees(taxToken, wavax);
-        addLiquidityFromRouterForPair(
+        addLiquidityFromRouter(
             ERC20MockDecimals(address(taxToken)),
             ERC20MockDecimals(address(wavax)),
             100e18,
             ID_ONE,
             9,
             2,
-            0
+            DEFAULT_BIN_STEP
         );
 
         pairWavax = createLBPairDefaultFees(token6D, wavax);
-        addLiquidityFromRouterForPair(token6D, ERC20MockDecimals(address(wavax)), 100e18, ID_ONE, 9, 2, 0);
+        addLiquidityFromRouter(token6D, ERC20MockDecimals(address(wavax)), 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
     }
 
     function testSwapExactTokensForTokensSinglePair() public {
@@ -64,7 +64,6 @@ contract LiquidityBinRouterTest is TestHelper {
 
         token6D.mint(DEV, amountIn);
 
-        vm.startPrank(DEV);
         token6D.approve(address(router), amountIn);
 
         IERC20[] memory tokenList = new IERC20[](2);
@@ -76,7 +75,6 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 amountOut = router.getSwapOut(pair, amountIn, true);
 
         router.swapExactTokensForTokens(amountIn, 0, pairVersions, tokenList, DEV, block.timestamp);
-        vm.stopPrank();
 
         assertApproxEqAbs(token18D.balanceOf(DEV), amountOut, 10);
     }
@@ -127,7 +125,6 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 amountIn = router.getSwapIn(pair, amountOut, true);
         token6D.mint(DEV, amountIn);
 
-        vm.startPrank(DEV);
         token6D.approve(address(router), amountIn);
 
         IERC20[] memory tokenList = new IERC20[](2);
@@ -137,7 +134,6 @@ contract LiquidityBinRouterTest is TestHelper {
         pairVersions[0] = DEFAULT_BIN_STEP;
 
         router.swapTokensForExactTokens(amountOut, amountIn, pairVersions, tokenList, DEV, block.timestamp);
-        vm.stopPrank();
 
         assertApproxEqAbs(token18D.balanceOf(DEV), amountOut, 10);
     }
@@ -186,7 +182,6 @@ contract LiquidityBinRouterTest is TestHelper {
 
         taxToken.mint(DEV, amountIn);
 
-        vm.startPrank(DEV);
         taxToken.approve(address(router), amountIn);
 
         IERC20[] memory tokenList = new IERC20[](2);
@@ -228,8 +223,6 @@ contract LiquidityBinRouterTest is TestHelper {
         );
 
         assertApproxEqAbs(taxToken.balanceOf(DEV) - balanceBefore, amountOut / 2, 10);
-
-        vm.stopPrank();
     }
 
     function testSwapExactTokensForAVAXSupportingFeeOnTransferTokens() public {
@@ -289,12 +282,11 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 amountIn = 1e18;
 
         token6D.mint(DEV, amountIn);
-        vm.prank(DEV);
+
         token6D.approve(address(router), amountIn);
 
         (IERC20[] memory tokenList, uint256[] memory pairVersions) = _buildComplexSwapRoute();
 
-        vm.prank(DEV);
         router.swapExactTokensForTokens(amountIn, 0, pairVersions, tokenList, DEV, block.timestamp);
 
         assertGt(token24D.balanceOf(DEV), 0);
@@ -304,12 +296,11 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 amountOut = 1e18;
 
         token6D.mint(DEV, 100e18);
-        vm.prank(DEV);
+
         token6D.approve(address(router), 100e18);
 
         (IERC20[] memory tokenList, uint256[] memory pairVersions) = _buildComplexSwapRoute();
 
-        vm.prank(DEV);
         router.swapTokensForExactTokens(amountOut, 100e18, pairVersions, tokenList, DEV, block.timestamp);
 
         assertEq(token24D.balanceOf(DEV), amountOut);
@@ -324,7 +315,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 amountIn = 1e18;
 
         token6D.mint(DEV, amountIn);
-        vm.prank(DEV);
+
         token6D.approve(address(router), amountIn);
 
         IERC20[] memory tokenList;
@@ -339,7 +330,6 @@ contract LiquidityBinRouterTest is TestHelper {
         pairVersions[0] = DEFAULT_BIN_STEP;
         pairVersions[1] = 1;
 
-        vm.startPrank(DEV);
         router.swapExactTokensForTokens(amountIn, 0, pairVersions, tokenList, DEV, block.timestamp);
 
         assertGt(usdc.balanceOf(DEV), 0);
@@ -357,8 +347,6 @@ contract LiquidityBinRouterTest is TestHelper {
         router.swapExactTokensForTokens(usdc.balanceOf(DEV), 0, pairVersions, tokenList, DEV, block.timestamp);
 
         assertGt(token6D.balanceOf(DEV) - balanceBefore, 0);
-
-        vm.stopPrank();
     }
 
     function testSwapTokensForExactTokensMultiplePairsWithV1() public {
@@ -370,7 +358,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 amountOut = 1e6;
 
         token6D.mint(DEV, 100e18);
-        vm.prank(DEV);
+
         token6D.approve(address(router), 100e18);
 
         IERC20[] memory tokenList;
@@ -385,7 +373,6 @@ contract LiquidityBinRouterTest is TestHelper {
         pairVersions[0] = DEFAULT_BIN_STEP;
         pairVersions[1] = 1;
 
-        vm.prank(DEV);
         router.swapTokensForExactTokens(amountOut, 100e18, pairVersions, tokenList, DEV, block.timestamp);
 
         assertEq(usdc.balanceOf(DEV), amountOut);

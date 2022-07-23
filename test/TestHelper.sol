@@ -155,14 +155,14 @@ abstract contract TestHelper is Test {
         }
     }
 
-    function addLiquidityFromRouterForPair(
+    function addLiquidityFromRouter(
         ERC20MockDecimals _tokenX,
         ERC20MockDecimals _tokenY,
         uint256 _amountYIn,
         uint24 _startId,
         uint24 _numberBins,
         uint24 _gap,
-        uint256 _slippage
+        uint8 _binStep
     )
         internal
         returns (
@@ -180,14 +180,13 @@ abstract contract TestHelper is Test {
         );
 
         _tokenX.mint(DEV, amountXIn);
-        vm.startPrank(DEV);
         _tokenX.approve(address(router), amountXIn);
         _tokenY.approve(address(router), _amountYIn);
 
         ILBRouter.LiquidityParameters memory _liquidityParameters = ILBRouter.LiquidityParameters(
             _tokenX,
             _tokenY,
-            DEFAULT_BIN_STEP,
+            _binStep,
             amountXIn,
             _amountYIn,
             0,
@@ -206,36 +205,8 @@ abstract contract TestHelper is Test {
             router.addLiquidityAVAX{value: _amountYIn}(_liquidityParameters);
         } else {
             _tokenY.mint(DEV, _amountYIn);
-
             router.addLiquidity(_liquidityParameters);
         }
-        vm.stopPrank();
-    }
-
-    function addLiquidityFromRouter(
-        uint256 _amountYIn,
-        uint24 _startId,
-        uint24 _numberBins,
-        uint24 _gap,
-        uint256 _slippage
-    )
-        internal
-        returns (
-            int256[] memory _deltaIds,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
-            uint256 amountXIn
-        )
-    {
-        (_deltaIds, _distributionX, _distributionY, amountXIn) = addLiquidityFromRouterForPair(
-            token6D,
-            token18D,
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap,
-            _slippage
-        );
     }
 
     function spreadLiquidityForRouter(

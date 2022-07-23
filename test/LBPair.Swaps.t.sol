@@ -33,7 +33,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         uint256 amountYOut = router.getSwapOut(pair, amountXIn, true);
 
         token6D.mint(address(pair), amountXIn);
-        vm.prank(DEV);
+
         pair.swap(true, DEV);
 
         assertEq(token6D.balanceOf(DEV), 0);
@@ -66,7 +66,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         uint256 amountXOut = router.getSwapOut(pair, amountYIn, false);
 
         token18D.mint(address(pair), amountYIn);
-        vm.prank(DEV);
+
         pair.swap(false, DEV);
 
         assertEq(token6D.balanceOf(DEV), amountXOut);
@@ -97,7 +97,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         uint256 amountXIn = router.getSwapIn(pair, amountYOut, true);
 
         token6D.mint(address(pair), amountXIn);
-        vm.prank(DEV);
+
         pair.swap(true, DEV);
 
         assertEq(token6D.balanceOf(DEV), 0);
@@ -128,7 +128,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         uint256 amountYIn = router.getSwapIn(pair, amountXOut, false);
 
         token18D.mint(address(pair), amountYIn);
-        vm.prank(DEV);
+
         pair.swap(false, DEV);
 
         assertEq(token6D.balanceOf(DEV), amountXOut);

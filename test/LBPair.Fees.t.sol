@@ -72,7 +72,6 @@ contract LiquidityBinPairFeesTest is TestHelper {
             amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
 
-        vm.prank(DEV);
         pair.safeBatchTransferFrom(DEV, BOB, _ids, amounts);
 
         token18D.mint(address(pair), amountYForSwap);
@@ -130,13 +129,13 @@ contract LiquidityBinPairFeesTest is TestHelper {
         assertGt(feesY.total, 0);
 
         address protocolFeesReceiver = factory.feeRecipient();
-        vm.prank(DEV);
+
         uint256 balanceBefore = token18D.balanceOf(protocolFeesReceiver);
         pair.collectProtocolFees();
         assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesY.protocol - 1);
 
         // Claiming twice
-        vm.prank(DEV);
+
         pair.collectProtocolFees();
         assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesY.protocol - 1);
     }

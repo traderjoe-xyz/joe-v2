@@ -27,8 +27,8 @@ error LBFactory__BinStepHasNoPreset(uint256 binStep);
 contract LBFactory is PendingOwnable, ILBFactory {
     using Decoder for bytes32;
 
-    uint256 public constant override MIN_FEE = 1; // 0.01%
-    uint256 public constant override MAX_FEE = 1_000; // 10%
+    uint256 public constant override MIN_FEE = 1e14; // 0.01%
+    uint256 public constant override MAX_FEE = 1e17; // 10%
 
     uint256 public constant override MIN_BIN_STEP = 1; // 0.01%
     uint256 public constant override MAX_BIN_STEP = 100; // 1%, can't be greater than 247 for indexing reasons
@@ -415,12 +415,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
             revert LBFactory__ProtocolShareOverflows(_protocolShare, MAX_PROTOCOL_SHARE);
 
         {
-            uint256 _baseFee = (uint256(_baseFactor) * uint256(_binStep)) / Constants.HUNDRED_PERCENT;
+            uint256 _baseFee = (uint256(_baseFactor) * _binStep) * 1e12;
             if (_baseFee < MIN_FEE) revert LBFactory__BaseFeesBelowMin(_baseFee, MIN_FEE);
 
             // decimals((_variableFeeControl * (_maxAccumulator * _binStep)**2)) = 2 + (4 + 4) * 2 = 18
             // The result should use 4 decimals, so we divide it by 1e14
-            uint256 _maxVariableFee = (_variableFeeControl * (_maxAccumulator * _binStep)**2) / 1e14;
+            uint256 _maxVariableFee = ((uint256(_maxAccumulator) * _binStep)**2 * _variableFeeControl);
             if (_baseFee + _maxVariableFee > MAX_FEE)
                 revert LBFactory__FeesAboveMax(_baseFee + _maxVariableFee, MAX_FEE);
         }

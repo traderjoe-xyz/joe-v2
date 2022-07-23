@@ -9,7 +9,7 @@ contract LiquidityBinRouterTest is TestHelper {
         token18D = new ERC20MockDecimals(18);
 
         factory = new LBFactory(DEV);
-        setDefaultFactoryPresets();
+        setDefaultFactoryPresets(DEFAULT_BIN_STEP);
         new LBFactoryHelper(factory);
 
         router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(WAVAX_AVALANCHE_ADDRESS));

@@ -226,10 +226,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
         bytes32 _avPresets = _availablePresets;
         if (_avPresets.decode(1, _binStep) == 0) {
             // We add a 1 at bit `_binStep` as this binStep is now set
-            _avPresets = bytes32(uint256(_avPresets) & (1 << _binStep));
+            _avPresets = bytes32(uint256(_avPresets) | (1 << _binStep));
 
             // Increase the number of preset by 1
-            _avPresets = bytes32(uint256(_avPresets) & (1 << 248));
+            _avPresets = bytes32(uint256(_avPresets) + (1 << 248));
 
             // Save the changes
             _availablePresets = _avPresets;
@@ -302,8 +302,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
             uint256 _index;
             for (uint256 i = MIN_BIN_STEP; i <= MAX_BIN_STEP; ++i) {
-                if (_avPresets.decode(1, i) == 1) binSteps[_index] = i;
-                if (++_index == _nbPresets) break;
+                if (_avPresets.decode(1, i) == 1) {
+                    binSteps[_index] = i;
+                    if (++_index == _nbPresets) break;
+                }
             }
         }
     }

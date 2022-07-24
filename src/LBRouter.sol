@@ -915,15 +915,6 @@ contract LBRouter is ILBRouter {
         }
     }
 
-    /// @notice Helper function to return the min amount calculate using the slippage
-    /// @param _amount The amount of token
-    /// @param _amountSlippageBP The slippage amount in basis point (1 is 0.01%, 10_000 is 100%)
-    /// @return The min amount calculated (rounded down)
-    function _getMinAmount(uint256 _amount, uint256 _amountSlippageBP) private pure returns (uint256) {
-        if (_amountSlippageBP > Constants.BASIS_POINT_MAX) revert LBRouter__AmountSlippageBPTooBig(_amountSlippageBP);
-        return (_amount * _amountSlippageBP) / Constants.BASIS_POINT_MAX;
-    }
-
     /// @notice Helper function to transfer AVAX
     /// @param _to The address of the recipient
     /// @param _amount The AVAX amount to send

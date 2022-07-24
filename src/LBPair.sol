@@ -465,8 +465,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /// @notice Performs a low level add, this needs to be called from a contract which performs important safety checks.
     /// @param _ids The list of ids to add liquidity
-    /// @param _distributionX The distribution of tokenX with sum(_distributionX) = 100e36 (100%) or 0 (0%)
-    /// @param _distributionY The distribution of tokenY with sum(_distributionY) = 100e36 (100%) or 0 (0%)
+    /// @param _distributionX The distribution of tokenX with sum(_distributionX) = 100e18 (100%) or 0 (0%)
+    /// @param _distributionY The distribution of tokenY with sum(_distributionY) = 100e18 (100%) or 0 (0%)
     /// @param _to The address of the recipient
     /// @return The amount of token X that was added to the pair
     /// @return The amount of token Y that was added to the pair

@@ -105,8 +105,32 @@ contract LiquidityBinFactoryTest is TestHelper {
         createLBPairDefaultFees(token6D, token12D);
     }
 
-    function testFailForInvalidBinStep() public {
-        factory.createLBPair(token6D, token12D, ID_ONE, 150);
+    function testFailForInvalidBinStepOverflow() public {
+        factory.setPreset(
+            uint8(factory.MAX_BIN_STEP() + 1),
+            DEFAULT_BASE_FACTOR,
+            DEFAULT_FILTER_PERIOD,
+            DEFAULT_DECAY_PERIOD,
+            DEFAULT_REDUCTION_FACTOR,
+            DEFAULT_VARIABLE_FEE_CONTROL,
+            DEFAULT_PROTOCOL_SHARE,
+            DEFAULT_MAX_ACCUMULATOR,
+            DEFAULT_SAMPLE_LIFETIME
+        );
+    }
+
+    function testFailForInvalidBinStepUnderflow() public {
+        factory.setPreset(
+            uint8(factory.MIN_BIN_STEP() - 1),
+            DEFAULT_BASE_FACTOR,
+            DEFAULT_FILTER_PERIOD,
+            DEFAULT_DECAY_PERIOD,
+            DEFAULT_REDUCTION_FACTOR,
+            DEFAULT_VARIABLE_FEE_CONTROL,
+            DEFAULT_PROTOCOL_SHARE,
+            DEFAULT_MAX_ACCUMULATOR,
+            DEFAULT_SAMPLE_LIFETIME
+        );
     }
 
     function testSetFeeParametersOnPair() public {

@@ -124,7 +124,7 @@ library Math512Bits {
     /// @param x The multiplicand as an uint256
     /// @param y The multiplier as an uint256
     /// @param offset The offset as an uint256, can't be greater than 256
-    /// @param roundDown Whether the result will be roudned down or up
+    /// @param roundDown Whether the result will be rounded down or up
     /// @return result The result as an uint256
     function mulShift(
         uint256 x,
@@ -166,6 +166,23 @@ library Math512Bits {
         }
     }
 
+    /// @notice Calculates x >> offset / y with full precision.
+    /// The result will be rounded down or up depending on `roundDown`
+    ///
+    /// @dev Credit to Remco Bloemen under MIT license https://xn--2-umb.com/21/muldiv.
+    ///
+    /// Requirements:
+    /// - The offset needs to be strictly lower than 256.
+    /// - The result must fit within uint256.
+    ///
+    /// Caveats:
+    /// - This function does not work with fixed-point numbers
+    ///
+    /// @param x The multiplicand as an uint256
+    /// @param offset The number of bit to shift x as an uint256
+    /// @param denominator The divisor as an uint256.
+    /// @param roundDown Whether the result will be rounded down or up
+    /// @return result The result as an uint256
     function shiftDiv(
         uint256 x,
         uint256 offset,

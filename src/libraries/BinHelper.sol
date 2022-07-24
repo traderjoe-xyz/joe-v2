@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 
 import "./Math128x128.sol";
 
-error BinHelper__PowerUnderflow();
 error BinHelper__WrongBPValue(uint256 bp);
 error BinHelper__IdOverflows(int256 _id);
 
@@ -39,74 +38,13 @@ library BinHelper {
         unchecked {
             int256 _realId = int256(uint256(_id)) - INT24_SHIFT;
 
-            uint256 _value = _getBPValue(_bp);
-
-            return _powerOf(_value, _realId);
+            return _getBPValue(_bp).power(_realId);
         }
     }
 
-    /// @notice Returns the value of x^y It's calculated using `1 / x^(-y)` to have the same precision
-    /// whether `y` is negative or positive.
-    /// @param x A real number with Constants.SCALE_OFFSET bits of decimals
-    /// @param y A relative number without any decimals
-    /// @return The result of `x^y`
-    function _powerOf(uint256 x, int256 y) internal pure returns (uint256) {
-        unchecked {
-            uint256 absY = y >= 0 ? uint256(y) : uint256(-y);
-
-            uint256 pow = type(uint256).max / x;
-
-            uint256 result = Constants.SCALE;
-
-            if (absY & 0x1 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x2 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x4 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x8 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x10 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x20 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x40 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x80 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x100 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x200 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x400 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x800 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x1000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x2000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x4000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x8000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x10000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x20000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x40000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-            pow = (pow * pow) >> Constants.SCALE_OFFSET;
-            if (absY & 0x80000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
-
-            if (result == 0 || absY > 0xfffff) revert BinHelper__PowerUnderflow();
-
-            return y <= 0 ? result : type(uint256).max / result;
-        }
-    }
-
-    /// @notice Returns the (1 + bp) value
-    /// @param _bp The bp value in [1; 100]
-    /// @return The (1+bp) value
+    /// @notice Returns the (1 + bp) value as a 128.128-decimal fixed-point number
+    /// @param _bp The bp value in [1; 100] (referring to 0.01% to 1%)
+    /// @return The (1+bp) value as a 128.128-decimal fixed-point number
     function _getBPValue(uint256 _bp) internal pure returns (uint256) {
         unchecked {
             return Constants.SCALE + (_bp << Constants.SCALE_OFFSET) / Constants.BASIS_POINT_MAX;

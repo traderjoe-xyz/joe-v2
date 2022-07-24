@@ -6,6 +6,8 @@ import "./Math512Bits.sol";
 import "./BitMath.sol";
 import "./Constants.sol";
 
+error Math128x128__PowerUnderflow(uint256 x, int256 y);
+
 library Math128x128 {
     using Math512Bits for uint256;
     using BitMath for uint256;
@@ -65,6 +67,65 @@ library Math128x128 {
                 }
             }
             result *= sign;
+        }
+    }
+
+    /// @notice Returns the value of x^y It's calculated using `1 / x^(-y)` to have the same precision
+    /// whether `y` is negative or positive.
+    /// @param x The unsigned 128.128-decimal fixed-point number for which to calculate the power
+    /// @param y A relative number without any decimals
+    /// @return The result of `x^y`
+    function power(uint256 x, int256 y) internal pure returns (uint256) {
+        unchecked {
+            uint256 absY = y >= 0 ? uint256(y) : uint256(-y);
+
+            uint256 pow = type(uint256).max / x;
+
+            uint256 result = Constants.SCALE;
+
+            if (absY & 0x1 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x2 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x4 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x8 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x10 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x20 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x40 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x80 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x100 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x200 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x400 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x800 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x1000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x2000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x4000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x8000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x10000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x20000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x40000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+            pow = (pow * pow) >> Constants.SCALE_OFFSET;
+            if (absY & 0x80000 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
+
+            if (result == 0 || absY > 0xfffff) revert Math128x128__PowerUnderflow(x, y);
+
+            return y <= 0 ? result : type(uint256).max / result;
         }
     }
 }

@@ -9,12 +9,21 @@ import "./ILBFactoryHelper.sol";
 import "./IPendingOwnable.sol";
 
 interface ILBFactory is IPendingOwnable {
+    /// @dev Structure to store LBPair information, such as:
+    /// - LBPair: The address of the LBPair
+    /// - createdByOwner: Whether the pair was created by the owner of the factory
+    /// - isBlacklisted: Whether the pair is blacklisted or not. A blacklisted pair will not be usable within the router
     struct LBPairInfo {
         ILBPair LBPair;
         bool createdByOwner;
         bool isBlacklisted;
     }
 
+    /// @dev Structure to store the LBPair available, such as:
+    /// - binStep: The bin step of the LBPair
+    /// - LBPair: The address of the LBPair
+    /// - createdByOwner: Whether the pair was created by the owner of the factory
+    /// - isBlacklisted: Whether the pair is blacklisted or not. A blacklisted pair will not be usable within the router
     struct LBPairAvailable {
         uint256 binStep;
         ILBPair LBPair;

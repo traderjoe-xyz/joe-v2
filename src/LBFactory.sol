@@ -124,6 +124,16 @@ contract LBFactory is PendingOwnable, ILBFactory {
         return _getLBPairInfo(_tokenA, _tokenB, _binStep);
     }
 
+    /// @notice Vies function to return the different parameters of the preset
+    /// @param _binStep The bin step of the preset
+    /// @return baseFactor The base factor
+    /// @return filterPeriod The filter period of the preset
+    /// @return decayPeriod The decay period of the preset
+    /// @return reductionFactor The reduction factor of the preset
+    /// @return variableFeeControl The variable fee control of the preset
+    /// @return protocolShare The protocol share of the preset
+    /// @return maxAccumulator The max accumulator of the preset
+    /// @return sampleLifetime The sample lifetime of the preset
     function getPreset(uint16 _binStep)
         external
         view
@@ -153,6 +163,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
         sampleLifetime = _preset.decode(type(uint16).max, 240);
     }
 
+    /// @notice Vies function to return the list of available binStep with a preset
+    /// @return presetsBinStep The list of binStep
     function getAvailablePresetsBinStep() external view override returns (uint256[] memory presetsBinStep) {
         unchecked {
             bytes32 _avPresets = _availablePresets;
@@ -170,6 +182,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
         }
     }
 
+    /// @notice Vies function to return the list of available binStep with a preset
+    /// @param _tokenX The first token of the pair
+    /// @param _tokenY The second token of the pair
+    /// @return LBPairsAvailable The list of available LBPairs
     function getAvailableLBPairsBinStep(IERC20 _tokenX, IERC20 _tokenY)
         external
         view

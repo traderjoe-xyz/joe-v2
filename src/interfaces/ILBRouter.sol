@@ -19,8 +19,8 @@ interface ILBRouter {
     /// - activeIdDesired: The active id that user wants to add liquidity from
     /// - idSlippage: The number of id that are allowed to slip
     /// - deltaIds: The list of delta ids to add liquidity (`deltaId = activeId - desiredId`)
-    /// - distributionX: The distribution of tokenX with sum(distributionX) = 100e36 (100%) or 0 (0%)
-    /// - distributionY: The distribution of tokenY with sum(distributionY) = 100e36 (100%) or 0 (0%)
+    /// - distributionX: The distribution of tokenX with sum(distributionX) = 100e18 (100%) or 0 (0%)
+    /// - distributionY: The distribution of tokenY with sum(distributionY) = 100e18 (100%) or 0 (0%)
     /// - to: The address of the recipient
     /// - deadline: The deadline of the tx
     struct LiquidityParameters {

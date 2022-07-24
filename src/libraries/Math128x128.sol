@@ -21,7 +21,7 @@ library Math128x128 {
     /// Caveats:
     /// - The results are not perfectly accurate to the last decimal, due to the lossy precision of the iterative approximation.
     ///
-    /// @param x The signed 128.128-decimal fixed-point number for which to calculate the binary logarithm.
+    /// @param x The unsigned 128.128-decimal fixed-point number for which to calculate the binary logarithm.
     /// @return result The binary logarithm as a signed 40.36-decimal fixed-point number.
     function log2(uint256 x) internal pure returns (int256 result) {
         unchecked {

@@ -15,6 +15,13 @@ interface ILBFactory is IPendingOwnable {
         bool isBlacklisted;
     }
 
+    struct LBPairAvailable {
+        uint256 binStep;
+        ILBPair LBPair;
+        bool createdByOwner;
+        bool isBlacklisted;
+    }
+
     function MIN_FEE() external pure returns (uint256);
 
     function MAX_FEE() external pure returns (uint256);
@@ -92,7 +99,7 @@ interface ILBFactory is IPendingOwnable {
     function getAvailableLBPairsBinStep(IERC20 _tokenX, IERC20 _tokenY)
         external
         view
-        returns (uint256[] memory LBPairsBinStep);
+        returns (LBPairAvailable[] memory LBPairsBinStep);
 
     function setFeeParametersOnPair(
         IERC20 _tokenX,

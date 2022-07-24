@@ -129,19 +129,55 @@ contract LiquidityBinFactoryTestM is TestHelper {
     }
 
     function testAvailableBinSteps() public {
-        uint256[] memory LBPairBinSteps = factory.getAvailableLBPairsBinStep(token6D, token18D);
+        ILBFactory.LBPairAvailable[] memory LBPairBinSteps = factory.getAvailableLBPairsBinStep(token6D, token18D);
         assertEq(LBPairBinSteps.length, 3);
-        assertEq(LBPairBinSteps[0], DEFAULT_BIN_STEP);
-        assertEq(LBPairBinSteps[1], 75);
-        assertEq(LBPairBinSteps[2], 98);
+        assertEq(LBPairBinSteps[0].binStep, DEFAULT_BIN_STEP);
+        assertEq(LBPairBinSteps[1].binStep, 75);
+        assertEq(LBPairBinSteps[2].binStep, 98);
+        assertEq(LBPairBinSteps[0].createdByOwner, true);
+        assertEq(LBPairBinSteps[1].createdByOwner, true);
+        assertEq(LBPairBinSteps[2].createdByOwner, true);
 
-        uint256[] memory LBPairBinStepsReversed = factory.getAvailableLBPairsBinStep(token18D, token6D);
+        ILBFactory.LBPairAvailable[] memory LBPairBinStepsReversed = factory.getAvailableLBPairsBinStep(
+            token18D,
+            token6D
+        );
         assertEq(LBPairBinStepsReversed.length, 3);
+        assertEq(LBPairBinStepsReversed[0].binStep, DEFAULT_BIN_STEP);
+        assertEq(LBPairBinStepsReversed[1].binStep, 75);
+        assertEq(LBPairBinStepsReversed[2].binStep, 98);
 
         factory.removePreset(75);
         factory.removePreset(98);
 
-        uint256[] memory LBPairBinStepsAfterRemoval = factory.getAvailableLBPairsBinStep(token6D, token18D);
-        assertEq(LBPairBinStepsAfterRemoval.length, 3);
+        ILBFactory.LBPairAvailable[] memory LBPairBinStepsAfterPresetRemoval = factory.getAvailableLBPairsBinStep(
+            token6D,
+            token18D
+        );
+        assertEq(LBPairBinStepsAfterPresetRemoval.length, 3);
+        assertEq(LBPairBinStepsAfterPresetRemoval[0].binStep, DEFAULT_BIN_STEP);
+        assertEq(LBPairBinStepsAfterPresetRemoval[1].binStep, 75);
+        assertEq(LBPairBinStepsAfterPresetRemoval[2].binStep, 98);
+
+        factory.setLBPairBlacklist(token6D, token18D, DEFAULT_BIN_STEP, true);
+        factory.setLBPairBlacklist(token18D, token6D, 98, true);
+
+        ILBFactory.LBPairAvailable[] memory LBPairBinStepsAfterBlacklisting = factory.getAvailableLBPairsBinStep(
+            token6D,
+            token18D
+        );
+        assertEq(LBPairBinStepsAfterBlacklisting.length, 3);
+        assertEq(LBPairBinStepsAfterBlacklisting[0].isBlacklisted, true);
+        assertEq(LBPairBinStepsAfterBlacklisting[1].isBlacklisted, false);
+        assertEq(LBPairBinStepsAfterBlacklisting[2].isBlacklisted, true);
+
+        factory.setLBPairBlacklist(token6D, token18D, DEFAULT_BIN_STEP, false);
+
+        ILBFactory.LBPairAvailable[] memory LBPairBinStepsAfterRemovalOfBlacklisting = factory
+            .getAvailableLBPairsBinStep(token6D, token18D);
+        assertEq(LBPairBinStepsAfterRemovalOfBlacklisting.length, 3);
+        assertEq(LBPairBinStepsAfterRemovalOfBlacklisting[0].isBlacklisted, false);
+        assertEq(LBPairBinStepsAfterRemovalOfBlacklisting[1].isBlacklisted, false);
+        assertEq(LBPairBinStepsAfterRemovalOfBlacklisting[2].isBlacklisted, true);
     }
 }

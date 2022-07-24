@@ -174,20 +174,27 @@ contract LBFactory is PendingOwnable, ILBFactory {
         external
         view
         override
-        returns (uint256[] memory LBPairsBinStep)
+        returns (LBPairAvailable[] memory LBPairsAvailable)
     {
         unchecked {
             (_tokenX, _tokenY) = _sortTokens(_tokenX, _tokenY);
             bytes32 _avLBPairBinSteps = _availableLBPairBinSteps[_tokenX][_tokenY];
-            uint256 _nbBinSteps = _avLBPairBinSteps.decode(type(uint8).max, 248);
+            uint256 _nbAvailable = _avLBPairBinSteps.decode(type(uint8).max, 248);
 
-            LBPairsBinStep = new uint256[](_nbBinSteps);
+            LBPairsAvailable = new LBPairAvailable[](_nbAvailable);
 
             uint256 _index;
             for (uint256 i = MIN_BIN_STEP; i <= MAX_BIN_STEP; ++i) {
                 if (_avLBPairBinSteps.decode(1, i) == 1) {
-                    LBPairsBinStep[_index] = i;
-                    if (++_index == _nbBinSteps) break;
+                    LBPairInfo memory _LBPairInfo = _LBPairsInfo[_tokenX][_tokenY][i];
+
+                    LBPairsAvailable[_index] = LBPairAvailable({
+                        binStep: i,
+                        LBPair: _LBPairInfo.LBPair,
+                        createdByOwner: _LBPairInfo.createdByOwner,
+                        isBlacklisted: _LBPairInfo.isBlacklisted
+                    });
+                    if (++_index == _nbAvailable) break;
                 }
             }
         }

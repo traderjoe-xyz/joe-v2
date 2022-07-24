@@ -84,6 +84,12 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         vm.prank(ALICE);
         createLBPairDefaultFees(token6D, token12D);
+
+        ILBFactory.LBPairAvailable[] memory LBPairBinSteps = factory.getAvailableLBPairsBinStep(token6D, token12D);
+        assertEq(LBPairBinSteps.length, 1);
+        assertEq(LBPairBinSteps[0].binStep, DEFAULT_BIN_STEP);
+        assertEq(LBPairBinSteps[0].isBlacklisted, false);
+        assertEq(LBPairBinSteps[0].createdByOwner, false);
     }
 
     function testFailForIdenticalAddresses() public {

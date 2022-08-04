@@ -41,7 +41,7 @@ contract LBRouter is ILBRouter {
     using SafeERC20 for IERC20;
     using FeeHelper for FeeHelper.FeeParameters;
     using Math512Bits for uint256;
-    using SwapHelper for ILBPair.PairInformation;
+    using SwapHelper for ILBPair.Bin;
 
     ILBFactory public immutable override factory;
     IJoeFactory public immutable override oldFactory;
@@ -186,8 +186,8 @@ contract LBRouter is ILBRouter {
                 _bin = ILBPair.Bin(uint112(_reserveX), uint112(_reserveY), 0, 0);
             }
             if (_bin.reserveX != 0 || _bin.reserveY != 0) {
-                (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) = _pair
-                    .getAmounts(_bin, _fp, _swapForY, _startId, _amountIn);
+                (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) = _bin
+                    .getAmounts(_fp, _pair.activeId, _swapForY, _startId, _amountIn);
 
                 if (_amountInToBin > type(uint112).max) revert LBRouter__BinReserveOverflows(_pair.activeId);
 

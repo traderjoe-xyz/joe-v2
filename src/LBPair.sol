@@ -44,7 +44,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     using SafeCast for uint256;
     using TokenHelper for IERC20;
     using FeeHelper for FeeHelper.FeeParameters;
-    using SwapHelper for PairInformation;
+    using SwapHelper for Bin;
     using Decoder for bytes32;
     using Oracle for bytes32[65_536];
 
@@ -358,12 +358,12 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         while (true) {
             Bin memory _bin = _bins[_pair.activeId];
             if ((!_swapForY && _bin.reserveX != 0) || (_swapForY && _bin.reserveY != 0)) {
-                (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) = _pair
-                    .getAmounts(_bin, _fp, _swapForY, _startId, _amountIn);
+                (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) = _bin
+                    .getAmounts(_fp, _pair.activeId, _swapForY, _startId, _amountIn);
 
-                _pair.updateFees(_bin, _fees, _swapForY, totalSupply(_pair.activeId));
+                _bin.updateFees(_swapForY ? _pair.feesX : _pair.feesY, _fees, _swapForY, totalSupply(_pair.activeId));
 
-                _pair.updateReserves(_bin, _swapForY, _amountInToBin.safe112(), _amountOutOfBin);
+                _bin.updateReserves(_pair, _swapForY, _amountInToBin.safe112(), _amountOutOfBin);
 
                 _amountIn -= _amountInToBin + _fees.total;
                 _amountOut += _amountOutOfBin;
@@ -524,15 +524,18 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                     if (_mintInfo.amountX > _weightedX || _mintInfo.amountY > _weightedY) {
                         FeeHelper.FeesDistribution memory _fees;
 
+                        uint256 _totalSupply = totalSupply(_mintInfo.id);
                         if (_mintInfo.amountX > _weightedX) {
                             _fees = _fp.getFeesDistribution(_fp.getFees(_mintInfo.amountX - _weightedX, 0));
                             _mintInfo.amountX -= _fees.total;
+
+                            _bin.updateFees(_pair.feesX, _fees, true, _totalSupply);
                         } else if (_mintInfo.amountY > _weightedY) {
                             _fees = _fp.getFeesDistribution(_fp.getFees(_mintInfo.amountY - _weightedY, 0));
                             _mintInfo.amountY -= _fees.total;
-                        }
 
-                        _pair.updateFees(_bin, _fees, _mintInfo.amountX > _weightedX, totalSupply(_mintInfo.id));
+                            _bin.updateFees(_pair.feesY, _fees, false, _totalSupply);
+                        }
                     }
                 }
 

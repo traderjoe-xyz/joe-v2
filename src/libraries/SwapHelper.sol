@@ -15,9 +15,9 @@ library SwapHelper {
     using SafeMath for uint256;
 
     /// @notice Returns the swap amounts in the current bin
-    /// @param pair The pair information
     /// @param bin The bin information
     /// @param fp The fee parameters
+    /// @param activeId The active id of the pair
     /// @param swapForY Wether you've swapping token X for token Y (true) or token Y for token X (false)
     /// @param startId The id at which the swap started
     /// @param amountIn The amount sent to the user
@@ -25,9 +25,9 @@ library SwapHelper {
     /// @return amountOutOfBin The amount of token that is removed from the bin
     /// @return fees The swap fees
     function getAmounts(
-        ILBPair.PairInformation memory pair,
         ILBPair.Bin memory bin,
         FeeHelper.FeeParameters memory fp,
+        uint256 activeId,
         bool swapForY,
         uint256 startId,
         uint256 amountIn
@@ -41,7 +41,7 @@ library SwapHelper {
         )
     {
         unchecked {
-            uint256 _price = BinHelper.getPriceFromId(pair.activeId, fp.binStep);
+            uint256 _price = BinHelper.getPriceFromId(activeId, fp.binStep);
 
             uint256 _reserve;
             uint256 _maxAmountInToBin;
@@ -53,7 +53,7 @@ library SwapHelper {
                 _maxAmountInToBin = _price.mulShift(_reserve, Constants.SCALE_OFFSET, false);
             }
 
-            uint256 _deltaId = startId > pair.activeId ? startId - pair.activeId : pair.activeId - startId;
+            uint256 _deltaId = startId > activeId ? startId - activeId : activeId - startId;
 
             fees = fp.getFeesDistribution(fp.getFees(_maxAmountInToBin, _deltaId));
 
@@ -73,41 +73,38 @@ library SwapHelper {
     }
 
     /// @notice Update the fees of the pair and accumulated token per share of the bin
-    /// @param pair The pair information
     /// @param bin The bin information
-    /// @param fees The fees amounts
+    /// @param pairFees The current fees of the pair information
+    /// @param fees The fees amounts added to the pairFees
     /// @param swapForY whether the token sent was Y (true) or X (false)
     /// @param totalSupply The total supply of the token id
     function updateFees(
-        ILBPair.PairInformation memory pair,
         ILBPair.Bin memory bin,
+        FeeHelper.FeesDistribution memory pairFees,
         FeeHelper.FeesDistribution memory fees,
         bool swapForY,
         uint256 totalSupply
     ) internal pure {
+        pairFees.total += fees.total;
+        pairFees.protocol += fees.protocol;
+
         uint256 tokenPerShare = (uint256(fees.total - fees.protocol) << Constants.SCALE_OFFSET) / totalSupply;
         if (swapForY) {
-            pair.feesX.total += fees.total;
-            pair.feesX.protocol += fees.protocol;
-
             bin.accTokenXPerShare += tokenPerShare;
         } else {
-            pair.feesY.total += fees.total;
-            pair.feesY.protocol += fees.protocol;
-
             bin.accTokenYPerShare += tokenPerShare;
         }
     }
 
     /// @notice Update reserves
-    /// @param pair The pair information
     /// @param bin The bin information
+    /// @param pair The pair information
     /// @param swapForY whether the token sent was Y (true) or X (false)
     /// @param amountInToBin The amount of token that is added to the bin without fees
     /// @param amountOutOfBin The amount of token that is removed from the bin
     function updateReserves(
-        ILBPair.PairInformation memory pair,
         ILBPair.Bin memory bin,
+        ILBPair.PairInformation memory pair,
         bool swapForY,
         uint256 amountInToBin,
         uint256 amountOutOfBin

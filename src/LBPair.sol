@@ -175,16 +175,33 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /// @notice View function to get the global fees information, the total fees and those for protocol
     /// @dev The fees for users are `total - protocol`
-    /// @return feesX The fees distribution of asset X
-    /// @return feesY The fees distribution of asset Y
+    /// @return feesXTotal The total fees of asset X
+    /// @return feesYTotal The total fees of asset Y
+    /// @return feesXProtocol The protocol fees of asset X
+    /// @return feesYProtocol The protocol fees of asset Y
     function getGlobalFees()
         external
         view
         override
-        returns (FeeHelper.FeesDistribution memory feesX, FeeHelper.FeesDistribution memory feesY)
+        returns (
+            uint256 feesXTotal,
+            uint256 feesYTotal,
+            uint256 feesXProtocol,
+            uint256 feesYProtocol
+        )
     {
-        feesX = _pairInformation.feesX;
-        feesY = _pairInformation.feesY;
+        uint256 _mask128 = type(uint128).max;
+        bytes32 _slotX;
+        bytes32 _slotY;
+        assembly {
+            _slotX := sload(add(_pairInformation.slot, 2))
+            _slotY := sload(add(_pairInformation.slot, 3))
+
+            feesXTotal := and(_slotX, _mask128)
+            feesYTotal := and(_slotY, _mask128)
+        }
+        feesXProtocol = _slotX.decode(128, _mask128);
+        feesYProtocol = _slotY.decode(128, _mask128);
     }
 
     /// @notice View function to get the oracle parameters
@@ -525,13 +542,13 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
                         FeeHelper.FeesDistribution memory _fees;
                         if (_mintInfo.amountX > _receivedX) {
-                            _fees = _fp.getFeesDistribution(_fp.getFees(_mintInfo.amountX - _receivedX, 0));
+                            _fees = _fp.getFeesDistribution(_fp.getFeesForC(_mintInfo.amountX - _receivedX, 0));
 
                             _mintInfo.amountX -= _fees.total;
 
                             _bin.updateFees(_pair.feesX, _fees, true, _totalSupply);
                         } else if ((_mintInfo.amountY > _receivedY)) {
-                            _fees = _fp.getFeesDistribution(_fp.getFees(_mintInfo.amountY - _receivedY, 0));
+                            _fees = _fp.getFeesDistribution(_fp.getFeesForC(_mintInfo.amountY - _receivedY, 0));
 
                             _mintInfo.amountY -= _fees.total;
 
@@ -702,22 +719,22 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
             if (msg.sender != _feeRecipient) revert LBPair__OnlyFeeRecipient(_feeRecipient, msg.sender);
 
-            FeeHelper.FeesDistribution memory _feesX = _pairInformation.feesX;
+            FeeHelper.FeesDistribution memory _fees = _pairInformation.feesX;
             uint256 _feesXOut;
-            if (_feesX.protocol != 0) {
-                _feesXOut = _feesX.protocol - 1;
-                _feesX.total -= uint128(_feesXOut);
-                _feesX.protocol = 1;
-                _pairInformation.feesX = _feesX;
+            if (_fees.protocol != 0) {
+                _feesXOut = _fees.protocol - 1;
+                _fees.total -= uint128(_feesXOut);
+                _fees.protocol = 1;
+                _pairInformation.feesX = _fees;
             }
 
-            FeeHelper.FeesDistribution memory _feesY = _pairInformation.feesY;
+            _fees = _pairInformation.feesY;
             uint256 _feesYOut;
-            if (_feesY.protocol != 0) {
-                _feesYOut = _feesY.protocol - 1;
-                _feesY.total -= uint128(_feesYOut);
-                _feesY.protocol = 1;
-                _pairInformation.feesY = _feesY;
+            if (_fees.protocol != 0) {
+                _feesYOut = _fees.protocol - 1;
+                _fees.total -= uint128(_feesYOut);
+                _fees.protocol = 1;
+                _pairInformation.feesY = _fees;
             }
 
             tokenX.safeTransfer(_feeRecipient, _feesXOut);
@@ -757,13 +774,13 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             if (_from != address(0) && _from != address(this)) {
                 uint256 _balanceFrom = balanceOf(_from, _id);
 
-                _claimFee(_bin, _from, _id, _balanceFrom, _balanceFrom - _amount);
+                _cacheFees(_bin, _from, _id, _balanceFrom, _balanceFrom - _amount);
             }
 
             if (_to != address(0) && _to != address(this) && _to != _from) {
                 uint256 _balanceTo = balanceOf(_to, _id);
 
-                _claimFee(_bin, _to, _id, _balanceTo, _balanceTo + _amount);
+                _cacheFees(_bin, _to, _id, _balanceTo, _balanceTo + _amount);
             }
         }
     }
@@ -810,7 +827,13 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         _accruedDebts[_account][_id].debtY = _debtY;
     }
 
-    function _claimFee(
+    /// @notice Update the unclaimed fees of a given user before a transfer
+    /// @param _bin The bin where the user has collected fees
+    /// @param _user The address of the user
+    /// @param _id The id where the user has collected fees
+    /// @param _previousBalance The previous balance of the user
+    /// @param _newBalance The new balance of the user
+    function _cacheFees(
         Bin memory _bin,
         address _user,
         uint256 _id,

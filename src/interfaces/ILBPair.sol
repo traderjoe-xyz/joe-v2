@@ -92,7 +92,12 @@ interface ILBPair {
     function getGlobalFees()
         external
         view
-        returns (FeeHelper.FeesDistribution memory feesX, FeeHelper.FeesDistribution memory feesY);
+        returns (
+            uint256 feesXTotal,
+            uint256 feesYTotal,
+            uint256 feesXProtocol,
+            uint256 feesYProtocol
+        );
 
     function getOracleParameters()
         external

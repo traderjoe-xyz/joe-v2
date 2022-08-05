@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity 0.8.7;
 
 import "./interfaces/ILBToken.sol";
 import "openzeppelin/utils/structs/EnumerableSet.sol";

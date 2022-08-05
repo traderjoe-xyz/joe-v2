@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity 0.8.7;
 
 error Math512Bits__MulDivOverflow(uint256 prod1, uint256 denominator);
 error Math512Bits__ShiftDivOverflow(uint256 prod1, uint256 denominator);

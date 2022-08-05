@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity 0.8.7;
 
 import "./LBPair.sol";
 import "./interfaces/ILBFactoryHelper.sol";
@@ -8,7 +8,7 @@ import "./interfaces/ILBFactoryHelper.sol";
 error LBFactoryHelper__CallerIsNotFactory();
 
 contract LBFactoryHelper is ILBFactoryHelper {
-    ILBFactory public immutable factory;
+    ILBFactory public immutable override factory;
 
     modifier OnlyFactory() {
         if (msg.sender != address(factory)) revert LBFactoryHelper__CallerIsNotFactory();

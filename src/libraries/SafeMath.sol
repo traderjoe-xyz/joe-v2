@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity 0.8.7;
 
 /// @notice This library is made to be used inside unchecked code blocks where a specific operation
 /// should be checked. We use this library to avoid having to close the unchecked block and reopen it right after

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity 0.8.7;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
@@ -43,8 +43,8 @@ contract LBRouter is ILBRouter {
     using SwapHelper for ILBPair.PairInformation;
 
     ILBFactory public immutable override factory;
-    IJoeFactory public immutable oldFactory;
-    IWAVAX public immutable wavax;
+    IJoeFactory public immutable override oldFactory;
+    IWAVAX public immutable override wavax;
 
     modifier onlyFactoryOwner() {
         if (msg.sender != factory.owner()) revert LBRouter__NotFactoryOwner();

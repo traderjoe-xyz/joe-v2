@@ -108,11 +108,10 @@ library FeeHelper {
         uint256 _amount,
         uint256 _binCrossed
     ) internal pure returns (uint256) {
-        uint256 _feeBP;
         unchecked {
-            _feeBP = getBaseFee(_fp) + getVariableFee(_fp, _binCrossed);
+            uint256 _feeShares = getFeeShares(_fp, _amount, _binCrossed);
+            return (_amount * _feeShares) / (Constants.PRECISION);
         }
-        return (_amount * _feeBP) / (Constants.PRECISION);
     }
 
     /// @notice Return the fees from an amount
@@ -125,11 +124,10 @@ library FeeHelper {
         uint256 _amountPlusFee,
         uint256 _binCrossed
     ) internal pure returns (uint256) {
-        uint256 _feeBP;
         unchecked {
-            _feeBP = getBaseFee(_fp) + getVariableFee(_fp, _binCrossed);
+            uint256 _feeShares = getFeeShares(_fp, _amountPlusFee, _binCrossed);
+            return (_amountPlusFee * _feeShares) / (Constants.PRECISION + _feeShares);
         }
-        return (_amountPlusFee * _feeBP) / (Constants.PRECISION + _feeBP);
     }
 
     /// @notice Return the fees distribution added to an amount
@@ -144,6 +142,21 @@ library FeeHelper {
         unchecked {
             fees.total = _fees.safe128();
             fees.protocol = uint128((_fees * _fp.protocolShare) / Constants.HUNDRED_PERCENT);
+        }
+    }
+
+    /// @notice Return the fees
+    /// @param _fp The current fee parameter
+    /// @param _amount The amount of token sent
+    /// @param _binCrossed The current number of bin crossed
+    /// @return feeShares The fee share, with 18 decimals
+    function getFeeShares(
+        FeeParameters memory _fp,
+        uint256 _amount,
+        uint256 _binCrossed
+    ) private pure returns (uint256 feeShares) {
+        unchecked {
+            feeShares = getBaseFee(_fp) + getVariableFee(_fp, _binCrossed);
         }
     }
 }

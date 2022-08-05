@@ -361,14 +361,9 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) = _pair
                     .getAmounts(_bin, _fp, _swapForY, _startId, _amountIn);
 
-                _pair.updateLiquidity(
-                    _bin,
-                    _fees,
-                    _swapForY,
-                    totalSupply(_pair.activeId),
-                    _amountInToBin.safe112(),
-                    _amountOutOfBin
-                );
+                _pair.updateFees(_bin, _fees, _swapForY, totalSupply(_pair.activeId));
+
+                _pair.updateReserves(_bin, _swapForY, _amountInToBin.safe112(), _amountOutOfBin);
 
                 _amountIn -= _amountInToBin + _fees.total;
                 _amountOut += _amountOutOfBin;
@@ -504,103 +499,66 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                     _tree[0][0] |= 1 << _idDepth1;
                 }
 
-                if (_mintInfo.id > _pair.activeId) {
-                    uint256 _distribution = _distributionX[i];
-
-                    if (_distribution > Constants.PRECISION)
-                        revert LBPair__DistributionOverflow(_mintInfo.id, _distribution);
-
-                    uint256 _price = BinHelper.getPriceFromId(_mintInfo.id, _fp.binStep);
-
-                    _mintInfo.amount = (_mintInfo.amountXIn * _distribution) / Constants.PRECISION;
-                    _mintInfo.liquidity = _price.mulShift(_mintInfo.amount, Constants.SCALE_OFFSET, true);
-
-                    _bin.reserveX = (_bin.reserveX + _mintInfo.amount).safe112();
-                    _pair.reserveX += uint136(_mintInfo.amount);
-
-                    _mintInfo.totalDistributionX += _distribution;
-                    _mintInfo.amountXAddedToPair += _mintInfo.amount;
-                } else if (_mintInfo.id < _pair.activeId) {
-                    uint256 _distribution = _distributionY[i];
-
-                    if (_distribution > Constants.PRECISION)
-                        revert LBPair__DistributionOverflow(_mintInfo.id, _distribution);
-
-                    _mintInfo.amount = (_mintInfo.amountYIn * _distribution) / Constants.PRECISION;
-                    _mintInfo.liquidity = _mintInfo.amount;
-
-                    _bin.reserveY = (_bin.reserveY + _mintInfo.amount).safe112();
-                    _pair.reserveY += uint136(_mintInfo.amount);
-
-                    _mintInfo.totalDistributionY += _distribution;
-                    _mintInfo.amountYAddedToPair += _mintInfo.amount;
-                } else {
+                {
                     uint256 _distribX = _distributionX[i];
                     uint256 _distribY = _distributionY[i];
 
                     if (_distribX > Constants.PRECISION) revert LBPair__DistributionOverflow(_mintInfo.id, _distribX);
                     if (_distribY > Constants.PRECISION) revert LBPair__DistributionOverflow(_mintInfo.id, _distribY);
 
-                    uint256 _price = BinHelper.getPriceFromId(_mintInfo.id, _fp.binStep);
-
-                    uint256 _amountX = (_mintInfo.amountXIn * _distribX) / Constants.PRECISION;
-                    uint256 _amountY = (_mintInfo.amountYIn * _distribY) / Constants.PRECISION;
-
-                    // Whether the values change c
-                    {
-                        uint256 _weightedX = _bin.reserveY == 0 ? _amountX : (_bin.reserveX * _amountY) / _bin.reserveY;
-
-                        uint256 _weightedY = _bin.reserveX == 0 ? _amountY : (_bin.reserveY * _amountX) / _bin.reserveX;
-
-                        if (_amountX > _weightedX) {
-                            FeeHelper.FeesDistribution memory _fees = _fp.getFeesDistribution(
-                                _fp.getFees(_amountX - _weightedX, 0)
-                            );
-                            _amountX -= _fees.total;
-
-                            _pair.feesX.total += _fees.total;
-                            _pair.feesX.protocol += _fees.protocol;
-
-                            uint256 tokenPerShare = (uint256(_fees.total - _fees.protocol) << Constants.SCALE_OFFSET) /
-                                totalSupply(_pair.activeId);
-
-                            _bin.accTokenXPerShare += tokenPerShare;
-                        } else if (_amountY > _weightedY) {
-                            FeeHelper.FeesDistribution memory _fees = _fp.getFeesDistribution(
-                                _fp.getFees(_amountY - _weightedY, 0)
-                            );
-                            _amountY -= _fees.total;
-
-                            _pair.feesY.total += _fees.total;
-                            _pair.feesY.protocol += _fees.protocol;
-
-                            uint256 tokenPerShare = (uint256(_fees.total - _fees.protocol) << Constants.SCALE_OFFSET) /
-                                totalSupply(_pair.activeId);
-
-                            _bin.accTokenXPerShare += tokenPerShare;
-                        }
-                    }
-
-                    _mintInfo.liquidity = _price.mulShift(_amountX, Constants.SCALE_OFFSET, true) + _amountY;
-
-                    _bin.reserveX = (_bin.reserveX + _amountX).safe112();
-                    _bin.reserveY = (_bin.reserveY + _amountY).safe112();
-
-                    _pair.reserveX += uint136(_amountX);
-                    _pair.reserveY += uint136(_amountY);
-
                     _mintInfo.totalDistributionX += _distribX;
                     _mintInfo.totalDistributionY += _distribY;
 
-                    _mintInfo.amountXAddedToPair += _amountX;
-                    _mintInfo.amountYAddedToPair += _amountY;
+                    _mintInfo.amountX = (_mintInfo.amountXIn * _distribX) / Constants.PRECISION;
+                    _mintInfo.amountY = (_mintInfo.amountYIn * _distribY) / Constants.PRECISION;
                 }
 
-                // we shift the liquidity to increase the precision of the accTokenPerShare
-                if (_mintInfo.liquidity == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
+                if (_mintInfo.id == _pair.activeId) {
+                    uint256 _weightedX = _bin.reserveY == 0
+                        ? _mintInfo.amountX
+                        : (_bin.reserveX * _mintInfo.amountY) / _bin.reserveY;
+                    uint256 _weightedY = _bin.reserveX == 0
+                        ? _mintInfo.amountY
+                        : (_bin.reserveY * _mintInfo.amountX) / _bin.reserveX;
+
+                    if (_mintInfo.amountX > _weightedX || _mintInfo.amountY > _weightedY) {
+                        FeeHelper.FeesDistribution memory _fees;
+
+                        if (_mintInfo.amountX > _weightedX) {
+                            _fees = _fp.getFeesDistribution(_fp.getFees(_mintInfo.amountX - _weightedX, 0));
+                            _mintInfo.amountX -= _fees.total;
+                        } else if (_mintInfo.amountY > _weightedY) {
+                            _fees = _fp.getFeesDistribution(_fp.getFees(_mintInfo.amountY - _weightedY, 0));
+                            _mintInfo.amountY -= _fees.total;
+                        }
+
+                        _pair.updateFees(_bin, _fees, _mintInfo.amountX > _weightedX, totalSupply(_mintInfo.id));
+                    }
+                }
+
+                uint256 _liquidity;
+                if (_mintInfo.id >= _pair.activeId) {
+                    uint256 _price = BinHelper.getPriceFromId(_mintInfo.id, _fp.binStep);
+
+                    _liquidity = _price.mulShift(_mintInfo.amountX, Constants.SCALE_OFFSET, true);
+                }
+                if (_mintInfo.id <= _pair.activeId) {
+                    _liquidity += _mintInfo.amountY;
+                }
+
+                if (_liquidity == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
+
+                _bin.reserveX = (_bin.reserveX + _mintInfo.amountX).safe112();
+                _bin.reserveY = (_bin.reserveY + _mintInfo.amountY).safe112();
+
+                _pair.reserveX += uint136(_mintInfo.amountX);
+                _pair.reserveY += uint136(_mintInfo.amountY);
+
+                _mintInfo.amountXAddedToPair += _mintInfo.amountX;
+                _mintInfo.amountYAddedToPair += _mintInfo.amountY;
 
                 _bins[_mintInfo.id] = _bin;
-                _mint(_to, _mintInfo.id, _mintInfo.liquidity);
+                _mint(_to, _mintInfo.id, _liquidity);
             }
 
             if (

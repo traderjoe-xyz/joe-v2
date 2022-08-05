@@ -41,9 +41,9 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 binReserveX, uint256 binReserveY) = pair.getBin(ID_ONE);
 
-        (FeeHelper.FeesDistribution memory feesX, ) = pair.getGlobalFees();
+        (uint256 feesXTotal, , , ) = pair.getGlobalFees();
 
-        assertEq(binReserveX, amountXIn - feesX.total);
+        assertEq(binReserveX, amountXIn - feesXTotal);
         assertEq(binReserveY, tokenAmount - amountYOut);
     }
 
@@ -74,10 +74,10 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 binReserveX, uint256 binReserveY) = pair.getBin(uint24(_ids[0]));
 
-        (, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
+        (, uint256 feesYTotal, , ) = pair.getGlobalFees();
 
         assertEq(binReserveX, tokenAmount - amountXOut);
-        assertEq(binReserveY, amountYIn - feesY.total);
+        assertEq(binReserveY, amountYIn - feesYTotal);
     }
 
     function testSwapXtoYSingleBinFromGetSwapIn() public {
@@ -105,9 +105,9 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 binReserveX, uint256 binReserveY) = pair.getBin(ID_ONE);
 
-        (FeeHelper.FeesDistribution memory feesX, ) = pair.getGlobalFees();
+        (uint256 feesXTotal, , , ) = pair.getGlobalFees();
 
-        assertEq(binReserveX, amountXIn - feesX.total);
+        assertEq(binReserveX, amountXIn - feesXTotal);
         assertEq(binReserveY, tokenAmount - amountYOut);
     }
 
@@ -136,10 +136,10 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 binReserveX, uint256 binReserveY) = pair.getBin(uint24(_ids[0]));
 
-        (, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
+        (, uint256 feesYTotal, , ) = pair.getGlobalFees();
 
         assertEq(binReserveX, tokenAmount - amountXOut);
-        assertEq(binReserveY, amountYIn - feesY.total);
+        assertEq(binReserveY, amountYIn - feesYTotal);
     }
 
     function testSwapYtoXConsecutiveBinFromGetSwapIn() public {

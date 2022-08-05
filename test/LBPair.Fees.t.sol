@@ -32,9 +32,9 @@ contract LiquidityBinPairFeesTest is TestHelper {
         vm.prank(ALICE);
         pair.swap(false, DEV);
 
-        (, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
+        (, uint256 feesYTotal, , uint256 feesYProtocol) = pair.getGlobalFees();
 
-        uint256 accumulatedYFees = feesY.total - feesY.protocol;
+        uint256 accumulatedYFees = feesYTotal - feesYProtocol;
 
         uint256[] memory orderedIds = new uint256[](5);
         for (uint256 i; i < 5; i++) {
@@ -83,9 +83,9 @@ contract LiquidityBinPairFeesTest is TestHelper {
         assertGt(feesForDev.tokenY, 0, "DEV should have fees on token Y");
         assertGt(feesForBob.tokenY, 0, "BOB should also have fees on token Y");
 
-        (, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
+        (, uint256 feesYTotal, , uint256 feesYProtocol) = pair.getGlobalFees();
 
-        uint256 accumulatedYFees = feesY.total - feesY.protocol;
+        uint256 accumulatedYFees = feesYTotal - feesYProtocol;
 
         assertApproxEqAbs(
             feesForDev.tokenY + feesForBob.tokenY,
@@ -124,19 +124,19 @@ contract LiquidityBinPairFeesTest is TestHelper {
         vm.prank(ALICE);
         pair.swap(false, DEV);
 
-        (, FeeHelper.FeesDistribution memory feesY) = pair.getGlobalFees();
+        (, uint256 feesYTotal, , uint256 feesYProtocol) = pair.getGlobalFees();
 
-        assertGt(feesY.total, 0);
+        assertGt(feesYTotal, 0);
 
         address protocolFeesReceiver = factory.feeRecipient();
 
         uint256 balanceBefore = token18D.balanceOf(protocolFeesReceiver);
         pair.collectProtocolFees();
-        assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesY.protocol - 1);
+        assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesYProtocol - 1);
 
         // Claiming twice
 
         pair.collectProtocolFees();
-        assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesY.protocol - 1);
+        assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesYProtocol - 1);
     }
 }

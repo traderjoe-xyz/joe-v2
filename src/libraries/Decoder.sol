@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity 0.8.7;
 
 library Decoder {
     ///@notice Internal function to decode a bytes32 sample using a mask and offset

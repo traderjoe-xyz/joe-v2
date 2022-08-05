@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity 0.8.7;
 
 library BitMath {
     /// @notice Returns the non-zero bit closest to the `_integer` to the right (or left) of the `bit` index

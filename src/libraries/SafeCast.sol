@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity 0.8.7;
 
 error SafeCast__Exceeds256Bits(uint256 x);
 error SafeCast__Exceeds248Bits(uint256 x);

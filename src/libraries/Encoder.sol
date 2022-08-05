@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity 0.8.7;
 
 library Encoder {
     ///@notice Internal function to encode a uint256 value using a mask and offset

@@ -125,14 +125,10 @@ library Oracle {
     }
 
     /// @notice Initialize the sample
-    /// @dev The index of the sample needs to be empty
     /// @param _oracle The oracle storage pointer
     /// @param _index The index to initialize
     function initialize(bytes32[65_536] storage _oracle, uint256 _index) internal {
-        bytes32 _packedSample = _oracle[_index];
-        if (_packedSample != 0) revert Oracle__AlreadyInitialized(_index);
-
-        _oracle[_index] = bytes32(uint256(1));
+        _oracle[_index] |= bytes32(uint256(1));
     }
 
     /// @notice Binary search on oracle samples and return the 2 samples (as bytes32) that surrounds the `lookUpTimestamp`

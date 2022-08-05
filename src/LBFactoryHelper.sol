@@ -28,16 +28,14 @@ contract LBFactoryHelper is ILBFactoryHelper {
     /// @param _salt The salt used to create the pair
     /// @param _activeId The active id of the pair
     /// @param _sampleLifetime The lifetime of a sample. It's the min time between 2 oracle's sample
-    /// @param _packedFeeParameters The fee parameters packed in a single 256 bits slot
     /// @return The address of the pair newly created
     function createLBPair(
         IERC20 _tokenX,
         IERC20 _tokenY,
         bytes32 _salt,
         uint24 _activeId,
-        uint16 _sampleLifetime,
-        bytes32 _packedFeeParameters
+        uint16 _sampleLifetime
     ) external override OnlyFactory returns (ILBPair) {
-        return new LBPair{salt: _salt}(factory, _tokenX, _tokenY, _activeId, _sampleLifetime, _packedFeeParameters);
+        return new LBPair{salt: _salt}(factory, _tokenX, _tokenY, _activeId, _sampleLifetime);
     }
 }

@@ -133,10 +133,10 @@ contract LiquidityBinFactoryTest is TestHelper {
         );
     }
 
-    function testSetFeeParametersOnPair() public {
+    function testsetFeesParametersOnPair() public {
         ILBPair pair = createLBPairDefaultFees(token6D, token12D);
 
-        factory.setFeeParametersOnPair(
+        factory.setFeesParametersOnPair(
             token6D,
             token12D,
             DEFAULT_BIN_STEP,
@@ -162,11 +162,11 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(feeParameters.maxAccumulator, DEFAULT_MAX_ACCUMULATOR + 1);
     }
 
-    function testFailSetFeeParametersOnPairNotByOwner() public {
+    function testFailsetFeesParametersOnPairNotByOwner() public {
         createLBPairDefaultFees(token6D, token12D);
 
         vm.prank(ALICE);
-        factory.setFeeParametersOnPair(
+        factory.setFeesParametersOnPair(
             token6D,
             token12D,
             DEFAULT_BIN_STEP,
@@ -183,7 +183,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     function testFailForInvalidFilterPeriod() public {
         createLBPairDefaultFees(token6D, token12D);
 
-        factory.setFeeParametersOnPair(
+        factory.setFeesParametersOnPair(
             token6D,
             token12D,
             DEFAULT_BIN_STEP,
@@ -200,7 +200,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     function testFailForInvalidBaseFactor() public {
         createLBPairDefaultFees(token6D, token12D);
 
-        factory.setFeeParametersOnPair(
+        factory.setFeesParametersOnPair(
             token6D,
             token12D,
             DEFAULT_BIN_STEP,
@@ -217,7 +217,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     function testFailForInvalidProtocolShare() public {
         createLBPairDefaultFees(token6D, token12D);
 
-        factory.setFeeParametersOnPair(
+        factory.setFeesParametersOnPair(
             token6D,
             token12D,
             DEFAULT_BIN_STEP,
@@ -234,7 +234,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     function testFailForInvalidBaseFee() public {
         createLBPairDefaultFees(token6D, token12D);
 
-        factory.setFeeParametersOnPair(
+        factory.setFeesParametersOnPair(
             token6D,
             token12D,
             DEFAULT_BIN_STEP,
@@ -251,7 +251,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     function testFailForInvalidMaxAccumulator() public {
         createLBPairDefaultFees(token6D, token12D);
 
-        factory.setFeeParametersOnPair(
+        factory.setFeesParametersOnPair(
             token6D,
             token12D,
             DEFAULT_BIN_STEP,

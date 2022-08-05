@@ -38,6 +38,7 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         );
 
         pair = new LBPair(ILBFactory(DEV), token6D, token18D, ID_ONE, DEFAULT_SAMPLE_LIFETIME, _packedFeeParameters);
+
         assertEq(address(pair.factory()), DEV);
         assertEq(address(pair.tokenX()), address(token6D));
         assertEq(address(pair.tokenY()), address(token18D));

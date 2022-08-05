@@ -109,7 +109,7 @@ library FeeHelper {
         uint256 _binCrossed
     ) internal pure returns (uint256) {
         unchecked {
-            uint256 _feeShares = getFeeShares(_fp, _amount, _binCrossed);
+            uint256 _feeShares = getFeeShares(_fp, _binCrossed);
             return (_amount * _feeShares) / (Constants.PRECISION);
         }
     }
@@ -125,8 +125,25 @@ library FeeHelper {
         uint256 _binCrossed
     ) internal pure returns (uint256) {
         unchecked {
-            uint256 _feeShares = getFeeShares(_fp, _amountPlusFee, _binCrossed);
+            uint256 _feeShares = getFeeShares(_fp, _binCrossed);
             return (_amountPlusFee * _feeShares) / (Constants.PRECISION + _feeShares);
+        }
+    }
+
+    /// @notice Return the fees added when an user adds liquidity and change c in the active bin
+    /// @param _fp The current fee parameter
+    /// @param _amountPlusFee The amount of token sent
+    /// @return The fee amount
+    function getFeesForC(
+        FeeParameters memory _fp,
+        uint256 _amountPlusFee,
+        uint256 _binCrossed
+    ) internal pure returns (uint256) {
+        unchecked {
+            uint256 _feeShares = getFeeShares(_fp, _binCrossed);
+            return
+                (_amountPlusFee * _feeShares * (_feeShares + Constants.PRECISION)) /
+                (Constants.PRECISION * Constants.PRECISION);
         }
     }
 
@@ -145,16 +162,11 @@ library FeeHelper {
         }
     }
 
-    /// @notice Return the fees
+    /// @notice Return the fee share
     /// @param _fp The current fee parameter
-    /// @param _amount The amount of token sent
     /// @param _binCrossed The current number of bin crossed
     /// @return feeShares The fee share, with 18 decimals
-    function getFeeShares(
-        FeeParameters memory _fp,
-        uint256 _amount,
-        uint256 _binCrossed
-    ) private pure returns (uint256 feeShares) {
+    function getFeeShares(FeeParameters memory _fp, uint256 _binCrossed) private pure returns (uint256 feeShares) {
         unchecked {
             feeShares = getBaseFee(_fp) + getVariableFee(_fp, _binCrossed);
         }

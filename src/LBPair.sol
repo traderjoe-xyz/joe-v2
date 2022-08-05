@@ -23,6 +23,7 @@ import "./interfaces/ILBPair.sol";
 error LBPair__InsufficientAmounts();
 error LBPair__BrokenSwapSafetyCheck();
 error LBPair__BrokenMintSafetyCheck(uint256 totalDistributionX, uint256 totalDistributionY);
+error LBPair__CompositionFactorFlawed(uint256 id);
 error LBPair__InsufficientLiquidityMinted(uint256 id);
 error LBPair__InsufficientLiquidityBurned(uint256 id);
 error LBPair__WrongLengths();
@@ -513,41 +514,39 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                     _mintInfo.amountY = (_mintInfo.amountYIn * _distribY) / Constants.PRECISION;
                 }
 
-                if (_mintInfo.id == _pair.activeId) {
-                    uint256 _weightedX = _bin.reserveY == 0
-                        ? _mintInfo.amountX
-                        : (_bin.reserveX * _mintInfo.amountY) / _bin.reserveY;
-                    uint256 _weightedY = _bin.reserveX == 0
-                        ? _mintInfo.amountY
-                        : (_bin.reserveY * _mintInfo.amountX) / _bin.reserveX;
-
-                    if (_mintInfo.amountX > _weightedX || _mintInfo.amountY > _weightedY) {
-                        FeeHelper.FeesDistribution memory _fees;
-
+                uint256 _price = BinHelper.getPriceFromId(_mintInfo.id, _fp.binStep);
+                if (_mintInfo.id >= _pair.activeId) {
+                    if (_mintInfo.id == _pair.activeId) {
                         uint256 _totalSupply = totalSupply(_mintInfo.id);
-                        if (_mintInfo.amountX > _weightedX) {
-                            _fees = _fp.getFeesDistribution(_fp.getFees(_mintInfo.amountX - _weightedX, 0));
+
+                        uint256 _userL = _price.mulShift(_mintInfo.amountX, Constants.SCALE_OFFSET, true) +
+                            _mintInfo.amountY;
+
+                        uint256 _receivedX = (_userL * (_bin.reserveX + _mintInfo.amountX)) / (_totalSupply + _userL);
+                        uint256 _receivedY = (_userL * (_bin.reserveY + _mintInfo.amountY)) / (_totalSupply + _userL);
+
+                        if (_mintInfo.amountX > _receivedX) {
+                            FeeHelper.FeesDistribution memory _fees = _fp.getFeesDistribution(
+                                _fp.getFeesFrom(_mintInfo.amountX - _receivedX, 0)
+                            );
+
                             _mintInfo.amountX -= _fees.total;
 
                             _bin.updateFees(_pair.feesX, _fees, true, _totalSupply);
-                        } else if (_mintInfo.amountY > _weightedY) {
-                            _fees = _fp.getFeesDistribution(_fp.getFees(_mintInfo.amountY - _weightedY, 0));
+                        } else if ((_mintInfo.amountY > _receivedY)) {
+                            FeeHelper.FeesDistribution memory _fees = _fp.getFeesDistribution(
+                                _fp.getFeesFrom(_mintInfo.amountY - _receivedY, 0)
+                            );
+
                             _mintInfo.amountY -= _fees.total;
 
                             _bin.updateFees(_pair.feesY, _fees, false, _totalSupply);
                         }
-                    }
-                }
+                    } else if (_mintInfo.amountY != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
+                } else if (_mintInfo.amountX != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
 
-                uint256 _liquidity;
-                if (_mintInfo.id >= _pair.activeId) {
-                    uint256 _price = BinHelper.getPriceFromId(_mintInfo.id, _fp.binStep);
-
-                    _liquidity = _price.mulShift(_mintInfo.amountX, Constants.SCALE_OFFSET, true);
-                }
-                if (_mintInfo.id <= _pair.activeId) {
-                    _liquidity += _mintInfo.amountY;
-                }
+                uint256 _liquidity = _price.mulShift(_mintInfo.amountX, Constants.SCALE_OFFSET, true) +
+                    _mintInfo.amountY;
 
                 if (_liquidity == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
 

@@ -72,22 +72,18 @@ library SwapHelper {
         }
     }
 
-    /// @notice Update the liquidity variables of the bin
+    /// @notice Update the fees of the pair and accumulated token per share of the bin
     /// @param pair The pair information
     /// @param bin The bin information
     /// @param fees The fees amounts
     /// @param swapForY whether the token sent was Y (true) or X (false)
     /// @param totalSupply The total supply of the token id
-    /// @param amountInToBin The amount of token that is added to the bin without fees
-    /// @param amountOutOfBin The amount of token that is removed from the bin
-    function updateLiquidity(
+    function updateFees(
         ILBPair.PairInformation memory pair,
         ILBPair.Bin memory bin,
         FeeHelper.FeesDistribution memory fees,
         bool swapForY,
-        uint256 totalSupply,
-        uint256 amountInToBin,
-        uint256 amountOutOfBin
+        uint256 totalSupply
     ) internal pure {
         uint256 tokenPerShare = (uint256(fees.total - fees.protocol) << Constants.SCALE_OFFSET) / totalSupply;
         if (swapForY) {
@@ -95,7 +91,28 @@ library SwapHelper {
             pair.feesX.protocol += fees.protocol;
 
             bin.accTokenXPerShare += tokenPerShare;
+        } else {
+            pair.feesY.total += fees.total;
+            pair.feesY.protocol += fees.protocol;
 
+            bin.accTokenYPerShare += tokenPerShare;
+        }
+    }
+
+    /// @notice Update reserves
+    /// @param pair The pair information
+    /// @param bin The bin information
+    /// @param swapForY whether the token sent was Y (true) or X (false)
+    /// @param amountInToBin The amount of token that is added to the bin without fees
+    /// @param amountOutOfBin The amount of token that is removed from the bin
+    function updateReserves(
+        ILBPair.PairInformation memory pair,
+        ILBPair.Bin memory bin,
+        bool swapForY,
+        uint256 amountInToBin,
+        uint256 amountOutOfBin
+    ) internal pure {
+        if (swapForY) {
             bin.reserveX += uint112(amountInToBin);
             unchecked {
                 bin.reserveY -= uint112(amountOutOfBin);
@@ -104,11 +121,6 @@ library SwapHelper {
                 pair.reserveY -= uint136(amountOutOfBin);
             }
         } else {
-            pair.feesY.total += fees.total;
-            pair.feesY.protocol += fees.protocol;
-
-            bin.accTokenYPerShare += tokenPerShare;
-
             bin.reserveY += uint112(amountInToBin);
             unchecked {
                 bin.reserveX -= uint112(amountOutOfBin);

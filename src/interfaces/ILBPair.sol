@@ -70,8 +70,8 @@ interface ILBPair {
         uint256 totalDistributionX;
         uint256 totalDistributionY;
         uint256 id;
-        uint256 amount;
-        uint256 liquidity;
+        uint256 amountX;
+        uint256 amountY;
     }
 
     function tokenX() external view returns (IERC20);

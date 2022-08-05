@@ -110,7 +110,7 @@ interface ILBFactory is IPendingOwnable {
         view
         returns (LBPairAvailable[] memory LBPairsBinStep);
 
-    function setFeeParametersOnPair(
+    function setFeesParametersOnPair(
         IERC20 _tokenX,
         IERC20 _tokenY,
         uint8 _binStep,

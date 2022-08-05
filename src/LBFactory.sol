@@ -250,11 +250,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _tokenY,
             keccak256(abi.encode(_tokenX, _tokenY, _binStep)),
             _activeId,
-            uint16(_sampleLifetime)
+            uint16(_sampleLifetime),
+            _preset
         );
 
         _LBPair.increaseOracleLength(2);
-        _LBPair.setFeesParameters(_preset);
 
         _LBPairsInfo[_tokenA][_tokenB][_binStep] = LBPairInfo({
             LBPair: _LBPair,
@@ -402,7 +402,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable them
     /// @param _protocolShare The share of the fees received by the protocol
     /// @param _maxAccumulator The max value of the accumulator
-    function setFeeParametersOnPair(
+    function setFeesParametersOnPair(
         IERC20 _tokenX,
         IERC20 _tokenY,
         uint8 _binStep,

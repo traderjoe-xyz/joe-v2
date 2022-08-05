@@ -47,7 +47,7 @@ contract LiquidityBinRouterTest is TestHelper {
         taxTokenPair = createLBPairDefaultFees(taxToken, wavax);
         addLiquidityFromRouter(
             ERC20MockDecimals(address(taxToken)),
-            ERC20MockDecimals(address(wavax)),
+            ERC20MockDecimals(address(0)),
             100e18,
             ID_ONE,
             9,
@@ -56,7 +56,7 @@ contract LiquidityBinRouterTest is TestHelper {
         );
 
         pairWavax = createLBPairDefaultFees(token6D, wavax);
-        addLiquidityFromRouter(token6D, ERC20MockDecimals(address(wavax)), 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
+        addLiquidityFromRouter(token6D, ERC20MockDecimals(address(0)), 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
     }
 
     function testSwapExactTokensForTokensSinglePair() public {

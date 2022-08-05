@@ -250,9 +250,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _tokenY,
             keccak256(abi.encode(_tokenX, _tokenY, _binStep)),
             _activeId,
-            uint16(_sampleLifetime),
-            _preset
+            uint16(_sampleLifetime)
         );
+
+        _LBPair.increaseOracleLength(2);
+        _LBPair.setFeesParameters(_preset);
 
         _LBPairsInfo[_tokenA][_tokenB][_binStep] = LBPairInfo({
             LBPair: _LBPair,

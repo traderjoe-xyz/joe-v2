@@ -133,14 +133,12 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @param _tokenY The address of the tokenY. Can't be address 0
     /// @param _activeId The active id of the pair
     /// @param _sampleLifetime The lifetime of a sample. It's the min time between 2 oracle's sample
-    /// @param _packedFeeParameters The fee parameters packed in a single 256 bits slot
     constructor(
         ILBFactory _factory,
         IERC20 _tokenX,
         IERC20 _tokenY,
         uint24 _activeId,
-        uint16 _sampleLifetime,
-        bytes32 _packedFeeParameters
+        uint16 _sampleLifetime
     ) LBToken("Liquidity Book Token", "LBT") {
         factory = _factory;
         tokenX = _tokenX;
@@ -148,9 +146,6 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         _pairInformation.activeId = _activeId;
         _pairInformation.oracleSampleLifetime = _sampleLifetime;
-
-        _increaseOracle(2);
-        _setFeesParameters(_packedFeeParameters);
     }
 
     /** External View Functions **/
@@ -764,24 +759,15 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             Bin memory _bin = _bins[_id];
 
             if (_from != address(0) && _from != address(this)) {
-                UnclaimedFees memory _feesFrom = _unclaimedFees[_from];
                 uint256 _balanceFrom = balanceOf(_from, _id);
 
-                _collectFees(_feesFrom, _bin, _from, _id, _balanceFrom);
-                _updateUserDebts(_bin, _from, _id, _balanceFrom - _amount);
-
-                _unclaimedFees[_from] = _feesFrom;
+                _claimFee(_bin, _from, _id, _balanceFrom, _balanceFrom - _amount);
             }
 
             if (_to != address(0) && _to != address(this) && _to != _from) {
-                UnclaimedFees memory _feesTo = _unclaimedFees[_to];
-
                 uint256 _balanceTo = balanceOf(_to, _id);
 
-                _collectFees(_feesTo, _bin, _to, _id, _balanceTo);
-                _updateUserDebts(_bin, _to, _id, _balanceTo + _amount);
-
-                _unclaimedFees[_to] = _feesTo;
+                _claimFee(_bin, _to, _id, _balanceTo, _balanceTo + _amount);
             }
         }
     }
@@ -826,6 +812,21 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         _accruedDebts[_account][_id].debtX = _debtX;
         _accruedDebts[_account][_id].debtY = _debtY;
+    }
+
+    function _claimFee(
+        Bin memory _bin,
+        address _user,
+        uint256 _id,
+        uint256 _previousBalance,
+        uint256 _newBalance
+    ) private {
+        UnclaimedFees memory _fees = _unclaimedFees[_user];
+
+        _collectFees(_fees, _bin, _user, _id, _previousBalance);
+        _updateUserDebts(_bin, _user, _id, _newBalance);
+
+        _unclaimedFees[_user] = _fees;
     }
 
     /// @notice Checks that the flash loan was done accordingly

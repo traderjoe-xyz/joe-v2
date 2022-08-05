@@ -35,7 +35,7 @@ error LBPair__OracleNotEnoughSample();
 
 /// @title Liquidity Bin Exchange
 /// @author Trader Joe
-/// @notice Implemention of pair
+/// @notice Implementation of pair
 contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /** Libraries **/
 

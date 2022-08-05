@@ -112,6 +112,10 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /** OffSets */
 
+    uint256 private constant _OFFSET_PAIR_RESERVE_X = 24;
+    uint256 private constant _OFFSET_PROTOCOL_FEE = 128;
+    uint256 private constant _OFFSET_BIN_RESERVE_Y = 112;
+    uint256 private constant _OFFSET_VARIABLE_FEE_PARAMETERS = 144;
     uint256 private constant _OFFSET_ORACLE_SAMPLE_LIFETIME = 136;
     uint256 private constant _OFFSET_ORACLE_SIZE = 152;
     uint256 private constant _OFFSET_ORACLE_ACTIVE_SIZE = 168;
@@ -174,7 +178,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             _slot := sload(_pairInformation.slot)
             activeId := and(_slot, _mask24)
         }
-        reserveX = _slot.decode(24, _mask136);
+        reserveX = _slot.decode(_mask136, _OFFSET_PAIR_RESERVE_X);
     }
 
     /// @notice View function to get the global fees information, the total fees and those for protocol
@@ -204,8 +208,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             feesXTotal := and(_slotX, _mask128)
             feesYTotal := and(_slotY, _mask128)
         }
-        feesXProtocol = _slotX.decode(128, _mask128);
-        feesYProtocol = _slotY.decode(128, _mask128);
+        feesXProtocol = _slotX.decode(_mask128, _OFFSET_PROTOCOL_FEE);
+        feesYProtocol = _slotY.decode(_mask128, _OFFSET_PROTOCOL_FEE);
     }
 
     /// @notice View function to get the oracle parameters
@@ -304,7 +308,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
             reserveX := and(_data, _mask112)
         }
-        reserveY = _data.decode(112, _mask112);
+        reserveY = _data.decode(_mask112, _OFFSET_BIN_RESERVE_Y);
     }
 
     /// @notice View function to get the pending fees of a user
@@ -883,7 +887,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint256 _mask112 = type(uint112).max;
         uint256 _mask144 = type(uint144).max;
         assembly {
-            let variableParameters := and(sload(_feeParameters.slot), shl(144, _mask112))
+            let variableParameters := and(sload(_feeParameters.slot), shl(_OFFSET_VARIABLE_FEE_PARAMETERS, _mask112))
             let parameters := add(variableParameters, and(_packedFeeParameters, _mask144))
             sstore(_feeParameters.slot, parameters)
         }

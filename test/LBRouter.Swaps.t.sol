@@ -79,7 +79,7 @@ contract LiquidityBinRouterTest is TestHelper {
         assertApproxEqAbs(token18D.balanceOf(DEV), amountOut, 10);
     }
 
-    function testswapExactTokensForAvaxSinglePair() public {
+    function testSwapExactTokensForAvaxSinglePair() public {
         uint256 amountIn = 1e18;
 
         token6D.mint(ALICE, amountIn);
@@ -102,7 +102,7 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(ALICE.balance - devBalanceBefore, amountOut);
     }
 
-    function testswapExactAVAXForTokensSinglePair() public {
+    function testSwapExactAVAXForTokensSinglePair() public {
         uint256 amountIn = 1e18;
 
         IERC20[] memory tokenList = new IERC20[](2);
@@ -119,7 +119,7 @@ contract LiquidityBinRouterTest is TestHelper {
         assertApproxEqAbs(token6D.balanceOf(DEV), amountOut, 10);
     }
 
-    function testswapTokensForExactTokensSinglePair() public {
+    function testSwapTokensForExactTokensSinglePair() public {
         uint256 amountOut = 1e18;
 
         uint256 amountIn = router.getSwapIn(pair, amountOut, true);

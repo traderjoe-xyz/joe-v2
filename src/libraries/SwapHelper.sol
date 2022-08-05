@@ -86,7 +86,10 @@ library SwapHelper {
         uint256 totalSupply
     ) internal pure {
         pairFees.total += fees.total;
-        pairFees.protocol += fees.protocol;
+        // unsafe math is fine because total >= protocol
+        unchecked {
+            pairFees.protocol += fees.protocol;
+        }
 
         uint256 tokenPerShare = (uint256(fees.total - fees.protocol) << Constants.SCALE_OFFSET) / totalSupply;
         if (swapForY) {

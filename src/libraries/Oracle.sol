@@ -174,7 +174,7 @@ library Oracle {
 
             (prev, next) = _sampleTimestamp < _lookUpTimestamp
                 ? (_sample, _oracle[_id.addMod(1, _activeSize)])
-                : (_oracle[_id.subMod(1, _activeSize)], _sample);
+                : (_oracle[_id.before(_activeSize)], _sample);
         }
     }
 }

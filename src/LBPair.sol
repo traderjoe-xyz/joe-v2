@@ -129,12 +129,14 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @param _tokenY The address of the tokenY. Can't be address 0
     /// @param _activeId The active id of the pair
     /// @param _sampleLifetime The lifetime of a sample. It's the min time between 2 oracle's sample
+    /// @param _packedFeeParameters The fee parameters packed in a single 256 bits slot
     constructor(
         ILBFactory _factory,
         IERC20 _tokenX,
         IERC20 _tokenY,
         uint24 _activeId,
-        uint16 _sampleLifetime
+        uint16 _sampleLifetime,
+        bytes32 _packedFeeParameters
     ) LBToken("Liquidity Book Token", "LBT") {
         factory = _factory;
         tokenX = _tokenX;
@@ -142,6 +144,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         _pairInformation.activeId = _activeId;
         _pairInformation.oracleSampleLifetime = _sampleLifetime;
+
+        _setFeesParameters(_packedFeeParameters);
     }
 
     /** External View Functions **/

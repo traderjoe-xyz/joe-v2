@@ -35,6 +35,7 @@ error LBRouter__MaxAmountInExceeded(uint256 amountInMax, uint256 amountIn);
 error LBRouter__InvalidTokenPath(IERC20 wrongToken);
 error LBRouter__InvalidVersion(uint256 version);
 error LBRouter__LBPairBlacklisted(ILBPair LBPair);
+error LBRouter__TokenYIsNotAvax(IERC20 token, uint256 amount);
 
 contract LBRouter is ILBRouter {
     using SafeERC20 for IERC20;
@@ -228,10 +229,8 @@ contract LBRouter is ILBRouter {
     /// @dev This function is compliant with fee on transfer tokens
     /// @param _liquidityParameters The liquidity parameters
     function addLiquidityAVAX(LiquidityParameters memory _liquidityParameters) external payable override {
-        //TODO swap tokens if avax isn't Y
-        _liquidityParameters.tokenY = IERC20(address(0));
-        _liquidityParameters.amountY = msg.value;
-        _liquidityParameters.amountYMin = msg.value; //TODO assert that
+        if (_liquidityParameters.tokenY != IERC20(address(0)) || _liquidityParameters.amountY != msg.value)
+            revert LBRouter__TokenYIsNotAvax(_liquidityParameters.tokenY, _liquidityParameters.amountY);
         _addLiquidity(_liquidityParameters);
     }
 
@@ -601,15 +600,15 @@ contract LBRouter is ILBRouter {
     /// @param _liq The liquidity parameter
     function _addLiquidity(LiquidityParameters memory _liq) private ensure(_liq.deadline) {
         unchecked {
-            if (_liq.tokenY == IERC20(address(0))) {
-                _liq.tokenY = IERC20(wavax);
-                _liq.amountY = msg.value;
-            }
-            ILBPair _LBPair = _getLBPairInfo(_liq.tokenX, _liq.tokenY, _liq.binStep);
+            ILBPair _LBPair = _getLBPairInfo(
+                _liq.tokenX,
+                _liq.tokenY == IERC20(address(0)) ? IERC20(wavax) : _liq.tokenY,
+                _liq.binStep
+            );
 
             _liq.tokenX.safeTransferFrom(msg.sender, address(_LBPair), _liq.amountX);
 
-            if (_liq.tokenY == IERC20(wavax)) {
+            if (_liq.tokenY == IERC20(address(0))) {
                 _wavaxDepositAndTransfer(_liq.amountY, address(_LBPair));
             } else {
                 _liq.tokenY.safeTransferFrom(msg.sender, address(_LBPair), _liq.amountY);

@@ -143,39 +143,39 @@ contract Quoter {
             tradeValueAVAX = _amountOut;
         }
 
-        for (uint256 i = routeLength - 2; i >= 0; i--) {
+        for (uint256 i = routeLength - 1; i > 0; i--) {
             // Fetch swap for V1
-            pairs[i] = IJoeFactory(factoryV1).getPair(_route[i], _route[i + 1]);
-            binSteps[i] = 0;
-            if (pairs[i] != address(0)) {
-                (uint256 reserveIn, uint256 reserveOut) = JoeLibrary.getReserves(factoryV1, _route[i], _route[i + 1]);
-                amounts[i + 1] = JoeLibrary.getAmountIn(amounts[i], reserveIn, reserveOut);
+            pairs[i - 1] = IJoeFactory(factoryV1).getPair(_route[i - 1], _route[i]);
+            binSteps[i - 1] = 0;
+            if (pairs[i - 1] != address(0)) {
+                (uint256 reserveIn, uint256 reserveOut) = JoeLibrary.getReserves(factoryV1, _route[i - 1], _route[i]);
+                amounts[i - 1] = JoeLibrary.getAmountIn(amounts[i], reserveIn, reserveOut);
             }
 
             // Fetch swaps for V2
             ILBFactory.LBPairAvailable[] memory LBPairsAvailable = ILBFactory(factoryV2).getAvailableLBPairsBinStep(
-                IERC20(_route[i]),
-                IERC20(_route[i + 1])
+                IERC20(_route[i - 1]),
+                IERC20(_route[i])
             );
 
             if (LBPairsAvailable.length > 0) {
                 for (uint256 j; j < LBPairsAvailable.length; j++) {
                     uint256 swapAmountIn = ILBRouter(routerV2).getSwapIn(
                         LBPairsAvailable[j].LBPair,
-                        amounts[i],
-                        address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i + 1]
+                        amounts[i - 1],
+                        address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i]
                     );
 
-                    if (swapAmountIn < amounts[i + 1]) {
-                        amounts[i + 1] = swapAmountIn;
-                        pairs[i] = address(LBPairsAvailable[j].LBPair);
-                        binSteps[i] = LBPairsAvailable[j].LBPair.feeParameters().binStep;
+                    if (swapAmountIn < amounts[i]) {
+                        amounts[i] = swapAmountIn;
+                        pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
+                        binSteps[i - 1] = LBPairsAvailable[j].LBPair.feeParameters().binStep;
                     }
                 }
             }
 
-            if (_route[i + 1] == wavax) {
-                tradeValueAVAX = amounts[i + 1];
+            if (_route[i] == wavax) {
+                tradeValueAVAX = amounts[i];
             }
         }
 

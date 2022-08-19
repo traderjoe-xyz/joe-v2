@@ -6,6 +6,7 @@ import "./interfaces/IJoeFactory.sol";
 import "./interfaces/ILBFactory.sol";
 import "./interfaces/ILBRouter.sol";
 import "./libraries/JoeLibrary.sol";
+import "./libraries/BinHelper.sol";
 
 contract Quoter {
     address public immutable routerV2;
@@ -14,6 +15,15 @@ contract Quoter {
     address public immutable factoryV2;
 
     address public immutable wavax;
+
+    struct Quote {
+        address[] route;
+        address[] pairs;
+        uint256[] binSteps;
+        uint256[] amounts;
+        uint256[] midPrice;
+        uint256 tradeValueAVAX;
+    }
 
     constructor(
         address _routerV2,
@@ -27,34 +37,30 @@ contract Quoter {
         wavax = _wavax;
     }
 
-    function findBestPathAmountIn(address[] memory _route, uint256 _amountIn)
-        public
-        view
-        returns (
-            address[] memory route,
-            address[] memory pairs,
-            uint256[] memory binSteps,
-            uint256[] memory amounts,
-            uint256 tradeValueAVAX
-        )
-    {
-        route = _route;
+    function findBestPathAmountIn(address[] memory _route, uint256 _amountIn) public view returns (Quote memory quote) {
+        quote.route = _route;
+
         uint256 routeLength = _route.length;
-        pairs = new address[](routeLength - 1);
-        binSteps = new uint256[](routeLength - 1);
-        amounts = new uint256[](routeLength);
-        amounts[0] = _amountIn;
+        quote.pairs = new address[](routeLength - 1);
+        quote.binSteps = new uint256[](routeLength - 1);
+        quote.midPrice = new uint256[](routeLength - 1);
+        quote.amounts = new uint256[](routeLength);
+
+        quote.amounts[0] = _amountIn;
         if (_route[0] == wavax) {
-            tradeValueAVAX = _amountIn;
+            quote.tradeValueAVAX = _amountIn;
         }
 
         for (uint256 i; i < routeLength - 1; i++) {
             // Fetch swap for V1
-            pairs[i] = IJoeFactory(factoryV1).getPair(_route[i], _route[i + 1]);
-            binSteps[i] = 0;
-            if (pairs[i] != address(0)) {
+            quote.pairs[i] = IJoeFactory(factoryV1).getPair(_route[i], _route[i + 1]);
+            quote.binSteps[i] = 0;
+            if (quote.pairs[i] != address(0)) {
                 (uint256 reserveIn, uint256 reserveOut) = JoeLibrary.getReserves(factoryV1, _route[i], _route[i + 1]);
-                amounts[i + 1] = JoeLibrary.getAmountOut(amounts[i], reserveIn, reserveOut);
+
+                quote.amounts[i + 1] = JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut);
+
+                quote.midPrice[i] = JoeLibrary.quote(1e18, reserveIn, reserveOut);
             }
 
             // Fetch swaps for V2
@@ -67,39 +73,39 @@ contract Quoter {
                 for (uint256 j; j < LBPairsAvailable.length; j++) {
                     uint256 swapAmountOut = ILBRouter(routerV2).getSwapOut(
                         LBPairsAvailable[j].LBPair,
-                        amounts[i],
+                        quote.amounts[i],
                         address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i + 1]
                     );
 
-                    if (swapAmountOut > amounts[i + 1]) {
-                        amounts[i + 1] = swapAmountOut;
-                        pairs[i] = address(LBPairsAvailable[j].LBPair);
-                        binSteps[i] = LBPairsAvailable[j].LBPair.feeParameters().binStep;
+                    if (swapAmountOut > quote.amounts[i + 1]) {
+                        quote.amounts[i + 1] = swapAmountOut;
+                        quote.pairs[i] = address(LBPairsAvailable[j].LBPair);
+                        quote.binSteps[i] = LBPairsAvailable[j].LBPair.feeParameters().binStep;
+
+                        // Getting current price
+                        (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
+                        quote.midPrice[i] = (BinHelper.getPriceFromId(activeId, quote.binSteps[i]) * 1e18) / 2**128;
                     }
                 }
             }
 
             if (_route[i + 1] == wavax) {
-                tradeValueAVAX = amounts[i + 1];
+                quote.tradeValueAVAX = quote.amounts[i + 1];
             }
         }
 
-        // Find the AVAX value of the swap to compare against gas cost
-        if (tradeValueAVAX == 0) {
-            address avaxPair = IJoeFactory(factoryV1).getPair(_route[routeLength - 1], wavax);
-            if (avaxPair != address(0)) {
-                (uint256 reserveIn, uint256 reserveOut) = JoeLibrary.getReserves(
-                    factoryV1,
-                    _route[routeLength - 1],
-                    wavax
-                );
-                tradeValueAVAX = JoeLibrary.getAmountOut(amounts[routeLength - 1], reserveIn, reserveOut);
-            }
+        // If we don't go trough an AVAX pair directly, check all tokens against AVAX
+        if (quote.tradeValueAVAX == 0) {
+            for (uint256 i; i < routeLength - 1; i++) {
+                address avaxPair = IJoeFactory(factoryV1).getPair(_route[i], wavax);
+                if (avaxPair != address(0)) {
+                    (uint256 reserveIn, uint256 reserveOut) = JoeLibrary.getReserves(factoryV1, _route[i], wavax);
+                    quote.tradeValueAVAX = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut);
+                }
 
-            if (tradeValueAVAX == 0) {
                 // Fetch swaps for V2
                 ILBFactory.LBPairAvailable[] memory LBPairsAvailable = ILBFactory(factoryV2).getAvailableLBPairsBinStep(
-                    IERC20(_route[routeLength - 1]),
+                    IERC20(_route[i]),
                     IERC20(wavax)
                 );
 
@@ -108,13 +114,13 @@ contract Quoter {
                     for (uint256 j; j < LBPairsAvailable.length; j++) {
                         swapOut = ILBRouter(routerV2).getSwapOut(
                             LBPairsAvailable[j].LBPair,
-                            amounts[routeLength - 1],
+                            quote.amounts[i],
                             address(LBPairsAvailable[j].LBPair.tokenY()) == wavax
                         );
 
-                        if (swapOut > 0) {
-                            tradeValueAVAX = swapOut;
-                            break;
+                        // We keep the biggest amount to be the most accurate
+                        if (swapOut > quote.tradeValueAVAX) {
+                            quote.tradeValueAVAX = swapOut;
                         }
                     }
                 }
@@ -125,31 +131,31 @@ contract Quoter {
     function findBestPathAmountOut(address[] memory _route, uint256 _amountOut)
         public
         view
-        returns (
-            address[] memory route,
-            address[] memory pairs,
-            uint256[] memory binSteps,
-            uint256[] memory amounts,
-            uint256 tradeValueAVAX
-        )
+        returns (Quote memory quote)
     {
-        route = _route;
+        quote.route = _route;
+
         uint256 routeLength = _route.length;
-        pairs = new address[](routeLength - 1);
-        binSteps = new uint256[](routeLength - 1);
-        amounts = new uint256[](routeLength);
-        amounts[routeLength - 1] = _amountOut;
+        quote.pairs = new address[](routeLength - 1);
+        quote.binSteps = new uint256[](routeLength - 1);
+        quote.midPrice = new uint256[](routeLength - 1);
+        quote.amounts = new uint256[](routeLength);
+
+        quote.amounts[routeLength - 1] = _amountOut;
         if (_route[routeLength - 1] == wavax) {
-            tradeValueAVAX = _amountOut;
+            quote.tradeValueAVAX = _amountOut;
         }
 
         for (uint256 i = routeLength - 1; i > 0; i--) {
             // Fetch swap for V1
-            pairs[i - 1] = IJoeFactory(factoryV1).getPair(_route[i - 1], _route[i]);
-            binSteps[i - 1] = 0;
-            if (pairs[i - 1] != address(0)) {
+            quote.pairs[i - 1] = IJoeFactory(factoryV1).getPair(_route[i - 1], _route[i]);
+            quote.binSteps[i - 1] = 0;
+            quote.amounts[i - 1] = type(uint256).max;
+            if (quote.pairs[i - 1] != address(0)) {
                 (uint256 reserveIn, uint256 reserveOut) = JoeLibrary.getReserves(factoryV1, _route[i - 1], _route[i]);
-                amounts[i - 1] = JoeLibrary.getAmountIn(amounts[i], reserveIn, reserveOut);
+                quote.amounts[i - 1] = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut);
+
+                quote.midPrice[i - 1] = JoeLibrary.quote(1e18, reserveIn, reserveOut);
             }
 
             // Fetch swaps for V2
@@ -158,54 +164,59 @@ contract Quoter {
                 IERC20(_route[i])
             );
 
-            if (LBPairsAvailable.length > 0) {
+            if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
                 for (uint256 j; j < LBPairsAvailable.length; j++) {
                     uint256 swapAmountIn = ILBRouter(routerV2).getSwapIn(
                         LBPairsAvailable[j].LBPair,
-                        amounts[i - 1],
+                        quote.amounts[i],
                         address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i]
                     );
+                    if (swapAmountIn != 0 && swapAmountIn < quote.amounts[i - 1]) {
+                        quote.amounts[i - 1] = swapAmountIn;
+                        quote.pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
+                        quote.binSteps[i - 1] = LBPairsAvailable[j].LBPair.feeParameters().binStep;
 
-                    if (swapAmountIn < amounts[i]) {
-                        amounts[i] = swapAmountIn;
-                        pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
-                        binSteps[i - 1] = LBPairsAvailable[j].LBPair.feeParameters().binStep;
+                        // Getting current price
+                        (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
+                        quote.midPrice[i - 1] =
+                            (BinHelper.getPriceFromId(activeId, quote.binSteps[i - 1]) * 1e18) /
+                            2**128;
                     }
                 }
             }
 
-            if (_route[i] == wavax) {
-                tradeValueAVAX = amounts[i];
+            if (_route[i - 1] == wavax) {
+                quote.tradeValueAVAX = quote.amounts[i - 1];
             }
         }
 
-        // Find the AVAX value of the swap to compare against gas cost
-        if (tradeValueAVAX == 0) {
-            address avaxPair = IJoeFactory(factoryV1).getPair(_route[0], wavax);
-            if (avaxPair != address(0)) {
-                (uint256 reserveIn, uint256 reserveOut) = JoeLibrary.getReserves(factoryV1, _route[0], wavax);
-                tradeValueAVAX = JoeLibrary.getAmountIn(amounts[0], reserveIn, reserveOut);
-            }
+        // If we don't go trough an AVAX pair directly, check all tokens against AVAX
+        if (quote.tradeValueAVAX == 0) {
+            for (uint256 i; i < routeLength - 1; i++) {
+                address avaxPair = IJoeFactory(factoryV1).getPair(_route[i], wavax);
+                if (avaxPair != address(0)) {
+                    (uint256 reserveIn, uint256 reserveOut) = JoeLibrary.getReserves(factoryV1, _route[i], wavax);
+                    quote.tradeValueAVAX = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut);
+                }
 
-            if (tradeValueAVAX == 0) {
                 // Fetch swaps for V2
                 ILBFactory.LBPairAvailable[] memory LBPairsAvailable = ILBFactory(factoryV2).getAvailableLBPairsBinStep(
-                    IERC20(_route[0]),
+                    IERC20(_route[i]),
                     IERC20(wavax)
                 );
 
                 if (LBPairsAvailable.length > 0) {
-                    uint256 swapIn;
+                    uint256 swapOut;
                     for (uint256 j; j < LBPairsAvailable.length; j++) {
-                        swapIn = ILBRouter(routerV2).getSwapIn(
+                        swapOut = ILBRouter(routerV2).getSwapOut(
                             LBPairsAvailable[j].LBPair,
-                            amounts[0],
+                            quote.amounts[i],
                             address(LBPairsAvailable[j].LBPair.tokenY()) == wavax
                         );
 
-                        if (swapIn > 0) {
-                            tradeValueAVAX = swapIn;
-                            break;
+                        // We keep the biggest amount to be the most accurate
+                        if (swapOut > quote.tradeValueAVAX) {
+                            quote.tradeValueAVAX = swapOut;
                         }
                     }
                 }

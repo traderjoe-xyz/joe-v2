@@ -18,9 +18,9 @@ library FeeHelper {
     /// - reductionFactor: The reduction factor, used to calculate the reduction of the accumulator
     /// - variableFeeControl: The variable fee control, used to control the variable fee, can be 0 to disable them
     /// - protocolShare: The share of fees sent to protocol
-    /// - maxVK: The max value of VK
-    /// - VK: The value of VK
-    /// - VA: The value of VA
+    /// - maxVolatilityAccumulated: The max value of volatility accumulated
+    /// - volatilityAccumulated: The value of volatility accumulated
+    /// - volatilityReference: The value of volatility reference
     /// - indexRef: The index reference
     /// - time: The last time the accumulator was called
     struct FeeParameters {
@@ -31,9 +31,9 @@ library FeeHelper {
         uint16 reductionFactor;
         uint24 variableFeeControl;
         uint16 protocolShare;
-        uint24 maxVK;
-        uint24 VK;
-        uint24 VA;
+        uint24 maxVolatilityAccumulated;
+        uint24 volatilityAccumulated;
+        uint24 volatilityReference;
         uint24 indexRef;
         uint40 time;
     }
@@ -46,7 +46,7 @@ library FeeHelper {
         uint128 protocol;
     }
 
-    /// @notice Update the value of the VK
+    /// @notice Update the value of the volatility accumulated
     /// @param _fp The current fee parameters
     /// @param _activeId The current active id
     function updateVariableFeeParameters(FeeParameters memory _fp, uint256 _activeId) internal view {
@@ -56,25 +56,31 @@ library FeeHelper {
             if (_deltaT >= _fp.filterPeriod || _fp.time == 0) {
                 _fp.indexRef = uint24(_activeId);
                 if (_deltaT < _fp.decayPeriod) {
-                    _fp.VA = uint24((_fp.reductionFactor * _fp.VK) / Constants.BASIS_POINT_MAX);
+                    _fp.volatilityReference = uint24(
+                        (_fp.reductionFactor * _fp.volatilityAccumulated) / Constants.BASIS_POINT_MAX
+                    );
                 } else {
-                    _fp.VA = 0;
+                    _fp.volatilityReference = 0;
                 }
             }
 
             _fp.time = (block.timestamp).safe40();
 
-            updateVK(_fp, _activeId);
+            updateVolatilityAccumulated(_fp, _activeId);
         }
     }
 
-    /// @notice Update the VK
+    /// @notice Update the volatility accumulated
     /// @param _fp The fee parameter
     /// @param _activeId The current active id
-    function updateVK(FeeParameters memory _fp, uint256 _activeId) internal pure {
+    function updateVolatilityAccumulated(FeeParameters memory _fp, uint256 _activeId) internal pure {
         unchecked {
-            uint256 VK = _fp.VA + _activeId.absSub(_fp.indexRef) * Constants.BASIS_POINT_MAX;
-            _fp.VK = VK > _fp.maxVK ? _fp.maxVK : uint16(VK);
+            uint256 volatilityAccumulated = _fp.volatilityReference +
+                _activeId.absSub(_fp.indexRef) *
+                Constants.BASIS_POINT_MAX;
+            _fp.volatilityAccumulated = volatilityAccumulated > _fp.maxVolatilityAccumulated
+                ? _fp.maxVolatilityAccumulated
+                : uint16(volatilityAccumulated);
         }
     }
 
@@ -94,8 +100,10 @@ library FeeHelper {
         unchecked {
             if (_fp.variableFeeControl == 0) return 0;
 
-            // decimals(_fp.reductionFactor * (_fp.VK * _fp.binStep)**2) = 4 + (4 + 4) * 2 - 2 = 18
-            return (_fp.variableFeeControl * ((_fp.VK * _fp.binStep) * (_fp.VK * _fp.binStep))) / 100;
+            // decimals(_fp.reductionFactor * (_fp.volatilityAccumulated * _fp.binStep)**2) = 4 + (4 + 4) * 2 - 2 = 18
+            return
+                (_fp.variableFeeControl *
+                    ((_fp.volatilityAccumulated * _fp.binStep) * (_fp.volatilityAccumulated * _fp.binStep))) / 100;
         }
     }
 

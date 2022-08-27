@@ -51,7 +51,7 @@ library SwapHelper {
                 _maxAmountInToBin = _price.mulShift(_reserve, Constants.SCALE_OFFSET, false);
             }
 
-            fp.updateVK(activeId);
+            fp.updateVolatilityAccumulated(activeId);
             fees = fp.getFeesDistribution(fp.getFees(_maxAmountInToBin));
 
             if (_maxAmountInToBin.add(fees.total) <= amountIn) {

@@ -102,7 +102,7 @@ interface ILBFactory is IPendingOwnable {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVK,
+        uint24 maxVolatilityAccumulated,
         uint16 sampleLifetime
     ) external;
 
@@ -118,7 +118,7 @@ interface ILBFactory is IPendingOwnable {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVK
+        uint24 maxVolatilityAccumulated
     ) external;
 
     function setFeeRecipient(address feeRecipient) external;

@@ -235,7 +235,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @dev Return a linearized sample, the weighted average of 2 neighboring samples
     /// @param _ago The number of seconds before the current timestamp
     /// @return cumulativeId The weighted average cumulative id
-    /// @return cumulativeVK The weighted average cumulative VK
+    /// @return cumulativeVolatilityAccumulated The weighted average cumulative volatility accumulated
     /// @return cumulativeBinCrossed The weighted average cumulative bin crossed
     function getOracleSampleFrom(uint256 _ago)
         external
@@ -243,7 +243,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         override
         returns (
             uint256 cumulativeId,
-            uint256 cumulativeVK,
+            uint256 cumulativeVolatilityAccumulated,
             uint256 cumulativeBinCrossed
         )
     {
@@ -252,7 +252,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             (, , uint256 _oracleActiveSize, , uint256 _oracleId) = _getOracleParameters();
 
             uint256 timestamp;
-            (timestamp, cumulativeId, cumulativeVK, cumulativeBinCrossed) = _oracle.getSampleAt(
+            (timestamp, cumulativeId, cumulativeVolatilityAccumulated, cumulativeBinCrossed) = _oracle.getSampleAt(
                 _oracleActiveSize,
                 _oracleId,
                 _lookUpTimestamp
@@ -266,7 +266,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 uint256 _deltaT = _lookUpTimestamp - timestamp;
 
                 cumulativeId += _activeId * _deltaT;
-                cumulativeVK += _fp.VK * _deltaT;
+                cumulativeVolatilityAccumulated += _fp.volatilityAccumulated * _deltaT;
             }
         }
     }
@@ -398,7 +398,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 _pair.oracleLastTimestamp,
                 _pair.oracleId,
                 _pair.activeId,
-                _fp.VK,
+                _fp.volatilityAccumulated,
                 _startId.absSub(_pair.activeId)
             );
 
@@ -749,8 +749,9 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     function forceDecay() external override OnlyFactory {
         unchecked {
-            _feeParameters.VA = uint24(
-                (uint256(_feeParameters.reductionFactor) * _feeParameters.VA) / Constants.BASIS_POINT_MAX
+            _feeParameters.volatilityReference = uint24(
+                (uint256(_feeParameters.reductionFactor) * _feeParameters.volatilityReference) /
+                    Constants.BASIS_POINT_MAX
             );
         }
     }

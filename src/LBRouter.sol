@@ -136,8 +136,8 @@ contract LBRouter is ILBRouter {
                     ? _amountOutOfBin.shiftDiv(Constants.SCALE_OFFSET, _price, false)
                     : _price.mulShift(_amountOutOfBin, Constants.SCALE_OFFSET, false);
 
-                // We update the fee, but we don't store the new VA, VK and indexRef to not penalize traders
-                _fp.updateVK(_activeId);
+                // We update the fee, but we don't store the new volatility reference, volatility accumulated and indexRef to not penalize traders
+                _fp.updateVolatilityAccumulated(_activeId);
                 _amountInWithFees = _amountInToBin + _fp.getFees(_amountInToBin);
 
                 if (_amountInWithFees + _reserve > type(uint112).max) revert LBRouter__SwapOverflows(_activeId);

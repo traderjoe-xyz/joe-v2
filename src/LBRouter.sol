@@ -102,7 +102,7 @@ contract LBRouter is ILBRouter {
     /// @notice Simulate a swap in
     /// @param _LBPair The address of the LBPair
     /// @param _amountOut The amount of token to receive
-    /// @param _swapForY Wether you swap X for Y (true), or Y for X (false)
+    /// @param _swapForY Whether you swap X for Y (true), or Y for X (false)
     /// @return amountIn The amount of token to send in order to receive _amountOut token
     function getSwapIn(
         ILBPair _LBPair,
@@ -115,8 +115,7 @@ contract LBRouter is ILBRouter {
             revert LBRouter__WrongAmounts(_amountOut, _swapForY ? _pairReserveY : _pairReserveX); // If this is wrong, then we're sure the amounts sent are wrong
 
         FeeHelper.FeeParameters memory _fp = _LBPair.feeParameters();
-        _fp.updateAccumulatorValue();
-        uint256 _startId = _activeId;
+        _fp.updateVariableFeeParameters(_activeId);
 
         uint256 _amountOutOfBin;
         uint256 _amountInWithFees;
@@ -137,9 +136,9 @@ contract LBRouter is ILBRouter {
                     ? _amountOutOfBin.shiftDiv(Constants.SCALE_OFFSET, _price, false)
                     : _price.mulShift(_amountOutOfBin, Constants.SCALE_OFFSET, false);
 
-                _amountInWithFees =
-                    _amountInToBin +
-                    _fp.getFees(_amountInToBin, _startId > _activeId ? _startId - _activeId : _activeId - _startId);
+                // We update the fee, but we don't store the new VA, VK and indexRef to not penalize traders
+                _fp.updateVK(_activeId);
+                _amountInWithFees = _amountInToBin + _fp.getFees(_amountInToBin);
 
                 if (_amountInWithFees + _reserve > type(uint112).max) revert LBRouter__SwapOverflows(_activeId);
                 amountIn += _amountInWithFees;
@@ -158,45 +157,39 @@ contract LBRouter is ILBRouter {
     /// @notice Simulate a swap out
     /// @param _LBPair The address of the LBPair
     /// @param _amountIn The amount of token sent
-    /// @param _swapForY Wether you swap X for Y (true), or Y for X (false)
+    /// @param _swapForY Whether you swap X for Y (true), or Y for X (false)
     /// @return _amountOut The amount of token received if _amountIn tokenX are sent
     function getSwapOut(
         ILBPair _LBPair,
         uint256 _amountIn,
         bool _swapForY
     ) external view override returns (uint256 _amountOut) {
-        ILBPair.PairInformation memory _pair;
-        {
-            (, , uint256 _activeId) = _LBPair.getReservesAndId();
-            _pair.activeId = uint24(_activeId);
-        }
+        (, , uint256 _activeId) = _LBPair.getReservesAndId();
 
         FeeHelper.FeeParameters memory _fp = _LBPair.feeParameters();
-        _fp.updateAccumulatorValue();
+        _fp.updateVariableFeeParameters(_activeId);
         ILBPair.Bin memory _bin;
-
-        uint256 _startId = _pair.activeId;
 
         // Performs the actual swap, bin per bin
         // It uses the findFirstNonEmptyBinId function to make sure the bin we're currently looking at
         // has liquidity in it.
         while (true) {
             {
-                (uint256 _reserveX, uint256 _reserveY) = _LBPair.getBin(_pair.activeId);
+                (uint256 _reserveX, uint256 _reserveY) = _LBPair.getBin(uint24(_activeId));
                 _bin = ILBPair.Bin(uint112(_reserveX), uint112(_reserveY), 0, 0);
             }
             if (_bin.reserveX != 0 || _bin.reserveY != 0) {
                 (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) = _bin
-                    .getAmounts(_fp, _pair.activeId, _swapForY, _startId, _amountIn);
+                    .getAmounts(_fp, _activeId, _swapForY, _amountIn);
 
-                if (_amountInToBin > type(uint112).max) revert LBRouter__BinReserveOverflows(_pair.activeId);
+                if (_amountInToBin > type(uint112).max) revert LBRouter__BinReserveOverflows(_activeId);
 
                 _amountIn -= _amountInToBin + _fees.total;
                 _amountOut += _amountOutOfBin;
             }
 
             if (_amountIn != 0) {
-                _pair.activeId = uint24(_LBPair.findFirstNonEmptyBinId(_pair.activeId, _swapForY));
+                _activeId = _LBPair.findFirstNonEmptyBinId(uint24(_activeId), _swapForY);
             } else {
                 break;
             }
@@ -247,7 +240,7 @@ contract LBRouter is ILBRouter {
     function removeLiquidity(
         IERC20 _tokenX,
         IERC20 _tokenY,
-        uint8 _binStep,
+        uint16 _binStep,
         uint256 _amountXMin,
         uint256 _amountYMin,
         uint256[] memory _ids,
@@ -277,7 +270,7 @@ contract LBRouter is ILBRouter {
     /// @param _deadline The deadline of the tx
     function removeLiquidityAVAX(
         IERC20 _token,
-        uint8 _binStep,
+        uint16 _binStep,
         uint256 _amountTokenMin,
         uint256 _amountAVAXMin,
         uint256[] memory _ids,

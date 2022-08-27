@@ -9,65 +9,65 @@ library Samples {
     using Encoder for uint256;
     using Decoder for bytes32;
 
-    ///  [ cumulativeBinCrossed | cumulativeAccumulator | cumulativeId | timestamp | initialized ]
-    ///  [        uint51        |        uint104        |    uint60    |   uint40  |    bool1    ]
-    /// MSB                                                                                     LSB
+    ///  [ cumulativeBinCrossed | cumulativeVK | cumulativeId | timestamp | initialized ]
+    ///  [        uint87        |    uint64    |    uint64    |   uint40  |    bool1    ]
+    /// MSB                                                                            LSB
 
     uint256 private constant _OFFSET_INITIALIZED = 0;
     uint256 private constant _MASK_INITIALIZED = 1;
 
     uint256 private constant _OFFSET_TIMESTAMP = 1;
-    uint256 private constant _MASK_TIMESTAMP = (1 << 40) - 1;
+    uint256 private constant _MASK_TIMESTAMP = type(uint40).max;
 
     uint256 private constant _OFFSET_CUMULATIVE_ID = 41;
-    uint256 private constant _MASK_CUMULATIVE_ID = (1 << 60) - 1;
+    uint256 private constant _MASK_CUMULATIVE_ID = type(uint64).max;
 
-    uint256 private constant _OFFSET_CUMULATIVE_ACCUMULATOR = 101;
-    uint256 private constant _MASK_CUMULATIVE_ACCUMULATOR = (1 << 104) - 1;
+    uint256 private constant _OFFSET_CUMULATIVE_VK = 105;
+    uint256 private constant _MASK_CUMULATIVE_VK = type(uint64).max;
 
-    uint256 private constant _OFFSET_CUMULATIVE_BIN_CROSSED = 205;
-    uint256 private constant _MASK_CUMULATIVE_BIN_CROSSED = (1 << 51) - 1;
+    uint256 private constant _OFFSET_CUMULATIVE_BIN_CROSSED = 169;
+    uint256 private constant _MASK_CUMULATIVE_BIN_CROSSED = 0x7fffffffffffffffffffff;
 
     /// @notice Function to update a sample
     /// @param _lastSample The latest sample of the oracle
     /// @param _activeId The active index of the pair during the latest swap
-    /// @param _accumulator The accumulator of the pair during the latest swap
+    /// @param _VK The VK of the pair during the latest swap
     /// @param _binCrossed The bin crossed during the latest swap
     /// @return packedSample The packed sample as bytes32
     function update(
         bytes32 _lastSample,
         uint256 _activeId,
-        uint256 _accumulator,
+        uint256 _VK,
         uint256 _binCrossed
     ) internal view returns (bytes32 packedSample) {
         unchecked {
             uint256 _currentTimestamp = block.timestamp;
             uint256 _deltaTime = _currentTimestamp - timestamp(_lastSample);
             uint256 _cumulativeId = cumulativeId(_lastSample) + _activeId * _deltaTime;
-            uint256 _cumulativeAccumulator = cumulativeAccumulator(_lastSample) + _accumulator * _deltaTime;
+            uint256 _cumulativeVK = cumulativeVK(_lastSample) + _VK * _deltaTime;
             uint256 _cumulativeBinCrossed = cumulativeBinCrossed(_lastSample) + _binCrossed * _deltaTime;
 
-            return pack(_cumulativeBinCrossed, _cumulativeAccumulator, _cumulativeId, _currentTimestamp, 1);
+            return pack(_cumulativeBinCrossed, _cumulativeVK, _cumulativeId, _currentTimestamp, 1);
         }
     }
 
     /// @notice Function to pack cumulative values
     /// @param _cumulativeBinCrossed The cumulative bin crossed
-    /// @param _cumulativeAccumulator The cumulative accumulator
+    /// @param _cumulativeVK The cumulative VK
     /// @param _cumulativeId The cumulative index
     /// @param _timestamp The timestamp
     /// @param _initialized The initialized value
     /// @return packedSample The packed sample as bytes32
     function pack(
         uint256 _cumulativeBinCrossed,
-        uint256 _cumulativeAccumulator,
+        uint256 _cumulativeVK,
         uint256 _cumulativeId,
         uint256 _timestamp,
         uint256 _initialized
     ) internal pure returns (bytes32 packedSample) {
         return
             _cumulativeBinCrossed.encode(_MASK_CUMULATIVE_BIN_CROSSED, _OFFSET_CUMULATIVE_BIN_CROSSED) |
-            _cumulativeAccumulator.encode(_MASK_CUMULATIVE_ACCUMULATOR, _OFFSET_CUMULATIVE_ACCUMULATOR) |
+            _cumulativeVK.encode(_MASK_CUMULATIVE_VK, _OFFSET_CUMULATIVE_VK) |
             _cumulativeId.encode(_MASK_CUMULATIVE_ID, _OFFSET_CUMULATIVE_ID) |
             _timestamp.encode(_MASK_TIMESTAMP, _OFFSET_TIMESTAMP) |
             _initialized.encode(_MASK_INITIALIZED, _OFFSET_INITIALIZED);
@@ -94,11 +94,11 @@ library Samples {
         return _packedSample.decode(_MASK_CUMULATIVE_ID, _OFFSET_CUMULATIVE_ID);
     }
 
-    /// @notice View function to return the cumulative accumulator value
+    /// @notice View function to return the cumulative VK value
     /// @param _packedSample The packed sample
-    /// @return The cumulative accumulator value
-    function cumulativeAccumulator(bytes32 _packedSample) internal pure returns (uint256) {
-        return _packedSample.decode(_MASK_CUMULATIVE_ACCUMULATOR, _OFFSET_CUMULATIVE_ACCUMULATOR);
+    /// @return The cumulative VK value
+    function cumulativeVK(bytes32 _packedSample) internal pure returns (uint256) {
+        return _packedSample.decode(_MASK_CUMULATIVE_VK, _OFFSET_CUMULATIVE_VK);
     }
 
     /// @notice View function to return the cumulative bin crossed value

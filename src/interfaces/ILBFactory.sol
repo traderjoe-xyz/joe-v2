@@ -31,8 +31,6 @@ interface ILBFactory is IPendingOwnable {
         bool isBlacklisted;
     }
 
-    function MIN_FEE() external pure returns (uint256);
-
     function MAX_FEE() external pure returns (uint256);
 
     function MIN_BIN_STEP() external pure returns (uint256);
@@ -59,39 +57,7 @@ interface ILBFactory is IPendingOwnable {
         uint256 binStep
     ) external view returns (LBPairInfo memory);
 
-    function setFactoryHelper() external;
-
-    function createLBPair(
-        IERC20 tokenX,
-        IERC20 tokenY,
-        uint24 activeId,
-        uint16 binStep
-    ) external returns (ILBPair pair);
-
-    function setFeeRecipient(address feeRecipient) external;
-
-    function setLBPairBlacklist(
-        IERC20 _tokenX,
-        IERC20 _tokenY,
-        uint256 _binStep,
-        bool _blacklisted
-    ) external;
-
-    function setPreset(
-        uint8 _binStep,
-        uint8 _baseFactor,
-        uint16 _filterPeriod,
-        uint16 _decayPeriod,
-        uint8 _reductionFactor,
-        uint8 _variableFeeControl,
-        uint8 _protocolShare,
-        uint72 _maxAccumulator,
-        uint8 _sampleLifetime
-    ) external;
-
-    function removePreset(uint16 binStep) external;
-
-    function getPreset(uint16 _binStep)
+    function getPreset(uint16 binStep)
         external
         view
         returns (
@@ -107,22 +73,59 @@ interface ILBFactory is IPendingOwnable {
 
     function getAvailablePresetsBinStep() external view returns (uint256[] memory presetsBinStep);
 
-    function getAvailableLBPairsBinStep(IERC20 _tokenX, IERC20 _tokenY)
+    function getAvailableLBPairsBinStep(IERC20 tokenX, IERC20 tokenY)
         external
         view
         returns (LBPairAvailable[] memory LBPairsBinStep);
 
-    function setFeesParametersOnPair(
-        IERC20 _tokenX,
-        IERC20 _tokenY,
-        uint8 _binStep,
-        uint8 _baseFactor,
-        uint16 _filterPeriod,
-        uint16 _decayPeriod,
-        uint8 _reductionFactor,
-        uint8 _variableFeeControl,
-        uint8 _protocolShare,
-        uint72 _maxAccumulator
+    function setFactoryHelper() external;
+
+    function createLBPair(
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint24 activeId,
+        uint16 binStep
+    ) external returns (ILBPair pair);
+
+    function setLBPairBlacklist(
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint256 binStep,
+        bool blacklisted
     ) external;
+
+    function setPreset(
+        uint16 binStep,
+        uint16 baseFactor,
+        uint16 filterPeriod,
+        uint16 decayPeriod,
+        uint16 reductionFactor,
+        uint24 variableFeeControl,
+        uint16 protocolShare,
+        uint24 maxVK,
+        uint16 sampleLifetime
+    ) external;
+
+    function removePreset(uint16 binStep) external;
+
+    function setFeesParametersOnPair(
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint16 binStep,
+        uint16 baseFactor,
+        uint16 filterPeriod,
+        uint16 decayPeriod,
+        uint16 reductionFactor,
+        uint24 variableFeeControl,
+        uint16 protocolShare,
+        uint24 maxVK
+    ) external;
+
+    function setFeeRecipient(address feeRecipient) external;
+
     function setFlashLoanFee(uint256 _flashLoanFee) external;
+
+    function setFactoryLocked(bool locked) external;
+
+    function forceDecay(ILBPair _LBPair) external;
 }

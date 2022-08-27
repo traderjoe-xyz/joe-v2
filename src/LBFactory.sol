@@ -39,6 +39,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     address public override feeRecipient;
 
+    uint256 public override flashLoanFee;
+
     /// @notice Whether the createLBPair function is unlocked and can be called by anyone or only by owner
     bool public override unlocked;
 
@@ -60,6 +62,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
     event LBPairCreated(IERC20 indexed tokenX, IERC20 indexed tokenY, ILBPair LBPair, uint256 pid);
 
     event FeeRecipientChanged(address oldRecipient, address newRecipient);
+
+    event FlashLoanFeeSet(uint256 oldFlashLoanFee, uint256 newFlashLoanFee);
 
     event FeeParametersSet(
         address sender,
@@ -93,15 +97,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /// @notice Constructor
     /// @param _feeRecipient The address of the fee recipient
-    constructor(address _feeRecipient) {
+    constructor(address _feeRecipient, uint256 _flashLoanFee) {
         _setFeeRecipient(_feeRecipient);
-    }
-
-    /// @notice Set the factory helper address
-    /// @dev Needs to be called by the factory helper
-    function setFactoryHelper() external override {
-        if (address(factoryHelper) != address(0)) revert LBFactory__FactoryHelperAlreadyInitialized();
-        factoryHelper = ILBFactoryHelper(msg.sender);
+        _setFlashLoanFee(_flashLoanFee);
     }
 
     /// @notice View function to return the number of LBPairs created
@@ -214,6 +212,13 @@ contract LBFactory is PendingOwnable, ILBFactory {
                 }
             }
         }
+    }
+
+    /// @notice Set the factory helper address
+    /// @dev Needs to be called by the factory helper
+    function setFactoryHelper() external override {
+        if (address(factoryHelper) != address(0)) revert LBFactory__FactoryHelperAlreadyInitialized();
+        factoryHelper = ILBFactoryHelper(msg.sender);
     }
 
     /// @notice Create a liquidity bin LBPair for _tokenX and _tokenY
@@ -444,6 +449,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
     }
 
     /// @notice Internal function to set the recipient of the fees
+
+    /// @notice Function to set the flash loan fee
+    /// @param _flashLoanFee The value of the fee for flash loan
+    function setFlashLoanFee(uint256 _flashLoanFee) external override onlyOwner {
+        _setFlashLoanFee(_flashLoanFee);
+    }
     /// @param _feeRecipient The address of the recipient
     function _setFeeRecipient(address _feeRecipient) internal {
         if (_feeRecipient == address(0)) revert LBFactory__ZeroAddress();
@@ -451,6 +462,13 @@ contract LBFactory is PendingOwnable, ILBFactory {
         address oldFeeRecipient = feeRecipient;
         feeRecipient = _feeRecipient;
         emit FeeRecipientChanged(oldFeeRecipient, _feeRecipient);
+
+    /// @notice Internal function to set the fee for flash loan
+    /// @param _flashLoanFee The fee value for flash loan
+    function _setFlashLoanFee(uint256 _flashLoanFee) internal {
+        uint256 _oldFlashLoanFee = flashLoanFee;
+        flashLoanFee = _flashLoanFee;
+        emit FlashLoanFeeSet(_oldFlashLoanFee, _flashLoanFee);
     }
 
     /// @notice Internal function to set the fee parameter of a LBPair

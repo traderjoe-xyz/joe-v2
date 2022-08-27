@@ -27,13 +27,12 @@ error LBFactory__BinStepHasNoPreset(uint256 binStep);
 contract LBFactory is PendingOwnable, ILBFactory {
     using Decoder for bytes32;
 
-    uint256 public constant override MIN_FEE = 1e14; // 0.01%
     uint256 public constant override MAX_FEE = 1e17; // 10%
 
     uint256 public constant override MIN_BIN_STEP = 1; // 0.01%
     uint256 public constant override MAX_BIN_STEP = 100; // 1%, can't be greater than 247 for indexing reasons
 
-    uint256 public constant override MAX_PROTOCOL_SHARE = 25; // 25%
+    uint256 public constant override MAX_PROTOCOL_SHARE = 2_500; // 25%
 
     ILBFactoryHelper public override factoryHelper;
 
@@ -48,7 +47,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     mapping(IERC20 => mapping(IERC20 => mapping(uint256 => LBPairInfo))) private _LBPairsInfo;
 
-    // Whether an preset was set or not, if the bit at `index` is 1, it means that the binStep `index` was set
+    // Whether a preset was set or not, if the bit at `index` is 1, it means that the binStep `index` was set
     // The max binStep set is 247. We use this method instead of an array to keep it ordered and to reduce gas
     bytes32 private _availablePresets;
 
@@ -75,7 +74,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint256 reductionFactor,
         uint256 variableFeeControl,
         uint256 protocolShare,
-        uint256 maxAccumulator
+        uint256 maxVK
     );
 
     event FactoryLocked(bool unlocked);
@@ -90,7 +89,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint256 reductionFactor,
         uint256 variableFeeControl,
         uint256 protocolShare,
-        uint256 maxAccumulator,
+        uint256 maxVK,
         uint256 sampleLifetime
     );
     event PresetRemoved(uint256 binStep);
@@ -122,7 +121,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         return _getLBPairInfo(_tokenA, _tokenB, _binStep);
     }
 
-    /// @notice Vies function to return the different parameters of the preset
+    /// @notice View function to return the different parameters of the preset
     /// @param _binStep The bin step of the preset
     /// @return baseFactor The base factor
     /// @return filterPeriod The filter period of the preset
@@ -130,7 +129,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @return reductionFactor The reduction factor of the preset
     /// @return variableFeeControl The variable fee control of the preset
     /// @return protocolShare The protocol share of the preset
-    /// @return maxAccumulator The max accumulator of the preset
+    /// @return maxVK The max VK of the preset
     /// @return sampleLifetime The sample lifetime of the preset
     function getPreset(uint16 _binStep)
         external
@@ -143,25 +142,30 @@ contract LBFactory is PendingOwnable, ILBFactory {
             uint256 reductionFactor,
             uint256 variableFeeControl,
             uint256 protocolShare,
-            uint256 maxAccumulator,
+            uint256 maxVK,
             uint256 sampleLifetime
         )
     {
         bytes32 _preset = _presets[_binStep];
         if (_preset == bytes32(0)) revert LBFactory__BinStepHasNoPreset(_binStep);
 
-        baseFactor = _preset.decode(type(uint8).max, 8);
-        filterPeriod = _preset.decode(type(uint16).max, 16);
-        decayPeriod = _preset.decode(type(uint16).max, 32);
-        reductionFactor = _preset.decode(type(uint8).max, 48);
-        variableFeeControl = _preset.decode(type(uint8).max, 56);
-        protocolShare = _preset.decode(type(uint8).max, 64);
-        maxAccumulator = _preset.decode(type(uint72).max, 72);
+        uint256 _shift;
+
+        // Safety check
+        assert(_binStep == _preset.decode(type(uint16).max, _shift));
+
+        baseFactor = _preset.decode(type(uint16).max, _shift += 16);
+        filterPeriod = _preset.decode(type(uint16).max, _shift += 16);
+        decayPeriod = _preset.decode(type(uint16).max, _shift += 16);
+        reductionFactor = _preset.decode(type(uint16).max, _shift += 16);
+        variableFeeControl = _preset.decode(type(uint24).max, _shift += 16);
+        protocolShare = _preset.decode(type(uint16).max, _shift += 24);
+        maxVK = _preset.decode(type(uint24).max, _shift += 16);
 
         sampleLifetime = _preset.decode(type(uint16).max, 240);
     }
 
-    /// @notice Vies function to return the list of available binStep with a preset
+    /// @notice View function to return the list of available binStep with a preset
     /// @return presetsBinStep The list of binStep
     function getAvailablePresetsBinStep() external view override returns (uint256[] memory presetsBinStep) {
         unchecked {
@@ -180,7 +184,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         }
     }
 
-    /// @notice Vies function to return the list of available binStep with a preset
+    /// @notice View function to return the list of available binStep with a preset
     /// @param _tokenX The first token of the pair
     /// @param _tokenY The second token of the pair
     /// @return LBPairsAvailable The list of available LBPairs
@@ -274,7 +278,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             // We add a 1 at bit `_binStep` as this binStep is now set
             _avLBPairBinSteps = bytes32(uint256(_avLBPairBinSteps) | (1 << _binStep));
 
-            // Increase the number of preset by 1
+            // Increase the number of lb pairs by 1
             _avLBPairBinSteps = bytes32(uint256(_avLBPairBinSteps) + (1 << 248));
 
             // Save the changes
@@ -282,12 +286,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
         }
 
         emit LBPairCreated(_tokenX, _tokenY, _LBPair, allLBPairs.length - 1);
-    }
-
-    /// @notice Function to set the recipient of the fees. This address needs to be able to receive ERC20s.
-    /// @param _feeRecipient The address of the recipient
-    function setFeeRecipient(address _feeRecipient) external override onlyOwner {
-        _setFeeRecipient(_feeRecipient);
     }
 
     /// @notice Function to set the blacklist state of a pair, it will make the pair unusable by the router
@@ -318,18 +316,18 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _reductionFactor The reduction factor, used to calculate the reduction of the accumulator
     /// @param _variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable them
     /// @param _protocolShare The share of the fees received by the protocol
-    /// @param _maxAccumulator The max value of the accumulator
+    /// @param _maxVK The max value of VK
     /// @param _sampleLifetime The lifetime of an oracle's sample
     function setPreset(
-        uint8 _binStep,
-        uint8 _baseFactor,
+        uint16 _binStep,
+        uint16 _baseFactor,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
-        uint8 _reductionFactor,
-        uint8 _variableFeeControl,
-        uint8 _protocolShare,
-        uint72 _maxAccumulator,
-        uint8 _sampleLifetime
+        uint16 _reductionFactor,
+        uint24 _variableFeeControl,
+        uint16 _protocolShare,
+        uint24 _maxVK,
+        uint16 _sampleLifetime
     ) external override onlyOwner {
         bytes32 _packedFeeParameters = _getPackedFeeParameters(
             _binStep,
@@ -339,11 +337,13 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _reductionFactor,
             _variableFeeControl,
             _protocolShare,
-            _maxAccumulator
+            _maxVK
         );
 
         // The last 16 bits are reserved for sampleLifetime
-        bytes32 _preset = bytes32(uint256(_packedFeeParameters) + (uint256(_sampleLifetime) << 240));
+        bytes32 _preset = bytes32(
+            (uint256(_packedFeeParameters) & type(uint240).max) | (uint256(_sampleLifetime) << 240)
+        );
 
         _presets[_binStep] = _preset;
 
@@ -367,7 +367,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _reductionFactor,
             _variableFeeControl,
             _protocolShare,
-            _maxAccumulator,
+            _maxVK,
             _sampleLifetime
         );
     }
@@ -388,14 +388,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
         emit PresetRemoved(_binStep);
     }
 
-    /// @notice Function to lock the Factory and prevent anyone but the owner to create pairs.
-    /// @param _locked The new lock state
-    function setFactoryLocked(bool _locked) external onlyOwner {
-        if (unlocked == !_locked) revert LBFactory__FactoryLockIsAlreadyInTheSameState();
-        unlocked = !_locked;
-        emit FactoryLocked(_locked);
-    }
-
     /// @notice Function to set the fee parameter of a LBPair
     /// @param _tokenX The address of the first token
     /// @param _tokenY The address of the second token
@@ -406,18 +398,18 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _reductionFactor The reduction factor, used to calculate the reduction of the accumulator
     /// @param _variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable them
     /// @param _protocolShare The share of the fees received by the protocol
-    /// @param _maxAccumulator The max value of the accumulator
+    /// @param _maxVK The max value of VK
     function setFeesParametersOnPair(
         IERC20 _tokenX,
         IERC20 _tokenY,
-        uint8 _binStep,
-        uint8 _baseFactor,
+        uint16 _binStep,
+        uint16 _baseFactor,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
-        uint8 _reductionFactor,
-        uint8 _variableFeeControl,
-        uint8 _protocolShare,
-        uint72 _maxAccumulator
+        uint16 _reductionFactor,
+        uint24 _variableFeeControl,
+        uint16 _protocolShare,
+        uint24 _maxVK
     ) external override onlyOwner {
         ILBPair _LBPair = _getLBPairInfo(_tokenX, _tokenY, _binStep).LBPair;
 
@@ -429,7 +421,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _reductionFactor,
             _variableFeeControl,
             _protocolShare,
-            _maxAccumulator
+            _maxVK
         );
 
         _LBPair.setFeesParameters(_packedFeeParameters);
@@ -444,24 +436,43 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _reductionFactor,
             _variableFeeControl,
             _protocolShare,
-            _maxAccumulator
+            _maxVK
         );
     }
 
-    /// @notice Internal function to set the recipient of the fees
+    /// @notice Function to set the recipient of the fees. This address needs to be able to receive ERC20s
+    /// @param _feeRecipient The address of the recipient
+    function setFeeRecipient(address _feeRecipient) external override onlyOwner {
+        _setFeeRecipient(_feeRecipient);
+    }
 
     /// @notice Function to set the flash loan fee
     /// @param _flashLoanFee The value of the fee for flash loan
     function setFlashLoanFee(uint256 _flashLoanFee) external override onlyOwner {
         _setFlashLoanFee(_flashLoanFee);
     }
+
+    /// @notice Function to lock the Factory and prevent anyone but the owner to create pairs.
+    /// @param _locked The new lock state
+    function setFactoryLocked(bool _locked) external override onlyOwner {
+        if (unlocked == !_locked) revert LBFactory__FactoryLockIsAlreadyInTheSameState();
+        unlocked = !_locked;
+        emit FactoryLocked(_locked);
+    }
+
+    /// @notice Internal function to set the recipient of the fee
     /// @param _feeRecipient The address of the recipient
     function _setFeeRecipient(address _feeRecipient) internal {
         if (_feeRecipient == address(0)) revert LBFactory__ZeroAddress();
 
-        address oldFeeRecipient = feeRecipient;
+        address _oldFeeRecipient = feeRecipient;
         feeRecipient = _feeRecipient;
-        emit FeeRecipientChanged(oldFeeRecipient, _feeRecipient);
+        emit FeeRecipientChanged(_oldFeeRecipient, _feeRecipient);
+    }
+
+    function forceDecay(ILBPair _LBPair) external override onlyOwner {
+        _LBPair.forceDecay();
+    }
 
     /// @notice Internal function to set the fee for flash loan
     /// @param _flashLoanFee The fee value for flash loan
@@ -479,51 +490,49 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _reductionFactor The reduction factor, used to calculate the reduction of the accumulator
     /// @param _variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable them
     /// @param _protocolShare The share of the fees received by the protocol
-    /// @param _maxAccumulator The max value of the accumulator
+    /// @param _maxVK The max value of VK
     function _getPackedFeeParameters(
-        uint8 _binStep,
-        uint8 _baseFactor,
+        uint16 _binStep,
+        uint16 _baseFactor,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
-        uint8 _reductionFactor,
-        uint8 _variableFeeControl,
-        uint8 _protocolShare,
-        uint72 _maxAccumulator
+        uint16 _reductionFactor,
+        uint24 _variableFeeControl,
+        uint16 _protocolShare,
+        uint24 _maxVK
     ) private pure returns (bytes32) {
         if (_binStep < MIN_BIN_STEP || _binStep > MAX_BIN_STEP)
             revert LBFactory__BinStepRequirementsBreached(MIN_BIN_STEP, _binStep, MAX_BIN_STEP);
 
-        if (_baseFactor > Constants.HUNDRED_PERCENT)
-            revert LBFactory__BaseFactorOverflows(_baseFactor, Constants.HUNDRED_PERCENT);
+        if (_baseFactor > Constants.BASIS_POINT_MAX)
+            revert LBFactory__BaseFactorOverflows(_baseFactor, Constants.BASIS_POINT_MAX);
 
         if (_filterPeriod >= _decayPeriod) revert LBFactory__DecreasingPeriods(_filterPeriod, _decayPeriod);
 
-        if (_reductionFactor > Constants.HUNDRED_PERCENT)
-            revert LBFactory__ReductionFactorOverflows(_reductionFactor, Constants.HUNDRED_PERCENT);
-
-        if (_variableFeeControl > Constants.HUNDRED_PERCENT)
-            revert LBFactory__VariableFeeControlOverflows(_variableFeeControl, Constants.HUNDRED_PERCENT);
+        if (_reductionFactor > Constants.BASIS_POINT_MAX)
+            revert LBFactory__ReductionFactorOverflows(_reductionFactor, Constants.BASIS_POINT_MAX);
 
         if (_protocolShare > MAX_PROTOCOL_SHARE)
             revert LBFactory__ProtocolShareOverflows(_protocolShare, MAX_PROTOCOL_SHARE);
 
         {
-            uint256 _baseFee = (uint256(_baseFactor) * _binStep) * 1e12;
-            if (_baseFee < MIN_FEE) revert LBFactory__BaseFeesBelowMin(_baseFee, MIN_FEE);
+            uint256 _baseFee = (uint256(_baseFactor) * _binStep) * 1e10;
 
-            // decimals((_variableFeeControl * (_maxAccumulator * _binStep)**2)) = 2 + (4 + 4) * 2 = 18
-            // The result should use 4 decimals, so we divide it by 1e14
-            uint256 _maxVariableFee = ((uint256(_maxAccumulator) * _binStep)**2 * _variableFeeControl);
+            // decimals((_variableFeeControl * (_maxVK * _binStep)**2)) = 4 + (4 + 4) * 2 - 2 = 18
+            // The result should use 18 decimals
+            uint256 _maxVariableFee = (_variableFeeControl *
+                (uint256(_maxVK) * _binStep) *
+                (uint256(_maxVK) * _binStep)) / 100;
             if (_baseFee + _maxVariableFee > MAX_FEE)
                 revert LBFactory__FeesAboveMax(_baseFee + _maxVariableFee, MAX_FEE);
         }
 
         /// @dev It's very important that the sum of the sizes of those values is exactly 256 bits
-        /// here, (112 + 72) + 8 + 8 + 8 + 16 + 16 + 8 + 8 = 256
+        /// here, (112 + 24) + 16 + 24 + 16 + 16 + 16 + 16 + 16 = 256
         return
             bytes32(
                 abi.encodePacked(
-                    uint184(_maxAccumulator),
+                    uint136(_maxVK), // The first 112 bits are reserved for the dynamic parameters
                     _protocolShare,
                     _variableFeeControl,
                     _reductionFactor,

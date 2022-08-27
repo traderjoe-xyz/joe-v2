@@ -3,10 +3,12 @@
 pragma solidity 0.8.7;
 
 import "./SafeCast.sol";
+import "./SafeMath.sol";
 import "./Constants.sol";
 
 library FeeHelper {
     using SafeCast for uint256;
+    using SafeMath for uint256;
 
     /// @dev Structure to store the protocol fees:
     /// - binStep: The bin step
@@ -16,19 +18,23 @@ library FeeHelper {
     /// - reductionFactor: The reduction factor, used to calculate the reduction of the accumulator
     /// - variableFeeControl: The variable fee control, used to control the variable fee, can be 0 to disable them
     /// - protocolShare: The share of fees sent to protocol
-    /// - maxAccumulator: The max value of the accumulator
-    /// - accumulator: The value of the accumulator
+    /// - maxVK: The max value of VK
+    /// - VK: The value of VK
+    /// - VA: The value of VA
+    /// - indexRef: The index reference
     /// - time: The last time the accumulator was called
     struct FeeParameters {
-        uint8 binStep;
-        uint8 baseFactor;
+        uint16 binStep;
+        uint16 baseFactor;
         uint16 filterPeriod;
         uint16 decayPeriod;
-        uint8 reductionFactor;
-        uint8 variableFeeControl;
-        uint8 protocolShare;
-        uint72 maxAccumulator;
-        uint72 accumulator;
+        uint16 reductionFactor;
+        uint24 variableFeeControl;
+        uint16 protocolShare;
+        uint24 maxVK;
+        uint24 VK;
+        uint24 VA;
+        uint24 indexRef;
         uint40 time;
     }
 
@@ -40,76 +46,66 @@ library FeeHelper {
         uint128 protocol;
     }
 
-    /// @notice Update the value of the accumulator
+    /// @notice Update the value of the VK
     /// @param _fp The current fee parameters
-    function updateAccumulatorValue(FeeParameters memory _fp) internal view {
+    /// @param _activeId The current active id
+    function updateVariableFeeParameters(FeeParameters memory _fp, uint256 _activeId) internal view {
         unchecked {
-            uint256 deltaT = block.timestamp - _fp.time;
+            uint256 _deltaT = block.timestamp - _fp.time;
 
-            uint256 _accumulator; // Can't overflow as _accumulator <= _fp.accumulator <= _fp.maxAccumulator < 2**72
-            if (deltaT < _fp.filterPeriod) {
-                _accumulator = _fp.accumulator;
-            } else if (deltaT < _fp.decayPeriod) {
-                _accumulator = (_fp.accumulator * _fp.reductionFactor) / Constants.HUNDRED_PERCENT;
-            } // else _accumulator = 0;
+            if (_deltaT >= _fp.filterPeriod || _fp.time == 0) {
+                _fp.indexRef = uint24(_activeId);
+                if (_deltaT < _fp.decayPeriod) {
+                    _fp.VA = uint24((_fp.reductionFactor * _fp.VK) / Constants.BASIS_POINT_MAX);
+                } else {
+                    _fp.VA = 0;
+                }
+            }
 
-            _fp.accumulator = uint72(_accumulator);
+            _fp.time = (block.timestamp).safe40();
+
+            updateVK(_fp, _activeId);
         }
     }
 
-    /// @notice Update the accumulator and the timestamp
+    /// @notice Update the VK
     /// @param _fp The fee parameter
-    /// @param _binCrossed The current number of bin crossed
-    function updateFeeParameters(FeeParameters memory _fp, uint256 _binCrossed) internal view {
+    /// @param _activeId The current active id
+    function updateVK(FeeParameters memory _fp, uint256 _activeId) internal pure {
         unchecked {
-            // This equation can't overflow
-            uint256 _accumulator = uint256(_fp.accumulator) + _binCrossed * Constants.BASIS_POINT_MAX;
-
-            if (_accumulator > uint256(_fp.maxAccumulator)) _accumulator = _fp.maxAccumulator;
-
-            _fp.accumulator = _accumulator.safe72();
-            _fp.time = block.timestamp.safe40();
+            uint256 VK = _fp.VA + _activeId.absSub(_fp.indexRef) * Constants.BASIS_POINT_MAX;
+            _fp.VK = VK > _fp.maxVK ? _fp.maxVK : uint16(VK);
         }
     }
 
     /// @notice Returns the base fee added to a swap, with 18 decimals
     /// @param _fp The current fee parameters
-    /// @return The fee in basis point squared
+    /// @return The fee with 18 decimals precision
     function getBaseFee(FeeParameters memory _fp) internal pure returns (uint256) {
         unchecked {
-            return uint256(_fp.baseFactor) * _fp.binStep * 1e12;
+            return uint256(_fp.baseFactor) * _fp.binStep * 1e10;
         }
     }
 
     /// @notice Returns the variable fee added to a swap, with 18 decimals
     /// @param _fp The current fee parameters
-    /// @param _binCrossed The current number of bin crossed
-    /// @return The variable fee in basis point squared
-    function getVariableFee(FeeParameters memory _fp, uint256 _binCrossed) internal pure returns (uint256) {
+    /// @return The variable fee with 18 decimals precision
+    function getVariableFee(FeeParameters memory _fp) internal pure returns (uint256) {
         unchecked {
-            if (_fp.reductionFactor == 0) return 0;
+            if (_fp.variableFeeControl == 0) return 0;
 
-            uint256 _acc = _fp.accumulator + _binCrossed * Constants.BASIS_POINT_MAX;
-
-            if (_acc > _fp.maxAccumulator) _acc = _fp.maxAccumulator;
-
-            // decimals(_fp.reductionFactor * (_acc * _fp.binStep)**2) = 2 + (4 + 4) * 2 = 18
-            return (_fp.reductionFactor * ((_acc * _fp.binStep) * (_acc * _fp.binStep)));
+            // decimals(_fp.reductionFactor * (_fp.VK * _fp.binStep)**2) = 4 + (4 + 4) * 2 - 2 = 18
+            return (_fp.variableFeeControl * ((_fp.VK * _fp.binStep) * (_fp.VK * _fp.binStep))) / 100;
         }
     }
 
     /// @notice Return the fees added to an amount
     /// @param _fp The current fee parameter
     /// @param _amount The amount of token sent
-    /// @param _binCrossed The current number of bin crossed
     /// @return The fee amount
-    function getFees(
-        FeeParameters memory _fp,
-        uint256 _amount,
-        uint256 _binCrossed
-    ) internal pure returns (uint256) {
+    function getFees(FeeParameters memory _fp, uint256 _amount) internal pure returns (uint256) {
         unchecked {
-            uint256 _feeShares = getFeeShares(_fp, _binCrossed);
+            uint256 _feeShares = getFeeShares(_fp);
             return (_amount * _feeShares) / (Constants.PRECISION);
         }
     }
@@ -117,15 +113,10 @@ library FeeHelper {
     /// @notice Return the fees from an amount
     /// @param _fp The current fee parameter
     /// @param _amountPlusFee The amount of token sent
-    /// @param _binCrossed The current number of bin crossed
     /// @return The fee amount
-    function getFeesFrom(
-        FeeParameters memory _fp,
-        uint256 _amountPlusFee,
-        uint256 _binCrossed
-    ) internal pure returns (uint256) {
+    function getFeesFrom(FeeParameters memory _fp, uint256 _amountPlusFee) internal pure returns (uint256) {
         unchecked {
-            uint256 _feeShares = getFeeShares(_fp, _binCrossed);
+            uint256 _feeShares = getFeeShares(_fp);
             return (_amountPlusFee * _feeShares) / (Constants.PRECISION + _feeShares);
         }
     }
@@ -134,16 +125,27 @@ library FeeHelper {
     /// @param _fp The current fee parameter
     /// @param _amountPlusFee The amount of token sent
     /// @return The fee amount
-    function getFeesForC(
-        FeeParameters memory _fp,
-        uint256 _amountPlusFee,
-        uint256 _binCrossed
-    ) internal pure returns (uint256) {
+    function getFeesForC(FeeParameters memory _fp, uint256 _amountPlusFee) internal pure returns (uint256) {
         unchecked {
-            uint256 _feeShares = getFeeShares(_fp, _binCrossed);
+            uint256 _feeShares = getFeeShares(_fp);
             return
                 (_amountPlusFee * _feeShares * (_feeShares + Constants.PRECISION)) /
                 (Constants.PRECISION * Constants.PRECISION);
+        }
+    }
+
+    /// @notice Return the fees added when an user do a flashloan
+    /// @param _fp The current fee parameter
+    /// @param _amount The amount of token
+    /// @param _fee The flash loan fee
+    /// @return The flash loan fee amount
+    function getFlashLoanFee(
+        FeeParameters memory _fp,
+        uint256 _amount,
+        uint256 _fee
+    ) internal pure returns (uint256) {
+        unchecked {
+            return (_amount * _fee) / (Constants.PRECISION);
         }
     }
 
@@ -158,17 +160,16 @@ library FeeHelper {
     {
         unchecked {
             fees.total = _fees.safe128();
-            fees.protocol = uint128((_fees * _fp.protocolShare) / Constants.HUNDRED_PERCENT);
+            fees.protocol = uint128((_fees * _fp.protocolShare) / Constants.BASIS_POINT_MAX);
         }
     }
 
     /// @notice Return the fee share
     /// @param _fp The current fee parameter
-    /// @param _binCrossed The current number of bin crossed
     /// @return feeShares The fee share, with 18 decimals
-    function getFeeShares(FeeParameters memory _fp, uint256 _binCrossed) private pure returns (uint256 feeShares) {
+    function getFeeShares(FeeParameters memory _fp) private pure returns (uint256 feeShares) {
         unchecked {
-            feeShares = getBaseFee(_fp) + getVariableFee(_fp, _binCrossed);
+            feeShares = getBaseFee(_fp) + getVariableFee(_fp);
         }
     }
 }

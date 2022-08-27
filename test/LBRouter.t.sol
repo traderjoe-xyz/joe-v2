@@ -8,7 +8,7 @@ contract LiquidityBinRouterTest is TestHelper {
         token6D = new ERC20MockDecimals(6);
         token18D = new ERC20MockDecimals(18);
 
-        factory = new LBFactory(DEV);
+        factory = new LBFactory(DEV, 8e14);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
         new LBFactoryHelper(factory);
 
@@ -34,9 +34,9 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(address(pair.tokenY()), address(token18D));
 
         FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();
-        assertEq(feeParameters.accumulator, 0);
+        assertEq(feeParameters.VK, 0);
         assertEq(feeParameters.time, 0);
-        assertEq(feeParameters.maxAccumulator, DEFAULT_MAX_ACCUMULATOR);
+        assertEq(feeParameters.maxVK, DEFAULT_MAX_VK);
         assertEq(feeParameters.filterPeriod, DEFAULT_FILTER_PERIOD);
         assertEq(feeParameters.decayPeriod, DEFAULT_DECAY_PERIOD);
         assertEq(feeParameters.binStep, DEFAULT_BIN_STEP);

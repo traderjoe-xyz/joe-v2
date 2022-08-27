@@ -26,7 +26,7 @@ contract LiquidityBinRouterTest is TestHelper {
             usdc = ERC20MockDecimals(USDC_AVALANCHE_ADDRESS);
         }
 
-        factory = new LBFactory(DEV);
+        factory = new LBFactory(DEV, 8e14);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
         new LBFactoryHelper(factory);
 
@@ -315,7 +315,7 @@ contract LiquidityBinRouterTest is TestHelper {
             5,
             10,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_ACCUMULATOR,
+            DEFAULT_MAX_VK,
             DEFAULT_SAMPLE_LIFETIME
         );
         createLBPairDefaultFeesFromStartIdAndBinStep(token6D, token18D, ID_ONE, 75);

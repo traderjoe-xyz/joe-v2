@@ -12,7 +12,7 @@ contract LiquidityBinFactoryTestM is TestHelper {
         token6D = new ERC20MockDecimals(6);
         token18D = new ERC20MockDecimals(18);
 
-        factory = new LBFactory(DEV);
+        factory = new LBFactory(DEV, 8e14);
         new LBFactoryHelper(factory);
 
         router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(address(wavax)));
@@ -27,7 +27,7 @@ contract LiquidityBinFactoryTestM is TestHelper {
             5,
             10,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_ACCUMULATOR,
+            DEFAULT_MAX_VK,
             DEFAULT_SAMPLE_LIFETIME
         );
         pair1 = createLBPairDefaultFeesFromStartIdAndBinStep(token6D, token18D, ID_ONE, 75);
@@ -39,7 +39,7 @@ contract LiquidityBinFactoryTestM is TestHelper {
             5,
             5,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_ACCUMULATOR,
+            DEFAULT_MAX_VK,
             DEFAULT_SAMPLE_LIFETIME
         );
         pair2 = createLBPairDefaultFeesFromStartIdAndBinStep(token6D, token18D, ID_ONE, 98);
@@ -53,7 +53,7 @@ contract LiquidityBinFactoryTestM is TestHelper {
             uint256 reductionFactor,
             uint256 variableFeeControl,
             uint256 protocolShare,
-            uint256 maxAccumulator,
+            uint256 maxVK,
             uint256 sampleLifetime
         ) = factory.getPreset(DEFAULT_BIN_STEP);
 
@@ -63,19 +63,19 @@ contract LiquidityBinFactoryTestM is TestHelper {
         assertEq(reductionFactor, DEFAULT_REDUCTION_FACTOR);
         assertEq(variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL);
         assertEq(protocolShare, DEFAULT_PROTOCOL_SHARE);
-        assertEq(maxAccumulator, DEFAULT_MAX_ACCUMULATOR);
+        assertEq(maxVK, DEFAULT_MAX_VK);
         assertEq(sampleLifetime, DEFAULT_SAMPLE_LIFETIME);
 
         factory.setPreset(
             DEFAULT_BIN_STEP,
-            DEFAULT_BASE_FACTOR + 1,
-            DEFAULT_FILTER_PERIOD + 1,
-            DEFAULT_DECAY_PERIOD + 1,
-            DEFAULT_REDUCTION_FACTOR + 1,
-            DEFAULT_VARIABLE_FEE_CONTROL + 1,
-            DEFAULT_PROTOCOL_SHARE + 1,
-            DEFAULT_MAX_ACCUMULATOR + 1,
-            DEFAULT_SAMPLE_LIFETIME + 1
+            DEFAULT_BASE_FACTOR - 1,
+            DEFAULT_FILTER_PERIOD - 1,
+            DEFAULT_DECAY_PERIOD - 1,
+            DEFAULT_REDUCTION_FACTOR - 1,
+            DEFAULT_VARIABLE_FEE_CONTROL - 1,
+            DEFAULT_PROTOCOL_SHARE - 1,
+            DEFAULT_MAX_VK - 1,
+            DEFAULT_SAMPLE_LIFETIME - 1
         );
 
         (
@@ -85,18 +85,18 @@ contract LiquidityBinFactoryTestM is TestHelper {
             reductionFactor,
             variableFeeControl,
             protocolShare,
-            maxAccumulator,
+            maxVK,
             sampleLifetime
         ) = factory.getPreset(DEFAULT_BIN_STEP);
 
-        assertEq(baseFactor, DEFAULT_BASE_FACTOR + 1);
-        assertEq(filterPeriod, DEFAULT_FILTER_PERIOD + 1);
-        assertEq(decayPeriod, DEFAULT_DECAY_PERIOD + 1);
-        assertEq(reductionFactor, DEFAULT_REDUCTION_FACTOR + 1);
-        assertEq(variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL + 1);
-        assertEq(protocolShare, DEFAULT_PROTOCOL_SHARE + 1);
-        assertEq(maxAccumulator, DEFAULT_MAX_ACCUMULATOR + 1);
-        assertEq(sampleLifetime, DEFAULT_SAMPLE_LIFETIME + 1);
+        assertEq(baseFactor, DEFAULT_BASE_FACTOR - 1);
+        assertEq(filterPeriod, DEFAULT_FILTER_PERIOD - 1);
+        assertEq(decayPeriod, DEFAULT_DECAY_PERIOD - 1);
+        assertEq(reductionFactor, DEFAULT_REDUCTION_FACTOR - 1);
+        assertEq(variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL - 1);
+        assertEq(protocolShare, DEFAULT_PROTOCOL_SHARE - 1);
+        assertEq(maxVK, DEFAULT_MAX_VK - 1);
+        assertEq(sampleLifetime, DEFAULT_SAMPLE_LIFETIME - 1);
 
         vm.expectRevert(abi.encodeWithSelector(LBFactory__BinStepHasNoPreset.selector, 3));
         factory.getPreset(3);

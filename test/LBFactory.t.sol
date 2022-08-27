@@ -9,7 +9,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         token12D = new ERC20MockDecimals(12);
         token18D = new ERC20MockDecimals(18);
 
-        factory = new LBFactory(DEV);
+        factory = new LBFactory(DEV, 8e14);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
         new LBFactoryHelper(factory);
     }
@@ -29,9 +29,11 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(address(pair.tokenY()), address(token12D));
 
         FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();
-        assertEq(feeParameters.accumulator, 0);
+        assertEq(feeParameters.VK, 0);
+        assertEq(feeParameters.VA, 0);
+        assertEq(feeParameters.indexRef, 0);
         assertEq(feeParameters.time, 0);
-        assertEq(feeParameters.maxAccumulator, DEFAULT_MAX_ACCUMULATOR);
+        assertEq(feeParameters.maxVK, DEFAULT_MAX_VK);
         assertEq(feeParameters.filterPeriod, DEFAULT_FILTER_PERIOD);
         assertEq(feeParameters.decayPeriod, DEFAULT_DECAY_PERIOD);
         assertEq(feeParameters.binStep, DEFAULT_BIN_STEP);
@@ -50,7 +52,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_SAMPLE_LIFETIME,
             bytes32(
                 abi.encodePacked(
-                    DEFAULT_MAX_ACCUMULATOR,
+                    uint136(DEFAULT_MAX_VK), // The first 112 bits are reserved for the dynamic parameters
                     DEFAULT_PROTOCOL_SHARE,
                     DEFAULT_VARIABLE_FEE_CONTROL,
                     DEFAULT_REDUCTION_FACTOR,
@@ -107,62 +109,62 @@ contract LiquidityBinFactoryTest is TestHelper {
 
     function testFailForInvalidBinStepOverflow() public {
         factory.setPreset(
-            uint8(factory.MAX_BIN_STEP() + 1),
+            uint16(factory.MAX_BIN_STEP() + 1),
             DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_ACCUMULATOR,
+            DEFAULT_MAX_VK,
             DEFAULT_SAMPLE_LIFETIME
         );
     }
 
     function testFailForInvalidBinStepUnderflow() public {
         factory.setPreset(
-            uint8(factory.MIN_BIN_STEP() - 1),
+            uint16(factory.MIN_BIN_STEP() - 1),
             DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_ACCUMULATOR,
+            DEFAULT_MAX_VK,
             DEFAULT_SAMPLE_LIFETIME
         );
     }
 
-    function testsetFeesParametersOnPair() public {
+    function testSetFeesParametersOnPair() public {
         ILBPair pair = createLBPairDefaultFees(token6D, token12D);
 
         factory.setFeesParametersOnPair(
             token6D,
             token12D,
             DEFAULT_BIN_STEP,
-            DEFAULT_BASE_FACTOR + 1,
-            DEFAULT_FILTER_PERIOD + 1,
-            DEFAULT_DECAY_PERIOD + 1,
-            DEFAULT_REDUCTION_FACTOR + 1,
-            DEFAULT_VARIABLE_FEE_CONTROL + 1,
-            DEFAULT_PROTOCOL_SHARE + 1,
-            DEFAULT_MAX_ACCUMULATOR + 1
+            DEFAULT_BASE_FACTOR - 1,
+            DEFAULT_FILTER_PERIOD - 1,
+            DEFAULT_DECAY_PERIOD - 1,
+            DEFAULT_REDUCTION_FACTOR - 1,
+            DEFAULT_VARIABLE_FEE_CONTROL - 1,
+            DEFAULT_PROTOCOL_SHARE - 1,
+            DEFAULT_MAX_VK - 1
         );
 
         FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();
-        assertEq(feeParameters.accumulator, 0);
+        assertEq(feeParameters.VK, 0);
         assertEq(feeParameters.time, 0);
         assertEq(feeParameters.binStep, DEFAULT_BIN_STEP);
-        assertEq(feeParameters.baseFactor, DEFAULT_BASE_FACTOR + 1);
-        assertEq(feeParameters.filterPeriod, DEFAULT_FILTER_PERIOD + 1);
-        assertEq(feeParameters.decayPeriod, DEFAULT_DECAY_PERIOD + 1);
-        assertEq(feeParameters.reductionFactor, DEFAULT_REDUCTION_FACTOR + 1);
-        assertEq(feeParameters.variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL + 1);
-        assertEq(feeParameters.protocolShare, DEFAULT_PROTOCOL_SHARE + 1);
-        assertEq(feeParameters.maxAccumulator, DEFAULT_MAX_ACCUMULATOR + 1);
+        assertEq(feeParameters.baseFactor, DEFAULT_BASE_FACTOR - 1);
+        assertEq(feeParameters.filterPeriod, DEFAULT_FILTER_PERIOD - 1);
+        assertEq(feeParameters.decayPeriod, DEFAULT_DECAY_PERIOD - 1);
+        assertEq(feeParameters.reductionFactor, DEFAULT_REDUCTION_FACTOR - 1);
+        assertEq(feeParameters.variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL - 1);
+        assertEq(feeParameters.protocolShare, DEFAULT_PROTOCOL_SHARE - 1);
+        assertEq(feeParameters.maxVK, DEFAULT_MAX_VK - 1);
     }
 
-    function testFailsetFeesParametersOnPairNotByOwner() public {
+    function testFailSetFeesParametersOnPairNotByOwner() public {
         createLBPairDefaultFees(token6D, token12D);
 
         vm.prank(ALICE);
@@ -176,7 +178,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_ACCUMULATOR
+            DEFAULT_MAX_VK
         );
     }
 
@@ -193,7 +195,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_ACCUMULATOR
+            DEFAULT_MAX_VK
         );
     }
 
@@ -204,13 +206,13 @@ contract LiquidityBinFactoryTest is TestHelper {
             token6D,
             token12D,
             DEFAULT_BIN_STEP,
-            100 + 1,
+            uint16(Constants.BASIS_POINT_MAX + 1),
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_ACCUMULATOR
+            DEFAULT_MAX_VK
         );
     }
 
@@ -226,29 +228,12 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_DECAY_PERIOD,
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
-            25 + 1,
-            DEFAULT_MAX_ACCUMULATOR
+            2_501,
+            DEFAULT_MAX_VK
         );
     }
 
-    function testFailForInvalidBaseFee() public {
-        createLBPairDefaultFees(token6D, token12D);
-
-        factory.setFeesParametersOnPair(
-            token6D,
-            token12D,
-            DEFAULT_BIN_STEP,
-            0,
-            DEFAULT_FILTER_PERIOD,
-            DEFAULT_DECAY_PERIOD,
-            DEFAULT_REDUCTION_FACTOR,
-            DEFAULT_VARIABLE_FEE_CONTROL,
-            DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_ACCUMULATOR
-        );
-    }
-
-    function testFailForInvalidMaxAccumulator() public {
+    function testFailForInvalidMaxVK() public {
         createLBPairDefaultFees(token6D, token12D);
 
         factory.setFeesParametersOnPair(
@@ -261,7 +246,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            1_777_638 + 1
+            DEFAULT_MAX_VK + 1
         );
     }
 }

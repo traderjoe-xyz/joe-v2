@@ -33,28 +33,18 @@ contract LBToken is ILBToken {
     /// @dev  Mapping from account to set of ids, where user currently have a non-zero balance
     mapping(address => EnumerableSet.UintSet) private _userIds;
 
-    string private _name;
-    string private _symbol;
-
-    event Transfer();
-
-    /// @notice Constructor
-    /// @param name_ Name of token
-    /// @param symbol_ Symbol of token
-    constructor(string memory name_, string memory symbol_) {
-        _name = name_;
-        _symbol = symbol_;
-    }
+    string private constant _name = "Liquidity Book Token";
+    string private constant _symbol = "LBT";
 
     /// @notice Returns the name of the token
     /// @return The name of the token
-    function name() public view virtual override returns (string memory) {
+    function name() public pure virtual override returns (string memory) {
         return _name;
     }
 
     /// @notice Returns the symbol of the token, usually a shorter version of the name
     /// @return The symbol of the token
-    function symbol() public view virtual override returns (string memory) {
+    function symbol() public pure virtual override returns (string memory) {
         return _symbol;
     }
 
@@ -124,10 +114,9 @@ contract LBToken is ILBToken {
         if (!_isApprovedForAll(_from, _spender)) revert LBToken__SpenderNotApproved(_from, _spender);
 
         if (_from == address(0) || _to == address(0)) revert LBToken__TransferFromOrToAddress0();
-        uint256 _len = _ids.length;
-        if (_len != _amounts.length) revert LBToken__LengthMismatch(_len, _amounts.length);
+        if (_ids.length != _amounts.length) revert LBToken__LengthMismatch(_ids.length, _amounts.length);
 
-        for (uint256 i; i < _len; ++i) {
+        for (uint256 i; i < _ids.length; ++i) {
             uint256 _id = _ids[i];
             uint256 _amount = _amounts[i];
 

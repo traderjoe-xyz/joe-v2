@@ -158,4 +158,6 @@ interface ILBPair {
     function collectProtocolFees() external;
 
     function setFeesParameters(bytes32 packedFeeParameters) external;
+
+    function forceDecay() external;
 }

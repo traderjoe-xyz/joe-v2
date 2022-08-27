@@ -15,9 +15,9 @@ interface ILBToken {
 
     event ApprovalForAll(address indexed account, address indexed sender, bool approved);
 
-    function name() external view returns (string memory);
+    function name() external pure returns (string memory);
 
-    function symbol() external view returns (string memory);
+    function symbol() external pure returns (string memory);
 
     function decimals() external view returns (uint8);
 

@@ -29,11 +29,11 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(address(pair.tokenY()), address(token12D));
 
         FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();
-        assertEq(feeParameters.VK, 0);
-        assertEq(feeParameters.VA, 0);
+        assertEq(feeParameters.volatilityAccumulated, 0);
+        assertEq(feeParameters.volatilityReference, 0);
         assertEq(feeParameters.indexRef, 0);
         assertEq(feeParameters.time, 0);
-        assertEq(feeParameters.maxVK, DEFAULT_MAX_VK);
+        assertEq(feeParameters.maxVolatilityAccumulated, DEFAULT_MAX_VOLATILITY_ACCUMULATED);
         assertEq(feeParameters.filterPeriod, DEFAULT_FILTER_PERIOD);
         assertEq(feeParameters.decayPeriod, DEFAULT_DECAY_PERIOD);
         assertEq(feeParameters.binStep, DEFAULT_BIN_STEP);
@@ -52,7 +52,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_SAMPLE_LIFETIME,
             bytes32(
                 abi.encodePacked(
-                    uint136(DEFAULT_MAX_VK), // The first 112 bits are reserved for the dynamic parameters
+                    uint136(DEFAULT_MAX_VOLATILITY_ACCUMULATED), // The first 112 bits are reserved for the dynamic parameters
                     DEFAULT_PROTOCOL_SHARE,
                     DEFAULT_VARIABLE_FEE_CONTROL,
                     DEFAULT_REDUCTION_FACTOR,
@@ -116,7 +116,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VK,
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED,
             DEFAULT_SAMPLE_LIFETIME
         );
     }
@@ -130,7 +130,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VK,
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED,
             DEFAULT_SAMPLE_LIFETIME
         );
     }
@@ -148,11 +148,11 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR - 1,
             DEFAULT_VARIABLE_FEE_CONTROL - 1,
             DEFAULT_PROTOCOL_SHARE - 1,
-            DEFAULT_MAX_VK - 1
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED - 1
         );
 
         FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();
-        assertEq(feeParameters.VK, 0);
+        assertEq(feeParameters.volatilityAccumulated, 0);
         assertEq(feeParameters.time, 0);
         assertEq(feeParameters.binStep, DEFAULT_BIN_STEP);
         assertEq(feeParameters.baseFactor, DEFAULT_BASE_FACTOR - 1);
@@ -161,7 +161,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(feeParameters.reductionFactor, DEFAULT_REDUCTION_FACTOR - 1);
         assertEq(feeParameters.variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL - 1);
         assertEq(feeParameters.protocolShare, DEFAULT_PROTOCOL_SHARE - 1);
-        assertEq(feeParameters.maxVK, DEFAULT_MAX_VK - 1);
+        assertEq(feeParameters.maxVolatilityAccumulated, DEFAULT_MAX_VOLATILITY_ACCUMULATED - 1);
     }
 
     function testFailSetFeesParametersOnPairNotByOwner() public {
@@ -178,7 +178,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VK
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED
         );
     }
 
@@ -195,7 +195,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VK
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED
         );
     }
 
@@ -212,7 +212,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VK
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED
         );
     }
 
@@ -229,11 +229,11 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             2_501,
-            DEFAULT_MAX_VK
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED
         );
     }
 
-    function testFailForInvalidMaxVK() public {
+    function testFailForInvalidMaxVolatilityAccumulated() public {
         createLBPairDefaultFees(token6D, token12D);
 
         factory.setFeesParametersOnPair(
@@ -246,7 +246,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VK + 1
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED + 1
         );
     }
 }

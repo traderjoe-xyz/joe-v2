@@ -22,11 +22,11 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         uint16 _reductionFactor,
         uint24 _variableFeeControl,
         uint16 _protocolShare,
-        uint24 _maxVK
+        uint24 _maxVolatilityAccumulated
     ) public {
         bytes32 _packedFeeParameters = bytes32(
             abi.encodePacked(
-                uint136(_maxVK), // The first 112 bits are reserved for the dynamic parameters
+                uint136(_maxVolatilityAccumulated), // The first 112 bits are reserved for the dynamic parameters
                 _protocolShare,
                 _variableFeeControl,
                 _reductionFactor,
@@ -44,11 +44,15 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         assertEq(address(pair.tokenY()), address(token18D));
 
         FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();
-        assertEq(feeParameters.VK, 0, "VK should be 0");
-        assertEq(feeParameters.VA, 0, "VA should be 0");
+        assertEq(feeParameters.volatilityAccumulated, 0, "volatilityAccumulated should be 0");
+        assertEq(feeParameters.volatilityReference, 0, "volatilityReference should be 0");
         assertEq(feeParameters.indexRef, 0, "indexRef should be 0");
         assertEq(feeParameters.time, 0, "Time should be zero");
-        assertEq(feeParameters.maxVK, _maxVK, "Max VK should be correctly set");
+        assertEq(
+            feeParameters.maxVolatilityAccumulated,
+            _maxVolatilityAccumulated,
+            "Max volatilityAccumulated should be correctly set"
+        );
         assertEq(feeParameters.filterPeriod, _filterPeriod, "Filter Period should be correctly set");
         assertEq(feeParameters.decayPeriod, _decayPeriod, "Decay Period should be correctly set");
         assertEq(feeParameters.binStep, _binStep, "Bin Step should be correctly set");

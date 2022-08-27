@@ -16,7 +16,7 @@ library Oracle {
     struct Sample {
         uint256 timestamp;
         uint256 cumulativeId;
-        uint256 cumulativeVK;
+        uint256 cumulativeVolatilityAccumulated;
         uint256 cumulativeBinCrossed;
     }
 
@@ -28,7 +28,7 @@ library Oracle {
     /// @param _lookUpTimestamp The looked up date
     /// @return timestamp The timestamp of the sample
     /// @return cumulativeId The weighted average cumulative id
-    /// @return cumulativeVK The weighted average cumulative VK
+    /// @return cumulativeVolatilityAccumulated The weighted average cumulative volatility accumulated
     /// @return cumulativeBinCrossed The weighted average cumulative bin crossed
     function getSampleAt(
         bytes32[65_536] storage _oracle,
@@ -41,7 +41,7 @@ library Oracle {
         returns (
             uint256 timestamp,
             uint256 cumulativeId,
-            uint256 cumulativeVK,
+            uint256 cumulativeVolatilityAccumulated,
             uint256 cumulativeBinCrossed
         )
     {
@@ -70,8 +70,8 @@ library Oracle {
                         cumulativeId =
                             (_sample.cumulativeId() * _weightPrev + _next.cumulativeId() * _weightNext) /
                             _totalWeight;
-                        cumulativeVK =
-                            (_sample.cumulativeVK() * _weightPrev + _next.cumulativeVK() * _weightNext) /
+                        cumulativeVolatilityAccumulated =
+                            (_sample.cumulativeVolatilityAccumulated() * _weightPrev + _next.cumulativeVolatilityAccumulated() * _weightNext) /
                             _totalWeight;
                         cumulativeBinCrossed =
                             (_sample.cumulativeBinCrossed() *
@@ -79,14 +79,14 @@ library Oracle {
                                 _next.cumulativeBinCrossed() *
                                 _weightNext) /
                             _totalWeight;
-                        return (_lookUpTimestamp, cumulativeId, cumulativeVK, cumulativeBinCrossed);
+                        return (_lookUpTimestamp, cumulativeId, cumulativeVolatilityAccumulated, cumulativeBinCrossed);
                     }
                 }
             }
 
             timestamp = _sample.timestamp();
             cumulativeId = _sample.cumulativeId();
-            cumulativeVK = _sample.cumulativeVK();
+            cumulativeVolatilityAccumulated = _sample.cumulativeVolatilityAccumulated();
             cumulativeBinCrossed = _sample.cumulativeBinCrossed();
         }
     }
@@ -98,7 +98,7 @@ library Oracle {
     /// @param _lastTimestamp The timestamp of the creation of the oracle's latest sample
     /// @param _lastIndex The index of the oracle's latest sample
     /// @param _activeId The active index of the pair during the latest swap
-    /// @param _VK The VK of the pair during the latest swap
+    /// @param _volatilityAccumulated The volatility accumulated of the pair during the latest swap
     /// @param _binCrossed The bin crossed during the latest swap
     /// @return updatedIndex The oracle updated index, it is either the same as before, or the next one
     function update(
@@ -108,11 +108,11 @@ library Oracle {
         uint256 _lastTimestamp,
         uint256 _lastIndex,
         uint256 _activeId,
-        uint256 _VK,
+        uint256 _volatilityAccumulated,
         uint256 _binCrossed
     ) internal returns (uint256 updatedIndex) {
         unchecked {
-            bytes32 _updatedPackedSample = _oracle[_lastIndex].update(_activeId, _VK, _binCrossed);
+            bytes32 _updatedPackedSample = _oracle[_lastIndex].update(_activeId, _volatilityAccumulated, _binCrossed);
             updatedIndex = block.timestamp - _lastTimestamp >= _sampleLifetime && _lastTimestamp != 0
                 ? _lastIndex.addMod(1, _size)
                 : _lastIndex;

@@ -18,8 +18,7 @@ library SwapHelper {
     /// @param bin The bin information
     /// @param fp The fee parameters
     /// @param activeId The active id of the pair
-    /// @param swapForY Wether you've swapping token X for token Y (true) or token Y for token X (false)
-    /// @param startId The id at which the swap started
+    /// @param swapForY Whether you've swapping token X for token Y (true) or token Y for token X (false)
     /// @param amountIn The amount sent to the user
     /// @return amountInToBin The amount of token that is added to the bin without the fees
     /// @return amountOutOfBin The amount of token that is removed from the bin
@@ -29,7 +28,6 @@ library SwapHelper {
         FeeHelper.FeeParameters memory fp,
         uint256 activeId,
         bool swapForY,
-        uint256 startId,
         uint256 amountIn
     )
         internal
@@ -53,20 +51,19 @@ library SwapHelper {
                 _maxAmountInToBin = _price.mulShift(_reserve, Constants.SCALE_OFFSET, false);
             }
 
-            uint256 _deltaId = startId > activeId ? startId - activeId : activeId - startId;
-
-            fees = fp.getFeesDistribution(fp.getFees(_maxAmountInToBin, _deltaId));
+            fp.updateVK(activeId);
+            fees = fp.getFeesDistribution(fp.getFees(_maxAmountInToBin));
 
             if (_maxAmountInToBin.add(fees.total) <= amountIn) {
                 amountInToBin = _maxAmountInToBin;
                 amountOutOfBin = _reserve;
             } else {
-                fees = fp.getFeesDistribution(fp.getFeesFrom(amountIn, _deltaId));
+                fees = fp.getFeesDistribution(fp.getFeesFrom(amountIn));
                 amountInToBin = amountIn.sub(fees.total);
                 amountOutOfBin = swapForY
                     ? _price.mulShift(amountInToBin, Constants.SCALE_OFFSET, true)
                     : amountInToBin.shiftDiv(Constants.SCALE_OFFSET, _price, true);
-                // Safety check in case rounding returns a higher value because of rounding
+                // Safety check in case rounding returns a higher value than expected
                 if (amountOutOfBin > _reserve) amountOutOfBin = _reserve;
             }
         }
@@ -85,13 +82,16 @@ library SwapHelper {
         bool swapForY,
         uint256 totalSupply
     ) internal pure {
+        uint256 tokenPerShare;
+
         pairFees.total += fees.total;
         // unsafe math is fine because total >= protocol
         unchecked {
             pairFees.protocol += fees.protocol;
+
+            tokenPerShare = (uint256(fees.total - fees.protocol) << Constants.SCALE_OFFSET) / totalSupply;
         }
 
-        uint256 tokenPerShare = (uint256(fees.total - fees.protocol) << Constants.SCALE_OFFSET) / totalSupply;
         if (swapForY) {
             bin.accTokenXPerShare += tokenPerShare;
         } else {

@@ -21,6 +21,16 @@ library SafeMath {
         return x - y;
     }
 
+    /// @notice absSub, can't underflow or overflow
+    /// @param x The first value
+    /// @param y The second value
+    /// @return The result of x - y
+    function absSub(uint256 x, uint256 y) internal pure returns (uint256) {
+        unchecked {
+            return x > y ? x - y : y - x;
+        }
+    }
+
     /// @notice SafeMul, revert if it overflow
     /// @param x The first value
     /// @param y The second value

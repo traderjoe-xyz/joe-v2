@@ -8,6 +8,7 @@ import "./LBToken.sol";
 import "./libraries/BinHelper.sol";
 import "./libraries/Math512Bits.sol";
 import "./libraries/SafeCast.sol";
+import "./libraries/SafeMath.sol";
 import "./libraries/TreeMath.sol";
 import "./libraries/Constants.sol";
 import "./libraries/ReentrancyGuard.sol";
@@ -42,6 +43,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     using Math512Bits for uint256;
     using TreeMath for mapping(uint256 => uint256)[3];
     using SafeCast for uint256;
+    using SafeMath for uint256;
     using TokenHelper for IERC20;
     using FeeHelper for FeeHelper.FeeParameters;
     using SwapHelper for Bin;
@@ -141,7 +143,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint24 _activeId,
         uint16 _sampleLifetime,
         bytes32 _packedFeeParameters
-    ) LBToken("Liquidity Book Token", "LBT") {
+    ) LBToken() {
         factory = _factory;
         tokenX = _tokenX;
         tokenY = _tokenY;
@@ -168,17 +170,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             uint256 activeId
         )
     {
-        uint256 _mask24 = type(uint24).max;
-        uint256 _mask136 = type(uint136).max;
-        bytes32 _slot;
-        assembly {
-            _slot := sload(add(_pairInformation.slot, 1))
-            reserveY := and(_slot, _mask136)
-
-            _slot := sload(_pairInformation.slot)
-            activeId := and(_slot, _mask24)
-        }
-        reserveX = _slot.decode(_mask136, _OFFSET_PAIR_RESERVE_X);
+        return _getReservesAndId();
     }
 
     /// @notice View function to get the global fees information, the total fees and those for protocol
@@ -243,7 +235,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @dev Return a linearized sample, the weighted average of 2 neighboring samples
     /// @param _ago The number of seconds before the current timestamp
     /// @return cumulativeId The weighted average cumulative id
-    /// @return cumulativeAccumulator The weighted average cumulative accumulator
+    /// @return cumulativeVK The weighted average cumulative VK
     /// @return cumulativeBinCrossed The weighted average cumulative bin crossed
     function getOracleSampleFrom(uint256 _ago)
         external
@@ -251,17 +243,16 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         override
         returns (
             uint256 cumulativeId,
-            uint256 cumulativeAccumulator,
+            uint256 cumulativeVK,
             uint256 cumulativeBinCrossed
         )
     {
-        uint256 _lookUpTimestamp = block.timestamp - _ago;
-
         unchecked {
+            uint256 _lookUpTimestamp = block.timestamp - _ago;
             (, , uint256 _oracleActiveSize, , uint256 _oracleId) = _getOracleParameters();
 
             uint256 timestamp;
-            (timestamp, cumulativeId, cumulativeAccumulator, cumulativeBinCrossed) = _oracle.getSampleAt(
+            (timestamp, cumulativeId, cumulativeVK, cumulativeBinCrossed) = _oracle.getSampleAt(
                 _oracleActiveSize,
                 _oracleId,
                 _lookUpTimestamp
@@ -269,12 +260,13 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
             if (timestamp < _lookUpTimestamp) {
                 FeeHelper.FeeParameters memory _fp = _feeParameters;
-                _fp.updateAccumulatorValue();
+                uint256 _activeId = _pairInformation.activeId;
+                _fp.updateVariableFeeParameters(_activeId);
 
-                uint256 _delta = _lookUpTimestamp - timestamp;
+                uint256 _deltaT = _lookUpTimestamp - timestamp;
 
-                cumulativeId += _pairInformation.activeId * _delta;
-                cumulativeAccumulator += _fp.accumulator * _delta;
+                cumulativeId += _activeId * _deltaT;
+                cumulativeVK += _fp.VK * _deltaT;
             }
         }
     }
@@ -287,7 +279,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /// @notice View function to get the first bin that isn't empty, will not be `_id` itself
     /// @param _id The bin id
-    /// @param _swapForY Wether you've swapping token X for token Y (true) or token Y for token X (false)
+    /// @param _swapForY Whether you've swapping token X for token Y (true) or token Y for token X (false)
     /// @return The id of the non empty bin
     function findFirstNonEmptyBinId(uint24 _id, bool _swapForY) external view override returns (uint256) {
         return _tree.findFirstBin(_id, _swapForY);
@@ -326,8 +318,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             fees = _unclaimedFees[_account];
 
             uint256 _lastId;
-            uint256 _len = _ids.length;
-            for (uint256 i; i < _len; ++i) {
+            for (uint256 i; i < _ids.length; ++i) {
                 uint256 _id = _ids[i];
 
                 if (_lastId >= _id && i != 0) revert LBPair__OnlyStrictlyIncreasingId();
@@ -368,7 +359,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         if (_amountIn == 0) revert LBPair__InsufficientAmounts();
 
         FeeHelper.FeeParameters memory _fp = _feeParameters;
-        _fp.updateAccumulatorValue();
+        _fp.updateVariableFeeParameters(_pair.activeId);
         uint256 _startId = _pair.activeId;
 
         uint256 _amountOut;
@@ -379,7 +370,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             Bin memory _bin = _bins[_pair.activeId];
             if ((!_swapForY && _bin.reserveX != 0) || (_swapForY && _bin.reserveY != 0)) {
                 (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) = _bin
-                    .getAmounts(_fp, _pair.activeId, _swapForY, _startId, _amountIn);
+                    .getAmounts(_fp, _pair.activeId, _swapForY, _amountIn);
 
                 _bin.updateFees(_swapForY ? _pair.feesX : _pair.feesY, _fees, _swapForY, totalSupply(_pair.activeId));
 
@@ -400,9 +391,6 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         if (_amountOut == 0) revert LBPair__BrokenSwapSafetyCheck(); // Safety check
         unchecked {
-            uint256 _binCrossed = _startId > _pair.activeId ? _startId - _pair.activeId : _pair.activeId - _startId;
-            _fp.updateFeeParameters(_binCrossed);
-
             // We use oracleSize so it can start filling empty slot that were added recently
             uint256 _updatedOracleId = _oracle.update(
                 _pair.oracleSize,
@@ -410,8 +398,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 _pair.oracleLastTimestamp,
                 _pair.oracleId,
                 _pair.activeId,
-                _fp.accumulator,
-                _binCrossed
+                _fp.VK,
+                _startId.absSub(_pair.activeId)
             );
 
             // We update the oracleId and lastTimestamp if the sample write on another slot
@@ -492,8 +480,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         address _to
     ) external override nonReentrant returns (uint256, uint256) {
         unchecked {
-            uint256 _len = _ids.length;
-            if (_len == 0 || _len != _distributionX.length || _len != _distributionY.length)
+            if (_ids.length == 0 || _ids.length != _distributionX.length || _ids.length != _distributionY.length)
                 revert LBPair__WrongLengths();
 
             PairInformation memory _pair = _pairInformation;
@@ -505,7 +492,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             _mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total).safe128();
             _mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total).safe128();
 
-            for (uint256 i; i < _len; ++i) {
+            for (uint256 i; i < _ids.length; ++i) {
                 _mintInfo.id = _ids[i].safe24();
                 Bin memory _bin = _bins[_mintInfo.id];
 
@@ -545,15 +532,20 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                         uint256 _receivedX = (_userL * (_bin.reserveX + _mintInfo.amountX)) / (_totalSupply + _userL);
                         uint256 _receivedY = (_userL * (_bin.reserveY + _mintInfo.amountY)) / (_totalSupply + _userL);
 
-                        FeeHelper.FeesDistribution memory _fees;
+                        _fp.updateVariableFeeParameters(_mintInfo.id);
+
                         if (_mintInfo.amountX > _receivedX) {
-                            _fees = _fp.getFeesDistribution(_fp.getFeesForC(_mintInfo.amountX - _receivedX, 0));
+                            FeeHelper.FeesDistribution memory _fees = _fp.getFeesDistribution(
+                                _fp.getFeesForC(_mintInfo.amountX - _receivedX)
+                            );
 
                             _mintInfo.amountX -= _fees.total;
 
                             _bin.updateFees(_pair.feesX, _fees, true, _totalSupply);
-                        } else if ((_mintInfo.amountY > _receivedY)) {
-                            _fees = _fp.getFeesDistribution(_fp.getFeesForC(_mintInfo.amountY - _receivedY, 0));
+                        } else if (_mintInfo.amountY > _receivedY) {
+                            FeeHelper.FeesDistribution memory _fees = _fp.getFeesDistribution(
+                                _fp.getFeesForC(_mintInfo.amountY - _receivedY)
+                            );
 
                             _mintInfo.amountY -= _fees.total;
 
@@ -619,8 +611,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         unchecked {
             PairInformation memory _pair = _pairInformation;
 
-            uint256 _len = _ids.length;
-            for (uint256 i; i < _len; ++i) {
+            for (uint256 i; i < _ids.length; ++i) {
                 uint256 _id = _ids[i].safe24();
                 uint256 _amountToBurn = _amounts[i];
 
@@ -684,12 +675,10 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @param _ids The list of bin ids to collect fees in
     function collectFees(address _account, uint256[] memory _ids) external override nonReentrant {
         unchecked {
-            uint256 _len = _ids.length;
-
             UnclaimedFees memory _fees = _unclaimedFees[_account];
             delete _unclaimedFees[_account];
 
-            for (uint256 i; i < _len; ++i) {
+            for (uint256 i; i < _ids.length; ++i) {
                 uint256 _id = _ids[i];
                 uint256 _balance = balanceOf(_account, _id);
 
@@ -756,6 +745,14 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @param _packedFeeParameters The packed fee parameters
     function setFeesParameters(bytes32 _packedFeeParameters) external override OnlyFactory {
         _setFeesParameters(_packedFeeParameters);
+    }
+
+    function forceDecay() external override OnlyFactory {
+        unchecked {
+            _feeParameters.VA = uint24(
+                (uint256(_feeParameters.reductionFactor) * _feeParameters.VA) / Constants.BASIS_POINT_MAX
+            );
+        }
     }
 
     /** Internal Functions **/
@@ -931,5 +928,31 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         oracleActiveSize = _slot.decode(type(uint16).max, _OFFSET_ORACLE_ACTIVE_SIZE);
         oracleLastTimestamp = _slot.decode(type(uint40).max, _OFFSET_ORACLE_LAST_TIMESTAMP);
         oracleId = _slot.decode(type(uint24).max, _OFFSET_ORACLE_ID);
+    }
+
+    /// @notice Internal view function to get the reserves and active id
+    /// @return reserveX The reserve of asset X
+    /// @return reserveY The reserve of asset Y
+    /// @return activeId The active id of the pair
+    function _getReservesAndId()
+        internal
+        view
+        returns (
+            uint256 reserveX,
+            uint256 reserveY,
+            uint256 activeId
+        )
+    {
+        uint256 _mask24 = type(uint24).max;
+        uint256 _mask136 = type(uint136).max;
+        bytes32 _slot;
+        assembly {
+            _slot := sload(add(_pairInformation.slot, 1))
+            reserveY := and(_slot, _mask136)
+
+            _slot := sload(_pairInformation.slot)
+            activeId := and(_slot, _mask24)
+        }
+        reserveX = _slot.decode(_mask136, _OFFSET_PAIR_RESERVE_X);
     }
 }

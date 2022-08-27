@@ -45,6 +45,8 @@ interface ILBFactory is IPendingOwnable {
 
     function feeRecipient() external view returns (address);
 
+    function flashLoanFee() external view returns (uint256);
+
     function unlocked() external view returns (bool);
 
     function allLBPairs(uint256 id) external returns (ILBPair);
@@ -122,4 +124,5 @@ interface ILBFactory is IPendingOwnable {
         uint8 _protocolShare,
         uint72 _maxAccumulator
     ) external;
+    function setFlashLoanFee(uint256 _flashLoanFee) external;
 }

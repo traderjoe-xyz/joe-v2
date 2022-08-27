@@ -9,7 +9,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
         token6D = new ERC20MockDecimals(6);
         token18D = new ERC20MockDecimals(18);
 
-        factory = new LBFactory(DEV);
+        factory = new LBFactory(DEV, 8e14);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
         new LBFactoryHelper(factory);
         router = new LBRouter(ILBFactory(DEV), IJoeFactory(DEV), IWAVAX(DEV));
@@ -28,7 +28,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
             uint256 max
         ) = pair.getOracleParameters();
 
-        assertEq(oracleSampleLifetime, 240);
+        assertEq(oracleSampleLifetime, 120);
         assertEq(oracleSize, 2);
         assertEq(oracleActiveSize, 0);
         assertEq(oracleLastTimestamp, 0);
@@ -119,11 +119,9 @@ contract LiquidityBinPairOracleTest is TestHelper {
         uint256 _ago = 130;
         uint256 _time = block.timestamp - _ago;
 
-        (uint256 cumulativeId, uint256 cumulativeAccumulator, uint256 cumulativeBinCrossed) = pair.getOracleSampleFrom(
-            _ago
-        );
+        (uint256 cumulativeId, uint256 cumulativeVK, uint256 cumulativeBinCrossed) = pair.getOracleSampleFrom(_ago);
         assertEq(cumulativeId / _time, ID_ONE);
-        assertEq(cumulativeAccumulator, 0);
+        assertEq(cumulativeVK, 0);
         assertEq(cumulativeBinCrossed, 0);
     }
 
@@ -158,13 +156,12 @@ contract LiquidityBinPairOracleTest is TestHelper {
         for (uint256 i; i < 99; ++i) {
             uint256 _ago = ((block.timestamp - startTimestamp) * i) / 100;
 
-            (uint256 cumulativeId, uint256 cumulativeAccumulator, uint256 cumulativeBinCrossed) = pair
-                .getOracleSampleFrom(_ago);
+            (uint256 cumulativeId, uint256 cumulativeVK, uint256 cumulativeBinCrossed) = pair.getOracleSampleFrom(_ago);
             assertGe(cId, cumulativeId);
-            assertGe(cAcc, cumulativeAccumulator);
+            assertGe(cAcc, cumulativeVK);
             assertGe(cBin, cumulativeBinCrossed);
 
-            (cId, cAcc, cBin) = (cumulativeId, cumulativeAccumulator, cumulativeBinCrossed);
+            (cId, cAcc, cBin) = (cumulativeId, cumulativeVK, cumulativeBinCrossed);
         }
     }
 
@@ -200,13 +197,12 @@ contract LiquidityBinPairOracleTest is TestHelper {
         for (uint256 i; i < 49; ++i) {
             uint256 _ago = ((block.timestamp - startTimestamp) * i) / 50;
 
-            (uint256 cumulativeId, uint256 cumulativeAccumulator, uint256 cumulativeBinCrossed) = pair
-                .getOracleSampleFrom(_ago);
+            (uint256 cumulativeId, uint256 cumulativeVK, uint256 cumulativeBinCrossed) = pair.getOracleSampleFrom(_ago);
             assertGe(cId, cumulativeId);
-            assertGe(cAcc, cumulativeAccumulator);
+            assertGe(cAcc, cumulativeVK);
             assertGe(cBin, cumulativeBinCrossed);
 
-            (cId, cAcc, cBin) = (cumulativeId, cumulativeAccumulator, cumulativeBinCrossed);
+            (cId, cAcc, cBin) = (cumulativeId, cumulativeVK, cumulativeBinCrossed);
         }
     }
 }

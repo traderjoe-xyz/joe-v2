@@ -119,9 +119,9 @@ contract LiquidityBinPairOracleTest is TestHelper {
         uint256 _ago = 130;
         uint256 _time = block.timestamp - _ago;
 
-        (uint256 cumulativeId, uint256 cumulativeVK, uint256 cumulativeBinCrossed) = pair.getOracleSampleFrom(_ago);
+        (uint256 cumulativeId, uint256 cumulativeVolatilityAccumulated, uint256 cumulativeBinCrossed) = pair.getOracleSampleFrom(_ago);
         assertEq(cumulativeId / _time, ID_ONE);
-        assertEq(cumulativeVK, 0);
+        assertEq(cumulativeVolatilityAccumulated, 0);
         assertEq(cumulativeBinCrossed, 0);
     }
 
@@ -156,12 +156,12 @@ contract LiquidityBinPairOracleTest is TestHelper {
         for (uint256 i; i < 99; ++i) {
             uint256 _ago = ((block.timestamp - startTimestamp) * i) / 100;
 
-            (uint256 cumulativeId, uint256 cumulativeVK, uint256 cumulativeBinCrossed) = pair.getOracleSampleFrom(_ago);
+            (uint256 cumulativeId, uint256 cumulativeVolatilityAccumulated, uint256 cumulativeBinCrossed) = pair.getOracleSampleFrom(_ago);
             assertGe(cId, cumulativeId);
-            assertGe(cAcc, cumulativeVK);
+            assertGe(cAcc, cumulativeVolatilityAccumulated);
             assertGe(cBin, cumulativeBinCrossed);
 
-            (cId, cAcc, cBin) = (cumulativeId, cumulativeVK, cumulativeBinCrossed);
+            (cId, cAcc, cBin) = (cumulativeId, cumulativeVolatilityAccumulated, cumulativeBinCrossed);
         }
     }
 
@@ -197,12 +197,12 @@ contract LiquidityBinPairOracleTest is TestHelper {
         for (uint256 i; i < 49; ++i) {
             uint256 _ago = ((block.timestamp - startTimestamp) * i) / 50;
 
-            (uint256 cumulativeId, uint256 cumulativeVK, uint256 cumulativeBinCrossed) = pair.getOracleSampleFrom(_ago);
+            (uint256 cumulativeId, uint256 cumulativeVolatilityAccumulated, uint256 cumulativeBinCrossed) = pair.getOracleSampleFrom(_ago);
             assertGe(cId, cumulativeId);
-            assertGe(cAcc, cumulativeVK);
+            assertGe(cAcc, cumulativeVolatilityAccumulated);
             assertGe(cBin, cumulativeBinCrossed);
 
-            (cId, cAcc, cBin) = (cumulativeId, cumulativeVK, cumulativeBinCrossed);
+            (cId, cAcc, cBin) = (cumulativeId, cumulativeVolatilityAccumulated, cumulativeBinCrossed);
         }
     }
 }

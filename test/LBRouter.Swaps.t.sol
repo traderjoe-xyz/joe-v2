@@ -315,7 +315,7 @@ contract LiquidityBinRouterTest is TestHelper {
             5,
             10,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VK,
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED,
             DEFAULT_SAMPLE_LIFETIME
         );
         createLBPairDefaultFeesFromStartIdAndBinStep(token6D, token18D, ID_ONE, 75);

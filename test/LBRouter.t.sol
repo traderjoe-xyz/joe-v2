@@ -34,9 +34,9 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(address(pair.tokenY()), address(token18D));
 
         FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();
-        assertEq(feeParameters.VK, 0);
+        assertEq(feeParameters.volatilityAccumulated, 0);
         assertEq(feeParameters.time, 0);
-        assertEq(feeParameters.maxVK, DEFAULT_MAX_VK);
+        assertEq(feeParameters.maxVolatilityAccumulated, DEFAULT_MAX_VOLATILITY_ACCUMULATED);
         assertEq(feeParameters.filterPeriod, DEFAULT_FILTER_PERIOD);
         assertEq(feeParameters.decayPeriod, DEFAULT_DECAY_PERIOD);
         assertEq(feeParameters.binStep, DEFAULT_BIN_STEP);

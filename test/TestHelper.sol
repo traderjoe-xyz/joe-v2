@@ -24,7 +24,7 @@ abstract contract TestHelper is Test {
     uint24 internal constant ID_ONE = 2**23;
     uint256 internal constant BASIS_POINT_MAX = 10_000;
 
-    uint24 internal constant DEFAULT_MAX_VK = 1_777_638;
+    uint24 internal constant DEFAULT_MAX_VOLATILITY_ACCUMULATED = 1_777_638;
     uint16 internal constant DEFAULT_FILTER_PERIOD = 50;
     uint16 internal constant DEFAULT_DECAY_PERIOD = 100;
     uint16 internal constant DEFAULT_BIN_STEP = 25;
@@ -80,7 +80,7 @@ abstract contract TestHelper is Test {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VK,
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED,
             DEFAULT_SAMPLE_LIFETIME
         );
     }

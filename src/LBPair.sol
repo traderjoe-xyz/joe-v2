@@ -447,16 +447,16 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         address _to,
         uint256 _amountXOut,
         uint256 _amountYOut,
-        bytes memory _data
+        bytes calldata _data
     ) external override nonReentrant {
         FeeHelper.FeeParameters memory _fp = _feeParameters;
-        _fp.updateAccumulatorValue();
-        FeeHelper.FeesDistribution memory _feesX = _fp.getFeesDistribution(_fp.getFees(_amountXOut, 0));
-        FeeHelper.FeesDistribution memory _feesY = _fp.getFeesDistribution(_fp.getFees(_amountYOut, 0));
 
-        uint256 _reserveX = _pairInformation.reserveX;
-        uint256 _reserveY = _pairInformation.reserveY;
-        uint256 _id = _pairInformation.activeId;
+        uint256 _fee = factory.flashLoanFee();
+
+        FeeHelper.FeesDistribution memory _feesX = _fp.getFeesDistribution(_fp.getFlashLoanFee(_amountXOut, _fee));
+        FeeHelper.FeesDistribution memory _feesY = _fp.getFeesDistribution(_fp.getFlashLoanFee(_amountYOut, _fee));
+
+        (uint256 _reserveX, uint256 _reserveY, uint256 _id) = _getReservesAndId();
 
         tokenX.safeTransfer(_to, _amountXOut);
         tokenY.safeTransfer(_to, _amountYOut);
@@ -468,15 +468,12 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         uint256 _totalSupply = totalSupply(_id);
 
-        uint256 _userFeesX;
-        uint256 _userFeesY;
-        unchecked {
-            _userFeesX = _feesX.total - _feesX.protocol;
-            _userFeesY = _feesY.total - _feesY.protocol;
-        }
-
-        _bins[_id].accTokenXPerShare += (_userFeesX << Constants.SCALE_OFFSET) / _totalSupply;
-        _bins[_id].accTokenYPerShare += (_userFeesY << Constants.SCALE_OFFSET) / _totalSupply;
+        _bins[_id].accTokenXPerShare +=
+            ((uint256(_feesX.total) - _feesX.protocol) << Constants.SCALE_OFFSET) /
+            _totalSupply;
+        _bins[_id].accTokenYPerShare +=
+            ((uint256(_feesY.total) - _feesY.protocol) << Constants.SCALE_OFFSET) /
+            _totalSupply;
 
         emit FlashLoan(msg.sender, _to, _amountXOut, _amountYOut, _feesX.total, _feesY.total);
     }

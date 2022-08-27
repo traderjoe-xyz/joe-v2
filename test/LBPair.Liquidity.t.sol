@@ -8,25 +8,25 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         token6D = new ERC20MockDecimals(6);
         token18D = new ERC20MockDecimals(18);
 
-        factory = new LBFactory(DEV);
+        factory = new LBFactory(DEV, 8e14);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
         new LBFactoryHelper(factory);
         router = new LBRouter(ILBFactory(DEV), IJoeFactory(DEV), IWAVAX(DEV));
     }
 
     function testConstructor(
-        uint8 _binStep,
-        uint8 _baseFactor,
+        uint16 _binStep,
+        uint16 _baseFactor,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
-        uint8 _reductionFactor,
-        uint8 _variableFeeControl,
-        uint8 _protocolShare,
-        uint72 _maxAccumulator
+        uint16 _reductionFactor,
+        uint24 _variableFeeControl,
+        uint16 _protocolShare,
+        uint24 _maxVK
     ) public {
         bytes32 _packedFeeParameters = bytes32(
             abi.encodePacked(
-                uint184(_maxAccumulator),
+                uint136(_maxVK), // The first 112 bits are reserved for the dynamic parameters
                 _protocolShare,
                 _variableFeeControl,
                 _reductionFactor,
@@ -44,9 +44,11 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         assertEq(address(pair.tokenY()), address(token18D));
 
         FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();
-        assertEq(feeParameters.accumulator, 0, "Accumulator should be 0");
+        assertEq(feeParameters.VK, 0, "VK should be 0");
+        assertEq(feeParameters.VA, 0, "VA should be 0");
+        assertEq(feeParameters.indexRef, 0, "indexRef should be 0");
         assertEq(feeParameters.time, 0, "Time should be zero");
-        assertEq(feeParameters.maxAccumulator, _maxAccumulator, "Max Accumulator should be correctly set");
+        assertEq(feeParameters.maxVK, _maxVK, "Max VK should be correctly set");
         assertEq(feeParameters.filterPeriod, _filterPeriod, "Filter Period should be correctly set");
         assertEq(feeParameters.decayPeriod, _decayPeriod, "Decay Period should be correctly set");
         assertEq(feeParameters.binStep, _binStep, "Bin Step should be correctly set");

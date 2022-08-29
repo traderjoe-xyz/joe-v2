@@ -24,6 +24,7 @@ error LBRouter__TooMuchTokensIn(uint256 excess);
 error LBRouter__BinReserveOverflows(uint256 id);
 error LBRouter__IdOverflows(int256 id);
 error LBRouter__LengthsMismatch();
+error LBRouter__WrongTokenOrder();
 error LBRouter__IdSlippageCaught(uint256 activeIdDesired, uint256 idSlippage, uint256 activeId);
 error LBRouter__AmountSlippageCaught(uint256 amountXMin, uint256 amountX, uint256 amountYMin, uint256 amountY);
 error LBRouter__IdDesiredOverflows(uint256 idDesired, uint256 idSlippage);
@@ -35,7 +36,13 @@ error LBRouter__MaxAmountInExceeded(uint256 amountInMax, uint256 amountIn);
 error LBRouter__InvalidTokenPath(IERC20 wrongToken);
 error LBRouter__InvalidVersion(uint256 version);
 error LBRouter__LBPairBlacklisted(ILBPair LBPair);
-error LBRouter__TokenYIsNotAvax(IERC20 token, uint256 amount);
+error LBRouter__WrongAvaxLiquidityParameters(
+    IERC20 tokenX,
+    IERC20 tokenY,
+    uint256 amountX,
+    uint256 amountY,
+    uint256 msgValue
+);
 
 contract LBRouter is ILBRouter {
     using SafeERC20 for IERC20;
@@ -215,16 +222,48 @@ contract LBRouter is ILBRouter {
     /// @dev This function is compliant with fee on transfer tokens
     /// @param _liquidityParameters The liquidity parameters
     function addLiquidity(LiquidityParameters memory _liquidityParameters) external override {
-        _addLiquidity(_liquidityParameters);
+        ILBPair _LBPair = _getLBPairInfo(
+            _liquidityParameters.tokenX,
+            _liquidityParameters.tokenY,
+            _liquidityParameters.binStep,
+            true
+        );
+        if (_liquidityParameters.tokenX != _LBPair.tokenX()) revert LBRouter__WrongTokenOrder();
+
+        _liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(_LBPair), _liquidityParameters.amountX);
+        _liquidityParameters.tokenY.safeTransferFrom(msg.sender, address(_LBPair), _liquidityParameters.amountY);
+
+        _addLiquidity(_liquidityParameters, _LBPair);
     }
 
     /// @notice Add liquidity with AVAX while performing safety checks
     /// @dev This function is compliant with fee on transfer tokens
     /// @param _liquidityParameters The liquidity parameters
     function addLiquidityAVAX(LiquidityParameters memory _liquidityParameters) external payable override {
-        if (_liquidityParameters.tokenY != IERC20(address(0)) || _liquidityParameters.amountY != msg.value)
-            revert LBRouter__TokenYIsNotAvax(_liquidityParameters.tokenY, _liquidityParameters.amountY);
-        _addLiquidity(_liquidityParameters);
+        ILBPair _LBPair = _getLBPairInfo(
+            _liquidityParameters.tokenX,
+            _liquidityParameters.tokenY,
+            _liquidityParameters.binStep,
+            true
+        );
+        if (_liquidityParameters.tokenX != _LBPair.tokenX()) revert LBRouter__WrongTokenOrder();
+
+        if (_liquidityParameters.tokenX == wavax && _liquidityParameters.amountX == msg.value) {
+            _wavaxDepositAndTransfer(address(_LBPair), msg.value);
+            _liquidityParameters.tokenY.safeTransferFrom(msg.sender, address(_LBPair), _liquidityParameters.amountY);
+        } else if (_liquidityParameters.tokenY == wavax && _liquidityParameters.amountY == msg.value) {
+            _liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(_LBPair), _liquidityParameters.amountX);
+            _wavaxDepositAndTransfer(address(_LBPair), msg.value);
+        } else
+            revert LBRouter__WrongAvaxLiquidityParameters(
+                _liquidityParameters.tokenX,
+                _liquidityParameters.tokenY,
+                _liquidityParameters.amountX,
+                _liquidityParameters.amountY,
+                msg.value
+            );
+
+        _addLiquidity(_liquidityParameters, _LBPair);
     }
 
     /// @notice Remove liquidity while performing safety checks
@@ -376,7 +415,7 @@ contract LBRouter is ILBRouter {
     ) external payable override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) {
         address[] memory _pairs = _getPairs(_pairBinSteps, _tokenPath);
 
-        _wavaxDepositAndTransfer(msg.value, _pairs[0]);
+        _wavaxDepositAndTransfer(_pairs[0], msg.value);
 
         uint256 _amountOut = _swapExactTokensForTokens(msg.value, _pairs, _pairBinSteps, _tokenPath, _to);
 
@@ -470,7 +509,7 @@ contract LBRouter is ILBRouter {
 
         if (_amountsIn[0] > msg.value) revert LBRouter__MaxAmountInExceeded(msg.value, _amountsIn[0]);
 
-        _wavaxDepositAndTransfer(_amountsIn[0], _pairs[0]);
+        _wavaxDepositAndTransfer(_pairs[0], _amountsIn[0]);
 
         uint256 _amountOutReal = _swapTokensForExactTokens(_pairs, _pairBinSteps, _tokenPath, _amountsIn, _to);
 
@@ -562,7 +601,7 @@ contract LBRouter is ILBRouter {
 
         uint256 _balanceBefore = _targetToken.balanceOf(_to);
 
-        _wavaxDepositAndTransfer(msg.value, _pairs[0]);
+        _wavaxDepositAndTransfer(_pairs[0], msg.value);
 
         _swapSupportingFeeOnTransferTokens(_pairs, _pairBinSteps, _tokenPath, _to);
 
@@ -591,28 +630,8 @@ contract LBRouter is ILBRouter {
 
     /// @notice Helper function to add liquidity
     /// @param _liq The liquidity parameter
-    function _addLiquidity(LiquidityParameters memory _liq) private ensure(_liq.deadline) {
+    function _addLiquidity(LiquidityParameters memory _liq, ILBPair _LBPair) private ensure(_liq.deadline) {
         unchecked {
-            ILBPair _LBPair = _getLBPairInfo(
-                _liq.tokenX,
-                _liq.tokenY == IERC20(address(0)) ? IERC20(wavax) : _liq.tokenY,
-                _liq.binStep,
-                true
-            );
-
-            _liq.tokenX.safeTransferFrom(msg.sender, address(_LBPair), _liq.amountX);
-
-            if (_liq.tokenY == IERC20(address(0))) {
-                _wavaxDepositAndTransfer(_liq.amountY, address(_LBPair));
-            } else {
-                _liq.tokenY.safeTransferFrom(msg.sender, address(_LBPair), _liq.amountY);
-            }
-
-            if (_liq.tokenX != _LBPair.tokenX()) {
-                (_liq.amountXMin, _liq.amountYMin) = (_liq.amountYMin, _liq.amountXMin);
-                (_liq.distributionX, _liq.distributionY) = (_liq.distributionY, _liq.distributionX);
-            }
-
             if (_liq.deltaIds.length != _liq.distributionX.length && _liq.deltaIds.length != _liq.distributionY.length)
                 revert LBRouter__LengthsMismatch();
 
@@ -919,9 +938,9 @@ contract LBRouter is ILBRouter {
     }
 
     /// @notice Helper function to deposit and transfer wavax
-    /// @param _amount The AVAX amount to wrap
     /// @param _to The address of the recipient
-    function _wavaxDepositAndTransfer(uint256 _amount, address _to) private {
+    /// @param _amount The AVAX amount to wrap
+    function _wavaxDepositAndTransfer(address _to, uint256 _amount) private {
         wavax.deposit{value: _amount}();
         wavax.transfer(_to, _amount);
     }

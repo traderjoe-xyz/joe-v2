@@ -69,7 +69,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
         (int256[] memory _deltaIds, , , uint256 amountTokenIn) = addLiquidityFromRouter(
             token6D,
-            ERC20MockDecimals(address(0)),
+            ERC20MockDecimals(address(wavax)),
             _amountAVAXIn,
             ID_ONE,
             9,
@@ -112,7 +112,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
         (int256[] memory _deltaIds, , , uint256 amountTokenIn) = addLiquidityFromRouter(
             ERC20MockDecimals(address(taxToken)),
-            ERC20MockDecimals(address(0)),
+            ERC20MockDecimals(address(wavax)),
             _amountAVAXIn,
             ID_ONE,
             9,

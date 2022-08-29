@@ -208,7 +208,7 @@ abstract contract TestHelper is Test {
             block.timestamp
         );
 
-        if (address(_tokenY) == address(0)) {
+        if (address(_tokenY) == address(wavax)) {
             vm.deal(DEV, _amountYIn);
             router.addLiquidityAVAX{value: _amountYIn}(_liquidityParameters);
         } else {

@@ -332,7 +332,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testFactoryHelperInitialization() public {
-        //this is the same as setUp(), but incrases coverage.
+        //this is the same as setUp(), but increases coverage.
         factory = new LBFactory(DEV, 8e14);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
         new LBFactoryHelper(factory);

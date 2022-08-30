@@ -340,10 +340,10 @@ contract LiquidityBinFactoryTest is TestHelper {
 
     function testFeesAboveMaxBaseFactorReverts(uint8 baseFactorIncrement) public {
         vm.assume(baseFactorIncrement > 0);
-        uint16 baseFactorIncrased = DEFAULT_BASE_FACTOR + baseFactorIncrement;
+        uint16 baseFactorIncreased = DEFAULT_BASE_FACTOR + baseFactorIncrement;
 
         //copy of part of factory._getPackedFeeParameters function
-        uint256 _baseFee = (uint256(baseFactorIncrased) * DEFAULT_BIN_STEP) * 1e10;
+        uint256 _baseFee = (uint256(baseFactorIncreased) * DEFAULT_BIN_STEP) * 1e10;
         uint256 _maxVariableFee = (DEFAULT_VARIABLE_FEE_CONTROL *
             (uint256(DEFAULT_MAX_VOLATILITY_ACCUMULATED) * DEFAULT_BIN_STEP) *
             (uint256(DEFAULT_MAX_VOLATILITY_ACCUMULATED) * DEFAULT_BIN_STEP)) / 100;
@@ -352,7 +352,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(LBFactory__FeesAboveMax.selector, fee, factory.MAX_FEE()));
         factory.setPreset(
             DEFAULT_BIN_STEP,
-            baseFactorIncrased,
+            baseFactorIncreased,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
             DEFAULT_REDUCTION_FACTOR,

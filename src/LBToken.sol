@@ -54,7 +54,8 @@ contract LBToken is ILBToken {
         return 18;
     }
 
-    /// @notice Returns the number of decimals used to get its user representation
+    /// @notice Returns the total supply of token of type `id`
+    /// @dev This is the amount of token of type `id` minted minus the amount burned
     /// @param _id The token id
     /// @return The total supply of that token id
     function totalSupply(uint256 _id) public view virtual override returns (uint256) {

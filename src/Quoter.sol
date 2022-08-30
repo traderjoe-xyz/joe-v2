@@ -65,7 +65,7 @@ contract Quoter {
             // Fetch swap for V1
             quote.pairs[i] = IJoeFactory(factoryV1).getPair(_route[i], _route[i + 1]);
 
-            if (quote.pairs[i] != address(0)) {
+            if (quote.pairs[i] != address(0) && quote.amounts[i] > 0) {
                 (uint256 reserveIn, uint256 reserveOut) = JoeLibrary.getReserves(factoryV1, _route[i], _route[i + 1]);
 
                 quote.amounts[i + 1] = JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut);
@@ -78,7 +78,7 @@ contract Quoter {
                 IERC20(_route[i + 1])
             );
 
-            if (LBPairsAvailable.length > 0) {
+            if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
                 for (uint256 j; j < LBPairsAvailable.length; j++) {
                     uint256 swapAmountOut = ILBRouter(routerV2).getSwapOut(
                         LBPairsAvailable[j].LBPair,
@@ -134,7 +134,7 @@ contract Quoter {
             // Fetch swap for V1
             quote.pairs[i - 1] = IJoeFactory(factoryV1).getPair(_route[i - 1], _route[i]);
             quote.amounts[i - 1] = type(uint256).max;
-            if (quote.pairs[i - 1] != address(0)) {
+            if (quote.pairs[i - 1] != address(0) && quote.amounts[i] > 0) {
                 (uint256 reserveIn, uint256 reserveOut) = JoeLibrary.getReserves(factoryV1, _route[i - 1], _route[i]);
                 quote.amounts[i - 1] = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut);
 
@@ -154,7 +154,7 @@ contract Quoter {
                         quote.amounts[i],
                         address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i]
                     );
-                    if (swapAmountIn != 0 && swapAmountIn < quote.amounts[i - 1]) {
+                    if (swapAmountIn != 0 && (swapAmountIn < quote.amounts[i - 1] || quote.amounts[i - 1] == 0)) {
                         quote.amounts[i - 1] = swapAmountIn;
                         quote.pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
                         quote.binSteps[i - 1] = LBPairsAvailable[j].LBPair.feeParameters().binStep;
@@ -185,9 +185,9 @@ contract Quoter {
         uint256 routeLength = _quote.route.length;
         for (uint256 i; i < routeLength - 1; i++) {
             address avaxPair = IJoeFactory(factoryV1).getPair(_quote.route[i], wavax);
-            if (avaxPair != address(0)) {
+            if (avaxPair != address(0) && _quote.amounts[i] > 0) {
                 (uint256 reserveIn, uint256 reserveOut) = JoeLibrary.getReserves(factoryV1, _quote.route[i], wavax);
-                tradeValueAVAX = JoeLibrary.getAmountIn(_quote.amounts[i], reserveIn, reserveOut);
+                tradeValueAVAX = JoeLibrary.getAmountOut(_quote.amounts[i], reserveIn, reserveOut);
             }
 
             // Fetch swaps for V2
@@ -196,7 +196,7 @@ contract Quoter {
                 IERC20(wavax)
             );
 
-            if (LBPairsAvailable.length > 0) {
+            if (LBPairsAvailable.length > 0 && _quote.amounts[i] > 0) {
                 uint256 swapOut;
                 for (uint256 j; j < LBPairsAvailable.length; j++) {
                     swapOut = ILBRouter(routerV2).getSwapOut(

@@ -304,4 +304,92 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_SAMPLE_LIFETIME
         );
     }
+
+    function testForDoubleBlacklisting() public {
+        factory.setLBPairBlacklist(token6D, token18D, DEFAULT_BIN_STEP, true);
+        vm.expectRevert(LBFactory__LBPairBlacklistIsAlreadyInTheSameState.selector);
+        factory.setLBPairBlacklist(token6D, token18D, DEFAULT_BIN_STEP, true);
+    }
+
+    function testForSettingFlashloanFee() public {
+        factory.setFlashLoanFee(7e14);
+        assertEq(factory.flashLoanFee(), 7e14);
+    }
+
+    function testForInvalidFeeRecipient() public {
+        vm.expectRevert(LBFactory__ZeroAddress.selector);
+        factory = new LBFactory(address(0), 8e14);
+    }
+
+    function testSetFactoryLocked() public {
+        vm.expectRevert(LBFactory__FactoryLockIsAlreadyInTheSameState.selector);
+        factory.setFactoryLocked(true);
+    }
+
+    function testFactoryHelperAlreadyInitialized() public {
+        vm.expectRevert(LBFactory__FactoryHelperAlreadyInitialized.selector);
+        new LBFactoryHelper(factory);
+    }
+
+    function testFactoryHelperInitialization() public {
+        //this is the same as setUp(), but incrases coverage.
+        factory = new LBFactory(DEV, 8e14);
+        setDefaultFactoryPresets(DEFAULT_BIN_STEP);
+        new LBFactoryHelper(factory);
+    }
+
+    function testFeesAboveMaxBaseFactorReverts(uint8 baseFactorIncrement) public {
+        vm.assume(baseFactorIncrement > 0);
+        uint16 baseFactorIncrased = DEFAULT_BASE_FACTOR + baseFactorIncrement;
+
+        //copy of part of factory._getPackedFeeParameters function
+        uint256 _baseFee = (uint256(baseFactorIncrased) * DEFAULT_BIN_STEP) * 1e10;
+        uint256 _maxVariableFee = (DEFAULT_VARIABLE_FEE_CONTROL *
+            (uint256(DEFAULT_MAX_VOLATILITY_ACCUMULATED) * DEFAULT_BIN_STEP) *
+            (uint256(DEFAULT_MAX_VOLATILITY_ACCUMULATED) * DEFAULT_BIN_STEP)) / 100;
+
+        uint256 fee = _baseFee + _maxVariableFee;
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__FeesAboveMax.selector, fee, factory.MAX_FEE()));
+        factory.setPreset(
+            DEFAULT_BIN_STEP,
+            baseFactorIncrased,
+            DEFAULT_FILTER_PERIOD,
+            DEFAULT_DECAY_PERIOD,
+            DEFAULT_REDUCTION_FACTOR,
+            DEFAULT_VARIABLE_FEE_CONTROL,
+            DEFAULT_PROTOCOL_SHARE,
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED,
+            DEFAULT_SAMPLE_LIFETIME
+        );
+    }
+
+    function testFeesAboveMaxVolatilityReverts(uint8 maxVolatilityIncrement) public {
+        vm.assume(maxVolatilityIncrement > 0);
+        uint24 volatilityAccumulated = DEFAULT_MAX_VOLATILITY_ACCUMULATED + maxVolatilityIncrement;
+
+        //copy of part of factory._getPackedFeeParameters function
+        uint256 _baseFee = (uint256(DEFAULT_BASE_FACTOR) * DEFAULT_BIN_STEP) * 1e10;
+        uint256 _maxVariableFee = (DEFAULT_VARIABLE_FEE_CONTROL *
+            (uint256(volatilityAccumulated) * DEFAULT_BIN_STEP) *
+            (uint256(volatilityAccumulated) * DEFAULT_BIN_STEP)) / 100;
+        uint256 fee = _baseFee + _maxVariableFee;
+
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__FeesAboveMax.selector, fee, factory.MAX_FEE()));
+        factory.setPreset(
+            DEFAULT_BIN_STEP,
+            DEFAULT_BASE_FACTOR,
+            DEFAULT_FILTER_PERIOD,
+            DEFAULT_DECAY_PERIOD,
+            DEFAULT_REDUCTION_FACTOR,
+            DEFAULT_VARIABLE_FEE_CONTROL,
+            DEFAULT_PROTOCOL_SHARE,
+            volatilityAccumulated,
+            DEFAULT_SAMPLE_LIFETIME
+        );
+    }
+
+    function testInvalidBinStepWhileCreatingLBPair() public {
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__BinStepHasNoPreset.selector, DEFAULT_BIN_STEP + 1));
+        createLBPairDefaultFeesFromStartIdAndBinStep(token6D, token12D, ID_ONE, DEFAULT_BIN_STEP + 1);
+    }
 }

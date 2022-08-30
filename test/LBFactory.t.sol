@@ -16,6 +16,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
     function testConstructor() public {
         assertEq(factory.feeRecipient(), DEV);
+        assertEq(factory.flashLoanFee(), 8e14);
     }
 
     function testCreateLBPair() public {
@@ -41,9 +42,10 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(feeParameters.protocolShare, DEFAULT_PROTOCOL_SHARE);
     }
 
-    function testFailFactoryHelperCalledDirectly() public {
+    function testFactoryHelperCalledDirectly() public {
         ILBFactoryHelper factoryHelper = factory.factoryHelper();
 
+        vm.expectRevert(LBFactoryHelper__CallerIsNotFactory.selector);
         factoryHelper.createLBPair(
             token6D,
             token12D,
@@ -71,13 +73,15 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(factory.feeRecipient(), ALICE);
     }
 
-    function testFailSetFeeRecipientNotByOwner() public {
+    function testSetFeeRecipientNotByOwnerReverts() public {
         vm.prank(ALICE);
+        vm.expectRevert(PendingOwnable__NotOwner.selector);
         factory.setFeeRecipient(ALICE);
     }
 
-    function testFailFactoryLocked() public {
+    function testFactoryLockedReverts() public {
         vm.prank(ALICE);
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__FunctionIsLockedForUsers.selector, ALICE));
         createLBPairDefaultFees(token6D, token12D);
     }
 
@@ -94,22 +98,37 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(LBPairBinSteps[0].createdByOwner, false);
     }
 
-    function testFailForIdenticalAddresses() public {
+    function testForIdenticalAddressesReverts() public {
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__IdenticalAddresses.selector, token6D));
         factory.createLBPair(token6D, token6D, ID_ONE, DEFAULT_BIN_STEP);
     }
 
-    function testFailForZeroAddressPair() public {
+    function testForZeroAddressPairReverts() public {
+        vm.expectRevert(LBFactory__ZeroAddress.selector);
         factory.createLBPair(token6D, IERC20(address(0)), ID_ONE, DEFAULT_BIN_STEP);
     }
 
-    function testFailIfPairAlreadyExists() public {
+    function testIfPairAlreadyExistsReverts() public {
         createLBPairDefaultFees(token6D, token12D);
+        vm.expectRevert(
+            abi.encodeWithSelector(LBFactory__LBPairAlreadyExists.selector, token6D, token12D, DEFAULT_BIN_STEP)
+        );
         createLBPairDefaultFees(token6D, token12D);
     }
 
-    function testFailForInvalidBinStepOverflow() public {
+    function testForInvalidBinStepOverflowReverts() public {
+        uint16 invalidBinStepOverflow = uint16(factory.MAX_BIN_STEP() + 1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                LBFactory__BinStepRequirementsBreached.selector,
+                factory.MIN_BIN_STEP(),
+                invalidBinStepOverflow,
+                factory.MAX_BIN_STEP()
+            )
+        );
+
         factory.setPreset(
-            uint16(factory.MAX_BIN_STEP() + 1),
+            invalidBinStepOverflow,
             DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
@@ -121,9 +140,18 @@ contract LiquidityBinFactoryTest is TestHelper {
         );
     }
 
-    function testFailForInvalidBinStepUnderflow() public {
+    function testForInvalidBinStepUnderflowReverts() public {
+        uint16 invalidBinStepUnderflow = uint16(factory.MIN_BIN_STEP() - 1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                LBFactory__BinStepRequirementsBreached.selector,
+                factory.MIN_BIN_STEP(),
+                invalidBinStepUnderflow,
+                factory.MAX_BIN_STEP()
+            )
+        );
         factory.setPreset(
-            uint16(factory.MIN_BIN_STEP() - 1),
+            invalidBinStepUnderflow,
             DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
@@ -164,10 +192,10 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(feeParameters.maxVolatilityAccumulated, DEFAULT_MAX_VOLATILITY_ACCUMULATED - 1);
     }
 
-    function testFailSetFeesParametersOnPairNotByOwner() public {
+    function testSetFeesParametersOnPairNotByOwner() public {
         createLBPairDefaultFees(token6D, token12D);
-
         vm.prank(ALICE);
+        vm.expectRevert(PendingOwnable__NotOwner.selector);
         factory.setFeesParametersOnPair(
             token6D,
             token12D,
@@ -182,15 +210,20 @@ contract LiquidityBinFactoryTest is TestHelper {
         );
     }
 
-    function testFailForInvalidFilterPeriod() public {
+    function testForInvalidFilterPeriod() public {
         createLBPairDefaultFees(token6D, token12D);
+
+        uint16 invalidFilterPeriod = DEFAULT_DECAY_PERIOD;
+        vm.expectRevert(
+            abi.encodeWithSelector(LBFactory__DecreasingPeriods.selector, invalidFilterPeriod, DEFAULT_DECAY_PERIOD)
+        );
 
         factory.setFeesParametersOnPair(
             token6D,
             token12D,
             DEFAULT_BIN_STEP,
             DEFAULT_BASE_FACTOR,
-            DEFAULT_DECAY_PERIOD,
+            invalidFilterPeriod,
             DEFAULT_DECAY_PERIOD,
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
@@ -199,14 +232,22 @@ contract LiquidityBinFactoryTest is TestHelper {
         );
     }
 
-    function testFailForInvalidBaseFactor() public {
+    function testForInvalidBaseFactor() public {
         createLBPairDefaultFees(token6D, token12D);
+        uint16 invalidBaseFactor = uint16(Constants.BASIS_POINT_MAX + 1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                LBFactory__BaseFactorOverflows.selector,
+                invalidBaseFactor,
+                Constants.BASIS_POINT_MAX
+            )
+        );
 
         factory.setFeesParametersOnPair(
             token6D,
             token12D,
             DEFAULT_BIN_STEP,
-            uint16(Constants.BASIS_POINT_MAX + 1),
+            invalidBaseFactor,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
             DEFAULT_REDUCTION_FACTOR,
@@ -216,8 +257,16 @@ contract LiquidityBinFactoryTest is TestHelper {
         );
     }
 
-    function testFailForInvalidProtocolShare() public {
+    function testForInvalidProtocolShare() public {
         createLBPairDefaultFees(token6D, token12D);
+        uint16 invalidProtocolShare = uint16(factory.MAX_PROTOCOL_SHARE() + 1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                LBFactory__ProtocolShareOverflows.selector,
+                invalidProtocolShare,
+                factory.MAX_PROTOCOL_SHARE()
+            )
+        );
 
         factory.setFeesParametersOnPair(
             token6D,
@@ -228,25 +277,31 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_DECAY_PERIOD,
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
-            2_501,
+            invalidProtocolShare,
             DEFAULT_MAX_VOLATILITY_ACCUMULATED
         );
     }
 
-    function testFailForInvalidMaxVolatilityAccumulated() public {
-        createLBPairDefaultFees(token6D, token12D);
+    function testForInvalidReductionFactor() public {
+        uint16 invalidReductionFactor = uint16(Constants.BASIS_POINT_MAX + 1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                LBFactory__ReductionFactorOverflows.selector,
+                invalidReductionFactor,
+                Constants.BASIS_POINT_MAX
+            )
+        );
 
-        factory.setFeesParametersOnPair(
-            token6D,
-            token12D,
+        factory.setPreset(
             DEFAULT_BIN_STEP,
             DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
-            DEFAULT_REDUCTION_FACTOR,
+            invalidReductionFactor,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATED + 1
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED,
+            DEFAULT_SAMPLE_LIFETIME
         );
     }
 }

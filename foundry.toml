@@ -5,4 +5,8 @@ libs = ['lib']
 optimizer = true
 optimizer_runs = 800
 
+[rpc_endpoints]
+avalanche = "https://api.avax.network/ext/bc/C/rpc"
+fuji = "https://api.avax-test.network/ext/bc/C/rpc"
+
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

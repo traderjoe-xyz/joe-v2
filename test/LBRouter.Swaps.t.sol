@@ -370,7 +370,7 @@ contract LiquidityBinRouterForkTest is TestHelper {
     LBPair internal taxTokenPair;
 
     function setUp() public {
-        vm.createSelectFork(vm.rpcUrl("avalanche"));
+        vm.createSelectFork(vm.rpcUrl("avalanche"), 19_358_000);
 
         token6D = new ERC20MockDecimals(6);
         token10D = new ERC20MockDecimals(10);

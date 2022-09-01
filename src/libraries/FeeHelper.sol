@@ -142,21 +142,6 @@ library FeeHelper {
         }
     }
 
-    /// @notice Return the fees added when an user do a flashloan
-    /// @param _fp The current fee parameter
-    /// @param _amount The amount of token
-    /// @param _fee The flash loan fee
-    /// @return The flash loan fee amount
-    function getFlashLoanFee(
-        FeeParameters memory _fp,
-        uint256 _amount,
-        uint256 _fee
-    ) internal pure returns (uint256) {
-        unchecked {
-            return (_amount * _fee) / (Constants.PRECISION);
-        }
-    }
-
     /// @notice Return the fees distribution added to an amount
     /// @param _fp The current fee parameter
     /// @param _fees The fee amount

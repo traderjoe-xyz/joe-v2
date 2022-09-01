@@ -4,8 +4,11 @@ pragma solidity >=0.8.7;
 
 interface ILBFlashLoanCallback {
     function LBFlashLoanCallback(
-        uint256 fee0,
-        uint256 fee1,
+        address sender,
+        uint256 amountX,
+        uint256 amountY,
+        uint256 feeX,
+        uint256 feeY,
         bytes memory data
     ) external;
 }

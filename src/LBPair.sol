@@ -15,6 +15,7 @@ import "./libraries/ReentrancyGuard.sol";
 import "./libraries/Oracle.sol";
 import "./libraries/Decoder.sol";
 import "./libraries/SwapHelper.sol";
+import "./libraries/FeeDistributionHelper.sol";
 import "./libraries/TokenHelper.sol";
 import "./interfaces/ILBFlashLoanCallback.sol";
 import "./interfaces/ILBPair.sol";
@@ -27,12 +28,12 @@ error LBPair__CompositionFactorFlawed(uint256 id);
 error LBPair__InsufficientLiquidityMinted(uint256 id);
 error LBPair__InsufficientLiquidityBurned(uint256 id);
 error LBPair__WrongLengths();
-error LBPair__FlashLoanUnderflow(uint256 expectedBalance, uint256 balance);
 error LBPair__OnlyStrictlyIncreasingId();
 error LBPair__OnlyFactory();
 error LBPair__DistributionsOverflow();
 error LBPair__OnlyFeeRecipient(address feeRecipient, address sender);
 error LBPair__OracleNotEnoughSample();
+error LBPair__FlashLoanCallbackFailed();
 
 /// @title Liquidity Bin Exchange
 /// @author Trader Joe
@@ -48,6 +49,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     using FeeHelper for FeeHelper.FeeParameters;
     using SwapHelper for Bin;
     using Decoder for bytes32;
+    using FeeDistributionHelper for FeeHelper.FeesDistribution;
     using Oracle for bytes32[65_536];
 
     /** Events **/
@@ -436,27 +438,30 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         uint256 _fee = factory.flashLoanFee();
 
-        FeeHelper.FeesDistribution memory _feesX = _fp.getFeesDistribution(_fp.getFlashLoanFee(_amountXOut, _fee));
-        FeeHelper.FeesDistribution memory _feesY = _fp.getFeesDistribution(_fp.getFlashLoanFee(_amountYOut, _fee));
+        FeeHelper.FeesDistribution memory _feesX = _fp.getFeesDistribution(_getFlashLoanFee(_amountXOut, _fee));
+        FeeHelper.FeesDistribution memory _feesY = _fp.getFeesDistribution(_getFlashLoanFee(_amountYOut, _fee));
 
         (uint256 _reserveX, uint256 _reserveY, uint256 _id) = _getReservesAndId();
 
         tokenX.safeTransfer(_to, _amountXOut);
         tokenY.safeTransfer(_to, _amountYOut);
 
-        ILBFlashLoanCallback(msg.sender).LBFlashLoanCallback(_feesX.total, _feesY.total, _data);
+        ILBFlashLoanCallback(_to).LBFlashLoanCallback(
+            msg.sender,
+            _amountXOut,
+            _amountYOut,
+            _feesX.total,
+            _feesY.total,
+            _data
+        );
 
-        _flashLoanHelper(_pairInformation.feesX, _feesX, tokenX, _reserveX);
-        _flashLoanHelper(_pairInformation.feesY, _feesY, tokenY, _reserveY);
+        _feesX.flashLoanHelper(_pairInformation.feesX, tokenX, _reserveX);
+        _feesY.flashLoanHelper(_pairInformation.feesY, tokenY, _reserveY);
 
         uint256 _totalSupply = totalSupply(_id);
 
-        _bins[_id].accTokenXPerShare +=
-            ((uint256(_feesX.total) - _feesX.protocol) << Constants.SCALE_OFFSET) /
-            _totalSupply;
-        _bins[_id].accTokenYPerShare +=
-            ((uint256(_feesY.total) - _feesY.protocol) << Constants.SCALE_OFFSET) /
-            _totalSupply;
+        _bins[_id].accTokenXPerShare += _feesX.getTokenPerShare(_totalSupply);
+        _bins[_id].accTokenYPerShare += _feesY.getTokenPerShare(_totalSupply);
 
         emit FlashLoan(msg.sender, _to, _amountXOut, _amountYOut, _feesX.total, _feesY.total);
     }
@@ -866,31 +871,6 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         _unclaimedFees[_user] = _fees;
     }
 
-    /// @notice Checks that the flash loan was done accordingly
-    /// @param _pairFees The fees of the pair
-    /// @param _fees The fees received by the pair
-    /// @param _token The address of the token received
-    /// @param _reserve The stored reserve of the current bin
-    function _flashLoanHelper(
-        FeeHelper.FeesDistribution storage _pairFees,
-        FeeHelper.FeesDistribution memory _fees,
-        IERC20 _token,
-        uint256 _reserve
-    ) private {
-        uint128 _totalFees = _pairFees.total;
-        uint256 _amountReceived = _token.received(_reserve, _totalFees);
-
-        if (_fees.total > _amountReceived) revert LBPair__FlashLoanUnderflow(_fees.total, _amountReceived);
-
-        _fees.total = _amountReceived.safe128();
-
-        _pairFees.total = _totalFees + _fees.total;
-        // unsafe math is fine because total >= protocol
-        unchecked {
-            _pairFees.protocol += _fees.protocol;
-        }
-    }
-
     /// @notice Internal function to set the fee parameters of the pair
     /// @param _packedFeeParameters The packed fee parameters
     function _setFeesParameters(bytes32 _packedFeeParameters) internal {
@@ -970,5 +950,9 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             activeId := and(_slot, _mask24)
         }
         reserveX = _slot.decode(_mask136, _OFFSET_PAIR_RESERVE_X);
+    }
+
+    function _getFlashLoanFee(uint256 _amount, uint256 _fee) internal pure returns (uint256) {
+        return (_amount * _fee) / Constants.PRECISION;
     }
 }

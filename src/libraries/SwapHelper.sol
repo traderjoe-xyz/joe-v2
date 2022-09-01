@@ -7,12 +7,14 @@ import "./FeeHelper.sol";
 import "./Constants.sol";
 import "./BinHelper.sol";
 import "./SafeMath.sol";
+import "./FeeDistributionHelper.sol";
 import "./Math512Bits.sol";
 
 library SwapHelper {
     using Math512Bits for uint256;
     using FeeHelper for FeeHelper.FeeParameters;
     using SafeMath for uint256;
+    using FeeDistributionHelper for FeeHelper.FeesDistribution;
 
     /// @notice Returns the swap amounts in the current bin
     /// @param bin The bin information
@@ -82,20 +84,16 @@ library SwapHelper {
         bool swapForY,
         uint256 totalSupply
     ) internal pure {
-        uint256 tokenPerShare;
-
         pairFees.total += fees.total;
         // unsafe math is fine because total >= protocol
         unchecked {
             pairFees.protocol += fees.protocol;
-
-            tokenPerShare = (uint256(fees.total - fees.protocol) << Constants.SCALE_OFFSET) / totalSupply;
         }
 
         if (swapForY) {
-            bin.accTokenXPerShare += tokenPerShare;
+            bin.accTokenXPerShare += fees.getTokenPerShare(totalSupply);
         } else {
-            bin.accTokenYPerShare += tokenPerShare;
+            bin.accTokenYPerShare += fees.getTokenPerShare(totalSupply);
         }
     }
 

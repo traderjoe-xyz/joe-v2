@@ -23,8 +23,8 @@ library Math128x128 {
     /// Caveats:
     /// - The results are not perfectly accurate to the last decimal, due to the lossy precision of the iterative approximation.
     ///
-    /// @param x The unsigned 128.128-decimal fixed-point number for which to calculate the binary logarithm.
-    /// @return result The binary logarithm as a signed 40.36-decimal fixed-point number.
+    /// @param x The unsigned 128.128-binary fixed-point number for which to calculate the binary logarithm.
+    /// @return result The binary logarithm as a signed 128.128-binary fixed-point number.
     function log2(uint256 x) internal pure returns (int256 result) {
         unchecked {
             // This works because log2(x) = -log2(1/x).
@@ -40,7 +40,7 @@ library Math128x128 {
             // Calculate the integer part of the logarithm and add it to the result and finally calculate y = x * 2^(-n).
             uint256 n = (x >> Constants.SCALE_OFFSET).mostSignificantBit();
 
-            // The integer part of the logarithm as a signed 128.128-decimal fixed-point number. The operation can't overflow
+            // The integer part of the logarithm as a signed 128.128-binary fixed-point number. The operation can't overflow
             // because n is maximum 255, Constants.SCALE is 2^128 and sign is either 1 or -1.
             result = int256(n) << Constants.SCALE_OFFSET;
 
@@ -72,7 +72,7 @@ library Math128x128 {
 
     /// @notice Returns the value of x^y It's calculated using `1 / x^(-y)` to have the same precision
     /// whether `y` is negative or positive.
-    /// @param x The unsigned 128.128-decimal fixed-point number for which to calculate the power
+    /// @param x The unsigned 128.128-binary fixed-point number for which to calculate the power
     /// @param y A relative number without any decimals
     /// @return The result of `x^y`
     function power(uint256 x, int256 y) internal pure returns (uint256) {

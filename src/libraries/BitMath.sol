@@ -13,12 +13,9 @@ library BitMath {
         uint8 _bit,
         bool _rightSide
     ) internal pure returns (uint256) {
-        unchecked {
-            if (_rightSide) {
-                return closestBitRight(_integer, _bit - 1);
-            }
-            return closestBitLeft(_integer, _bit + 1);
-        }
+        if (_rightSide) {
+            return closestBitRight(_integer, _bit - 1);
+        } else return closestBitLeft(_integer, _bit + 1);
     }
 
     /// @notice Returns the most (or least) significant bit of `_integer`
@@ -28,8 +25,7 @@ library BitMath {
     function significantBit(uint256 _integer, bool _isMostSignificant) internal pure returns (uint256) {
         if (_isMostSignificant) {
             return mostSignificantBit(_integer);
-        }
-        return leastSignificantBit(_integer);
+        } else return leastSignificantBit(_integer);
     }
 
     /// @notice Returns a tuple (uint256 id, bool found),

@@ -360,14 +360,14 @@ contract LBRouter is ILBRouter {
         IERC20[] memory _tokenPath,
         address _to,
         uint256 _deadline
-    ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) {
+    ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256 amountOut) {
         address[] memory _pairs = _getPairs(_pairBinSteps, _tokenPath);
 
         _tokenPath[0].safeTransferFrom(msg.sender, _pairs[0], _amountIn);
 
-        uint256 _amountOut = _swapExactTokensForTokens(_amountIn, _pairs, _pairBinSteps, _tokenPath, _to);
+        amountOut = _swapExactTokensForTokens(_amountIn, _pairs, _pairBinSteps, _tokenPath, _to);
 
-        if (_amountOutMin > _amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMin, _amountOut);
+        if (_amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMin, amountOut);
     }
 
     /// @notice Swaps exact tokens for AVAX while performing safety checks
@@ -384,7 +384,7 @@ contract LBRouter is ILBRouter {
         IERC20[] memory _tokenPath,
         address _to,
         uint256 _deadline
-    ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) {
+    ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256 amountOut) {
         if (_tokenPath[_pairBinSteps.length] != IERC20(wavax))
             revert LBRouter__InvalidTokenPath(_tokenPath[_pairBinSteps.length]);
 
@@ -392,12 +392,12 @@ contract LBRouter is ILBRouter {
 
         _tokenPath[0].safeTransferFrom(msg.sender, _pairs[0], _amountIn);
 
-        uint256 _amountOut = _swapExactTokensForTokens(_amountIn, _pairs, _pairBinSteps, _tokenPath, address(this));
+        amountOut = _swapExactTokensForTokens(_amountIn, _pairs, _pairBinSteps, _tokenPath, address(this));
 
-        if (_amountOutMinAVAX > _amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMinAVAX, _amountOut);
+        if (_amountOutMinAVAX > amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMinAVAX, amountOut);
 
-        wavax.withdraw(_amountOut);
-        _safeTransferAVAX(_to, _amountOut);
+        wavax.withdraw(amountOut);
+        _safeTransferAVAX(_to, amountOut);
     }
 
     /// @notice Swaps exact AVAX for tokens while performing safety checks
@@ -412,14 +412,14 @@ contract LBRouter is ILBRouter {
         IERC20[] memory _tokenPath,
         address _to,
         uint256 _deadline
-    ) external payable override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) {
+    ) external payable override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256 amountOut) {
         address[] memory _pairs = _getPairs(_pairBinSteps, _tokenPath);
 
         _wavaxDepositAndTransfer(_pairs[0], msg.value);
 
-        uint256 _amountOut = _swapExactTokensForTokens(msg.value, _pairs, _pairBinSteps, _tokenPath, _to);
+        amountOut = _swapExactTokensForTokens(msg.value, _pairs, _pairBinSteps, _tokenPath, _to);
 
-        if (_amountOutMin > _amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMin, _amountOut);
+        if (_amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMin, amountOut);
     }
 
     /// @notice Swaps tokens for exact tokens while performing safety checks
@@ -532,7 +532,7 @@ contract LBRouter is ILBRouter {
         IERC20[] memory _tokenPath,
         address _to,
         uint256 _deadline
-    ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) {
+    ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256 amountOut) {
         address[] memory _pairs = _getPairs(_pairBinSteps, _tokenPath);
 
         IERC20 _targetToken = _tokenPath[_pairs.length];
@@ -543,8 +543,8 @@ contract LBRouter is ILBRouter {
 
         _swapSupportingFeeOnTransferTokens(_pairs, _pairBinSteps, _tokenPath, _to);
 
-        uint256 _amountOut = _targetToken.balanceOf(_to) - _balanceBefore;
-        if (_amountOutMin > _amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMin, _amountOut);
+        amountOut = _targetToken.balanceOf(_to) - _balanceBefore;
+        if (_amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMin, amountOut);
     }
 
     /// @notice Swaps exact tokens for AVAX while performing safety checks supporting for fee on transfer tokens
@@ -561,7 +561,7 @@ contract LBRouter is ILBRouter {
         IERC20[] memory _tokenPath,
         address _to,
         uint256 _deadline
-    ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) {
+    ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256 amountOut) {
         if (_tokenPath[_pairBinSteps.length] != IERC20(wavax))
             revert LBRouter__InvalidTokenPath(_tokenPath[_pairBinSteps.length]);
 
@@ -573,11 +573,11 @@ contract LBRouter is ILBRouter {
 
         _swapSupportingFeeOnTransferTokens(_pairs, _pairBinSteps, _tokenPath, address(this));
 
-        uint256 _amountOut = wavax.balanceOf(address(this)) - _balanceBefore;
-        if (_amountOutMinAVAX > _amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMinAVAX, _amountOut);
+        amountOut = wavax.balanceOf(address(this)) - _balanceBefore;
+        if (_amountOutMinAVAX > amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMinAVAX, amountOut);
 
-        wavax.withdraw(_amountOut);
-        _safeTransferAVAX(_to, _amountOut);
+        wavax.withdraw(amountOut);
+        _safeTransferAVAX(_to, amountOut);
     }
 
     /// @notice Swaps exact AVAX for tokens while performing safety checks supporting for fee on transfer tokens
@@ -592,7 +592,7 @@ contract LBRouter is ILBRouter {
         IERC20[] memory _tokenPath,
         address _to,
         uint256 _deadline
-    ) external payable override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) {
+    ) external payable override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256 amountOut) {
         if (_tokenPath[0] != IERC20(wavax)) revert LBRouter__InvalidTokenPath(_tokenPath[0]);
 
         address[] memory _pairs = _getPairs(_pairBinSteps, _tokenPath);
@@ -605,8 +605,8 @@ contract LBRouter is ILBRouter {
 
         _swapSupportingFeeOnTransferTokens(_pairs, _pairBinSteps, _tokenPath, _to);
 
-        uint256 _amountOut = _targetToken.balanceOf(_to) - _balanceBefore;
-        if (_amountOutMin > _amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMin, _amountOut);
+        amountOut = _targetToken.balanceOf(_to) - _balanceBefore;
+        if (_amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMin, amountOut);
     }
 
     /// @notice Unstuck tokens that are sent to this contract by mistake

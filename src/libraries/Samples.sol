@@ -40,11 +40,14 @@ library Samples {
         uint256 _volatilityAccumulated,
         uint256 _binCrossed
     ) internal view returns (bytes32 packedSample) {
+        uint256 _currentTimestamp = block.timestamp;
+        uint256 _deltaTime = _currentTimestamp - timestamp(_lastSample);
+
         unchecked {
-            uint256 _currentTimestamp = block.timestamp;
-            uint256 _deltaTime = _currentTimestamp - timestamp(_lastSample);
             uint256 _cumulativeId = cumulativeId(_lastSample) + _activeId * _deltaTime;
-            uint256 _cumulativeVolatilityAccumulated = cumulativeVolatilityAccumulated(_lastSample) + _volatilityAccumulated * _deltaTime;
+            uint256 _cumulativeVolatilityAccumulated = cumulativeVolatilityAccumulated(_lastSample) +
+                _volatilityAccumulated *
+                _deltaTime;
             uint256 _cumulativeBinCrossed = cumulativeBinCrossed(_lastSample) + _binCrossed * _deltaTime;
 
             return pack(_cumulativeBinCrossed, _cumulativeVolatilityAccumulated, _cumulativeId, _currentTimestamp, 1);
@@ -67,7 +70,10 @@ library Samples {
     ) internal pure returns (bytes32 packedSample) {
         return
             _cumulativeBinCrossed.encode(_MASK_CUMULATIVE_BIN_CROSSED, _OFFSET_CUMULATIVE_BIN_CROSSED) |
-            _cumulativeVolatilityAccumulated.encode(_MASK_CUMULATIVE_VolatilityAccumulated, _OFFSET_CUMULATIVE_VolatilityAccumulated) |
+            _cumulativeVolatilityAccumulated.encode(
+                _MASK_CUMULATIVE_VolatilityAccumulated,
+                _OFFSET_CUMULATIVE_VolatilityAccumulated
+            ) |
             _cumulativeId.encode(_MASK_CUMULATIVE_ID, _OFFSET_CUMULATIVE_ID) |
             _timestamp.encode(_MASK_TIMESTAMP, _OFFSET_TIMESTAMP) |
             _initialized.encode(_MASK_INITIALIZED, _OFFSET_INITIALIZED);

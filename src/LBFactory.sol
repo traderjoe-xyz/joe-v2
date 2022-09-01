@@ -207,20 +207,22 @@ contract LBFactory is PendingOwnable, ILBFactory {
             bytes32 _avLBPairBinSteps = _availableLBPairBinSteps[_tokenX][_tokenY];
             uint256 _nbAvailable = _avLBPairBinSteps.decode(type(uint8).max, 248);
 
-            LBPairsAvailable = new LBPairAvailable[](_nbAvailable);
+            if (_nbAvailable > 0) {
+                LBPairsAvailable = new LBPairAvailable[](_nbAvailable);
 
-            uint256 _index;
-            for (uint256 i = MIN_BIN_STEP; i <= MAX_BIN_STEP; ++i) {
-                if (_avLBPairBinSteps.decode(1, i) == 1) {
-                    LBPairInfo memory _LBPairInfo = _LBPairsInfo[_tokenX][_tokenY][i];
+                uint256 _index;
+                for (uint256 i = MIN_BIN_STEP; i <= MAX_BIN_STEP; ++i) {
+                    if (_avLBPairBinSteps.decode(1, i) == 1) {
+                        LBPairInfo memory _LBPairInfo = _LBPairsInfo[_tokenX][_tokenY][i];
 
-                    LBPairsAvailable[_index] = LBPairAvailable({
-                        binStep: i,
-                        LBPair: _LBPairInfo.LBPair,
-                        createdByOwner: _LBPairInfo.createdByOwner,
-                        isBlacklisted: _LBPairInfo.isBlacklisted
-                    });
-                    if (++_index == _nbAvailable) break;
+                        LBPairsAvailable[_index] = LBPairAvailable({
+                            binStep: i,
+                            LBPair: _LBPairInfo.LBPair,
+                            createdByOwner: _LBPairInfo.createdByOwner,
+                            isBlacklisted: _LBPairInfo.isBlacklisted
+                        });
+                        if (++_index == _nbAvailable) break;
+                    }
                 }
             }
         }

@@ -178,13 +178,15 @@ contract LBFactory is PendingOwnable, ILBFactory {
             bytes32 _avPresets = _availablePresets;
             uint256 _nbPresets = _avPresets.decode(type(uint8).max, 248);
 
-            presetsBinStep = new uint256[](_nbPresets);
+            if (_nbPresets > 0) {
+                presetsBinStep = new uint256[](_nbPresets);
 
-            uint256 _index;
-            for (uint256 i = MIN_BIN_STEP; i <= MAX_BIN_STEP; ++i) {
-                if (_avPresets.decode(1, i) == 1) {
-                    presetsBinStep[_index] = i;
-                    if (++_index == _nbPresets) break;
+                uint256 _index;
+                for (uint256 i = MIN_BIN_STEP; i <= MAX_BIN_STEP; ++i) {
+                    if (_avPresets.decode(1, i) == 1) {
+                        presetsBinStep[_index] = i;
+                        if (++_index == _nbPresets) break;
+                    }
                 }
             }
         }

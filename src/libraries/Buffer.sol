@@ -24,7 +24,15 @@ library Buffer {
     /// @return result The result
     function before(uint256 x, uint256 n) internal pure returns (uint256 result) {
         assembly {
-            result := addmod(x, sub(n, 1), n)
+            if gt(n, 0) {
+                switch x
+                case 0 {
+                    result := sub(n, 1)
+                }
+                default {
+                    result := mod(sub(x, 1), n)
+                }
+            }
         }
     }
 }

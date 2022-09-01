@@ -66,7 +66,7 @@ interface ILBRouter {
         IERC20 tokenY,
         uint24 activeId,
         uint16 binStep
-    ) external;
+    ) external returns (ILBPair pair);
 
     function addLiquidity(LiquidityParameters memory liquidityParameters) external;
 

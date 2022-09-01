@@ -34,9 +34,9 @@ abstract contract TestHelper is Test {
     uint16 internal constant DEFAULT_REDUCTION_FACTOR = 5000;
     uint24 internal constant DEFAULT_VARIABLE_FEE_CONTROL = 5000;
 
-    address internal constant DEV = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
-    address internal constant ALICE = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
-    address internal constant BOB = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
+    address payable internal constant DEV = payable(0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84);
+    address payable internal constant ALICE = payable(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
+    address payable internal constant BOB = payable(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
 
     address internal constant JOE_V1_FACTORY_ADDRESS = 0x9Ad6C38BE94206cA50bb0d90783181662f0Cfa10;
     address internal constant WAVAX_AVALANCHE_ADDRESS = 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7;

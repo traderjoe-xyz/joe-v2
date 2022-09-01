@@ -24,6 +24,7 @@ error LBFactory__FunctionIsLockedForUsers(address user);
 error LBFactory__FactoryLockIsAlreadyInTheSameState();
 error LBFactory__LBPairBlacklistIsAlreadyInTheSameState();
 error LBFactory__BinStepHasNoPreset(uint256 binStep);
+error LBFactory__SameFeeRecipient(address feeRecipient);
 
 contract LBFactory is PendingOwnable, ILBFactory {
     using Decoder for bytes32;
@@ -67,7 +68,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint256 pid
     );
 
-    event FeeRecipientChanged(address oldRecipient, address newRecipient);
+    event FeeRecipientSet(address oldRecipient, address newRecipient);
 
     event FlashLoanFeeSet(uint256 oldFlashLoanFee, uint256 newFlashLoanFee);
 
@@ -479,8 +480,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
         if (_feeRecipient == address(0)) revert LBFactory__ZeroAddress();
 
         address _oldFeeRecipient = feeRecipient;
+        if (_oldFeeRecipient == _feeRecipient) revert LBFactory__SameFeeRecipient(_feeRecipient);
+
         feeRecipient = _feeRecipient;
-        emit FeeRecipientChanged(_oldFeeRecipient, _feeRecipient);
+        emit FeeRecipientSet(_oldFeeRecipient, _feeRecipient);
     }
 
     function forceDecay(ILBPair _LBPair) external override onlyOwner {

@@ -214,8 +214,8 @@ contract LBRouter is ILBRouter {
         IERC20 _tokenY,
         uint24 _activeId,
         uint16 _binStep
-    ) external override {
-        factory.createLBPair(_tokenX, _tokenY, _activeId, _binStep);
+    ) external override returns (ILBPair pair) {
+        pair = factory.createLBPair(_tokenX, _tokenY, _activeId, _binStep);
     }
 
     /// @notice Add liquidity while performing safety checks

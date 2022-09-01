@@ -11,6 +11,7 @@ error LBFactory__IdenticalAddresses(IERC20 token);
 error LBFactory__ZeroAddress();
 error LBFactory__FactoryHelperAlreadyInitialized();
 error LBFactory__LBPairAlreadyExists(IERC20 tokenX, IERC20 tokenY, uint256 _binStep);
+error LBFactory__LBPairNotCreated(IERC20 tokenX, IERC20 tokenY, uint256 binStep);
 error LBFactory__DecreasingPeriods(uint16 filterPeriod, uint16 decayPeriod);
 error LBFactory__BaseFactorOverflows(uint16 baseFactor, uint256 max);
 error LBFactory__ReductionFactorOverflows(uint16 reductionFactor, uint256 max);
@@ -422,6 +423,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint24 _maxVolatilityAccumulated
     ) external override onlyOwner {
         ILBPair _LBPair = _getLBPairInfo(_tokenX, _tokenY, _binStep).LBPair;
+
+        if (address(_LBPair) == address(0)) revert LBFactory__LBPairNotCreated(_tokenX, _tokenY, _binStep);
 
         bytes32 _packedFeeParameters = _getPackedFeeParameters(
             _binStep,

@@ -115,7 +115,7 @@ library Math512Bits {
     /// @dev Credit to Remco Bloemen under MIT license https://xn--2-umb.com/21/muldiv.
     ///
     /// Requirements:
-    /// - The offset needs to be strictly lower than 256.
+    /// - The offset needs to be strictly lower than 512.
     /// - The result must fit within uint256.
     ///
     /// Caveats:
@@ -133,7 +133,7 @@ library Math512Bits {
         bool roundDown
     ) internal pure returns (uint256 result) {
         unchecked {
-            if (offset > 256) revert Math512Bits__OffsetOverflows(offset);
+            if (offset > 511) revert Math512Bits__OffsetOverflows(offset);
             uint256 _roundDown = roundDown ? 0 : 1;
 
             // 512-bit multiply [prod1 prod0] = x * y. Compute the product mod 2^256 and mod 2^256 - 1, then use

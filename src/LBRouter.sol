@@ -276,6 +276,8 @@ contract LBRouter is ILBRouter {
     /// @param _amounts The list of amounts to burn of each id in `_ids`
     /// @param _to The address of the recipient
     /// @param _deadline The deadline of the tx
+    /// @return amountX Amount of token X returned
+    /// @return amountY Amount of token Y returned
     function removeLiquidity(
         IERC20 _tokenX,
         IERC20 _tokenY,
@@ -286,14 +288,14 @@ contract LBRouter is ILBRouter {
         uint256[] memory _amounts,
         address _to,
         uint256 _deadline
-    ) external override ensure(_deadline) {
+    ) external override ensure(_deadline) returns (uint256 amountX, uint256 amountY) {
         ILBPair _LBPair = _getLBPairInfo(_tokenX, _tokenY, _binStep, false);
         if (_tokenX != _LBPair.tokenX()) {
             (_tokenX, _tokenY) = (_tokenY, _tokenX);
             (_amountXMin, _amountYMin) = (_amountYMin, _amountXMin);
         }
 
-        _removeLiquidity(_LBPair, _amountXMin, _amountYMin, _ids, _amounts, _to);
+        (amountX, amountY) = _removeLiquidity(_LBPair, _amountXMin, _amountYMin, _ids, _amounts, _to);
     }
 
     /// @notice Remove AVAX liquidity while performing safety checks
@@ -307,6 +309,8 @@ contract LBRouter is ILBRouter {
     /// @param _amounts The list of amounts to burn of each id in `_ids`
     /// @param _to The address of the recipient
     /// @param _deadline The deadline of the tx
+    /// @return amountToken Amount of token returned
+    /// @return amountAVAX Amount of AVAX returned
     function removeLiquidityAVAX(
         IERC20 _token,
         uint16 _binStep,
@@ -316,13 +320,10 @@ contract LBRouter is ILBRouter {
         uint256[] memory _amounts,
         address payable _to,
         uint256 _deadline
-    ) external override ensure(_deadline) {
+    ) external override ensure(_deadline) returns (uint256 amountToken, uint256 amountAVAX) {
         ILBPair _LBPair = _getLBPairInfo(_token, IERC20(wavax), _binStep, false);
 
         bool _isAVAXTokenY = IERC20(wavax) == _LBPair.tokenY();
-
-        uint256 _amountToken;
-        uint256 _amountAVAX;
         {
             if (!_isAVAXTokenY) {
                 (_amountTokenMin, _amountAVAXMin) = (_amountAVAXMin, _amountTokenMin);
@@ -337,13 +338,13 @@ contract LBRouter is ILBRouter {
                 address(this)
             );
 
-            (_amountToken, _amountAVAX) = _isAVAXTokenY ? (_amountX, _amountY) : (_amountY, _amountX);
+            (amountToken, amountAVAX) = _isAVAXTokenY ? (_amountX, _amountY) : (_amountY, _amountX);
         }
 
-        _token.safeTransfer(_to, _amountToken);
+        _token.safeTransfer(_to, amountToken);
 
-        wavax.withdraw(_amountAVAX);
-        _safeTransferAVAX(_to, _amountAVAX);
+        wavax.withdraw(amountAVAX);
+        _safeTransferAVAX(_to, amountAVAX);
     }
 
     /// @notice Swaps exact tokens for tokens while performing safety checks

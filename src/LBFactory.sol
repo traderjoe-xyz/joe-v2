@@ -25,6 +25,7 @@ error LBFactory__FactoryLockIsAlreadyInTheSameState();
 error LBFactory__LBPairBlacklistIsAlreadyInTheSameState();
 error LBFactory__BinStepHasNoPreset(uint256 binStep);
 error LBFactory__SameFeeRecipient(address feeRecipient);
+error LBFactory__SameFlashLoanFee(uint256 flashLoanFee);
 
 contract LBFactory is PendingOwnable, ILBFactory {
     using Decoder for bytes32;
@@ -106,7 +107,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _feeRecipient The address of the fee recipient
     constructor(address _feeRecipient, uint256 _flashLoanFee) {
         _setFeeRecipient(_feeRecipient);
-        _setFlashLoanFee(_flashLoanFee);
+
+        flashLoanFee = _flashLoanFee;
+        emit FlashLoanFeeSet(0, _flashLoanFee);
     }
 
     /// @notice View function to return the number of LBPairs created
@@ -463,7 +466,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @notice Function to set the flash loan fee
     /// @param _flashLoanFee The value of the fee for flash loan
     function setFlashLoanFee(uint256 _flashLoanFee) external override onlyOwner {
-        _setFlashLoanFee(_flashLoanFee);
+        uint256 _oldFlashLoanFee = flashLoanFee;
+
+        if (_oldFlashLoanFee == _flashLoanFee) revert LBFactory__SameFlashLoanFee(_flashLoanFee);
+
+        flashLoanFee = _flashLoanFee;
+        emit FlashLoanFeeSet(_oldFlashLoanFee, _flashLoanFee);
     }
 
     /// @notice Function to lock the Factory and prevent anyone but the owner to create pairs.
@@ -488,14 +496,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     function forceDecay(ILBPair _LBPair) external override onlyOwner {
         _LBPair.forceDecay();
-    }
-
-    /// @notice Internal function to set the fee for flash loan
-    /// @param _flashLoanFee The fee value for flash loan
-    function _setFlashLoanFee(uint256 _flashLoanFee) internal {
-        uint256 _oldFlashLoanFee = flashLoanFee;
-        flashLoanFee = _flashLoanFee;
-        emit FlashLoanFeeSet(_oldFlashLoanFee, _flashLoanFee);
     }
 
     /// @notice Internal function to set the fee parameter of a LBPair

@@ -129,7 +129,7 @@ interface ILBRouter {
         IERC20[] memory tokenPath,
         address to,
         uint256 deadline
-    ) external;
+    ) external returns (uint256[] memory amountsIn);
 
     function swapTokensForExactAVAX(
         uint256 amountOut,
@@ -138,7 +138,7 @@ interface ILBRouter {
         IERC20[] memory tokenPath,
         address to,
         uint256 deadline
-    ) external;
+    ) external returns (uint256[] memory amountsIn);
 
     function swapAVAXForExactTokens(
         uint256 amountOut,
@@ -146,7 +146,7 @@ interface ILBRouter {
         IERC20[] memory tokenPath,
         address to,
         uint256 deadline
-    ) external payable;
+    ) external payable returns (uint256[] memory amountsIn);
 
     function swapExactTokensForTokensSupportingFeeOnTransferTokens(
         uint256 amountIn,

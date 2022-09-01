@@ -436,15 +436,15 @@ contract LBRouter is ILBRouter {
         IERC20[] memory _tokenPath,
         address _to,
         uint256 _deadline
-    ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) {
+    ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256[] memory amountsIn) {
         address[] memory _pairs = _getPairs(_pairBinSteps, _tokenPath);
-        uint256[] memory _amountsIn = _getAmountsIn(_pairBinSteps, _pairs, _tokenPath, _amountOut);
+        amountsIn = _getAmountsIn(_pairBinSteps, _pairs, _tokenPath, _amountOut);
 
-        if (_amountsIn[0] > _amountInMax) revert LBRouter__MaxAmountInExceeded(_amountInMax, _amountsIn[0]);
+        if (amountsIn[0] > _amountInMax) revert LBRouter__MaxAmountInExceeded(_amountInMax, amountsIn[0]);
 
-        _tokenPath[0].safeTransferFrom(msg.sender, _pairs[0], _amountsIn[0]);
+        _tokenPath[0].safeTransferFrom(msg.sender, _pairs[0], amountsIn[0]);
 
-        uint256 _amountOutReal = _swapTokensForExactTokens(_pairs, _pairBinSteps, _tokenPath, _amountsIn, _to);
+        uint256 _amountOutReal = _swapTokensForExactTokens(_pairs, _pairBinSteps, _tokenPath, amountsIn, _to);
 
         if (_amountOutReal < _amountOut) revert LBRouter__InsufficientAmountOut(_amountOut, _amountOutReal);
     }
@@ -463,24 +463,18 @@ contract LBRouter is ILBRouter {
         IERC20[] memory _tokenPath,
         address _to,
         uint256 _deadline
-    ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) {
+    ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256[] memory amountsIn) {
         if (_tokenPath[_pairBinSteps.length] != IERC20(wavax))
             revert LBRouter__InvalidTokenPath(_tokenPath[_pairBinSteps.length]);
 
         address[] memory _pairs = _getPairs(_pairBinSteps, _tokenPath);
-        uint256[] memory _amountsIn = _getAmountsIn(_pairBinSteps, _pairs, _tokenPath, _amountAVAXOut);
+        amountsIn = _getAmountsIn(_pairBinSteps, _pairs, _tokenPath, _amountAVAXOut);
 
-        if (_amountsIn[0] > _amountInMax) revert LBRouter__MaxAmountInExceeded(_amountInMax, _amountsIn[0]);
+        if (amountsIn[0] > _amountInMax) revert LBRouter__MaxAmountInExceeded(_amountInMax, amountsIn[0]);
 
-        _tokenPath[0].safeTransferFrom(msg.sender, _pairs[0], _amountsIn[0]);
+        _tokenPath[0].safeTransferFrom(msg.sender, _pairs[0], amountsIn[0]);
 
-        uint256 _amountOutReal = _swapTokensForExactTokens(
-            _pairs,
-            _pairBinSteps,
-            _tokenPath,
-            _amountsIn,
-            address(this)
-        );
+        uint256 _amountOutReal = _swapTokensForExactTokens(_pairs, _pairBinSteps, _tokenPath, amountsIn, address(this));
 
         if (_amountOutReal < _amountAVAXOut) revert LBRouter__InsufficientAmountOut(_amountAVAXOut, _amountOutReal);
 
@@ -501,21 +495,28 @@ contract LBRouter is ILBRouter {
         IERC20[] memory _tokenPath,
         address _to,
         uint256 _deadline
-    ) external payable override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) {
+    )
+        external
+        payable
+        override
+        ensure(_deadline)
+        verifyInputs(_pairBinSteps, _tokenPath)
+        returns (uint256[] memory amountsIn)
+    {
         if (_tokenPath[0] != IERC20(wavax)) revert LBRouter__InvalidTokenPath(_tokenPath[0]);
 
         address[] memory _pairs = _getPairs(_pairBinSteps, _tokenPath);
-        uint256[] memory _amountsIn = _getAmountsIn(_pairBinSteps, _pairs, _tokenPath, _amountOut);
+        amountsIn = _getAmountsIn(_pairBinSteps, _pairs, _tokenPath, _amountOut);
 
-        if (_amountsIn[0] > msg.value) revert LBRouter__MaxAmountInExceeded(msg.value, _amountsIn[0]);
+        if (amountsIn[0] > msg.value) revert LBRouter__MaxAmountInExceeded(msg.value, amountsIn[0]);
 
-        _wavaxDepositAndTransfer(_pairs[0], _amountsIn[0]);
+        _wavaxDepositAndTransfer(_pairs[0], amountsIn[0]);
 
-        uint256 _amountOutReal = _swapTokensForExactTokens(_pairs, _pairBinSteps, _tokenPath, _amountsIn, _to);
+        uint256 _amountOutReal = _swapTokensForExactTokens(_pairs, _pairBinSteps, _tokenPath, amountsIn, _to);
 
         if (_amountOutReal < _amountOut) revert LBRouter__InsufficientAmountOut(_amountOut, _amountOutReal);
 
-        if (msg.value > _amountsIn[0]) _safeTransferAVAX(_to, _amountsIn[0] - msg.value);
+        if (msg.value > amountsIn[0]) _safeTransferAVAX(_to, amountsIn[0] - msg.value);
     }
 
     /// @notice Swaps exact tokens for tokens while performing safety checks supporting for fee on transfer tokens

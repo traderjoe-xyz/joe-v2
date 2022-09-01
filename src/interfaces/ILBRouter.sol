@@ -82,7 +82,7 @@ interface ILBRouter {
         uint256[] memory amounts,
         address to,
         uint256 deadline
-    ) external;
+    ) external returns (uint256 amountX, uint256 amountY);
 
     function removeLiquidityAVAX(
         IERC20 token,
@@ -93,7 +93,7 @@ interface ILBRouter {
         uint256[] memory amounts,
         address payable to,
         uint256 deadline
-    ) external;
+    ) external returns (uint256 amountToken, uint256 amountAVAX);
 
     function swapExactTokensForTokens(
         uint256 amountIn,

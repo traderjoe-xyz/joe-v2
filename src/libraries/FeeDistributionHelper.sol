@@ -41,12 +41,17 @@ library FeeDistributionHelper {
         }
     }
 
+    /// @notice Calculate the tokenPerShare when fees are added
+    /// @param _fees The fees received by the pair
+    /// @param _totalSupply the total supply of a specific bin
     function getTokenPerShare(FeeHelper.FeesDistribution memory _fees, uint256 _totalSupply)
         internal
         pure
         returns (uint256)
     {
         unchecked {
+            // Shift can't overflow as we shift fees that are a uint128, by 128 bits.
+            // The result will always be smaller than the max uint256
             return (uint256(_fees.total - _fees.protocol) << Constants.SCALE_OFFSET) / _totalSupply;
         }
     }

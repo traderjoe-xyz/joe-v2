@@ -314,7 +314,7 @@ contract LBRouter is ILBRouter {
         uint256 _amountAVAXMin,
         uint256[] memory _ids,
         uint256[] memory _amounts,
-        address _to,
+        address payable _to,
         uint256 _deadline
     ) external override ensure(_deadline) {
         ILBPair _LBPair = _getLBPairInfo(_token, IERC20(wavax), _binStep, false);
@@ -382,7 +382,7 @@ contract LBRouter is ILBRouter {
         uint256 _amountOutMinAVAX,
         uint256[] memory _pairBinSteps,
         IERC20[] memory _tokenPath,
-        address _to,
+        address payable _to,
         uint256 _deadline
     ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256 amountOut) {
         if (_tokenPath[_pairBinSteps.length] != IERC20(wavax))
@@ -461,7 +461,7 @@ contract LBRouter is ILBRouter {
         uint256 _amountInMax,
         uint256[] memory _pairBinSteps,
         IERC20[] memory _tokenPath,
-        address _to,
+        address payable _to,
         uint256 _deadline
     ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256[] memory amountsIn) {
         if (_tokenPath[_pairBinSteps.length] != IERC20(wavax))
@@ -560,7 +560,7 @@ contract LBRouter is ILBRouter {
         uint256 _amountOutMinAVAX,
         uint256[] memory _pairBinSteps,
         IERC20[] memory _tokenPath,
-        address _to,
+        address payable _to,
         uint256 _deadline
     ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256 amountOut) {
         if (_tokenPath[_pairBinSteps.length] != IERC20(wavax))

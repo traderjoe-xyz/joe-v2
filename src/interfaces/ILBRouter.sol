@@ -92,7 +92,7 @@ interface ILBRouter {
         uint256 amountAVAXMin,
         uint256[] memory ids,
         uint256[] memory amounts,
-        address to,
+        address payable to,
         uint256 deadline
     ) external;
 
@@ -110,7 +110,7 @@ interface ILBRouter {
         uint256 amountOutMinAVAX,
         uint256[] memory pairVersions,
         IERC20[] memory tokenPath,
-        address to,
+        address payable to,
         uint256 deadline
     ) external returns (uint256 amountOut);
 
@@ -136,7 +136,7 @@ interface ILBRouter {
         uint256 amountInMax,
         uint256[] memory pairVersions,
         IERC20[] memory tokenPath,
-        address to,
+        address payable to,
         uint256 deadline
     ) external returns (uint256[] memory amountsIn);
 
@@ -162,7 +162,7 @@ interface ILBRouter {
         uint256 amountOutMinAVAX,
         uint256[] memory pairVersions,
         IERC20[] memory tokenPath,
-        address to,
+        address payable to,
         uint256 deadline
     ) external returns (uint256 amountOut);
 

@@ -58,7 +58,13 @@ contract LBFactory is PendingOwnable, ILBFactory {
     // The parameters presets
     mapping(uint256 => bytes32) private _presets;
 
-    event LBPairCreated(IERC20 indexed tokenX, IERC20 indexed tokenY, ILBPair LBPair, uint256 pid);
+    event LBPairCreated(
+        IERC20 indexed tokenX,
+        IERC20 indexed tokenY,
+        uint256 indexed binStep,
+        ILBPair LBPair,
+        uint256 pid
+    );
 
     event FeeRecipientChanged(address oldRecipient, address newRecipient);
 
@@ -285,7 +291,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _availableLBPairBinSteps[_tokenA][_tokenB] = _avLBPairBinSteps;
         }
 
-        emit LBPairCreated(_tokenX, _tokenY, _LBPair, allLBPairs.length - 1);
+        emit LBPairCreated(_tokenX, _tokenY, _binStep, _LBPair, allLBPairs.length - 1);
     }
 
     /// @notice Function to set the blacklist state of a pair, it will make the pair unusable by the router

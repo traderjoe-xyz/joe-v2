@@ -143,7 +143,13 @@ interface ILBPair {
         uint256[] memory _distributionX,
         uint256[] memory _distributionY,
         address _to
-    ) external returns (uint256, uint256);
+    )
+        external
+        returns (
+            uint256 amountXAddedToPair,
+            uint256 amountYAddedToPair,
+            uint256[] memory liquidityMinted
+        );
 
     function burn(
         uint256[] memory ids,

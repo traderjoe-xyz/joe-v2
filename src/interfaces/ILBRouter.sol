@@ -68,9 +68,14 @@ interface ILBRouter {
         uint16 binStep
     ) external returns (ILBPair pair);
 
-    function addLiquidity(LiquidityParameters memory liquidityParameters) external;
+    function addLiquidity(LiquidityParameters memory liquidityParameters)
+        external
+        returns (uint256[] memory depositIds, uint256[] memory liquidityMinted);
 
-    function addLiquidityAVAX(LiquidityParameters memory liquidityParameters) external payable;
+    function addLiquidityAVAX(LiquidityParameters memory liquidityParameters)
+        external
+        payable
+        returns (uint256[] memory depositIds, uint256[] memory liquidityMinted);
 
     function removeLiquidity(
         IERC20 tokenX,

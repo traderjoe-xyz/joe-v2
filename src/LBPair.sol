@@ -478,7 +478,16 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint256[] memory _distributionX,
         uint256[] memory _distributionY,
         address _to
-    ) external override nonReentrant returns (uint256, uint256) {
+    )
+        external
+        override
+        nonReentrant
+        returns (
+            uint256,
+            uint256,
+            uint256[] memory liquidityMinted
+        )
+    {
         unchecked {
             if (_ids.length == 0 || _ids.length != _distributionX.length || _ids.length != _distributionY.length)
                 revert LBPair__WrongLengths();
@@ -492,7 +501,10 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             _mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total).safe128();
             _mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total).safe128();
 
-            for (uint256 i; i < _ids.length; ++i) {
+            uint256 idsLength = _ids.length;
+            liquidityMinted = new uint256[](idsLength);
+
+            for (uint256 i; i < idsLength; ++i) {
                 _mintInfo.id = _ids[i].safe24();
                 Bin memory _bin = _bins[_mintInfo.id];
 
@@ -554,10 +566,11 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                     } else if (_mintInfo.amountY != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
                 } else if (_mintInfo.amountX != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
 
-                uint256 _liquidity = _price.mulShift(_mintInfo.amountX, Constants.SCALE_OFFSET, true) +
+                liquidityMinted[i] =
+                    _price.mulShift(_mintInfo.amountX, Constants.SCALE_OFFSET, true) +
                     _mintInfo.amountY;
 
-                if (_liquidity == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
+                if (liquidityMinted[i] == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
 
                 _bin.reserveX = (_bin.reserveX + _mintInfo.amountX).safe112();
                 _bin.reserveY = (_bin.reserveY + _mintInfo.amountY).safe112();
@@ -569,7 +582,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 _mintInfo.amountYAddedToPair += _mintInfo.amountY;
 
                 _bins[_mintInfo.id] = _bin;
-                _mint(_to, _mintInfo.id, _liquidity);
+                _mint(_to, _mintInfo.id, liquidityMinted[i]);
             }
 
             _pairInformation = _pair;
@@ -593,7 +606,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 _mintInfo.amountYAddedToPair
             );
 
-            return (_mintInfo.amountXAddedToPair, _mintInfo.amountYAddedToPair);
+            return (_mintInfo.amountXAddedToPair, _mintInfo.amountYAddedToPair, liquidityMinted);
         }
     }
 

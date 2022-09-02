@@ -221,7 +221,11 @@ contract LBRouter is ILBRouter {
     /// @notice Add liquidity while performing safety checks
     /// @dev This function is compliant with fee on transfer tokens
     /// @param _liquidityParameters The liquidity parameters
-    function addLiquidity(LiquidityParameters memory _liquidityParameters) external override {
+    function addLiquidity(LiquidityParameters memory _liquidityParameters)
+        external
+        override
+        returns (uint256[] memory depositIds, uint256[] memory liquidityMinted)
+    {
         ILBPair _LBPair = _getLBPairInfo(
             _liquidityParameters.tokenX,
             _liquidityParameters.tokenY,
@@ -233,13 +237,18 @@ contract LBRouter is ILBRouter {
         _liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(_LBPair), _liquidityParameters.amountX);
         _liquidityParameters.tokenY.safeTransferFrom(msg.sender, address(_LBPair), _liquidityParameters.amountY);
 
-        _addLiquidity(_liquidityParameters, _LBPair);
+        (depositIds, liquidityMinted) = _addLiquidity(_liquidityParameters, _LBPair);
     }
 
     /// @notice Add liquidity with AVAX while performing safety checks
     /// @dev This function is compliant with fee on transfer tokens
     /// @param _liquidityParameters The liquidity parameters
-    function addLiquidityAVAX(LiquidityParameters memory _liquidityParameters) external payable override {
+    function addLiquidityAVAX(LiquidityParameters memory _liquidityParameters)
+        external
+        payable
+        override
+        returns (uint256[] memory depositIds, uint256[] memory liquidityMinted)
+    {
         ILBPair _LBPair = _getLBPairInfo(
             _liquidityParameters.tokenX,
             _liquidityParameters.tokenY,
@@ -263,7 +272,7 @@ contract LBRouter is ILBRouter {
                 msg.value
             );
 
-        _addLiquidity(_liquidityParameters, _LBPair);
+        (depositIds, liquidityMinted) = _addLiquidity(_liquidityParameters, _LBPair);
     }
 
     /// @notice Remove liquidity while performing safety checks
@@ -632,7 +641,11 @@ contract LBRouter is ILBRouter {
 
     /// @notice Helper function to add liquidity
     /// @param _liq The liquidity parameter
-    function _addLiquidity(LiquidityParameters memory _liq, ILBPair _LBPair) private ensure(_liq.deadline) {
+    function _addLiquidity(LiquidityParameters memory _liq, ILBPair _LBPair)
+        private
+        ensure(_liq.deadline)
+        returns (uint256[] memory depositIds, uint256[] memory liquidityMinted)
+    {
         unchecked {
             if (_liq.deltaIds.length != _liq.distributionX.length && _liq.deltaIds.length != _liq.distributionY.length)
                 revert LBRouter__LengthsMismatch();
@@ -652,7 +665,7 @@ contract LBRouter is ILBRouter {
                 _ids[i] = uint256(_id);
             }
 
-            (uint256 _amountXAdded, uint256 _amountYAdded) = _LBPair.mint(
+            (uint256 _amountXAdded, uint256 _amountYAdded, uint256[] memory liquidityMinted) = _LBPair.mint(
                 _ids,
                 _liq.distributionX,
                 _liq.distributionY,

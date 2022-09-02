@@ -40,7 +40,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         for (uint256 i; i < 5; i++) {
             orderedIds[i] = startId - 2 + i;
         }
-        ILBPair.UnclaimedFees memory fees = pair.pendingFees(DEV, orderedIds);
+        ILBPair.Fees memory fees = pair.pendingFees(DEV, orderedIds);
 
         assertApproxEqAbs(accumulatedYFees, fees.tokenY, 1);
 
@@ -77,8 +77,8 @@ contract LiquidityBinPairFeesTest is TestHelper {
         token18D.mint(address(pair), amountYForSwap);
         pair.swap(false, ALICE);
 
-        ILBPair.UnclaimedFees memory feesForDev = pair.pendingFees(DEV, _ids);
-        ILBPair.UnclaimedFees memory feesForBob = pair.pendingFees(BOB, _ids);
+        ILBPair.Fees memory feesForDev = pair.pendingFees(DEV, _ids);
+        ILBPair.Fees memory feesForBob = pair.pendingFees(BOB, _ids);
 
         assertGt(feesForDev.tokenY, 0, "DEV should have fees on token Y");
         assertGt(feesForBob.tokenY, 0, "BOB should also have fees on token Y");

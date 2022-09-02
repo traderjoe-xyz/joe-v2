@@ -106,7 +106,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @dev Tree to find bins with non zero liquidity
     mapping(uint256 => uint256)[3] private _tree;
     /// @dev Mapping from account to user's unclaimed fees.
-    mapping(address => UnclaimedFees) private _unclaimedFees;
+    mapping(address => Fees) private _unclaimedFees;
     /// @dev Mapping from account to id to user's accruedDebt.
     mapping(address => mapping(uint256 => Debts)) private _accruedDebts;
     /// @dev Oracle array
@@ -308,12 +308,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @param _account The address of the user
     /// @param _ids The list of ids
     /// @return fees The unclaimed fees
-    function pendingFees(address _account, uint256[] memory _ids)
-        external
-        view
-        override
-        returns (UnclaimedFees memory fees)
-    {
+    function pendingFees(address _account, uint256[] memory _ids) external view override returns (Fees memory fees) {
         unchecked {
             fees = _unclaimedFees[_account];
 
@@ -501,10 +496,9 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             _mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total).safe128();
             _mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total).safe128();
 
-            uint256 idsLength = _ids.length;
-            liquidityMinted = new uint256[](idsLength);
+            liquidityMinted = new uint256[](_ids.length);
 
-            for (uint256 i; i < idsLength; ++i) {
+            for (uint256 i; i < _ids.length; ++i) {
                 _mintInfo.id = _ids[i].safe24();
                 Bin memory _bin = _bins[_mintInfo.id];
 
@@ -686,9 +680,14 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @notice Collect fees of an user
     /// @param _account The address of the user
     /// @param _ids The list of bin ids to collect fees in
-    function collectFees(address _account, uint256[] memory _ids) external override nonReentrant {
+    function collectFees(address _account, uint256[] memory _ids)
+        external
+        override
+        nonReentrant
+        returns (Fees memory fees)
+    {
         unchecked {
-            UnclaimedFees memory _fees = _unclaimedFees[_account];
+            fees = _unclaimedFees[_account];
             delete _unclaimedFees[_account];
 
             for (uint256 i; i < _ids.length; ++i) {
@@ -698,56 +697,54 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 if (_balance != 0) {
                     Bin memory _bin = _bins[_id];
 
-                    _collectFees(_fees, _bin, _account, _id, _balance);
+                    _collectFees(fees, _bin, _account, _id, _balance);
                     _updateUserDebts(_bin, _account, _id, _balance);
                 }
             }
 
-            if (_fees.tokenX != 0) {
-                _pairInformation.feesX.total -= _fees.tokenX;
+            if (fees.tokenX != 0) {
+                _pairInformation.feesX.total -= fees.tokenX;
             }
-            if (_fees.tokenY != 0) {
-                _pairInformation.feesY.total -= _fees.tokenY;
+            if (fees.tokenY != 0) {
+                _pairInformation.feesY.total -= fees.tokenY;
             }
 
-            tokenX.safeTransfer(_account, _fees.tokenX);
-            tokenY.safeTransfer(_account, _fees.tokenY);
+            tokenX.safeTransfer(_account, fees.tokenX);
+            tokenY.safeTransfer(_account, fees.tokenY);
 
-            emit FeesCollected(msg.sender, _account, _fees.tokenX, _fees.tokenY);
+            emit FeesCollected(msg.sender, _account, fees.tokenX, fees.tokenY);
         }
     }
 
     /// @notice Collect the protocol fees and send them to the feeRecipient
     /// @dev The balances are not zeroed to save gas by not resetting the storage slot
     /// Only callable by the fee recipient
-    function collectProtocolFees() external override nonReentrant {
+    function collectProtocolFees() external override nonReentrant returns (Fees memory fees) {
         unchecked {
             address _feeRecipient = factory.feeRecipient();
 
             if (msg.sender != _feeRecipient) revert LBPair__OnlyFeeRecipient(_feeRecipient, msg.sender);
 
             FeeHelper.FeesDistribution memory _fees = _pairInformation.feesX;
-            uint256 _feesXOut;
             if (_fees.protocol != 0) {
-                _feesXOut = _fees.protocol - 1;
-                _fees.total -= uint128(_feesXOut);
+                fees.tokenX = _fees.protocol - 1;
+                _fees.total -= fees.tokenX;
                 _fees.protocol = 1;
                 _pairInformation.feesX = _fees;
             }
 
             _fees = _pairInformation.feesY;
-            uint256 _feesYOut;
             if (_fees.protocol != 0) {
-                _feesYOut = _fees.protocol - 1;
-                _fees.total -= uint128(_feesYOut);
+                fees.tokenY = _fees.protocol - 1;
+                _fees.total -= fees.tokenY;
                 _fees.protocol = 1;
                 _pairInformation.feesY = _fees;
             }
 
-            tokenX.safeTransfer(_feeRecipient, _feesXOut);
-            tokenY.safeTransfer(_feeRecipient, _feesYOut);
+            tokenX.safeTransfer(_feeRecipient, fees.tokenX);
+            tokenY.safeTransfer(_feeRecipient, fees.tokenY);
 
-            emit ProtocolFeesCollected(msg.sender, _feeRecipient, _feesXOut, _feesYOut);
+            emit ProtocolFeesCollected(msg.sender, _feeRecipient, fees.tokenX, fees.tokenY);
         }
     }
 
@@ -810,7 +807,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @param _id The id where the user is collecting fees
     /// @param _balance The previous balance of the user
     function _collectFees(
-        UnclaimedFees memory _fees,
+        Fees memory _fees,
         Bin memory _bin,
         address _account,
         uint256 _id,
@@ -856,7 +853,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint256 _previousBalance,
         uint256 _newBalance
     ) private {
-        UnclaimedFees memory _fees = _unclaimedFees[_user];
+        Fees memory _fees = _unclaimedFees[_user];
 
         _collectFees(_fees, _bin, _user, _id, _previousBalance);
         _updateUserDebts(_bin, _user, _id, _newBalance);

@@ -28,9 +28,9 @@ library TreeMath {
             _binId /= 256;
 
             // Search in depth 2
-            if ((_rightSide && bit != 0) || (!_rightSide && bit < 255)) {
+            if ((_rightSide && bit != 0) || (!_rightSide && bit != 255)) {
                 current = _tree[2][_binId];
-                bit = current.closestBit(bit, _rightSide);
+                bit = current.closestBit(uint8(bit), _rightSide);
                 if (bit != type(uint256).max) {
                     return _binId * 256 + bit;
                 }
@@ -40,9 +40,9 @@ library TreeMath {
             _binId /= 256;
 
             // Search in depth 1
-            if ((_rightSide && _binId % 256 != 0) || (!_rightSide && _binId % 256 != 255)) {
+            if ((_rightSide && bit != 0) || (!_rightSide && bit != 255)) {
                 current = _tree[1][_binId];
-                bit = current.closestBit(bit, _rightSide);
+                bit = current.closestBit(uint8(bit), _rightSide);
                 if (bit != type(uint256).max) {
                     _binId = 256 * _binId + bit;
                     current = _tree[2][_binId];
@@ -53,7 +53,7 @@ library TreeMath {
 
             // Search in depth 0
             current = _tree[0][0];
-            _binId = current.closestBit(_binId, _rightSide);
+            _binId = current.closestBit(uint8(_binId), _rightSide);
             if (_binId == type(uint256).max) revert TreeMath__ErrorDepthSearch();
             current = _tree[1][_binId];
             _binId = 256 * _binId + current.significantBit(_rightSide);

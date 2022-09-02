@@ -10,7 +10,7 @@ library BitMath {
     /// @return The index of the closest non zero bit. If there is no closest bit, it returns max(uint256)
     function closestBit(
         uint256 _integer,
-        uint256 _bit,
+        uint8 _bit,
         bool _rightSide
     ) internal pure returns (uint256) {
         unchecked {
@@ -38,7 +38,7 @@ library BitMath {
     /// @param bit The index of the bit to start searching at
     /// @return id The index of the closest non null bit on the right of x.
     /// If there is no closest bit, it returns max(uint256)
-    function closestBitRight(uint256 x, uint256 bit) internal pure returns (uint256 id) {
+    function closestBitRight(uint256 x, uint8 bit) internal pure returns (uint256 id) {
         unchecked {
             x <<= 255 - bit;
 
@@ -54,7 +54,7 @@ library BitMath {
     /// @param bit The index of the bit to start searching at
     /// @return id The index of the closest non null bit on the left of x.
     /// If there is no closest bit, it returns max(uint256)
-    function closestBitLeft(uint256 x, uint256 bit) internal pure returns (uint256 id) {
+    function closestBitLeft(uint256 x, uint8 bit) internal pure returns (uint256 id) {
         unchecked {
             x >>= bit;
 

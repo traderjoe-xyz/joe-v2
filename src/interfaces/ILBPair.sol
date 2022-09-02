@@ -54,10 +54,10 @@ interface ILBPair {
         uint256 debtY;
     }
 
-    /// Structure to store unclaimed fees:
+    /// Structure to store fees:
     /// - tokenX: The amount of fees of token X
     /// - tokenY: The amount of fees of token Y
-    struct UnclaimedFees {
+    struct Fees {
         uint128 tokenX;
         uint128 tokenY;
     }
@@ -127,7 +127,7 @@ interface ILBPair {
 
     function getBin(uint24 id) external view returns (uint256 reserveX, uint256 reserveY);
 
-    function pendingFees(address _account, uint256[] memory _ids) external view returns (UnclaimedFees memory);
+    function pendingFees(address _account, uint256[] memory _ids) external view returns (Fees memory);
 
     function swap(bool sentTokenY, address to) external returns (uint256, uint256);
 
@@ -159,9 +159,9 @@ interface ILBPair {
 
     function increaseOracleLength(uint16 _nb) external;
 
-    function collectFees(address _account, uint256[] memory _ids) external;
+    function collectFees(address _account, uint256[] memory _ids) external returns (Fees memory fees);
 
-    function collectProtocolFees() external;
+    function collectProtocolFees() external returns (Fees memory fees);
 
     function setFeesParameters(bytes32 packedFeeParameters) external;
 

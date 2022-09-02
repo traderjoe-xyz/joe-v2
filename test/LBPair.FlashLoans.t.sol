@@ -36,7 +36,7 @@ contract LiquidityBinPairFlashLoansTest is TestHelper {
 
         borrower.flashBorrow(amountXBorrowed, amountYBorrowed);
 
-        ILBPair.UnclaimedFees memory feesForDev = pair.pendingFees(DEV, _ids);
+        ILBPair.Fees memory feesForDev = pair.pendingFees(DEV, _ids);
         assertGt(feesForDev.tokenX, 0, "DEV should have fees on token X");
         assertGt(feesForDev.tokenY, 0, "DEV should have fees on token Y");
     }

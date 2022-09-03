@@ -168,4 +168,12 @@ interface ILBPair {
     function setFeesParameters(bytes32 packedFeeParameters) external;
 
     function forceDecay() external;
+
+    function initialize(
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint24 activeId,
+        uint16 sampleLifetime,
+        bytes32 packedFeeParameters
+    ) external;
 }

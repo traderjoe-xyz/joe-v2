@@ -5,7 +5,6 @@ pragma solidity >=0.8.7;
 import "openzeppelin/token/ERC20/IERC20.sol";
 
 import "./ILBPair.sol";
-import "./ILBFactoryHelper.sol";
 import "./IPendingOwnable.sol";
 
 interface ILBFactory is IPendingOwnable {
@@ -39,7 +38,7 @@ interface ILBFactory is IPendingOwnable {
 
     function MAX_PROTOCOL_SHARE() external pure returns (uint256);
 
-    function factoryHelper() external view returns (ILBFactoryHelper);
+    function LBPairImplementation() external view returns (ILBPair);
 
     function feeRecipient() external view returns (address);
 
@@ -78,7 +77,7 @@ interface ILBFactory is IPendingOwnable {
         view
         returns (LBPairAvailable[] memory LBPairsBinStep);
 
-    function setFactoryHelper() external;
+    function setLBPairImplementation(ILBPair LBPairImplementation) external;
 
     function createLBPair(
         IERC20 tokenX,

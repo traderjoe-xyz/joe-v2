@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.7;
 
+import "openzeppelin/proxy/Clones.sol";
+
 import "./interfaces/ILBFactory.sol";
 import "./libraries/PendingOwnable.sol";
 import "./libraries/Constants.sol";
@@ -9,7 +11,6 @@ import "./libraries/Decoder.sol";
 
 error LBFactory__IdenticalAddresses(IERC20 token);
 error LBFactory__ZeroAddress();
-error LBFactory__FactoryHelperAlreadyInitialized();
 error LBFactory__LBPairAlreadyExists(IERC20 tokenX, IERC20 tokenY, uint256 _binStep);
 error LBFactory__LBPairNotCreated(IERC20 tokenX, IERC20 tokenY, uint256 binStep);
 error LBFactory__DecreasingPeriods(uint16 filterPeriod, uint16 decayPeriod);
@@ -26,6 +27,9 @@ error LBFactory__LBPairBlacklistIsAlreadyInTheSameState();
 error LBFactory__BinStepHasNoPreset(uint256 binStep);
 error LBFactory__SameFeeRecipient(address feeRecipient);
 error LBFactory__SameFlashLoanFee(uint256 flashLoanFee);
+error LBFactory__LBPairSafetyCheckFailed(ILBPair LBPairImplementation);
+error LBFactory__SameImplementation(ILBPair LBPairImplementation);
+error LBFactory__ImplementationNotSet();
 
 contract LBFactory is PendingOwnable, ILBFactory {
     using Decoder for bytes32;
@@ -37,7 +41,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     uint256 public constant override MAX_PROTOCOL_SHARE = 2_500; // 25%
 
-    ILBFactoryHelper public override factoryHelper;
+    ILBPair public override LBPairImplementation;
 
     address public override feeRecipient;
 
@@ -87,6 +91,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
     );
 
     event FactoryLocked(bool unlocked);
+
+    event LBPairImplementationSet(ILBPair oldLBPairImplementation, ILBPair LBPairImplementation);
 
     event LBPairBlacklistedStateChanged(ILBPair LBPair, bool blacklist);
 
@@ -235,9 +241,16 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /// @notice Set the factory helper address
     /// @dev Needs to be called by the factory helper
-    function setFactoryHelper() external override {
-        if (address(factoryHelper) != address(0)) revert LBFactory__FactoryHelperAlreadyInitialized();
-        factoryHelper = ILBFactoryHelper(msg.sender);
+    function setLBPairImplementation(ILBPair _LBPairImplementation) external override onlyOwner {
+        if (_LBPairImplementation.factory() != this) revert LBFactory__LBPairSafetyCheckFailed(_LBPairImplementation);
+
+        ILBPair _oldLBPairImplementation = LBPairImplementation;
+        if (_oldLBPairImplementation == _LBPairImplementation)
+            revert LBFactory__SameImplementation(_LBPairImplementation);
+
+        LBPairImplementation = _LBPairImplementation;
+
+        emit LBPairImplementationSet(_oldLBPairImplementation, _LBPairImplementation);
     }
 
     /// @notice Create a liquidity bin LBPair for _tokenX and _tokenY
@@ -255,6 +268,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
         address _owner = owner();
         if (!unlocked && msg.sender != _owner) revert LBFactory__FunctionIsLockedForUsers(msg.sender);
 
+        ILBPair _LBPairImplementation = LBPairImplementation;
+
+        if (address(_LBPairImplementation) == address(0)) revert LBFactory__ImplementationNotSet();
+
         if (_tokenX == _tokenY) revert LBFactory__IdenticalAddresses(_tokenX);
         if (address(_tokenX) == address(0) || address(_tokenY) == address(0)) revert LBFactory__ZeroAddress();
         (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);
@@ -269,16 +286,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
         // We remove the bits that are not part of the feeParameters
         _preset &= bytes32(uint256(type(uint144).max));
 
-        _LBPair = factoryHelper.createLBPair(
-            _tokenX,
-            _tokenY,
-            keccak256(abi.encode(_tokenX, _tokenY, _binStep)),
-            _activeId,
-            uint16(_sampleLifetime),
-            _preset
+        _LBPair = ILBPair(
+            Clones.cloneDeterministic(address(_LBPairImplementation), keccak256(abi.encode(_tokenX, _tokenY, _binStep)))
         );
 
-        _LBPair.increaseOracleLength(2);
+        _LBPair.initialize(_tokenX, _tokenY, _activeId, uint16(_sampleLifetime), _preset);
 
         _LBPairsInfo[_tokenA][_tokenB][_binStep] = LBPairInfo({
             LBPair: _LBPair,

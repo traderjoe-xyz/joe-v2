@@ -13,7 +13,8 @@ contract LiquidityBinFactoryTestM is TestHelper {
         token18D = new ERC20MockDecimals(18);
 
         factory = new LBFactory(DEV, 8e14);
-        new LBFactoryHelper(factory);
+        ILBPair _LBPairImplementation = new LBPair(factory);
+        factory.setLBPairImplementation(_LBPairImplementation);
 
         router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(address(wavax)));
 

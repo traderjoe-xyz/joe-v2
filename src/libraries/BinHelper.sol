@@ -3,9 +3,7 @@
 pragma solidity 0.8.7;
 
 import "./Math128x128.sol";
-
-error BinHelper__BinStepOverflows(uint256 bp);
-error BinHelper__IdOverflows(int256 _id);
+import "../LBErrors.sol";
 
 library BinHelper {
     using Math128x128 for uint256;

@@ -4,12 +4,11 @@ pragma solidity 0.8.7;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 
+import "../LBErrors.sol";
 import "./FeeHelper.sol";
 import "./Constants.sol";
 import "./TokenHelper.sol";
 import "./SafeCast.sol";
-
-error FeeDistributionHelper__FlashLoanUnderflow(uint256 expectedBalance, uint256 balance);
 
 library FeeDistributionHelper {
     using TokenHelper for IERC20;

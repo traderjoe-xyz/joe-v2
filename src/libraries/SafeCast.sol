@@ -2,38 +2,7 @@
 
 pragma solidity 0.8.7;
 
-error SafeCast__Exceeds256Bits(uint256 x);
-error SafeCast__Exceeds248Bits(uint256 x);
-error SafeCast__Exceeds240Bits(uint256 x);
-error SafeCast__Exceeds232Bits(uint256 x);
-error SafeCast__Exceeds224Bits(uint256 x);
-error SafeCast__Exceeds216Bits(uint256 x);
-error SafeCast__Exceeds208Bits(uint256 x);
-error SafeCast__Exceeds200Bits(uint256 x);
-error SafeCast__Exceeds192Bits(uint256 x);
-error SafeCast__Exceeds184Bits(uint256 x);
-error SafeCast__Exceeds176Bits(uint256 x);
-error SafeCast__Exceeds168Bits(uint256 x);
-error SafeCast__Exceeds160Bits(uint256 x);
-error SafeCast__Exceeds152Bits(uint256 x);
-error SafeCast__Exceeds144Bits(uint256 x);
-error SafeCast__Exceeds136Bits(uint256 x);
-error SafeCast__Exceeds128Bits(uint256 x);
-error SafeCast__Exceeds120Bits(uint256 x);
-error SafeCast__Exceeds112Bits(uint256 x);
-error SafeCast__Exceeds104Bits(uint256 x);
-error SafeCast__Exceeds96Bits(uint256 x);
-error SafeCast__Exceeds88Bits(uint256 x);
-error SafeCast__Exceeds80Bits(uint256 x);
-error SafeCast__Exceeds72Bits(uint256 x);
-error SafeCast__Exceeds64Bits(uint256 x);
-error SafeCast__Exceeds56Bits(uint256 x);
-error SafeCast__Exceeds48Bits(uint256 x);
-error SafeCast__Exceeds40Bits(uint256 x);
-error SafeCast__Exceeds32Bits(uint256 x);
-error SafeCast__Exceeds24Bits(uint256 x);
-error SafeCast__Exceeds16Bits(uint256 x);
-error SafeCast__Exceeds8Bits(uint256 x);
+import "../LBErrors.sol";
 
 library SafeCast {
     /// @notice Returns x on uint248 and check that it does not overflow

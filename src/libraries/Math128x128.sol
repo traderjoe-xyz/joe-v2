@@ -2,11 +2,10 @@
 
 pragma solidity 0.8.7;
 
+import "../LBErrors.sol";
 import "./Math512Bits.sol";
 import "./BitMath.sol";
 import "./Constants.sol";
-
-error Math128x128__PowerUnderflow(uint256 x, int256 y);
 
 library Math128x128 {
     using Math512Bits for uint256;

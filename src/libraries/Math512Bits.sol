@@ -2,10 +2,7 @@
 
 pragma solidity 0.8.7;
 
-error Math512Bits__MulDivOverflow(uint256 prod1, uint256 denominator);
-error Math512Bits__ShiftDivOverflow(uint256 prod1, uint256 denominator);
-error Math512Bits__MulShiftOverflow(uint256 prod1, uint256 offset);
-error Math512Bits__OffsetOverflows(uint256 offset);
+import "../LBErrors.sol";
 
 library Math512Bits {
     /// @notice Calculates floor(x*y÷denominator) with full precision.

@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.7;
 
-error ReentrancyGuard__ReentrantCall();
+import "../LBErrors.sol";
 
 /// @title Reentrancy Guard
 /// @author Trader Joe

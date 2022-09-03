@@ -2,12 +2,8 @@
 
 pragma solidity 0.8.7;
 
+import "../LBErrors.sol";
 import "../interfaces/IPendingOwnable.sol";
-
-error PendingOwnable__NotOwner();
-error PendingOwnable__NotPendingOwner();
-error PendingOwnable__PendingOwnerAlreadySet();
-error PendingOwnable__NoPendingOwner();
 
 /// @title Pending Ownable
 /// @author Trader Joe

@@ -2,17 +2,9 @@
 
 pragma solidity 0.8.7;
 
+import "./LBErrors.sol";
 import "./interfaces/ILBToken.sol";
 import "openzeppelin/utils/structs/EnumerableSet.sol";
-
-error LBToken__SpenderNotApproved(address owner, address spender);
-error LBToken__TransferFromOrToAddress0();
-error LBToken__MintToAddress0();
-error LBToken__BurnFromAddress0();
-error LBToken__BurnExceedsBalance(address from, uint256 id, uint256 amount);
-error LBToken__LengthMismatch(uint256 accountsLength, uint256 idsLength);
-error LBToken__SelfApproval(address owner);
-error LBToken__TransferExceedsBalance(address from, uint256 id, uint256 amount);
 
 /// @title Liquidity Book Token
 /// @author Trader Joe

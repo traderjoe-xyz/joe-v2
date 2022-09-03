@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import "src/LBFactory.sol";
 import "src/LBPair.sol";
 import "src/LBRouter.sol";
+import "src/LBErrors.sol";
 import "src/interfaces/ILBRouter.sol";
 import "src/LBToken.sol";
 import "src/libraries/Math512Bits.sol";

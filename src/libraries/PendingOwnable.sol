@@ -25,9 +25,6 @@ contract PendingOwnable is IPendingOwnable {
     address private _owner;
     address private _pendingOwner;
 
-    event PendingOwnerSet(address indexed pendingOwner);
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
     /// @notice Throws if called by any account other than the owner.
     modifier onlyOwner() {
         if (msg.sender != _owner) revert PendingOwnable__NotOwner();

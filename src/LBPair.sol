@@ -38,62 +38,6 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     using FeeDistributionHelper for FeeHelper.FeesDistribution;
     using Oracle for bytes32[65_536];
 
-    /** Events **/
-
-    event Swap(
-        address indexed sender,
-        address indexed recipient,
-        uint24 indexed id,
-        uint256 amountXIn,
-        uint256 amountYIn,
-        uint256 amountXOut,
-        uint256 amountYOut,
-        uint256 volatilityAccumulated,
-        uint256 feesX,
-        uint256 feesY
-    );
-
-    event FlashLoan(
-        address indexed sender,
-        address indexed recipient,
-        uint256 amountX,
-        uint256 amountY,
-        uint256 feesX,
-        uint256 feesY
-    );
-
-    event LiquidityAdded(
-        address indexed sender,
-        address indexed recipient,
-        uint256 indexed id,
-        uint256 minted,
-        uint256 amountX,
-        uint256 amountY
-    );
-
-    event CompositionFee(
-        address indexed sender,
-        address indexed recipient,
-        uint256 indexed id,
-        uint256 feesX,
-        uint256 feesY
-    );
-
-    event LiquidityRemoved(
-        address indexed sender,
-        address indexed recipient,
-        uint256 indexed id,
-        uint256 burned,
-        uint256 amountX,
-        uint256 amountY
-    );
-
-    event FeesCollected(address indexed sender, address indexed recipient, uint256 amountX, uint256 amountY);
-
-    event ProtocolFeesCollected(address indexed sender, address indexed recipient, uint256 amountX, uint256 amountY);
-
-    event OracleSizeIncreased(uint256 previousSize, uint256 newSize);
-
     /** Modifiers **/
 
     modifier onlyFactory() {

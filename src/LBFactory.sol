@@ -44,50 +44,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
     // The parameters presets
     mapping(uint256 => bytes32) private _presets;
 
-    event LBPairCreated(
-        IERC20 indexed tokenX,
-        IERC20 indexed tokenY,
-        uint256 indexed binStep,
-        ILBPair LBPair,
-        uint256 pid
-    );
-
-    event FeeRecipientSet(address oldRecipient, address newRecipient);
-
-    event FlashLoanFeeSet(uint256 oldFlashLoanFee, uint256 newFlashLoanFee);
-
-    event FeeParametersSet(
-        address sender,
-        ILBPair indexed LBPair,
-        uint256 binStep,
-        uint256 baseFactor,
-        uint256 filterPeriod,
-        uint256 decayPeriod,
-        uint256 reductionFactor,
-        uint256 variableFeeControl,
-        uint256 protocolShare,
-        uint256 maxVolatilityAccumulated
-    );
-
-    event FactoryLocked(bool unlocked);
-
-    event LBPairImplementationSet(ILBPair oldLBPairImplementation, ILBPair LBPairImplementation);
-
-    event LBPairBlacklistedStateChanged(ILBPair LBPair, bool blacklist);
-
-    event PresetSet(
-        uint256 indexed binStep,
-        uint256 baseFactor,
-        uint256 filterPeriod,
-        uint256 decayPeriod,
-        uint256 reductionFactor,
-        uint256 variableFeeControl,
-        uint256 protocolShare,
-        uint256 maxVolatilityAccumulated,
-        uint256 sampleLifetime
-    );
-    event PresetRemoved(uint256 binStep);
-
     /// @notice Constructor
     /// @param _feeRecipient The address of the fee recipient
     constructor(address _feeRecipient, uint256 _flashLoanFee) {

@@ -23,6 +23,7 @@ import "./interfaces/ILBPair.sol";
 /** Errors **/
 
 error LBPair__InsufficientAmounts();
+error LBPair__AddressZero();
 error LBPair__BrokenSwapSafetyCheck();
 error LBPair__CompositionFactorFlawed(uint256 id);
 error LBPair__InsufficientLiquidityMinted(uint256 id);
@@ -34,6 +35,7 @@ error LBPair__DistributionsOverflow();
 error LBPair__OnlyFeeRecipient(address feeRecipient, address sender);
 error LBPair__OracleNotEnoughSample();
 error LBPair__FlashLoanCallbackFailed();
+error LBPair__AlreadyInitialized();
 
 /// @title Liquidity Bin Exchange
 /// @author Trader Joe
@@ -110,16 +112,19 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /** Modifiers **/
 
-    modifier OnlyFactory() {
+    modifier onlyFactory() {
         if (msg.sender != address(factory)) revert LBPair__OnlyFactory();
         _;
     }
 
     /** Public immutable variables **/
 
-    IERC20 public immutable override tokenX;
-    IERC20 public immutable override tokenY;
     ILBFactory public immutable override factory;
+
+    /** Public variables **/
+
+    IERC20 public override tokenX;
+    IERC20 public override tokenY;
 
     /** Private variables **/
 
@@ -152,25 +157,31 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
     /** Constructor **/
 
-    /// @notice Initialize the parameters
+    /// @notice Set the factory address
+    /// @param _factory The address of the factory
+    constructor(ILBFactory _factory) LBToken() {
+        factory = _factory;
+    }
+
+    /// @notice Initialize the parameters of the LBPair
     /// @dev The different parameters needs to be validated very cautiously.
-    /// It is highly recommended to never deploy this contract directly, use the factory
+    /// It is highly recommended to never call this function directly, use the factory
     /// as it validates the different parameters
-    /// @param _factory The address of the factory.
     /// @param _tokenX The address of the tokenX. Can't be address 0
     /// @param _tokenY The address of the tokenY. Can't be address 0
     /// @param _activeId The active id of the pair
     /// @param _sampleLifetime The lifetime of a sample. It's the min time between 2 oracle's sample
     /// @param _packedFeeParameters The fee parameters packed in a single 256 bits slot
-    constructor(
-        ILBFactory _factory,
+    function initialize(
         IERC20 _tokenX,
         IERC20 _tokenY,
         uint24 _activeId,
         uint16 _sampleLifetime,
         bytes32 _packedFeeParameters
-    ) LBToken() {
-        factory = _factory;
+    ) external override onlyFactory {
+        if (address(_tokenX) == address(0)) revert LBPair__AddressZero();
+        if (address(tokenX) != address(0)) revert LBPair__AlreadyInitialized();
+
         tokenX = _tokenX;
         tokenY = _tokenY;
 
@@ -178,6 +189,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         _pairInformation.oracleSampleLifetime = _sampleLifetime;
 
         _setFeesParameters(_packedFeeParameters);
+        _increaseOracle(2);
     }
 
     /** External View Functions **/
@@ -812,11 +824,11 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// The bin step will not change
     /// Only callable by the factory
     /// @param _packedFeeParameters The packed fee parameters
-    function setFeesParameters(bytes32 _packedFeeParameters) external override OnlyFactory {
+    function setFeesParameters(bytes32 _packedFeeParameters) external override onlyFactory {
         _setFeesParameters(_packedFeeParameters);
     }
 
-    function forceDecay() external override OnlyFactory {
+    function forceDecay() external override onlyFactory {
         unchecked {
             _feeParameters.volatilityReference = uint24(
                 (uint256(_feeParameters.reductionFactor) * _feeParameters.volatilityReference) /

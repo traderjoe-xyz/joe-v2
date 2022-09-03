@@ -12,7 +12,9 @@ contract LiquidityBinRouterTest is TestHelper {
         wavax = new WAVAX();
 
         factory = new LBFactory(DEV, 8e14);
-        new LBFactoryHelper(factory);
+        ILBPair _LBPairImplementation = new LBPair(factory);
+        factory.setLBPairImplementation(_LBPairImplementation);
+
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
 
         router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(address(wavax)));

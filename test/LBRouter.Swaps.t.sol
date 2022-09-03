@@ -22,8 +22,10 @@ contract LiquidityBinRouterTest is TestHelper {
         wavax = new WAVAX();
 
         factory = new LBFactory(DEV, 8e14);
+        ILBPair _LBPairImplementation = new LBPair(factory);
+        factory.setLBPairImplementation(_LBPairImplementation);
+
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
-        new LBFactoryHelper(factory);
 
         router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(address(wavax)));
 
@@ -384,8 +386,10 @@ contract LiquidityBinRouterForkTest is TestHelper {
         usdc = ERC20MockDecimals(USDC_AVALANCHE_ADDRESS);
 
         factory = new LBFactory(DEV, 8e14);
+        ILBPair _LBPairImplementation = new LBPair(factory);
+        factory.setLBPairImplementation(_LBPairImplementation);
+
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
-        new LBFactoryHelper(factory);
 
         router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(address(wavax)));
 

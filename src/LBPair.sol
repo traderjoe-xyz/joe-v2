@@ -622,11 +622,12 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                     } else if (_mintInfo.amountY != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
                 } else if (_mintInfo.amountX != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
 
-                liquidityMinted[i] =
-                    _price.mulShift(_mintInfo.amountX, Constants.SCALE_OFFSET, true) +
+                uint256 _liquidity = _price.mulShift(_mintInfo.amountX, Constants.SCALE_OFFSET, true) +
                     _mintInfo.amountY;
 
-                if (liquidityMinted[i] == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
+                if (_liquidity == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
+
+                liquidityMinted[i] = _liquidity;
 
                 _bin.reserveX = (_bin.reserveX + _mintInfo.amountX).safe112();
                 _bin.reserveY = (_bin.reserveY + _mintInfo.amountY).safe112();
@@ -652,7 +653,6 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             if (_mintInfo.amountYIn > _mintInfo.amountYAddedToPair + _mintInfo.activeFeeY) {
                 tokenY.safeTransfer(_to, _mintInfo.amountYIn - (_mintInfo.amountYAddedToPair + _mintInfo.activeFeeY));
             }
-
 
             return (_mintInfo.amountXAddedToPair, _mintInfo.amountYAddedToPair, liquidityMinted);
         }

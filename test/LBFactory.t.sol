@@ -10,8 +10,10 @@ contract LiquidityBinFactoryTest is TestHelper {
         token18D = new ERC20MockDecimals(18);
 
         factory = new LBFactory(DEV, 8e14);
+        ILBPair _LBPairImplementation = new LBPair(factory);
+        factory.setLBPairImplementation(_LBPairImplementation);
+
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
-        new LBFactoryHelper(factory);
     }
 
     function testConstructor() public {
@@ -40,31 +42,6 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(feeParameters.binStep, DEFAULT_BIN_STEP);
         assertEq(feeParameters.baseFactor, DEFAULT_BASE_FACTOR);
         assertEq(feeParameters.protocolShare, DEFAULT_PROTOCOL_SHARE);
-    }
-
-    function testFactoryHelperCalledDirectly() public {
-        ILBFactoryHelper factoryHelper = factory.factoryHelper();
-
-        vm.expectRevert(LBFactoryHelper__CallerIsNotFactory.selector);
-        factoryHelper.createLBPair(
-            token6D,
-            token12D,
-            keccak256(abi.encode(token6D, token12D)),
-            ID_ONE,
-            DEFAULT_SAMPLE_LIFETIME,
-            bytes32(
-                abi.encodePacked(
-                    uint136(DEFAULT_MAX_VOLATILITY_ACCUMULATED), // The first 112 bits are reserved for the dynamic parameters
-                    DEFAULT_PROTOCOL_SHARE,
-                    DEFAULT_VARIABLE_FEE_CONTROL,
-                    DEFAULT_REDUCTION_FACTOR,
-                    DEFAULT_DECAY_PERIOD,
-                    DEFAULT_FILTER_PERIOD,
-                    DEFAULT_BASE_FACTOR,
-                    DEFAULT_BIN_STEP
-                )
-            )
-        );
     }
 
     function testSetFeeRecipient() public {
@@ -324,18 +301,6 @@ contract LiquidityBinFactoryTest is TestHelper {
     function testSetFactoryLocked() public {
         vm.expectRevert(LBFactory__FactoryLockIsAlreadyInTheSameState.selector);
         factory.setFactoryLocked(true);
-    }
-
-    function testFactoryHelperAlreadyInitialized() public {
-        vm.expectRevert(LBFactory__FactoryHelperAlreadyInitialized.selector);
-        new LBFactoryHelper(factory);
-    }
-
-    function testFactoryHelperInitialization() public {
-        //this is the same as setUp(), but increases coverage.
-        factory = new LBFactory(DEV, 8e14);
-        setDefaultFactoryPresets(DEFAULT_BIN_STEP);
-        new LBFactoryHelper(factory);
     }
 
     function testFeesAboveMaxBaseFactorReverts(uint8 baseFactorIncrement) public {

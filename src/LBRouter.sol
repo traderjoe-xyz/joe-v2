@@ -209,6 +209,7 @@ contract LBRouter is ILBRouter {
     /// @param _tokenY The address of the second token
     /// @param _activeId The active id of the pair
     /// @param _binStep The bin step in basis point, used to calculate log(1 + binStep)
+    /// @return pair The address of the newly created LBPair
     function createLBPair(
         IERC20 _tokenX,
         IERC20 _tokenY,
@@ -221,6 +222,8 @@ contract LBRouter is ILBRouter {
     /// @notice Add liquidity while performing safety checks
     /// @dev This function is compliant with fee on transfer tokens
     /// @param _liquidityParameters The liquidity parameters
+    /// @return depositIds Bin ids where the liquidity was actually deposited
+    /// @return liquidityMinted Amounts of LBToken minted for each bin
     function addLiquidity(LiquidityParameters memory _liquidityParameters)
         external
         override
@@ -243,6 +246,8 @@ contract LBRouter is ILBRouter {
     /// @notice Add liquidity with AVAX while performing safety checks
     /// @dev This function is compliant with fee on transfer tokens
     /// @param _liquidityParameters The liquidity parameters
+    /// @return depositIds Bin ids where the liquidity was actually deposited
+    /// @return liquidityMinted Amounts of LBToken minted for each bin
     function addLiquidityAVAX(LiquidityParameters memory _liquidityParameters)
         external
         payable
@@ -363,6 +368,7 @@ contract LBRouter is ILBRouter {
     /// @param _tokenPath The swap path using the binSteps following `_pairBinSteps`
     /// @param _to The address of the recipient
     /// @param _deadline The deadline of the tx
+    /// @return amountOut Output amount of the swap
     function swapExactTokensForTokens(
         uint256 _amountIn,
         uint256 _amountOutMin,
@@ -387,6 +393,7 @@ contract LBRouter is ILBRouter {
     /// @param _tokenPath The swap path using the binSteps following `_pairBinSteps`
     /// @param _to The address of the recipient
     /// @param _deadline The deadline of the tx
+    /// @return amountOut Output amount of the swap
     function swapExactTokensForAVAX(
         uint256 _amountIn,
         uint256 _amountOutMinAVAX,
@@ -416,6 +423,7 @@ contract LBRouter is ILBRouter {
     /// @param _tokenPath The swap path using the binSteps following `_pairBinSteps`
     /// @param _to The address of the recipient
     /// @param _deadline The deadline of the tx
+    /// @return amountOut Output amount of the swap
     function swapExactAVAXForTokens(
         uint256 _amountOutMin,
         uint256[] memory _pairBinSteps,
@@ -439,6 +447,7 @@ contract LBRouter is ILBRouter {
     /// @param _tokenPath The swap path using the binSteps following `_pairBinSteps`
     /// @param _to The address of the recipient
     /// @param _deadline The deadline of the tx
+    /// @return amountsIn Input amounts for every step of the swap
     function swapTokensForExactTokens(
         uint256 _amountOut,
         uint256 _amountInMax,
@@ -466,6 +475,7 @@ contract LBRouter is ILBRouter {
     /// @param _tokenPath The swap path using the binSteps following `_pairBinSteps`
     /// @param _to The address of the recipient
     /// @param _deadline The deadline of the tx
+    /// @return amountsIn Input amounts for every step of the swap
     function swapTokensForExactAVAX(
         uint256 _amountAVAXOut,
         uint256 _amountInMax,
@@ -499,6 +509,7 @@ contract LBRouter is ILBRouter {
     /// @param _tokenPath The swap path using the binSteps following `_pairBinSteps`
     /// @param _to The address of the recipient
     /// @param _deadline The deadline of the tx
+    /// @return amountsIn Input amounts for every step of the swap
     function swapAVAXForExactTokens(
         uint256 _amountOut,
         uint256[] memory _pairBinSteps,
@@ -536,6 +547,7 @@ contract LBRouter is ILBRouter {
     /// @param _tokenPath The swap path using the binSteps following `_pairBinSteps`
     /// @param _to The address of the recipient
     /// @param _deadline The deadline of the tx
+    /// @return amountOut Output amount of the swap
     function swapExactTokensForTokensSupportingFeeOnTransferTokens(
         uint256 _amountIn,
         uint256 _amountOutMin,
@@ -565,6 +577,7 @@ contract LBRouter is ILBRouter {
     /// @param _tokenPath The swap path using the binSteps following `_pairBinSteps`
     /// @param _to The address of the recipient
     /// @param _deadline The deadline of the tx
+    /// @return amountOut Output amount of the swap
     function swapExactTokensForAVAXSupportingFeeOnTransferTokens(
         uint256 _amountIn,
         uint256 _amountOutMinAVAX,
@@ -597,6 +610,7 @@ contract LBRouter is ILBRouter {
     /// @param _tokenPath The swap path using the binSteps following `_pairBinSteps`
     /// @param _to The address of the recipient
     /// @param _deadline The deadline of the tx
+    /// @return amountOut Output amount of the swap
     function swapExactAVAXForTokensSupportingFeeOnTransferTokens(
         uint256 _amountOutMin,
         uint256[] memory _pairBinSteps,
@@ -641,6 +655,9 @@ contract LBRouter is ILBRouter {
 
     /// @notice Helper function to add liquidity
     /// @param _liq The liquidity parameter
+    /// @param _LBPair LBPair where liquidity is deposited
+    /// @return depositIds Bin ids where the liquidity was actually deposited
+    /// @return liquidityMinted Amounts of LBToken minted for each bin
     function _addLiquidity(LiquidityParameters memory _liq, ILBPair _LBPair)
         private
         ensure(_liq.deadline)

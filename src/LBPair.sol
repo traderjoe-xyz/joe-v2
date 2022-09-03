@@ -468,6 +468,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @param _to The address of the recipient
     /// @return The amount of token X that was added to the pair
     /// @return The amount of token Y that was added to the pair
+    /// @return liquidityMinted Amount of LBToken minted
     function mint(
         uint256[] memory _ids,
         uint256[] memory _distributionX,
@@ -680,6 +681,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @notice Collect fees of an user
     /// @param _account The address of the user
     /// @param _ids The list of bin ids to collect fees in
+    /// @return fees Fees claimed
     function collectFees(address _account, uint256[] memory _ids)
         external
         override
@@ -719,6 +721,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @notice Collect the protocol fees and send them to the feeRecipient
     /// @dev The balances are not zeroed to save gas by not resetting the storage slot
     /// Only callable by the fee recipient
+    /// @return fees Fees claimed
     function collectProtocolFees() external override nonReentrant returns (Fees memory fees) {
         unchecked {
             address _feeRecipient = factory.feeRecipient();

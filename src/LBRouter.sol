@@ -675,15 +675,18 @@ contract LBRouter is ILBRouter {
                 _liq.activeIdDesired + _liq.idSlippage < _activeId || _activeId + _liq.idSlippage < _liq.activeIdDesired
             ) revert LBRouter__IdSlippageCaught(_liq.activeIdDesired, _liq.idSlippage, _activeId);
 
-            uint256[] memory _ids = new uint256[](_liq.deltaIds.length);
-            for (uint256 i; i < _ids.length; ++i) {
+            depositIds = new uint256[](_liq.deltaIds.length);
+            for (uint256 i; i < depositIds.length; ++i) {
                 int256 _id = int256(_activeId) + _liq.deltaIds[i];
                 if (_id < 0 || uint256(_id) > type(uint24).max) revert LBRouter__IdOverflows(_id);
-                _ids[i] = uint256(_id);
+                depositIds[i] = uint256(_id);
             }
 
-            (uint256 _amountXAdded, uint256 _amountYAdded, uint256[] memory liquidityMinted) = _LBPair.mint(
-                _ids,
+            uint256 _amountXAdded;
+            uint256 _amountYAdded;
+
+            (_amountXAdded, _amountYAdded, liquidityMinted) = _LBPair.mint(
+                depositIds,
                 _liq.distributionX,
                 _liq.distributionY,
                 _liq.to

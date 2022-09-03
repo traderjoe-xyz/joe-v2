@@ -4,32 +4,11 @@ pragma solidity 0.8.7;
 
 import "openzeppelin/proxy/Clones.sol";
 
+import "./LBErrors.sol";
 import "./interfaces/ILBFactory.sol";
 import "./libraries/PendingOwnable.sol";
 import "./libraries/Constants.sol";
 import "./libraries/Decoder.sol";
-
-error LBFactory__IdenticalAddresses(IERC20 token);
-error LBFactory__ZeroAddress();
-error LBFactory__LBPairAlreadyExists(IERC20 tokenX, IERC20 tokenY, uint256 _binStep);
-error LBFactory__LBPairNotCreated(IERC20 tokenX, IERC20 tokenY, uint256 binStep);
-error LBFactory__DecreasingPeriods(uint16 filterPeriod, uint16 decayPeriod);
-error LBFactory__BaseFactorOverflows(uint16 baseFactor, uint256 max);
-error LBFactory__ReductionFactorOverflows(uint16 reductionFactor, uint256 max);
-error LBFactory__VariableFeeControlOverflows(uint16 variableFeeControl, uint256 max);
-error LBFactory__BaseFeesBelowMin(uint256 baseFees, uint256 minBaseFees);
-error LBFactory__FeesAboveMax(uint256 fees, uint256 maxFees);
-error LBFactory__BinStepRequirementsBreached(uint256 lowerBound, uint16 binStep, uint256 higherBound);
-error LBFactory__ProtocolShareOverflows(uint16 protocolShare, uint256 max);
-error LBFactory__FunctionIsLockedForUsers(address user);
-error LBFactory__FactoryLockIsAlreadyInTheSameState();
-error LBFactory__LBPairBlacklistIsAlreadyInTheSameState();
-error LBFactory__BinStepHasNoPreset(uint256 binStep);
-error LBFactory__SameFeeRecipient(address feeRecipient);
-error LBFactory__SameFlashLoanFee(uint256 flashLoanFee);
-error LBFactory__LBPairSafetyCheckFailed(ILBPair LBPairImplementation);
-error LBFactory__SameImplementation(ILBPair LBPairImplementation);
-error LBFactory__ImplementationNotSet();
 
 contract LBFactory is PendingOwnable, ILBFactory {
     using Decoder for bytes32;

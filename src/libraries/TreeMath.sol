@@ -4,7 +4,7 @@ pragma solidity 0.8.7;
 
 import "./BitMath.sol";
 
-error TreeMath__ErrorDepthSearch();
+import "../LBErrors.sol";
 
 library TreeMath {
     using BitMath for uint256;

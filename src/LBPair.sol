@@ -4,6 +4,7 @@ pragma solidity 0.8.7;
 
 /** Imports **/
 
+import "./LBErrors.sol";
 import "./LBToken.sol";
 import "./libraries/BinHelper.sol";
 import "./libraries/Math512Bits.sol";
@@ -19,23 +20,6 @@ import "./libraries/FeeDistributionHelper.sol";
 import "./libraries/TokenHelper.sol";
 import "./interfaces/ILBFlashLoanCallback.sol";
 import "./interfaces/ILBPair.sol";
-
-/** Errors **/
-
-error LBPair__InsufficientAmounts();
-error LBPair__AddressZero();
-error LBPair__BrokenSwapSafetyCheck();
-error LBPair__CompositionFactorFlawed(uint256 id);
-error LBPair__InsufficientLiquidityMinted(uint256 id);
-error LBPair__InsufficientLiquidityBurned(uint256 id);
-error LBPair__WrongLengths();
-error LBPair__OnlyStrictlyIncreasingId();
-error LBPair__OnlyFactory();
-error LBPair__DistributionsOverflow();
-error LBPair__OnlyFeeRecipient(address feeRecipient, address sender);
-error LBPair__OracleNotEnoughSample();
-error LBPair__FlashLoanCallbackFailed();
-error LBPair__AlreadyInitialized();
 
 /// @title Liquidity Bin Exchange
 /// @author Trader Joe

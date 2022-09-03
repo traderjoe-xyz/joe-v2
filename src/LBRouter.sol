@@ -5,6 +5,7 @@ pragma solidity 0.8.7;
 import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 
+import "./LBErrors.sol";
 import "./interfaces/ILBToken.sol";
 import "./interfaces/IJoePair.sol";
 import "./interfaces/ILBRouter.sol";
@@ -13,36 +14,6 @@ import "./libraries/FeeHelper.sol";
 import "./libraries/Math512Bits.sol";
 import "./libraries/SwapHelper.sol";
 import "./libraries/Constants.sol";
-
-error LBRouter__SenderIsNotWAVAX();
-error LBRouter__PairNotCreated(IERC20 tokenX, IERC20 tokenY, uint256 binStep);
-error LBRouter__WrongAmounts(uint256 amount, uint256 reserve);
-error LBRouter__SwapOverflows(uint256 id);
-error LBRouter__BrokenSwapSafetyCheck();
-error LBRouter__NotFactoryOwner();
-error LBRouter__TooMuchTokensIn(uint256 excess);
-error LBRouter__BinReserveOverflows(uint256 id);
-error LBRouter__IdOverflows(int256 id);
-error LBRouter__LengthsMismatch();
-error LBRouter__WrongTokenOrder();
-error LBRouter__IdSlippageCaught(uint256 activeIdDesired, uint256 idSlippage, uint256 activeId);
-error LBRouter__AmountSlippageCaught(uint256 amountXMin, uint256 amountX, uint256 amountYMin, uint256 amountY);
-error LBRouter__IdDesiredOverflows(uint256 idDesired, uint256 idSlippage);
-error LBRouter__FailedToSendAVAX(address recipient, uint256 amount);
-error LBRouter__DeadlineExceeded(uint256 deadline, uint256 currentTimestamp);
-error LBRouter__AmountSlippageBPTooBig(uint256 amountSlippage);
-error LBRouter__InsufficientAmountOut(uint256 amountOutMin, uint256 amountOut);
-error LBRouter__MaxAmountInExceeded(uint256 amountInMax, uint256 amountIn);
-error LBRouter__InvalidTokenPath(IERC20 wrongToken);
-error LBRouter__InvalidVersion(uint256 version);
-error LBRouter__LBPairBlacklisted(ILBPair LBPair);
-error LBRouter__WrongAvaxLiquidityParameters(
-    IERC20 tokenX,
-    IERC20 tokenY,
-    uint256 amountX,
-    uint256 amountY,
-    uint256 msgValue
-);
 
 contract LBRouter is ILBRouter {
     using SafeERC20 for IERC20;

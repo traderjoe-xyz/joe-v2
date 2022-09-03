@@ -2,12 +2,9 @@
 
 pragma solidity 0.8.7;
 
+import "../LBErrors.sol";
 import "./Samples.sol";
 import "./Buffer.sol";
-
-error Oracle__AlreadyInitialized(uint256 _index);
-error Oracle__LookUpTimestampTooOld(uint256 _minTimestamp, uint256 _lookUpTimestamp);
-error Oracle__NotInitialized();
 
 library Oracle {
     using Samples for bytes32;

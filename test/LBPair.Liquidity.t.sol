@@ -64,16 +64,30 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         assertEq(feeParameters.protocolShare, _protocolShare, "Protocol Share should be correctly set");
     }
 
-    function testAddLiquidity(uint256 _price) public {
+    function testFuzzingAddLiquidity(uint256 _price) public {
         // Avoids Math__Exp2InputTooBig and very small x amounts
-        vm.assume(_price < 5e42);
+        vm.assume(_price < 2**239);
         // Avoids LBPair__BinReserveOverflows (very big x amounts)
-        vm.assume(_price > 1e18);
+        vm.assume(_price > 2**17);
 
         uint24 startId = getIdFromPrice(_price);
+
+        uint256 _calculatedPrice = getPriceFromId(startId);
+
+        // Can't use `assertApproxEqRel` as it overflow when multiplying by 1e18
+        // Assert that price is at most `binStep`% away from the calculated price
+        assertEq(
+            (
+                (((_price * (Constants.BASIS_POINT_MAX - DEFAULT_BIN_STEP)) / 10_000) <= _calculatedPrice &&
+                    _calculatedPrice <= (_price * (Constants.BASIS_POINT_MAX + DEFAULT_BIN_STEP)) / 10_000)
+            ),
+            true,
+            "Wrong log2"
+        );
+
         pair = createLBPairDefaultFeesFromStartId(token6D, token18D, startId);
 
-        uint256 amountYIn = 1e12;
+        uint256 amountYIn = _price > 2**128 ? 2 * ((1 << 112) - 1) : 2;
 
         (, , , uint256 amountXIn) = addLiquidity(amountYIn, startId, 3, 0);
 

@@ -159,7 +159,9 @@ abstract contract TestHelper is Test {
             }
             if (i >= spread) {
                 _distributionX[i] = binDistribution;
-                amountXIn += (binLiquidity * Constants.SCALE) / getPriceFromId(uint24(_ids[i]));
+                amountXIn += binLiquidity > 0
+                    ? (binLiquidity * Constants.SCALE - 1) / getPriceFromId(uint24(_ids[i])) + 1
+                    : 0;
             }
         }
     }

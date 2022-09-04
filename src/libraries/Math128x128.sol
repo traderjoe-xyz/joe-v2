@@ -25,6 +25,8 @@ library Math128x128 {
     /// @param x The unsigned 128.128-binary fixed-point number for which to calculate the binary logarithm.
     /// @return result The binary logarithm as a signed 128.128-binary fixed-point number.
     function log2(uint256 x) internal pure returns (int256 result) {
+        if (x == 0) revert Math128x128__LogUnderflow();
+
         unchecked {
             // This works because log2(x) = -log2(1/x).
             int256 sign;

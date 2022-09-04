@@ -5,6 +5,9 @@ libs = ['lib']
 optimizer = true
 optimizer_runs = 800
 
+[fuzz]
+runs = 1024
+
 [rpc_endpoints]
 avalanche = "https://api.avax.network/ext/bc/C/rpc"
 fuji = "https://api.avax-test.network/ext/bc/C/rpc"

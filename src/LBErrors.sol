@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.7;
+
 import "./interfaces/ILBPair.sol";
 
 /** LBRouter errors */
@@ -96,6 +100,7 @@ error FeeDistributionHelper__FlashLoanUnderflow(uint256 expectedBalance, uint256
 /** Math128x128 errors */
 
 error Math128x128__PowerUnderflow(uint256 x, int256 y);
+error Math128x128__LogUnderflow();
 
 /** Math512Bits errors */
 

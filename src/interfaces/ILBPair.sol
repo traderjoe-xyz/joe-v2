@@ -54,7 +54,7 @@ interface ILBPair {
         uint256 debtY;
     }
 
-    /// Structure to store fees:
+    /// @dev Structure to store fees:
     /// - tokenX: The amount of fees of token X
     /// - tokenY: The amount of fees of token Y
     struct Fees {

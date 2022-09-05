@@ -107,7 +107,7 @@ library FeeHelper {
         }
     }
 
-    /// @notice Return the fees added to an amount
+    /// @notice Returns the fees added to an amount
     /// @param _fp The current fee parameter
     /// @param _amount The amount of token sent
     /// @return The fee amount
@@ -118,7 +118,7 @@ library FeeHelper {
         }
     }
 
-    /// @notice Return the fees from an amount
+    /// @notice Returns the fees from an amount
     /// @param _fp The current fee parameter
     /// @param _amountPlusFee The amount of token sent
     /// @return The fee amount
@@ -129,7 +129,7 @@ library FeeHelper {
         }
     }
 
-    /// @notice Return the fees added when an user adds liquidity and change c in the active bin
+    /// @notice Returns the fees added when an user adds liquidity and change c in the active bin
     /// @param _fp The current fee parameter
     /// @param _amountPlusFee The amount of token sent
     /// @return The fee amount
@@ -142,7 +142,7 @@ library FeeHelper {
         }
     }
 
-    /// @notice Return the fees added when an user do a flashloan
+    /// @notice Returns the fees added when an user do a flashloan
     /// @param _fp The current fee parameter
     /// @param _amount The amount of token
     /// @param _fee The flash loan fee
@@ -157,7 +157,7 @@ library FeeHelper {
         }
     }
 
-    /// @notice Return the fees distribution added to an amount
+    /// @notice Returns the fees distribution added to an amount
     /// @param _fp The current fee parameter
     /// @param _fees The fee amount
     /// @return fees The fee distribution
@@ -172,7 +172,7 @@ library FeeHelper {
         }
     }
 
-    /// @notice Return the fee share
+    /// @notice Returns the fee share
     /// @param _fp The current fee parameter
     /// @return feeShares The fee share, with 18 decimals
     function getFeeShares(FeeParameters memory _fp) private pure returns (uint256 feeShares) {

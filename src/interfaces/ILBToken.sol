@@ -25,9 +25,9 @@ interface ILBToken {
 
     function balanceOf(address account, uint256 id) external view returns (uint256);
 
-    function userPositionAt(address _account, uint256 _index) external view returns (uint256);
+    function userPositionAtIndex(address _account, uint256 _index) external view returns (uint256);
 
-    function userPositionNb(address _account) external view returns (uint256);
+    function userPositionNumber(address _account) external view returns (uint256);
 
     function totalSupply(uint256 id) external view returns (uint256);
 

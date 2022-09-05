@@ -28,12 +28,12 @@ contract LiquidityBinTokenTest is TestHelper {
 
         ILBToken.LiquidityAmount[] memory liquidityAmounts = new ILBToken.LiquidityAmount[](5);
         for (uint256 i; i < 5; i++) {
-            assertEq(pair.userPositionAt(DEV, i), deposits[i].id);
+            assertEq(pair.userPositionAtIndex(DEV, i), deposits[i].id);
             liquidityAmounts[i].id = deposits[i].id;
             liquidityAmounts[i].amount = pair.balanceOf(DEV, deposits[i].id);
         }
 
-        assertEq(pair.userPositionNb(DEV), 5);
+        assertEq(pair.userPositionNumber(DEV), 5);
 
         assertEq(pair.balanceOf(DEV, ID_ONE - 1), amountIn / 3);
         vm.expectEmit(true, true, true, true);
@@ -62,7 +62,7 @@ contract LiquidityBinTokenTest is TestHelper {
 
         ILBToken.LiquidityAmount[] memory liquidityAmounts = new ILBToken.LiquidityAmount[](5);
         for (uint256 i; i < 5; i++) {
-            assertEq(pair.userPositionAt(DEV, i), deposits[i].id);
+            assertEq(pair.userPositionAtIndex(DEV, i), deposits[i].id);
             liquidityAmounts[i].id = deposits[i].id;
             liquidityAmounts[i].amount = pair.balanceOf(DEV, deposits[i].id);
         }
@@ -79,7 +79,7 @@ contract LiquidityBinTokenTest is TestHelper {
 
         ILBToken.LiquidityAmount[] memory liquidityAmounts = new ILBToken.LiquidityAmount[](binAmount);
         for (uint256 i; i < binAmount; i++) {
-            assertEq(pair.userPositionAt(DEV, i), deposits[i].id);
+            assertEq(pair.userPositionAtIndex(DEV, i), deposits[i].id);
             liquidityAmounts[i].id = deposits[i].id;
             liquidityAmounts[i].amount = pair.balanceOf(DEV, deposits[i].id);
         }

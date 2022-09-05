@@ -67,14 +67,12 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         address indexed sender,
         address indexed recipient,
         uint256 indexed activeId,
-        uint256[] ids,
-        uint256[] distributionX,
-        uint256[] distributionY,
+        LiquidityDeposit[] deposits,
         uint256 amountX,
         uint256 amountY
     );
 
-    event Burn(address indexed sender, address indexed recipient, uint256[] ids, uint256[] amounts);
+    event Burn(address indexed sender, address indexed recipient, ILBToken.LiquidityAmount[] liquidityRemovals);
 
     event FeesCollected(address indexed sender, address indexed recipient, uint256 amountX, uint256 amountY);
 
@@ -462,19 +460,12 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     }
 
     /// @notice Performs a low level add, this needs to be called from a contract which performs important safety checks.
-    /// @param _ids The list of ids to add liquidity
-    /// @param _distributionX The distribution of tokenX with sum(_distributionX) = 1e18 (100%) or 0 (0%)
-    /// @param _distributionY The distribution of tokenY with sum(_distributionY) = 1e18 (100%) or 0 (0%)
+    /// @param _liquidityDeposits Liquidity distribution array
     /// @param _to The address of the recipient
     /// @return The amount of token X that was added to the pair
     /// @return The amount of token Y that was added to the pair
     /// @return liquidityMinted Amount of LBToken minted
-    function mint(
-        uint256[] memory _ids,
-        uint256[] memory _distributionX,
-        uint256[] memory _distributionY,
-        address _to
-    )
+    function mint(LiquidityDeposit[] memory _liquidityDeposits, address _to)
         external
         override
         nonReentrant
@@ -485,8 +476,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         )
     {
         unchecked {
-            if (_ids.length == 0 || _ids.length != _distributionX.length || _ids.length != _distributionY.length)
-                revert LBPair__WrongLengths();
+            if (_liquidityDeposits.length == 0) revert LBPair__WrongLengths();
 
             PairInformation memory _pair = _pairInformation;
 
@@ -497,10 +487,10 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             _mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total).safe128();
             _mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total).safe128();
 
-            liquidityMinted = new uint256[](_ids.length);
+            liquidityMinted = new uint256[](_liquidityDeposits.length);
 
-            for (uint256 i; i < _ids.length; ++i) {
-                _mintInfo.id = _ids[i].safe24();
+            for (uint256 i; i < _liquidityDeposits.length; ++i) {
+                _mintInfo.id = _liquidityDeposits[i].id;
                 Bin memory _bin = _bins[_mintInfo.id];
 
                 if (_bin.reserveX == 0 && _bin.reserveY == 0) {
@@ -514,8 +504,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 }
 
                 {
-                    uint256 _distribX = _distributionX[i];
-                    uint256 _distribY = _distributionY[i];
+                    uint256 _distribX = _liquidityDeposits[i].distributionX;
+                    uint256 _distribY = _liquidityDeposits[i].distributionY;
 
                     if (
                         _distribX > Constants.PRECISION ||
@@ -596,9 +586,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 msg.sender,
                 _to,
                 _pair.activeId,
-                _ids,
-                _distributionX,
-                _distributionY,
+                _liquidityDeposits,
                 _mintInfo.amountXAddedToPair,
                 _mintInfo.amountYAddedToPair
             );
@@ -608,22 +596,22 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     }
 
     /// @notice Performs a low level remove, this needs to be called from a contract which performs important safety checks
-    /// @param _ids The ids the user want to remove its liquidity
-    /// @param _amounts The amount of token to burn
+    /// @param _liquidityRemovals Array of LBTokens being withdrawn
     /// @param _to The address of the recipient
     /// @return amountX The amount of token X sent to `_to`
     /// @return amountY The amount of token Y sent to `_to`
-    function burn(
-        uint256[] memory _ids,
-        uint256[] memory _amounts,
-        address _to
-    ) external override nonReentrant returns (uint256 amountX, uint256 amountY) {
+    function burn(ILBToken.LiquidityAmount[] memory _liquidityRemovals, address _to)
+        external
+        override
+        nonReentrant
+        returns (uint256 amountX, uint256 amountY)
+    {
         unchecked {
             PairInformation memory _pair = _pairInformation;
 
-            for (uint256 i; i < _ids.length; ++i) {
-                uint256 _id = _ids[i].safe24();
-                uint256 _amountToBurn = _amounts[i];
+            for (uint256 i; i < _liquidityRemovals.length; ++i) {
+                uint256 _id = _liquidityRemovals[i].id.safe24();
+                uint256 _amountToBurn = _liquidityRemovals[i].amount;
 
                 if (_amountToBurn == 0) revert LBPair__InsufficientLiquidityBurned(_id);
 
@@ -670,7 +658,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             tokenX.safeTransfer(_to, amountX);
             tokenY.safeTransfer(_to, amountY);
 
-            emit Burn(msg.sender, _to, _ids, _amounts);
+            emit Burn(msg.sender, _to, _liquidityRemovals);
         }
     }
 

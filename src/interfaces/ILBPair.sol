@@ -5,6 +5,7 @@ pragma solidity >=0.8.7;
 import "openzeppelin/token/ERC20/IERC20.sol";
 
 import "./ILBFactory.sol";
+import "./ILBToken.sol";
 import "../libraries/FeeHelper.sol";
 
 interface ILBPair {
@@ -76,6 +77,18 @@ interface ILBPair {
         uint256 amountY;
     }
 
+    /// @dev Structure to store liquidity deposit info:
+    /// - relativeId: The bin where liquidity should be deposited, relatively to the active bin
+    /// - id: The bin where liquidity have been deposited
+    /// - distributionX: The distribution of tokenX with sum(_distributionX) = 1e18 (100%) or 0 (0%)
+    /// - distributionY: The distribution of tokenY with sum(_distributionY) = 1e18 (100%) or 0 (0%)
+    struct LiquidityDeposit {
+        int256 relativeId;
+        uint256 id;
+        uint256 distributionX;
+        uint256 distributionY;
+    }
+
     function tokenX() external view returns (IERC20);
 
     function tokenY() external view returns (IERC20);
@@ -140,12 +153,7 @@ interface ILBPair {
         bytes memory data
     ) external;
 
-    function mint(
-        uint256[] memory _ids,
-        uint256[] memory _distributionX,
-        uint256[] memory _distributionY,
-        address _to
-    )
+    function mint(LiquidityDeposit[] memory liquidityDeposits, address _to)
         external
         returns (
             uint256 amountXAddedToPair,
@@ -153,11 +161,7 @@ interface ILBPair {
             uint256[] memory liquidityMinted
         );
 
-    function burn(
-        uint256[] memory ids,
-        uint256[] memory _amounts,
-        address to
-    ) external returns (uint256, uint256);
+    function burn(ILBToken.LiquidityAmount[] memory liquidityRemovals, address to) external returns (uint256, uint256);
 
     function increaseOracleLength(uint16 _nb) external;
 

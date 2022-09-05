@@ -20,13 +20,11 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         uint256 tokenAmount = 100e18;
         token18D.mint(address(pair), tokenAmount);
 
-        uint256[] memory _ids = new uint256[](1);
-        _ids[0] = ID_ONE;
+        ILBPair.LiquidityDeposit[] memory deposits = new ILBPair.LiquidityDeposit[](1);
+        deposits[0].id = ID_ONE;
+        deposits[0].distributionY = Constants.PRECISION;
 
-        uint256[] memory _liquidities = new uint256[](1);
-        _liquidities[0] = Constants.PRECISION;
-
-        pair.mint(_ids, new uint256[](1), _liquidities, DEV);
+        pair.mint(deposits, DEV);
 
         uint256 amountXIn = 1e12;
 
@@ -51,15 +49,11 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         uint256 tokenAmount = 100e18;
         token6D.mint(address(pair), tokenAmount);
 
-        uint256[] memory _ids = new uint256[](1);
-        _ids[0] = ID_ONE;
+        ILBPair.LiquidityDeposit[] memory deposits = new ILBPair.LiquidityDeposit[](1);
+        deposits[0].id = ID_ONE;
+        deposits[0].distributionX = Constants.PRECISION;
 
-        // uint256 price = router.getPriceFromId(pair, uint24(_ids[0]));
-
-        uint256[] memory _liquidities = new uint256[](1);
-        _liquidities[0] = Constants.PRECISION;
-
-        pair.mint(_ids, _liquidities, new uint256[](1), DEV);
+        pair.mint(deposits, DEV);
 
         uint256 amountYIn = 1e12;
 
@@ -72,7 +66,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         assertEq(token6D.balanceOf(DEV), amountXOut);
         assertEq(token18D.balanceOf(DEV), 0);
 
-        (uint256 binReserveX, uint256 binReserveY) = pair.getBin(uint24(_ids[0]));
+        (uint256 binReserveX, uint256 binReserveY) = pair.getBin(uint24(deposits[0].id));
 
         (, uint256 feesYTotal, , ) = pair.getGlobalFees();
 
@@ -84,13 +78,11 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         uint256 tokenAmount = 100e18;
         token18D.mint(address(pair), tokenAmount);
 
-        uint256[] memory _ids = new uint256[](1);
-        _ids[0] = ID_ONE;
+        ILBPair.LiquidityDeposit[] memory deposits = new ILBPair.LiquidityDeposit[](1);
+        deposits[0].id = ID_ONE;
+        deposits[0].distributionY = Constants.PRECISION;
 
-        uint256[] memory _liquidities = new uint256[](1);
-        _liquidities[0] = Constants.PRECISION;
-
-        pair.mint(_ids, new uint256[](1), _liquidities, DEV);
+        pair.mint(deposits, DEV);
 
         uint256 amountYOut = 1e12;
 
@@ -115,13 +107,11 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         uint256 tokenAmount = 100e18;
         token6D.mint(address(pair), tokenAmount);
 
-        uint256[] memory _ids = new uint256[](1);
-        _ids[0] = ID_ONE + 1;
+        ILBPair.LiquidityDeposit[] memory deposits = new ILBPair.LiquidityDeposit[](1);
+        deposits[0].id = ID_ONE + 1;
+        deposits[0].distributionX = Constants.PRECISION;
 
-        uint256[] memory _liquidities = new uint256[](1);
-        _liquidities[0] = Constants.PRECISION;
-
-        pair.mint(_ids, _liquidities, new uint256[](1), DEV);
+        pair.mint(deposits, DEV);
 
         uint256 amountXOut = 1e12;
 
@@ -134,7 +124,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         assertEq(token6D.balanceOf(DEV), amountXOut);
         assertEq(token18D.balanceOf(DEV), 0);
 
-        (uint256 binReserveX, uint256 binReserveY) = pair.getBin(uint24(_ids[0]));
+        (uint256 binReserveX, uint256 binReserveY) = pair.getBin(uint24(deposits[0].id));
 
         (, uint256 feesYTotal, , ) = pair.getGlobalFees();
 

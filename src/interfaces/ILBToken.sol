@@ -3,15 +3,17 @@
 pragma solidity >=0.8.7;
 
 interface ILBToken {
+    /// @dev Structure representing a LBToken amount tranfered or withdrawn:
+    /// - id: Id of the bin
+    /// - amount: Amount of LBToken
+    struct LiquidityAmount {
+        uint256 id;
+        uint256 amount;
+    }
+
     event TransferSingle(address indexed sender, address indexed from, address indexed to, uint256 id, uint256 amount);
 
-    event TransferBatch(
-        address indexed sender,
-        address indexed from,
-        address indexed to,
-        uint256[] ids,
-        uint256[] amounts
-    );
+    event TransferBatch(address indexed sender, address indexed from, address indexed to, LiquidityAmount[] amounts);
 
     event ApprovalForAll(address indexed account, address indexed sender, bool approved);
 
@@ -36,7 +38,6 @@ interface ILBToken {
     function safeBatchTransferFrom(
         address from,
         address to,
-        uint256[] memory id,
-        uint256[] memory amount
+        LiquidityAmount[] memory amounts
     ) external;
 }

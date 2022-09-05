@@ -103,23 +103,20 @@ contract LBToken is ILBToken {
     /// @notice Batch transfers `_amount` tokens of type `_id` from `_from` to `_to`
     /// @param _from The address of the owner of the tokens
     /// @param _to The address of the recipient
-    /// @param _ids The list of token ids
-    /// @param _amounts The list of amounts to send
+    /// @param _liquidities LBToken amounts transfered
     function safeBatchTransferFrom(
         address _from,
         address _to,
-        uint256[] memory _ids,
-        uint256[] memory _amounts
+        LiquidityAmount[] memory _liquidities
     ) public virtual override {
         address _spender = msg.sender;
         if (!_isApprovedForAll(_from, _spender)) revert LBToken__SpenderNotApproved(_from, _spender);
 
         if (_from == address(0) || _to == address(0)) revert LBToken__TransferFromOrToAddress0();
-        if (_ids.length != _amounts.length) revert LBToken__LengthMismatch(_ids.length, _amounts.length);
 
-        for (uint256 i; i < _ids.length; ++i) {
-            uint256 _id = _ids[i];
-            uint256 _amount = _amounts[i];
+        for (uint256 i; i < _liquidities.length; ++i) {
+            uint256 _id = _liquidities[i].id;
+            uint256 _amount = _liquidities[i].amount;
 
             uint256 _fromBalance = _balances[_id][_from];
             if (_fromBalance < _amount) revert LBToken__TransferExceedsBalance(_from, _id, _amount);
@@ -142,7 +139,7 @@ contract LBToken is ILBToken {
             }
         }
 
-        emit TransferBatch(_spender, _from, _to, _ids, _amounts);
+        emit TransferBatch(_spender, _from, _to, _liquidities);
     }
 
     /// @dev Creates `_amount` tokens of type `_id`, and assigns them to `_account`

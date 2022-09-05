@@ -73,13 +73,11 @@ contract LiquidityBinPairOracleTest is TestHelper {
         uint256 tokenAmount = 100e18;
         token18D.mint(address(pair), tokenAmount);
 
-        uint256[] memory _ids = new uint256[](1);
-        _ids[0] = ID_ONE;
+        ILBPair.LiquidityDeposit[] memory deposits = new ILBPair.LiquidityDeposit[](1);
+        deposits[0].id = ID_ONE;
+        deposits[0].distributionY = Constants.PRECISION;
 
-        uint256[] memory _liquidities = new uint256[](1);
-        _liquidities[0] = Constants.PRECISION;
-
-        pair.mint(_ids, new uint256[](1), _liquidities, DEV);
+        pair.mint(deposits, DEV);
 
         token6D.mint(address(pair), 5e18);
 
@@ -98,13 +96,11 @@ contract LiquidityBinPairOracleTest is TestHelper {
         uint256 tokenAmount = 100e18;
         token18D.mint(address(pair), tokenAmount);
 
-        uint256[] memory _ids = new uint256[](1);
-        _ids[0] = ID_ONE;
+        ILBPair.LiquidityDeposit[] memory deposits = new ILBPair.LiquidityDeposit[](1);
+        deposits[0].id = ID_ONE;
+        deposits[0].distributionY = Constants.PRECISION;
 
-        uint256[] memory _liquidities = new uint256[](1);
-        _liquidities[0] = Constants.PRECISION;
-
-        pair.mint(_ids, new uint256[](1), _liquidities, DEV);
+        pair.mint(deposits, DEV);
 
         token6D.mint(address(pair), 5e18);
 
@@ -119,7 +115,8 @@ contract LiquidityBinPairOracleTest is TestHelper {
         uint256 _ago = 130;
         uint256 _time = block.timestamp - _ago;
 
-        (uint256 cumulativeId, uint256 cumulativeVolatilityAccumulated, uint256 cumulativeBinCrossed) = pair.getOracleSampleFrom(_ago);
+        (uint256 cumulativeId, uint256 cumulativeVolatilityAccumulated, uint256 cumulativeBinCrossed) = pair
+            .getOracleSampleFrom(_ago);
         assertEq(cumulativeId / _time, ID_ONE);
         assertEq(cumulativeVolatilityAccumulated, 0);
         assertEq(cumulativeBinCrossed, 0);
@@ -127,17 +124,17 @@ contract LiquidityBinPairOracleTest is TestHelper {
 
     function testOracleSampleFromWith100Samples() public {
         uint256 amount1In = 200e18;
-        (
-            uint256[] memory _ids,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
-            uint256 amount0In
-        ) = spreadLiquidity(amount1In * 2, ID_ONE, 99, 100);
+        (ILBPair.LiquidityDeposit[] memory deposits, uint256 amount0In) = spreadLiquidity(
+            amount1In * 2,
+            ID_ONE,
+            99,
+            100
+        );
 
         token6D.mint(address(pair), amount0In);
         token18D.mint(address(pair), amount1In);
 
-        pair.mint(_ids, _distributionX, _distributionY, DEV);
+        pair.mint(deposits, DEV);
         pair.increaseOracleLength(100);
 
         uint256 startTimestamp;
@@ -156,7 +153,8 @@ contract LiquidityBinPairOracleTest is TestHelper {
         for (uint256 i; i < 99; ++i) {
             uint256 _ago = ((block.timestamp - startTimestamp) * i) / 100;
 
-            (uint256 cumulativeId, uint256 cumulativeVolatilityAccumulated, uint256 cumulativeBinCrossed) = pair.getOracleSampleFrom(_ago);
+            (uint256 cumulativeId, uint256 cumulativeVolatilityAccumulated, uint256 cumulativeBinCrossed) = pair
+                .getOracleSampleFrom(_ago);
             assertGe(cId, cumulativeId);
             assertGe(cAcc, cumulativeVolatilityAccumulated);
             assertGe(cBin, cumulativeBinCrossed);
@@ -167,17 +165,17 @@ contract LiquidityBinPairOracleTest is TestHelper {
 
     function testOracleSampleFromWith100SamplesNotAllInitialized() public {
         uint256 amount1In = 101e18;
-        (
-            uint256[] memory _ids,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
-            uint256 amount0In
-        ) = spreadLiquidity(amount1In * 2, ID_ONE, 99, 100);
+        (ILBPair.LiquidityDeposit[] memory deposits, uint256 amount0In) = spreadLiquidity(
+            amount1In * 2,
+            ID_ONE,
+            99,
+            100
+        );
 
         token6D.mint(address(pair), amount0In);
         token18D.mint(address(pair), amount1In);
 
-        pair.mint(_ids, _distributionX, _distributionY, DEV);
+        pair.mint(deposits, DEV);
 
         uint256 startTimestamp;
 
@@ -197,7 +195,8 @@ contract LiquidityBinPairOracleTest is TestHelper {
         for (uint256 i; i < 49; ++i) {
             uint256 _ago = ((block.timestamp - startTimestamp) * i) / 50;
 
-            (uint256 cumulativeId, uint256 cumulativeVolatilityAccumulated, uint256 cumulativeBinCrossed) = pair.getOracleSampleFrom(_ago);
+            (uint256 cumulativeId, uint256 cumulativeVolatilityAccumulated, uint256 cumulativeBinCrossed) = pair
+                .getOracleSampleFrom(_ago);
             assertGe(cId, cumulativeId);
             assertGe(cAcc, cumulativeVolatilityAccumulated);
             assertGe(cBin, cumulativeBinCrossed);

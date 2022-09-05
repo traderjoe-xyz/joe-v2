@@ -17,9 +17,7 @@ interface ILBRouter {
     /// - amountYMin: The min amount of token Y added to liquidity
     /// - activeIdDesired: The active id that user wants to add liquidity from
     /// - idSlippage: The number of id that are allowed to slip
-    /// - deltaIds: The list of delta ids to add liquidity (`deltaId = activeId - desiredId`)
-    /// - distributionX: The distribution of tokenX with sum(distributionX) = 100e18 (100%) or 0 (0%)
-    /// - distributionY: The distribution of tokenY with sum(distributionY) = 100e18 (100%) or 0 (0%)
+    /// - deposits: Structure holding the deposit distribution
     /// - to: The address of the recipient
     /// - deadline: The deadline of the tx
     struct LiquidityParameters {
@@ -32,9 +30,7 @@ interface ILBRouter {
         uint256 amountYMin;
         uint256 activeIdDesired;
         uint256 idSlippage;
-        int256[] deltaIds;
-        uint256[] distributionX;
-        uint256[] distributionY;
+        ILBPair.LiquidityDeposit[] deposits;
         address to;
         uint256 deadline;
     }
@@ -70,12 +66,12 @@ interface ILBRouter {
 
     function addLiquidity(LiquidityParameters memory liquidityParameters)
         external
-        returns (uint256[] memory depositIds, uint256[] memory liquidityMinted);
+        returns (ILBPair.LiquidityDeposit[] memory deposits, uint256[] memory liquidityMinted);
 
     function addLiquidityAVAX(LiquidityParameters memory liquidityParameters)
         external
         payable
-        returns (uint256[] memory depositIds, uint256[] memory liquidityMinted);
+        returns (ILBPair.LiquidityDeposit[] memory deposits, uint256[] memory liquidityMinted);
 
     function removeLiquidity(
         IERC20 tokenX,
@@ -83,8 +79,7 @@ interface ILBRouter {
         uint16 binStep,
         uint256 amountXMin,
         uint256 amountYMin,
-        uint256[] memory ids,
-        uint256[] memory amounts,
+        ILBToken.LiquidityAmount[] memory ids,
         address to,
         uint256 deadline
     ) external returns (uint256 amountX, uint256 amountY);
@@ -94,8 +89,7 @@ interface ILBRouter {
         uint16 binStep,
         uint256 amountTokenMin,
         uint256 amountAVAXMin,
-        uint256[] memory ids,
-        uint256[] memory amounts,
+        ILBToken.LiquidityAmount[] memory ids,
         address payable to,
         uint256 deadline
     ) external returns (uint256 amountToken, uint256 amountAVAX);

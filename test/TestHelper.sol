@@ -9,6 +9,7 @@ import "src/LBFactoryHelper.sol";
 import "src/LBPair.sol";
 import "src/LBRouter.sol";
 import "src/interfaces/ILBRouter.sol";
+import "src/interfaces/ILBToken.sol";
 import "src/LBToken.sol";
 import "src/libraries/Math512Bits.sol";
 import "src/libraries/Constants.sol";
@@ -107,21 +108,13 @@ abstract contract TestHelper is Test {
         uint24 _startId,
         uint24 _numberBins,
         uint24 _gap
-    )
-        internal
-        returns (
-            uint256[] memory _ids,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
-            uint256 amountXIn
-        )
-    {
-        (_ids, _distributionX, _distributionY, amountXIn) = spreadLiquidity(_amountYIn, _startId, _numberBins, _gap);
+    ) internal returns (ILBPair.LiquidityDeposit[] memory deposits, uint256 amountXIn) {
+        (deposits, amountXIn) = spreadLiquidity(_amountYIn, _startId, _numberBins, _gap);
 
         token6D.mint(address(pair), amountXIn);
         token18D.mint(address(pair), _amountYIn);
 
-        pair.mint(_ids, _distributionX, _distributionY, DEV);
+        pair.mint(deposits, DEV);
     }
 
     function spreadLiquidity(
@@ -129,37 +122,26 @@ abstract contract TestHelper is Test {
         uint24 _startId,
         uint24 _numberBins,
         uint24 _gap
-    )
-        internal
-        pure
-        returns (
-            uint256[] memory _ids,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
-            uint256 amountXIn
-        )
-    {
+    ) internal pure returns (ILBPair.LiquidityDeposit[] memory deposits, uint256 amountXIn) {
         if (_numberBins % 2 == 0) {
             revert("Pls put an uneven number of bins");
         }
 
         uint24 spread = _numberBins / 2;
-        _ids = new uint256[](_numberBins);
+        deposits = new ILBPair.LiquidityDeposit[](_numberBins);
 
-        _distributionX = new uint256[](_numberBins);
-        _distributionY = new uint256[](_numberBins);
         uint256 binDistribution = Constants.PRECISION / (spread + 1);
         uint256 binLiquidity = _amountYIn / (spread + 1);
 
         for (uint256 i; i < _numberBins; i++) {
-            _ids[i] = _startId - spread * (1 + _gap) + i * (1 + _gap);
+            deposits[i].id = _startId - spread * (1 + _gap) + i * (1 + _gap);
 
             if (i <= spread) {
-                _distributionY[i] = binDistribution;
+                deposits[i].distributionY = binDistribution;
             }
             if (i >= spread) {
-                _distributionX[i] = binDistribution;
-                amountXIn += (binLiquidity * Constants.SCALE) / getPriceFromId(uint24(_ids[i]));
+                deposits[i].distributionX = binDistribution;
+                amountXIn += (binLiquidity * Constants.SCALE) / getPriceFromId(uint24(deposits[i].id));
             }
         }
     }
@@ -172,21 +154,8 @@ abstract contract TestHelper is Test {
         uint24 _numberBins,
         uint24 _gap,
         uint16 _binStep
-    )
-        internal
-        returns (
-            int256[] memory _deltaIds,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
-            uint256 amountXIn
-        )
-    {
-        (_deltaIds, _distributionX, _distributionY, amountXIn) = spreadLiquidityForRouter(
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap
-        );
+    ) internal returns (ILBPair.LiquidityDeposit[] memory deposits, uint256 amountXIn) {
+        (deposits, amountXIn) = spreadLiquidityForRouter(_amountYIn, _startId, _numberBins, _gap);
 
         _tokenX.mint(DEV, amountXIn);
         _tokenX.approve(address(router), amountXIn);
@@ -201,9 +170,7 @@ abstract contract TestHelper is Test {
             0,
             ID_ONE,
             0,
-            _deltaIds,
-            _distributionX,
-            _distributionY,
+            deposits,
             DEV,
             block.timestamp
         );
@@ -223,39 +190,28 @@ abstract contract TestHelper is Test {
         uint24 _startId,
         uint24 _numberBins,
         uint24 _gap
-    )
-        internal
-        pure
-        returns (
-            int256[] memory _deltaIds,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
-            uint256 amountXIn
-        )
-    {
+    ) internal pure returns (ILBPair.LiquidityDeposit[] memory deposits, uint256 amountXIn) {
         if (_numberBins % 2 == 0) {
             revert("Pls put an uneven number of bins");
         }
 
         uint256 spread = _numberBins / 2;
-        _deltaIds = new int256[](_numberBins);
+        deposits = new ILBPair.LiquidityDeposit[](_numberBins);
 
-        _distributionX = new uint256[](_numberBins);
-        _distributionY = new uint256[](_numberBins);
         uint256 binDistribution = Constants.PRECISION / (spread + 1);
         uint256 binLiquidity = _amountYIn / (spread + 1);
 
         for (uint256 i; i < _numberBins; i++) {
-            _deltaIds[i] = int256(i * (1 + _gap)) - int256(spread * (1 + _gap));
+            deposits[i].relativeId = int256(i * (1 + _gap)) - int256(spread * (1 + _gap));
 
             if (i <= spread) {
-                _distributionY[i] = binDistribution;
+                deposits[i].distributionY = binDistribution;
             }
             if (i >= spread) {
-                _distributionX[i] = binDistribution;
+                deposits[i].distributionX = binDistribution;
                 amountXIn +=
                     (binLiquidity * Constants.SCALE) /
-                    getPriceFromId(uint24(int24(_startId) + int24(_deltaIds[i])));
+                    getPriceFromId(uint24(int24(_startId) + int24(deposits[i].relativeId)));
             }
         }
     }

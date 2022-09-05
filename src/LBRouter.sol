@@ -222,12 +222,12 @@ contract LBRouter is ILBRouter {
     /// @notice Add liquidity while performing safety checks
     /// @dev This function is compliant with fee on transfer tokens
     /// @param _liquidityParameters The liquidity parameters
-    /// @return depositIds Bin ids where the liquidity was actually deposited
+    /// @return deposits Ids where liquidity have been deposited
     /// @return liquidityMinted Amounts of LBToken minted for each bin
     function addLiquidity(LiquidityParameters memory _liquidityParameters)
         external
         override
-        returns (uint256[] memory depositIds, uint256[] memory liquidityMinted)
+        returns (ILBPair.LiquidityDeposit[] memory deposits, uint256[] memory liquidityMinted)
     {
         ILBPair _LBPair = _getLBPairInfo(
             _liquidityParameters.tokenX,
@@ -240,19 +240,19 @@ contract LBRouter is ILBRouter {
         _liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(_LBPair), _liquidityParameters.amountX);
         _liquidityParameters.tokenY.safeTransferFrom(msg.sender, address(_LBPair), _liquidityParameters.amountY);
 
-        (depositIds, liquidityMinted) = _addLiquidity(_liquidityParameters, _LBPair);
+        (deposits, liquidityMinted) = _addLiquidity(_liquidityParameters, _LBPair);
     }
 
     /// @notice Add liquidity with AVAX while performing safety checks
     /// @dev This function is compliant with fee on transfer tokens
     /// @param _liquidityParameters The liquidity parameters
-    /// @return depositIds Bin ids where the liquidity was actually deposited
+    /// @return deposits Ids where liquidity have been deposited
     /// @return liquidityMinted Amounts of LBToken minted for each bin
     function addLiquidityAVAX(LiquidityParameters memory _liquidityParameters)
         external
         payable
         override
-        returns (uint256[] memory depositIds, uint256[] memory liquidityMinted)
+        returns (ILBPair.LiquidityDeposit[] memory deposits, uint256[] memory liquidityMinted)
     {
         ILBPair _LBPair = _getLBPairInfo(
             _liquidityParameters.tokenX,
@@ -277,7 +277,7 @@ contract LBRouter is ILBRouter {
                 msg.value
             );
 
-        (depositIds, liquidityMinted) = _addLiquidity(_liquidityParameters, _LBPair);
+        (deposits, liquidityMinted) = _addLiquidity(_liquidityParameters, _LBPair);
     }
 
     /// @notice Remove liquidity while performing safety checks
@@ -286,8 +286,7 @@ contract LBRouter is ILBRouter {
     /// @param _tokenY The address of token Y
     /// @param _amountXMin The min amount to receive of token X
     /// @param _amountYMin The min amount to receive of token Y
-    /// @param _ids The list of ids to burn
-    /// @param _amounts The list of amounts to burn of each id in `_ids`
+    /// @param _liquidityRemovals LBToken amounts that are removed
     /// @param _to The address of the recipient
     /// @param _deadline The deadline of the tx
     /// @return amountX Amount of token X returned
@@ -298,8 +297,7 @@ contract LBRouter is ILBRouter {
         uint16 _binStep,
         uint256 _amountXMin,
         uint256 _amountYMin,
-        uint256[] memory _ids,
-        uint256[] memory _amounts,
+        ILBToken.LiquidityAmount[] memory _liquidityRemovals,
         address _to,
         uint256 _deadline
     ) external override ensure(_deadline) returns (uint256 amountX, uint256 amountY) {
@@ -309,7 +307,7 @@ contract LBRouter is ILBRouter {
             (_amountXMin, _amountYMin) = (_amountYMin, _amountXMin);
         }
 
-        (amountX, amountY) = _removeLiquidity(_LBPair, _amountXMin, _amountYMin, _ids, _amounts, _to);
+        (amountX, amountY) = _removeLiquidity(_LBPair, _amountXMin, _amountYMin, _liquidityRemovals, _to);
     }
 
     /// @notice Remove AVAX liquidity while performing safety checks
@@ -319,8 +317,7 @@ contract LBRouter is ILBRouter {
     /// @param _token The address of token
     /// @param _amountTokenMin The min amount to receive of token
     /// @param _amountAVAXMin The min amount to receive of AVAX
-    /// @param _ids The list of ids to burn
-    /// @param _amounts The list of amounts to burn of each id in `_ids`
+    /// @param _liquidityRemovals LBToken amounts that are removed
     /// @param _to The address of the recipient
     /// @param _deadline The deadline of the tx
     /// @return amountToken Amount of token returned
@@ -330,8 +327,7 @@ contract LBRouter is ILBRouter {
         uint16 _binStep,
         uint256 _amountTokenMin,
         uint256 _amountAVAXMin,
-        uint256[] memory _ids,
-        uint256[] memory _amounts,
+        ILBToken.LiquidityAmount[] memory _liquidityRemovals,
         address payable _to,
         uint256 _deadline
     ) external override ensure(_deadline) returns (uint256 amountToken, uint256 amountAVAX) {
@@ -347,8 +343,7 @@ contract LBRouter is ILBRouter {
                 _LBPair,
                 _amountTokenMin,
                 _amountAVAXMin,
-                _ids,
-                _amounts,
+                _liquidityRemovals,
                 address(this)
             );
 
@@ -656,17 +651,14 @@ contract LBRouter is ILBRouter {
     /// @notice Helper function to add liquidity
     /// @param _liq The liquidity parameter
     /// @param _LBPair LBPair where liquidity is deposited
-    /// @return depositIds Bin ids where the liquidity was actually deposited
+    /// @return deposits Ids where liquidity have been deposited
     /// @return liquidityMinted Amounts of LBToken minted for each bin
     function _addLiquidity(LiquidityParameters memory _liq, ILBPair _LBPair)
         private
         ensure(_liq.deadline)
-        returns (uint256[] memory depositIds, uint256[] memory liquidityMinted)
+        returns (ILBPair.LiquidityDeposit[] memory deposits, uint256[] memory liquidityMinted)
     {
         unchecked {
-            if (_liq.deltaIds.length != _liq.distributionX.length && _liq.deltaIds.length != _liq.distributionY.length)
-                revert LBRouter__LengthsMismatch();
-
             if (_liq.activeIdDesired > type(uint24).max && _liq.idSlippage > type(uint24).max)
                 revert LBRouter__IdDesiredOverflows(_liq.activeIdDesired, _liq.idSlippage);
 
@@ -675,22 +667,17 @@ contract LBRouter is ILBRouter {
                 _liq.activeIdDesired + _liq.idSlippage < _activeId || _activeId + _liq.idSlippage < _liq.activeIdDesired
             ) revert LBRouter__IdSlippageCaught(_liq.activeIdDesired, _liq.idSlippage, _activeId);
 
-            depositIds = new uint256[](_liq.deltaIds.length);
-            for (uint256 i; i < depositIds.length; ++i) {
-                int256 _id = int256(_activeId) + _liq.deltaIds[i];
+            deposits = _liq.deposits;
+            for (uint256 i; i < deposits.length; ++i) {
+                int256 _id = int256(_activeId) + deposits[i].relativeId;
                 if (_id < 0 || uint256(_id) > type(uint24).max) revert LBRouter__IdOverflows(_id);
-                depositIds[i] = uint256(_id);
+                deposits[i].id = uint256(_id);
             }
 
             uint256 _amountXAdded;
             uint256 _amountYAdded;
 
-            (_amountXAdded, _amountYAdded, liquidityMinted) = _LBPair.mint(
-                depositIds,
-                _liq.distributionX,
-                _liq.distributionY,
-                _liq.to
-            );
+            (_amountXAdded, _amountYAdded, liquidityMinted) = _LBPair.mint(deposits, _liq.to);
 
             if (_amountXAdded < _liq.amountXMin || _amountYAdded < _liq.amountYMin)
                 revert LBRouter__AmountSlippageCaught(_liq.amountXMin, _amountXAdded, _liq.amountYMin, _amountYAdded);
@@ -738,8 +725,7 @@ contract LBRouter is ILBRouter {
     /// @param _LBPair The address of the LBPair
     /// @param _amountXMin The min amount to receive of token X
     /// @param _amountYMin The min amount to receive of token Y
-    /// @param _ids The list of ids to burn
-    /// @param _amounts The list of amounts to burn of each id in `_ids`
+    /// @param _liquidityRemovals LBToken amounts that are removed
     /// @param _to The address of the recipient
     /// @param amountX The amount of token X sent by the pair
     /// @param amountY The amount of token Y sent by the pair
@@ -747,12 +733,11 @@ contract LBRouter is ILBRouter {
         ILBPair _LBPair,
         uint256 _amountXMin,
         uint256 _amountYMin,
-        uint256[] memory _ids,
-        uint256[] memory _amounts,
+        ILBToken.LiquidityAmount[] memory _liquidityRemovals,
         address _to
     ) private returns (uint256 amountX, uint256 amountY) {
-        ILBToken(address(_LBPair)).safeBatchTransferFrom(msg.sender, address(_LBPair), _ids, _amounts);
-        (amountX, amountY) = _LBPair.burn(_ids, _amounts, _to);
+        ILBToken(address(_LBPair)).safeBatchTransferFrom(msg.sender, address(_LBPair), _liquidityRemovals);
+        (amountX, amountY) = _LBPair.burn(_liquidityRemovals, _to);
         if (amountX < _amountXMin || amountY < _amountYMin)
             revert LBRouter__AmountSlippageCaught(_amountXMin, amountX, _amountYMin, amountY);
     }

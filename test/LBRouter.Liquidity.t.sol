@@ -26,7 +26,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint24 _numberBins = 9;
         uint24 _gap = 2;
 
-        (int256[] memory _deltaIds, , , uint256 amountXIn) = addLiquidityFromRouter(
+        (ILBPair.LiquidityDeposit[] memory deposits, uint256 amountXIn) = addLiquidityFromRouter(
             token6D,
             token18D,
             _amountYIn,
@@ -36,11 +36,10 @@ contract LiquidityBinRouterTest is TestHelper {
             DEFAULT_BIN_STEP
         );
 
-        uint256[] memory amounts = new uint256[](_numberBins);
-        uint256[] memory ids = new uint256[](_numberBins);
+        ILBToken.LiquidityAmount[] memory liquidityRemovals = new ILBToken.LiquidityAmount[](_numberBins);
         for (uint256 i; i < _numberBins; i++) {
-            ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            amounts[i] = pair.balanceOf(DEV, ids[i]);
+            liquidityRemovals[i].id = uint256(int256(uint256(ID_ONE)) + deposits[i].relativeId);
+            liquidityRemovals[i].amount = pair.balanceOf(DEV, liquidityRemovals[i].id);
         }
 
         pair.setApprovalForAll(address(router), true);
@@ -51,8 +50,7 @@ contract LiquidityBinRouterTest is TestHelper {
             DEFAULT_BIN_STEP,
             amountXIn - 10,
             _amountYIn,
-            ids,
-            amounts,
+            liquidityRemovals,
             DEV,
             block.timestamp
         );
@@ -67,7 +65,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 _amountAVAXIn = 100e18;
         uint24 _gap = 2;
 
-        (int256[] memory _deltaIds, , , uint256 amountTokenIn) = addLiquidityFromRouter(
+        (ILBPair.LiquidityDeposit[] memory deposits, uint256 amountTokenIn) = addLiquidityFromRouter(
             token6D,
             ERC20MockDecimals(address(wavax)),
             _amountAVAXIn,
@@ -77,11 +75,10 @@ contract LiquidityBinRouterTest is TestHelper {
             DEFAULT_BIN_STEP
         );
 
-        uint256[] memory amounts = new uint256[](9);
-        uint256[] memory ids = new uint256[](9);
+        ILBToken.LiquidityAmount[] memory liquidityRemovals = new ILBToken.LiquidityAmount[](9);
         for (uint256 i; i < 9; i++) {
-            ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            amounts[i] = pair.balanceOf(DEV, ids[i]);
+            liquidityRemovals[i].id = uint256(int256(uint256(ID_ONE)) + deposits[i].relativeId);
+            liquidityRemovals[i].amount = pair.balanceOf(DEV, liquidityRemovals[i].id);
         }
 
         pair.setApprovalForAll(address(router), true);
@@ -93,8 +90,7 @@ contract LiquidityBinRouterTest is TestHelper {
                 DEFAULT_BIN_STEP,
                 amountTokenIn - 10,
                 _amountAVAXIn,
-                ids,
-                amounts,
+                liquidityRemovals,
                 DEV,
                 block.timestamp
             );
@@ -110,7 +106,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 _amountAVAXIn = 100e18;
         uint24 _gap = 2;
 
-        (int256[] memory _deltaIds, , , uint256 amountTokenIn) = addLiquidityFromRouter(
+        (ILBPair.LiquidityDeposit[] memory deposits, uint256 amountTokenIn) = addLiquidityFromRouter(
             ERC20MockDecimals(address(taxToken)),
             ERC20MockDecimals(address(wavax)),
             _amountAVAXIn,
@@ -120,11 +116,10 @@ contract LiquidityBinRouterTest is TestHelper {
             DEFAULT_BIN_STEP
         );
 
-        uint256[] memory amounts = new uint256[](9);
-        uint256[] memory ids = new uint256[](9);
+        ILBToken.LiquidityAmount[] memory liquidityRemovals = new ILBToken.LiquidityAmount[](9);
         for (uint256 i; i < 9; i++) {
-            ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            amounts[i] = pair.balanceOf(DEV, ids[i]);
+            liquidityRemovals[i].id = uint256(int256(uint256(ID_ONE)) + deposits[i].relativeId);
+            liquidityRemovals[i].amount = pair.balanceOf(DEV, liquidityRemovals[i].id);
         }
 
         pair.setApprovalForAll(address(router), true);
@@ -135,8 +130,7 @@ contract LiquidityBinRouterTest is TestHelper {
             DEFAULT_BIN_STEP,
             amountTokenIn / 2 - 10,
             _amountAVAXIn,
-            ids,
-            amounts,
+            liquidityRemovals,
             DEV,
             block.timestamp
         );
@@ -147,8 +141,7 @@ contract LiquidityBinRouterTest is TestHelper {
             DEFAULT_BIN_STEP,
             amountTokenIn / 2 - 10,
             _amountAVAXIn,
-            ids,
-            amounts,
+            liquidityRemovals,
             DEV,
             block.timestamp
         );
@@ -192,12 +185,12 @@ contract LiquidityBinRouterTest is TestHelper {
 
         addLiquidityFromRouter(token6D, token18D, _amountYIn, _startId, _numberBins, _gap, DEFAULT_BIN_STEP);
 
-        (
-            int256[] memory _deltaIds,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
-            uint256 amountXIn
-        ) = spreadLiquidityForRouter(_amountYIn, _startId, _numberBins, _gap);
+        (ILBPair.LiquidityDeposit[] memory deposits, uint256 amountXIn) = spreadLiquidityForRouter(
+            _amountYIn,
+            _startId,
+            _numberBins,
+            _gap
+        );
 
         uint256 amountXOutForSwap = 30e18;
         uint256 amountYInForSwap = router.getSwapIn(pair, amountXOutForSwap, false);
@@ -219,52 +212,7 @@ contract LiquidityBinRouterTest is TestHelper {
             0,
             ID_ONE,
             0,
-            _deltaIds,
-            _distributionX,
-            _distributionY,
-            DEV,
-            block.timestamp
-        );
-
-        router.addLiquidity(_liquidityParameters);
-    }
-
-    function testFailForLengthsMismatch() public {
-        uint256 _amountYIn = 100e18;
-        uint24 _startId = ID_ONE;
-        uint24 _numberBins = 9;
-        uint24 _gap = 2;
-
-        (
-            int256[] memory _deltaIds,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
-            uint256 amountXIn
-        ) = spreadLiquidityForRouter(_amountYIn, _startId, _numberBins, _gap);
-
-        int256[] memory _wrongLengthDeltaIds = new int256[](_numberBins - 1);
-        for (uint256 i; i < _numberBins - 1; i++) {
-            _wrongLengthDeltaIds[i] = _deltaIds[i];
-        }
-
-        token6D.mint(DEV, amountXIn);
-        token6D.approve(address(router), amountXIn);
-        token18D.mint(DEV, _amountYIn);
-        token18D.approve(address(router), _amountYIn);
-
-        ILBRouter.LiquidityParameters memory _liquidityParameters = ILBRouter.LiquidityParameters(
-            token6D,
-            token18D,
-            DEFAULT_BIN_STEP,
-            amountXIn,
-            _amountYIn,
-            0,
-            0,
-            ID_ONE,
-            0,
-            _wrongLengthDeltaIds,
-            _distributionX,
-            _distributionY,
+            deposits,
             DEV,
             block.timestamp
         );

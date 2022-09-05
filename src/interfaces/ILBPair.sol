@@ -62,6 +62,16 @@ interface ILBPair {
         uint128 tokenY;
     }
 
+    /// @dev Structure to minting informations:
+    /// - amountXIn: The amount of token X sent
+    /// - amountYIn: The amount of token Y sent
+    /// - amountXAddedToPair: The amount of token X that have been actually added to the pair
+    /// - amountYAddedToPair: The amount of token Y that have been actually added to the pair
+    /// - totalDistributionX: Total distribution of token X. Should be 1e18 (100%) or 0 (0%)
+    /// - totalDistributionY: Total distribution of token Y. Should be 1e18 (100%) or 0 (0%)
+    /// - id: Id of the current working bin when looping on the distribution array
+    /// - amountX: The amount of token X deposited in the current bin
+    /// - amountY: The amount of token Y deposited in the current bin
     struct MintInfo {
         uint256 amountXIn;
         uint256 amountYIn;

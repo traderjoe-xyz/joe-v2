@@ -7,7 +7,7 @@ import "./IWAVAX.sol";
 import "./IJoeFactory.sol";
 
 interface ILBRouter {
-    /// - The liquidity parameters, such as:
+    /// @dev The liquidity parameters, such as:
     /// - tokenX: The address of token X
     /// - tokenY: The address of token Y
     /// - binStep: The bin step of the pair

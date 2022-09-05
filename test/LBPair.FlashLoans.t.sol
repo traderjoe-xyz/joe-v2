@@ -23,7 +23,7 @@ contract LiquidityBinPairFlashLoansTest is TestHelper {
     }
 
     function testFlashloan() public {
-        (uint256[] memory _ids, , , ) = addLiquidity(100e18, ID_ONE, 9, 5);
+        (ILBPair.LiquidityDeposit[] memory deposits, ) = addLiquidity(100e18, ID_ONE, 9, 5);
         uint256 amountXBorrowed = 10e18;
         uint256 amountYBorrowed = 10e18;
 
@@ -35,6 +35,11 @@ contract LiquidityBinPairFlashLoansTest is TestHelper {
         emit CalldataTransmitted();
 
         borrower.flashBorrow(amountXBorrowed, amountYBorrowed);
+
+        uint256[] memory _ids = new uint256[](9);
+        for (uint256 i; i < 9; i++) {
+            _ids[i] = deposits[i].id;
+        }
 
         ILBPair.Fees memory feesForDev = pair.pendingFees(DEV, _ids);
         assertGt(feesForDev.tokenX, 0, "DEV should have fees on token X");

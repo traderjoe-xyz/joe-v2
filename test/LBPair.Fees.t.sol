@@ -61,18 +61,21 @@ contract LiquidityBinPairFeesTest is TestHelper {
         uint256 amountYForSwap = 1e6;
         uint24 startId = ID_ONE;
 
-        (uint256[] memory _ids, , , ) = addLiquidity(amountYInLiquidity, startId, 5, 0);
+        (ILBPair.LiquidityDeposit[] memory deposits, ) = addLiquidity(amountYInLiquidity, startId, 5, 0);
 
         token18D.mint(address(pair), amountYForSwap);
 
         pair.swap(false, ALICE);
 
-        uint256[] memory amounts = new uint256[](5);
+        ILBToken.LiquidityAmount[] memory liquidityAmounts = new ILBToken.LiquidityAmount[](5);
+        uint256[] memory _ids = new uint256[](5);
         for (uint256 i; i < 5; i++) {
-            amounts[i] = pair.balanceOf(DEV, _ids[i]);
+            liquidityAmounts[i].id = deposits[i].id;
+            liquidityAmounts[i].amount = pair.balanceOf(DEV, liquidityAmounts[i].id);
+            _ids[i] = deposits[i].id;
         }
 
-        pair.safeBatchTransferFrom(DEV, BOB, _ids, amounts);
+        pair.safeBatchTransferFrom(DEV, BOB, liquidityAmounts);
 
         token18D.mint(address(pair), amountYForSwap);
         pair.swap(false, ALICE);

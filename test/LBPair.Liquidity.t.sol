@@ -71,7 +71,7 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
 
         uint256 amountYIn = 1e12;
 
-        (, , , uint256 amountXIn) = addLiquidity(amountYIn, startId, 3, 0);
+        (, uint256 amountXIn) = addLiquidity(amountYIn, startId, 3, 0);
 
         console2.log("startId", startId);
 
@@ -97,31 +97,29 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
     function testBurnLiquidity() public {
         pair = createLBPairDefaultFees(token6D, token18D);
         uint256 amount1In = 3e12;
-        (
-            uint256[] memory _ids,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
-            uint256 amount0In
-        ) = spreadLiquidity(amount1In * 2, ID_ONE, 5, 0);
+        (ILBPair.LiquidityDeposit[] memory deposits, uint256 amount0In) = spreadLiquidity(amount1In * 2, ID_ONE, 5, 0);
 
         token6D.mint(address(pair), amount0In);
         token18D.mint(address(pair), amount1In);
 
-        pair.mint(_ids, _distributionX, _distributionY, ALICE);
+        pair.mint(deposits, ALICE);
 
         token6D.mint(address(pair), amount0In);
         token18D.mint(address(pair), amount1In);
 
-        pair.mint(_ids, _distributionX, _distributionY, BOB);
+        pair.mint(deposits, BOB);
 
-        uint256[] memory amounts = new uint256[](5);
+        ILBToken.LiquidityAmount[] memory liquidityAmounts = new ILBToken.LiquidityAmount[](5);
+        uint256[] memory _ids = new uint256[](5);
         for (uint256 i; i < 5; i++) {
-            amounts[i] = pair.balanceOf(BOB, _ids[i]);
+            liquidityAmounts[i].id = deposits[i].id;
+            liquidityAmounts[i].amount = pair.balanceOf(BOB, liquidityAmounts[i].id);
+            _ids[i] = liquidityAmounts[i].id;
         }
 
         vm.startPrank(BOB);
-        pair.safeBatchTransferFrom(BOB, address(pair), _ids, amounts);
-        pair.burn(_ids, amounts, BOB);
+        pair.safeBatchTransferFrom(BOB, address(pair), liquidityAmounts);
+        pair.burn(liquidityAmounts, BOB);
         pair.collectFees(BOB, _ids); // the excess token were sent to fees, so they need to be claimed
         vm.stopPrank();
 

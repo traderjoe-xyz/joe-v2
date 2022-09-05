@@ -547,6 +547,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                             );
 
                             _mintInfo.amountX -= _fees.total;
+                            _mintInfo.activeFeeX += _fees.total;
 
                             _bin.updateFees(_pair.feesX, _fees, true, _totalSupply);
                         } else if (_mintInfo.amountY > _receivedY) {
@@ -555,6 +556,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                             );
 
                             _mintInfo.amountY -= _fees.total;
+                            _mintInfo.activeFeeY += _fees.total;
 
                             _bin.updateFees(_pair.feesY, _fees, false, _totalSupply);
                         }
@@ -583,11 +585,11 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             _pairInformation = _pair;
 
             // If user sent too much tokens, We send them back the excess
-            if (_mintInfo.amountXIn > _mintInfo.amountXAddedToPair) {
-                tokenX.safeTransfer(_to, _mintInfo.amountXIn - _mintInfo.amountXAddedToPair);
+            if (_mintInfo.amountXIn > _mintInfo.amountXAddedToPair + _mintInfo.activeFeeX) {
+                tokenX.safeTransfer(_to, _mintInfo.amountXIn - (_mintInfo.amountXAddedToPair + _mintInfo.activeFeeX));
             }
-            if (_mintInfo.amountYIn > _mintInfo.amountYAddedToPair) {
-                tokenY.safeTransfer(_to, _mintInfo.amountYIn - _mintInfo.amountYAddedToPair);
+            if (_mintInfo.amountYIn > _mintInfo.amountYAddedToPair + _mintInfo.activeFeeY) {
+                tokenY.safeTransfer(_to, _mintInfo.amountYIn - (_mintInfo.amountYAddedToPair + _mintInfo.activeFeeY));
             }
 
             emit Mint(

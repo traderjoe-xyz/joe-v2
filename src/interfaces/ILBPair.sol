@@ -67,6 +67,8 @@ interface ILBPair {
         uint256 amountYIn;
         uint256 amountXAddedToPair;
         uint256 amountYAddedToPair;
+        uint256 activeFeeX;
+        uint256 activeFeeY;
         uint256 totalDistributionX;
         uint256 totalDistributionY;
         uint256 id;

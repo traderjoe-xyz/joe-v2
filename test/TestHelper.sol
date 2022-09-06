@@ -267,3 +267,53 @@ abstract contract TestHelper is Test {
             }
         }
     }
+
+    function prepareLiquidityParameters(
+        ERC20MockDecimals _tokenX,
+        ERC20MockDecimals _tokenY,
+        uint256 _amountYIn,
+        uint24 _startId,
+        uint24 _numberBins,
+        uint24 _gap,
+        uint16 _binStep
+    ) internal returns (ILBRouter.LiquidityParameters memory) {
+        int256[] memory _deltaIds;
+        uint256[] memory _distributionX;
+        uint256[] memory _distributionY;
+        uint256 amountXIn;
+        (_deltaIds, _distributionX, _distributionY, amountXIn) = spreadLiquidityForRouter(
+            _amountYIn,
+            _startId,
+            _numberBins,
+            _gap
+        );
+
+        _tokenX.mint(DEV, amountXIn);
+        _tokenX.approve(address(router), amountXIn);
+
+        if (address(_tokenY) == address(wavax)) {
+            vm.deal(DEV, _amountYIn);
+        } else {
+            _tokenY.approve(address(router), _amountYIn);
+            _tokenY.mint(DEV, _amountYIn);
+        }
+
+        return
+            ILBRouter.LiquidityParameters(
+                _tokenX,
+                _tokenY,
+                _binStep,
+                amountXIn,
+                _amountYIn,
+                0, //possible slippage = max
+                0, //possible slippage = max
+                ID_ONE,
+                ID_ONE, //possible slippage = max
+                _deltaIds,
+                _distributionX,
+                _distributionY,
+                DEV,
+                block.timestamp
+            );
+    }
+}

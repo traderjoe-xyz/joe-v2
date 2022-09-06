@@ -56,7 +56,7 @@ library Math128x128 {
             // Calculate the fractional part via the iterative approximation.
             // The "delta >>= 1" part is equivalent to "delta /= 2", but shifting bits is faster.
             for (int256 delta = int256(1 << (Constants.SCALE_OFFSET - 1)); delta > 0; delta >>= 1) {
-                y = y.mulShift(y, Constants.SCALE_OFFSET, true);
+                y = y.mulShiftRoundDown(y, Constants.SCALE_OFFSET);
 
                 // Is y^2 > 2 and so in the range [2,4)?
                 if (y >= 1 << (Constants.SCALE_OFFSET + 1)) {

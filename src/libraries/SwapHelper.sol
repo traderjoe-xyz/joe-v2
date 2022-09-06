@@ -47,10 +47,10 @@ library SwapHelper {
             uint256 _maxAmountInToBin;
             if (swapForY) {
                 _reserve = bin.reserveY;
-                _maxAmountInToBin = _reserve.shiftDiv(Constants.SCALE_OFFSET, _price, false);
+                _maxAmountInToBin = _reserve.shiftDivRoundUp(Constants.SCALE_OFFSET, _price);
             } else {
                 _reserve = bin.reserveX;
-                _maxAmountInToBin = _price.mulShift(_reserve, Constants.SCALE_OFFSET, false);
+                _maxAmountInToBin = _price.mulShiftRoundUp(_reserve, Constants.SCALE_OFFSET);
             }
 
             fp.updateVolatilityAccumulated(activeId);
@@ -63,8 +63,8 @@ library SwapHelper {
                 fees = fp.getFeesDistribution(fp.getFeesFrom(amountIn));
                 amountInToBin = amountIn.sub(fees.total);
                 amountOutOfBin = swapForY
-                    ? _price.mulShift(amountInToBin, Constants.SCALE_OFFSET, true)
-                    : amountInToBin.shiftDiv(Constants.SCALE_OFFSET, _price, true);
+                    ? _price.mulShiftRoundDown(amountInToBin, Constants.SCALE_OFFSET)
+                    : amountInToBin.shiftDivRoundDown(Constants.SCALE_OFFSET, _price);
                 // Safety check in case rounding returns a higher value than expected
                 if (amountOutOfBin > _reserve) amountOutOfBin = _reserve;
             }

@@ -111,8 +111,8 @@ contract LBRouter is ILBRouter {
                 _amountOutOfBin = _amountOut > _reserve ? _reserve : _amountOut;
 
                 uint256 _amountInToBin = _swapForY
-                    ? _amountOutOfBin.shiftDiv(Constants.SCALE_OFFSET, _price, false)
-                    : _price.mulShift(_amountOutOfBin, Constants.SCALE_OFFSET, false);
+                    ? _amountOutOfBin.shiftDivRoundUp(Constants.SCALE_OFFSET, _price)
+                    : _price.mulShiftRoundUp(_amountOutOfBin, Constants.SCALE_OFFSET);
 
                 // We update the fee, but we don't store the new volatility reference, volatility accumulated and indexRef to not penalize traders
                 _fp.updateVolatilityAccumulated(_activeId);

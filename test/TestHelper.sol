@@ -190,9 +190,6 @@ abstract contract TestHelper is Test {
             _gap
         );
 
-        _tokenX.mint(DEV, amountXIn);
-        _tokenX.approve(address(router), amountXIn);
-
         ILBRouter.LiquidityParameters memory _liquidityParameters = ILBRouter.LiquidityParameters(
             _tokenX,
             _tokenY,
@@ -212,8 +209,17 @@ abstract contract TestHelper is Test {
 
         if (address(_tokenY) == address(wavax)) {
             vm.deal(DEV, _amountYIn);
+            _tokenX.mint(DEV, amountXIn);
+            _tokenX.approve(address(router), amountXIn);
             router.addLiquidityAVAX{value: _amountYIn}(_liquidityParameters);
+        } else if (address(_tokenX) == address(wavax)) {
+            vm.deal(DEV, amountXIn);
+            _tokenY.mint(DEV, _amountYIn);
+            _tokenY.approve(address(router), _amountYIn);
+            router.addLiquidityAVAX{value: amountXIn}(_liquidityParameters);
         } else {
+            _tokenX.approve(address(router), amountXIn);
+            _tokenX.mint(DEV, amountXIn);
             _tokenY.approve(address(router), _amountYIn);
             _tokenY.mint(DEV, _amountYIn);
             router.addLiquidity(_liquidityParameters);
@@ -261,4 +267,3 @@ abstract contract TestHelper is Test {
             }
         }
     }
-}

@@ -7,7 +7,7 @@ contract LiquidityBinRouterTest is TestHelper {
     function setUp() public {
         token6D = new ERC20MockDecimals(6);
         token18D = new ERC20MockDecimals(18);
-
+        wavax = new WAVAX();
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
         factory.setLBPairImplementation(_LBPairImplementation);
@@ -44,5 +44,258 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(feeParameters.binStep, DEFAULT_BIN_STEP);
         assertEq(feeParameters.baseFactor, DEFAULT_BASE_FACTOR);
         assertEq(feeParameters.protocolShare, DEFAULT_PROTOCOL_SHARE);
+    }
+
+    function testModifierEnsure() public {
+        uint256[] memory defaultUintArray = new uint256[](2);
+        IERC20[] memory defaultIERCArray = new IERC20[](2);
+
+        uint256 wrongDeadline = block.timestamp - 1;
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
+        router.removeLiquidity(
+            token6D,
+            token18D,
+            DEFAULT_BIN_STEP,
+            1,
+            1,
+            defaultUintArray,
+            defaultUintArray,
+            DEV,
+            wrongDeadline
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
+        router.removeLiquidityAVAX(
+            token6D,
+            DEFAULT_BIN_STEP,
+            1,
+            1,
+            defaultUintArray,
+            defaultUintArray,
+            DEV,
+            wrongDeadline
+        );
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
+        router.swapExactTokensForTokens(1, 1, defaultUintArray, defaultIERCArray, DEV, wrongDeadline);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
+        router.swapExactTokensForAVAX(1, 1, defaultUintArray, defaultIERCArray, DEV, wrongDeadline);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
+        router.swapExactAVAXForTokens(1, defaultUintArray, defaultIERCArray, DEV, wrongDeadline);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
+        router.swapTokensForExactTokens(1, 1, defaultUintArray, defaultIERCArray, DEV, wrongDeadline);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
+        router.swapTokensForExactAVAX(1, 1, defaultUintArray, defaultIERCArray, DEV, wrongDeadline);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
+        router.swapAVAXForExactTokens(1, defaultUintArray, defaultIERCArray, DEV, wrongDeadline);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
+        router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            1,
+            1,
+            defaultUintArray,
+            defaultIERCArray,
+            DEV,
+            wrongDeadline
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
+        router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+            1,
+            1,
+            defaultUintArray,
+            defaultIERCArray,
+            DEV,
+            wrongDeadline
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
+        router.swapExactAVAXForTokensSupportingFeeOnTransferTokens(
+            1,
+            defaultUintArray,
+            defaultIERCArray,
+            DEV,
+            wrongDeadline
+        );
+
+        //TODO _addLiquidity private
+    }
+
+    function testModifieronlyFactoryOwner() public {
+        vm.prank(ALICE);
+        vm.expectRevert(LBRouter__NotFactoryOwner.selector);
+        router.sweep(token6D, address(0), 1);
+    }
+
+    function testModifierVerifyInputs() public {
+        IERC20[] memory defaultIERCArray = new IERC20[](1);
+        uint256[] memory pairBinStepsZeroLength = new uint256[](0);
+        IERC20[] memory mismatchedIERCArray = new IERC20[](3);
+        uint256[] memory mismatchedpairBinSteps = new uint256[](4);
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapExactTokensForTokens(1, 1, pairBinStepsZeroLength, defaultIERCArray, DEV, block.timestamp);
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapExactTokensForTokens(1, 1, mismatchedpairBinSteps, mismatchedIERCArray, DEV, block.timestamp);
+
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapExactTokensForAVAX(1, 1, pairBinStepsZeroLength, defaultIERCArray, DEV, block.timestamp);
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapExactTokensForAVAX(1, 1, mismatchedpairBinSteps, mismatchedIERCArray, DEV, block.timestamp);
+
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapExactAVAXForTokens(1, pairBinStepsZeroLength, defaultIERCArray, DEV, block.timestamp);
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapExactAVAXForTokens(1, mismatchedpairBinSteps, mismatchedIERCArray, DEV, block.timestamp);
+
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapTokensForExactTokens(1, 1, pairBinStepsZeroLength, defaultIERCArray, DEV, block.timestamp);
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapTokensForExactTokens(1, 1, mismatchedpairBinSteps, mismatchedIERCArray, DEV, block.timestamp);
+
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapTokensForExactAVAX(1, 1, pairBinStepsZeroLength, defaultIERCArray, DEV, block.timestamp);
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapTokensForExactAVAX(1, 1, mismatchedpairBinSteps, mismatchedIERCArray, DEV, block.timestamp);
+
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapAVAXForExactTokens(1, pairBinStepsZeroLength, defaultIERCArray, DEV, block.timestamp);
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapAVAXForExactTokens(1, mismatchedpairBinSteps, mismatchedIERCArray, DEV, block.timestamp);
+
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            1,
+            1,
+            pairBinStepsZeroLength,
+            defaultIERCArray,
+            DEV,
+            block.timestamp
+        );
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            1,
+            1,
+            mismatchedpairBinSteps,
+            mismatchedIERCArray,
+            DEV,
+            block.timestamp
+        );
+
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+            1,
+            1,
+            pairBinStepsZeroLength,
+            defaultIERCArray,
+            DEV,
+            block.timestamp
+        );
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+            1,
+            1,
+            mismatchedpairBinSteps,
+            mismatchedIERCArray,
+            DEV,
+            block.timestamp
+        );
+
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapExactAVAXForTokensSupportingFeeOnTransferTokens(
+            1,
+            pairBinStepsZeroLength,
+            defaultIERCArray,
+            DEV,
+            block.timestamp
+        );
+
+        vm.expectRevert(LBRouter__LengthsMismatch.selector);
+        router.swapExactAVAXForTokensSupportingFeeOnTransferTokens(
+            1,
+            mismatchedpairBinSteps,
+            mismatchedIERCArray,
+            DEV,
+            block.timestamp
+        );
+    }
+
+    function testEnsureModifierLiquidity() public {
+        uint256 wrongDeadline = block.timestamp - 1;
+        uint256 _amountYIn = 1e18;
+        uint24 _numberBins = 11;
+        uint24 _gap = 2;
+        uint16 _binStep = DEFAULT_BIN_STEP;
+        int256[] memory _deltaIds;
+        uint256[] memory _distributionX;
+        uint256[] memory _distributionY;
+        uint256 amountXIn;
+        factory.setFactoryLocked(false);
+        router.createLBPair(token6D, token18D, ID_ONE, DEFAULT_BIN_STEP);
+        router.createLBPair(token6D, wavax, ID_ONE, DEFAULT_BIN_STEP);
+
+        (_deltaIds, _distributionX, _distributionY, amountXIn) = spreadLiquidityForRouter(
+            _amountYIn,
+            ID_ONE,
+            _numberBins,
+            _gap
+        );
+
+        token6D.mint(DEV, amountXIn);
+        token6D.approve(address(router), amountXIn);
+        token18D.mint(DEV, _amountYIn);
+        token18D.approve(address(router), _amountYIn);
+
+        ILBRouter.LiquidityParameters memory _liquidityParameters = ILBRouter.LiquidityParameters(
+            token6D,
+            token18D,
+            _binStep,
+            amountXIn,
+            _amountYIn,
+            0,
+            0,
+            ID_ONE,
+            ID_ONE,
+            _deltaIds,
+            _distributionX,
+            _distributionY,
+            DEV,
+            wrongDeadline
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
+        router.addLiquidity(_liquidityParameters);
+    }
+
+    function testGetIdFromPrice() public {
+        pair = createLBPairDefaultFees(token6D, token18D);
+        uint256 price;
+
+        price = router.getPriceFromId(pair, ID_ONE);
+        assertEq(price, 340282366920938463463374607431768211456);
+
+        price = router.getPriceFromId(pair, ID_ONE - 10000);
+        assertEq(price, 4875582648561453899431769403);
+
+        price = router.getPriceFromId(pair, ID_ONE + 10000);
+        assertEq(price, 23749384962529715407923990466761537977856189636583);
+    }
+
+    function testGetPriceFromId() public {
+        pair = createLBPairDefaultFees(token6D, token18D);
+        uint24 id;
+
+        id = router.getIdFromPrice(pair, 340282366920938463463374607431768211456);
+        assertEq(id, ID_ONE);
+
+        id = router.getIdFromPrice(pair, 4875582648561453899431769403);
+        assertEq(id, ID_ONE - 10000);
+
+        id = router.getIdFromPrice(pair, 23749384962529715407923990466761537977856189636583);
+        assertEq(id, ID_ONE + 10000);
     }
 }

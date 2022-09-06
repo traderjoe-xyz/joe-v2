@@ -528,7 +528,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                     if (_mintInfo.id == _pair.activeId) {
                         uint256 _totalSupply = totalSupply(_mintInfo.id);
 
-                        uint256 _userL = _price.mulShift(_mintInfo.amountX, Constants.SCALE_OFFSET, true) +
+                        uint256 _userL = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) +
                             _mintInfo.amountY;
 
                         uint256 _receivedX = (_userL * (_bin.reserveX + _mintInfo.amountX)) / (_totalSupply + _userL);
@@ -562,7 +562,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                     } else if (_mintInfo.amountY != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
                 } else if (_mintInfo.amountX != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
 
-                uint256 _liquidity = _price.mulShift(_mintInfo.amountX, Constants.SCALE_OFFSET, true) +
+                uint256 _liquidity = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) +
                     _mintInfo.amountY;
 
                 if (_liquidity == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
@@ -814,10 +814,10 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     ) private view {
         Debts memory _debts = _accruedDebts[_account][_id];
 
-        _fees.tokenX += (_bin.accTokenXPerShare.mulShift(_balance, Constants.SCALE_OFFSET, true) - _debts.debtX)
+        _fees.tokenX += (_bin.accTokenXPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET) - _debts.debtX)
             .safe128();
 
-        _fees.tokenY += (_bin.accTokenYPerShare.mulShift(_balance, Constants.SCALE_OFFSET, true) - _debts.debtY)
+        _fees.tokenY += (_bin.accTokenYPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET) - _debts.debtY)
             .safe128();
     }
 
@@ -832,8 +832,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint256 _id,
         uint256 _balance
     ) private {
-        uint256 _debtX = _bin.accTokenXPerShare.mulShift(_balance, Constants.SCALE_OFFSET, true);
-        uint256 _debtY = _bin.accTokenYPerShare.mulShift(_balance, Constants.SCALE_OFFSET, true);
+        uint256 _debtX = _bin.accTokenXPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET);
+        uint256 _debtY = _bin.accTokenYPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET);
 
         _accruedDebts[_account][_id].debtX = _debtX;
         _accruedDebts[_account][_id].debtY = _debtY;

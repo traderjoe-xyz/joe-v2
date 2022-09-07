@@ -248,6 +248,19 @@ contract LBFactory is PendingOwnable, ILBFactory {
         }
 
         emit LBPairCreated(_tokenX, _tokenY, _binStep, _LBPair, allLBPairs.length - 1);
+
+        emit FeeParametersSet(
+            msg.sender,
+            _LBPair,
+            _binStep,
+            _preset.decode(type(uint16).max, 16),
+            _preset.decode(type(uint16).max, 32),
+            _preset.decode(type(uint16).max, 48),
+            _preset.decode(type(uint16).max, 64),
+            _preset.decode(type(uint24).max, 80),
+            _preset.decode(type(uint16).max, 104),
+            _preset.decode(type(uint24).max, 120)
+        );
     }
 
     /// @notice Function to set the blacklist state of a pair, it will make the pair unusable by the router

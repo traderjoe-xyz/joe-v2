@@ -67,12 +67,9 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         pair.swap(false, ALICE);
 
-        // ILBToken.LiquidityAmount[] memory liquidityAmounts = new ILBToken.LiquidityAmount[](5);
         uint256[] memory _ids = new uint256[](5);
         uint256[] memory _amounts = new uint256[](5);
         for (uint256 i; i < 5; i++) {
-            // liquidityAmounts[i].id = deposits[i].id;
-            // liquidityAmounts[i].amount = pair.balanceOf(DEV, liquidityAmounts[i].id);
             _ids[i] = deposits[i].id;
             _amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }

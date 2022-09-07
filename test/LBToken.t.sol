@@ -114,16 +114,19 @@ contract LiquidityBinTokenTest is TestHelper {
         uint256 amountIn = 1e18;
         (ILBPair.LiquidityDeposit[] memory deposits, ) = addLiquidity(amountIn, ID_ONE, binAmount, 0);
 
-        uint256[] memory amounts = new uint256[](binAmount - 1);
-        uint256[] memory _ids = new uint256[](binAmount - 1);
+        uint256[] memory _amounts = new uint256[](binAmount - 1);
+        uint256[] memory _ids = new uint256[](binAmount);
         for (uint256 i; i < binAmount - 1; i++) {
             _ids[i] = deposits[i].id;
+            _amounts[i] = pair.balanceOf(DEV, _ids[i]);
+
             assertEq(pair.userPositionAtIndex(DEV, i), _ids[i]);
-            amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
 
-        vm.expectRevert(abi.encodeWithSelector(LBToken__LengthMismatch.selector, _ids.length, amounts.length));
-        pair.safeBatchTransferFrom(DEV, ALICE, _ids, amounts);
+        _ids[binAmount - 1] = deposits[10].id;
+
+        vm.expectRevert(abi.encodeWithSelector(LBToken__LengthMismatch.selector, _ids.length, _amounts.length));
+        pair.safeBatchTransferFrom(DEV, ALICE, _ids, _amounts);
     }
 
     function testSelfApprovalReverts() public {

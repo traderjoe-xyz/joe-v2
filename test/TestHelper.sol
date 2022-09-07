@@ -177,11 +177,11 @@ abstract contract TestHelper is Test {
 
         if (address(_tokenY) == address(wavax)) {
             vm.deal(DEV, _amountYIn);
-            router.addLiquidityAVAX{value: _amountYIn}(_liquidityParameters);
+            (deposits, ) = router.addLiquidityAVAX{value: _amountYIn}(_liquidityParameters);
         } else {
             _tokenY.approve(address(router), _amountYIn);
             _tokenY.mint(DEV, _amountYIn);
-            router.addLiquidity(_liquidityParameters);
+            (deposits, ) = router.addLiquidity(_liquidityParameters);
         }
     }
 

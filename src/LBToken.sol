@@ -114,6 +114,7 @@ contract LBToken is ILBToken {
         address _spender = msg.sender;
         if (!_isApprovedForAll(_from, _spender)) revert LBToken__SpenderNotApproved(_from, _spender);
 
+        if (_from == address(0) || _to == address(0)) revert LBToken__TransferFromOrToAddress0();
         if (_ids.length != _amounts.length) revert LBToken__LengthMismatch(_ids.length, _amounts.length);
 
         for (uint256 i; i < _ids.length; ++i) {

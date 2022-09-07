@@ -498,30 +498,20 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 _mintInfo.id = _ids[i].safe24();
                 Bin memory _bin = _bins[_mintInfo.id];
 
-                if (_bin.reserveX == 0 && _bin.reserveY == 0) {
-                    // add 1 at the right indices if the _pairInformation was empty
-                    uint256 _idDepth2 = _mintInfo.id / 256;
-                    uint256 _idDepth1 = _mintInfo.id / 65_536;
+                if (_bin.reserveX == 0 && _bin.reserveY == 0) _tree.addToTree(_mintInfo.id);
 
-                    _tree[2][_idDepth2] |= 1 << (_mintInfo.id % 256);
-                    _tree[1][_idDepth1] |= 1 << (_idDepth2 % 256);
-                    _tree[0][0] |= 1 << _idDepth1;
-                }
+                _mintInfo.distributionX = _distributionX[i];
+                _mintInfo.distributionY = _distributionY[i];
 
-                {
-                    uint256 _distribX = _distributionX[i];
-                    uint256 _distribY = _distributionY[i];
+                if (
+                    _mintInfo.distributionX > Constants.PRECISION ||
+                    _mintInfo.distributionY > Constants.PRECISION ||
+                    (_mintInfo.totalDistributionX += _mintInfo.distributionX) > Constants.PRECISION ||
+                    (_mintInfo.totalDistributionY += _mintInfo.distributionY) > Constants.PRECISION
+                ) revert LBPair__DistributionsOverflow();
 
-                    if (
-                        _distribX > Constants.PRECISION ||
-                        _distribY > Constants.PRECISION ||
-                        (_mintInfo.totalDistributionX += _distribX) > Constants.PRECISION ||
-                        (_mintInfo.totalDistributionY += _distribY) > Constants.PRECISION
-                    ) revert LBPair__DistributionsOverflow();
-
-                    _mintInfo.amountX = (_mintInfo.amountXIn * _distribX) / Constants.PRECISION;
-                    _mintInfo.amountY = (_mintInfo.amountYIn * _distribY) / Constants.PRECISION;
-                }
+                _mintInfo.amountX = (_mintInfo.amountXIn * _mintInfo.distributionX) / Constants.PRECISION;
+                _mintInfo.amountY = (_mintInfo.amountYIn * _mintInfo.distributionY) / Constants.PRECISION;
 
                 uint256 _price = BinHelper.getPriceFromId(_mintInfo.id, _fp.binStep);
                 if (_mintInfo.id >= _pair.activeId) {
@@ -581,7 +571,16 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 _bins[_mintInfo.id] = _bin;
                 _mint(_to, _mintInfo.id, _liquidity);
 
-                emit LiquidityAdded(msg.sender, _to, _mintInfo.id, _liquidity, _mintInfo.amountX, _mintInfo.amountY);
+                emit LiquidityAdded(
+                    msg.sender,
+                    _to,
+                    _mintInfo.id,
+                    _liquidity,
+                    _mintInfo.amountX,
+                    _mintInfo.amountY,
+                    _mintInfo.distributionX,
+                    _mintInfo.distributionY
+                );
             }
 
             _pairInformation = _pair;
@@ -640,20 +639,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                     _pair.reserveX -= uint136(_amountX);
                 }
 
-                if (_bin.reserveX == 0 && _bin.reserveY == 0) {
-                    // removes 1 at the right indices
-                    uint256 _idDepth2 = _id / 256;
-                    uint256 _newLeafValue = _tree[2][_idDepth2] & (type(uint256).max - (1 << (_id % 256)));
-                    _tree[2][_idDepth2] = _newLeafValue;
-                    if (_newLeafValue == 0) {
-                        uint256 _idDepth1 = _id / 65_536;
-                        _newLeafValue = _tree[1][_idDepth1] & (type(uint256).max - (1 << (_idDepth2 % 256)));
-                        _tree[1][_idDepth1] = _newLeafValue;
-                        if (_newLeafValue == 0) {
-                            _tree[0][0] &= type(uint256).max - (1 << _idDepth1);
-                        }
-                    }
-                }
+                if (_bin.reserveX == 0 && _bin.reserveY == 0) _tree.removeFromTree(_id);
 
                 _bins[_id] = _bin;
                 _burn(address(this), _id, _amountToBurn);

@@ -72,7 +72,8 @@ interface ILBFactory is IPendingOwnable {
         uint256 maxVolatilityAccumulated,
         uint256 sampleLifetime
     );
-    event PresetRemoved(uint256 binStep);
+
+    event PresetRemoved(uint256 indexed binStep);
 
     function MAX_FEE() external pure returns (uint256);
 

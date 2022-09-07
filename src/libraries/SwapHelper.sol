@@ -40,34 +40,30 @@ library SwapHelper {
             FeeHelper.FeesDistribution memory fees
         )
     {
-        unchecked {
-            uint256 _price = BinHelper.getPriceFromId(activeId, fp.binStep);
+        uint256 _price = BinHelper.getPriceFromId(activeId, fp.binStep);
 
-            uint256 _reserve;
-            uint256 _maxAmountInToBin;
-            if (swapForY) {
-                _reserve = bin.reserveY;
-                _maxAmountInToBin = _reserve.shiftDivRoundUp(Constants.SCALE_OFFSET, _price);
-            } else {
-                _reserve = bin.reserveX;
-                _maxAmountInToBin = _price.mulShiftRoundUp(_reserve, Constants.SCALE_OFFSET);
-            }
+        uint256 _reserve;
+        uint256 _maxAmountInToBin;
+        if (swapForY) {
+            _reserve = bin.reserveY;
+            _maxAmountInToBin = _reserve.shiftDivRoundUp(Constants.SCALE_OFFSET, _price);
+        } else {
+            _reserve = bin.reserveX;
+            _maxAmountInToBin = _price.mulShiftRoundUp(_reserve, Constants.SCALE_OFFSET);
+        }
 
-            fp.updateVolatilityAccumulated(activeId);
-            fees = fp.getFeesDistribution(fp.getFees(_maxAmountInToBin));
+        fp.updateVolatilityAccumulated(activeId);
+        fees = fp.getFeesDistribution(fp.getFees(_maxAmountInToBin));
 
-            if (_maxAmountInToBin.add(fees.total) <= amountIn) {
-                amountInToBin = _maxAmountInToBin;
-                amountOutOfBin = _reserve;
-            } else {
-                fees = fp.getFeesDistribution(fp.getFeesFrom(amountIn));
-                amountInToBin = amountIn.sub(fees.total);
-                amountOutOfBin = swapForY
-                    ? _price.mulShiftRoundDown(amountInToBin, Constants.SCALE_OFFSET)
-                    : amountInToBin.shiftDivRoundDown(Constants.SCALE_OFFSET, _price);
-                // Safety check in case rounding returns a higher value than expected
-                if (amountOutOfBin > _reserve) amountOutOfBin = _reserve;
-            }
+        if (_maxAmountInToBin + fees.total <= amountIn) {
+            amountInToBin = _maxAmountInToBin;
+            amountOutOfBin = _reserve;
+        } else {
+            fees = fp.getFeesDistribution(fp.getFeesFrom(amountIn));
+            amountInToBin = amountIn - fees.total;
+            amountOutOfBin = swapForY
+                ? _price.mulShiftRoundDown(amountInToBin, Constants.SCALE_OFFSET)
+                : amountInToBin.shiftDivRoundDown(Constants.SCALE_OFFSET, _price);
         }
     }
 

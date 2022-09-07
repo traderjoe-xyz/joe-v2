@@ -71,6 +71,27 @@ contract LBToken is ILBToken {
         return _balances[_id][_account];
     }
 
+    /// @notice Return the balance of multiple (account/id) pairs
+    /// @param _accounts The addresses of the owners
+    /// @param _ids The token ids
+    /// @return batchBalances The balance for each (account, id) pair
+    function balanceOfBatch(address[] memory _accounts, uint256[] memory _ids)
+        public
+        view
+        virtual
+        override
+        checkLength(_accounts.length, _ids.length)
+        returns (uint256[] memory batchBalances)
+    {
+        batchBalances = new uint256[](_accounts.length);
+
+        unchecked {
+            for (uint256 i; i < _accounts.length; ++i) {
+                batchBalances[i] = balanceOf(_accounts[i], _ids[i]);
+            }
+        }
+    }
+
     /// @notice Returns the type id at index `_index` where `account` has a non-zero balance
     /// @param _account The address of the account
     /// @param _index The position index
@@ -101,6 +122,24 @@ contract LBToken is ILBToken {
         _setApprovalForAll(msg.sender, _spender, _approved);
     }
 
+    /// @notice Transfers `_amount` token of type `_id` from `_from` to `_to`
+    /// @param _from The address of the owner of the token
+    /// @param _to The address of the recipient
+    /// @param _id The token id
+    /// @param _amount The amount to send
+    function safeTransferFrom(
+        address _from,
+        address _to,
+        uint256 _id,
+        uint256 _amount
+    ) public virtual override checkAddresses(_from, _to) checkApproval(_from, msg.sender) {
+        address _spender = msg.sender;
+
+        _transfer(_from, _to, _id, _amount);
+
+        emit TransferSingle(_spender, _from, _to, _id, _amount);
+    }
+
     /// @notice Batch transfers `_amount` tokens of type `_id` from `_from` to `_to`
     /// @param _from The address of the owner of the tokens
     /// @param _to The address of the recipient
@@ -115,9 +154,9 @@ contract LBToken is ILBToken {
         public
         virtual
         override
-        checkApproval(_from, msg.sender)
-        checkAddresses(_from, _to)
         checkLength(_ids.length, _amounts.length)
+        checkAddresses(_from, _to)
+        checkApproval(_from, msg.sender)
     {
         unchecked {
             for (uint256 i; i < _ids.length; ++i) {

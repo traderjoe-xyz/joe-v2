@@ -28,6 +28,21 @@ contract LBToken is ILBToken {
     string private constant _name = "Liquidity Book Token";
     string private constant _symbol = "LBT";
 
+    modifier checkApproval(address _from, address _spender) {
+        if (!_isApprovedForAll(_from, _spender)) revert LBToken__SpenderNotApproved(_from, _spender);
+        _;
+    }
+
+    modifier checkAddresses(address _from, address _to) {
+        if (_from == address(0) || _to == address(0)) revert LBToken__TransferFromOrToAddress0();
+        _;
+    }
+
+    modifier checkLength(uint256 _lengthA, uint256 _lengthB) {
+        if (_lengthA != _lengthB) revert LBToken__LengthMismatch(_lengthA, _lengthB);
+        _;
+    }
+
     /// @notice Returns the name of the token
     /// @return The name of the token
     function name() public pure virtual override returns (string memory) {
@@ -96,39 +111,48 @@ contract LBToken is ILBToken {
         address _to,
         uint256[] memory _ids,
         uint256[] memory _amounts
-    ) public virtual override {
-        address _spender = msg.sender;
-        if (!_isApprovedForAll(_from, _spender)) revert LBToken__SpenderNotApproved(_from, _spender);
-
-        if (_from == address(0) || _to == address(0)) revert LBToken__TransferFromOrToAddress0();
-        if (_ids.length != _amounts.length) revert LBToken__LengthMismatch(_ids.length, _amounts.length);
-
-        for (uint256 i; i < _ids.length; ++i) {
-            uint256 _id = _ids[i];
-            uint256 _amount = _amounts[i];
-
-            uint256 _fromBalance = _balances[_id][_from];
-            if (_fromBalance < _amount) revert LBToken__TransferExceedsBalance(_from, _id, _amount);
-
-            _beforeTokenTransfer(_from, _to, _id, _amount);
-
-            unchecked {
-                _balances[_id][_from] = _fromBalance - _amount;
-            }
-
-            if (_fromBalance == _amount) {
-                _userIds[_from].remove(_id);
-            }
-
-            uint256 _toBalance = _balances[_id][_to];
-            _balances[_id][_to] = _toBalance + _amount;
-
-            if (_toBalance == 0) {
-                _userIds[_to].add(_id);
+    )
+        public
+        virtual
+        override
+        checkApproval(_from, msg.sender)
+        checkAddresses(_from, _to)
+        checkLength(_ids.length, _amounts.length)
+    {
+        unchecked {
+            for (uint256 i; i < _ids.length; ++i) {
+                _transfer(_from, _to, _ids[i], _amounts[i]);
             }
         }
 
-        emit TransferBatch(_spender, _from, _to, _ids, _amounts);
+        emit TransferBatch(msg.sender, _from, _to, _ids, _amounts);
+    }
+
+    /// @notice Internal function to transfer `_amount` tokens of type `_id` from `_from` to `_to`
+    /// @param _from The address of the owner of the token
+    /// @param _to The address of the recipient
+    /// @param _id The token id
+    /// @param _amount The amount to send
+    function _transfer(
+        address _from,
+        address _to,
+        uint256 _id,
+        uint256 _amount
+    ) internal virtual {
+        uint256 _fromBalance = _balances[_id][_from];
+        if (_fromBalance < _amount) revert LBToken__TransferExceedsBalance(_from, _id, _amount);
+
+        _beforeTokenTransfer(_from, _to, _id, _amount);
+
+        uint256 _toBalance = _balances[_id][_to];
+
+        unchecked {
+            _balances[_id][_from] = _fromBalance - _amount;
+            _balances[_id][_to] = _toBalance + _amount;
+        }
+
+        _remove(_from, _id, _fromBalance, _amount);
+        _add(_to, _id, _toBalance, _amount);
     }
 
     /// @dev Creates `_amount` tokens of type `_id`, and assigns them to `_account`
@@ -146,13 +170,12 @@ contract LBToken is ILBToken {
 
         _totalSupplies[_id] += _amount;
 
-        uint256 _fromBalance = _balances[_id][_account];
+        uint256 _accountBalance = _balances[_id][_account];
         unchecked {
-            _balances[_id][_account] = _fromBalance + _amount;
+            _balances[_id][_account] = _accountBalance + _amount;
         }
-        if (_fromBalance == 0) {
-            _userIds[_account].add(_id);
-        }
+
+        _add(_account, _id, _accountBalance, _amount);
 
         emit TransferSingle(msg.sender, address(0), _account, _id, _amount);
     }
@@ -178,9 +201,7 @@ contract LBToken is ILBToken {
             _totalSupplies[_id] -= _amount;
         }
 
-        if (_accountBalance == _amount) {
-            _userIds[_account].remove(_id);
-        }
+        _remove(_account, _id, _accountBalance, _amount);
 
         emit TransferSingle(msg.sender, _account, address(0), _id, _amount);
     }
@@ -207,6 +228,38 @@ contract LBToken is ILBToken {
     /// @return True if `spender` is approved to transfer `owner`'s tokens
     function _isApprovedForAll(address _owner, address _spender) internal view virtual returns (bool) {
         return _owner == _spender || _spenderApprovals[_owner][_spender];
+    }
+
+    /// @notice Internal function to add an id to   n user's set
+    /// @param _account The user's address
+    /// @param _id The id of the token
+    /// @param _accountBalance The user's balance
+    /// @param _amount The amount of tokens
+    function _add(
+        address _account,
+        uint256 _id,
+        uint256 _accountBalance,
+        uint256 _amount
+    ) internal {
+        if (_accountBalance == 0 && _amount != 0) {
+            _userIds[_account].add(_id);
+        }
+    }
+
+    /// @notice Internal function to remove an id from an user's set
+    /// @param _account The user's address
+    /// @param _id The id of the token
+    /// @param _accountBalance The user's balance
+    /// @param _amount The amount of tokens
+    function _remove(
+        address _account,
+        uint256 _id,
+        uint256 _accountBalance,
+        uint256 _amount
+    ) internal {
+        if (_accountBalance == _amount && _amount != 0) {
+            _userIds[_account].remove(_id);
+        }
     }
 
     /// @notice Hook that is called before any token transfer. This includes minting

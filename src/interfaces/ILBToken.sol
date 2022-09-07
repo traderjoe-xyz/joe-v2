@@ -19,8 +19,6 @@ interface ILBToken {
 
     function symbol() external pure returns (string memory);
 
-    function decimals() external view returns (uint8);
-
     function balanceOf(address account, uint256 id) external view returns (uint256);
 
     function userPositionAt(address _account, uint256 _index) external view returns (uint256);

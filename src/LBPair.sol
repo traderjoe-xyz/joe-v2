@@ -64,8 +64,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     mapping(uint256 => Bin) private _bins;
     /// @dev Tree to find bins with non zero liquidity
     mapping(uint256 => uint256)[3] private _tree;
-    /// @dev Mapping from account to user's unclaimed fees.
-    mapping(address => Fees) private _unclaimedFees;
+    /// @dev Mapping from account to user's unclaimed fees. The first 128 bits are tokenX and the last are for tokenY
+    mapping(address => bytes32) private _unclaimedFees;
     /// @dev Mapping from account to id to user's accruedDebt.
     mapping(address => mapping(uint256 => Debts)) private _accruedDebts;
     /// @dev Oracle array
@@ -156,18 +156,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             uint256 feesYProtocol
         )
     {
-        uint256 _mask128 = type(uint128).max;
-        bytes32 _slotX;
-        bytes32 _slotY;
-        assembly {
-            _slotX := sload(add(_pairInformation.slot, 2))
-            _slotY := sload(add(_pairInformation.slot, 3))
-
-            feesXTotal := and(_slotX, _mask128)
-            feesYTotal := and(_slotY, _mask128)
-        }
-        feesXProtocol = _slotX.decode(_mask128, _OFFSET_PROTOCOL_FEE);
-        feesYProtocol = _slotY.decode(_mask128, _OFFSET_PROTOCOL_FEE);
+        return _getGlobalFees();
     }
 
     /// @notice View function to get the oracle parameters
@@ -213,8 +202,9 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             uint256 cumulativeBinCrossed
         )
     {
+        uint256 _lookUpTimestamp = block.timestamp - _ago;
+
         unchecked {
-            uint256 _lookUpTimestamp = block.timestamp - _ago;
             (, , uint256 _oracleActiveSize, , uint256 _oracleId) = _getOracleParameters();
 
             uint256 timestamp;
@@ -273,12 +263,21 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @dev The array must be strictly increasing to ensure uniqueness
     /// @param _account The address of the user
     /// @param _ids The list of ids
-    /// @return fees The unclaimed fees
-    function pendingFees(address _account, uint256[] memory _ids) external view override returns (Fees memory fees) {
-        unchecked {
-            fees = _unclaimedFees[_account];
+    /// @return amountX The amount of tokenX pending
+    /// @return amountY The amount of tokenY pending
+    function pendingFees(address _account, uint256[] memory _ids)
+        external
+        view
+        override
+        returns (uint256 amountX, uint256 amountY)
+    {
+        bytes32 _unclaimedData = _unclaimedFees[_account];
 
-            uint256 _lastId;
+        amountX = _unclaimedData.decode(type(uint128).max, 0);
+        amountY = _unclaimedData.decode(type(uint128).max, 128);
+
+        uint256 _lastId;
+        unchecked {
             for (uint256 i; i < _ids.length; ++i) {
                 uint256 _id = _ids[i];
 
@@ -289,7 +288,10 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 if (_balance != 0) {
                     Bin memory _bin = _bins[_id];
 
-                    _collectFees(fees, _bin, _account, _id, _balance);
+                    (uint256 _amountX, uint256 _amountY) = _collectFees(_bin, _account, _id, _balance);
+
+                    amountX += _amountX;
+                    amountY += _amountY;
                 }
 
                 _lastId = _id;
@@ -379,6 +381,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         }
 
         if (_amountOut == 0) revert LBPair__BrokenSwapSafetyCheck(); // Safety check
+
         unchecked {
             // We use oracleSize so it can start filling empty slot that were added recently
             uint256 _updatedOracleId = _oracle.update(
@@ -394,7 +397,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             // We update the oracleId and lastTimestamp if the sample write on another slot
             if (_updatedOracleId != _pair.oracleId || _pair.oracleLastTimestamp == 0) {
                 _pair.oracleId = uint24(_updatedOracleId);
-                _pair.oracleLastTimestamp = block.timestamp.safe40();
+                _pair.oracleLastTimestamp = uint40(block.timestamp);
 
                 // We increase the activeSize if the updated sample is written in a new slot
                 if (_updatedOracleId == _pair.oracleActiveSize) _pair.oracleActiveSize += 1;
@@ -489,8 +492,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
             MintInfo memory _mintInfo;
 
-            _mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total).safe128();
-            _mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total).safe128();
+            (_mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total)).safe128();
+            (_mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total)).safe128();
 
             liquidityMinted = new uint256[](_ids.length);
 
@@ -585,12 +588,15 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
             _pairInformation = _pair;
 
+            uint256 _amountAddedPlusFee = _mintInfo.amountXAddedToPair + _mintInfo.activeFeeX;
             // If user sent too much tokens, We send them back the excess
-            if (_mintInfo.amountXIn > _mintInfo.amountXAddedToPair + _mintInfo.activeFeeX) {
-                tokenX.safeTransfer(_to, _mintInfo.amountXIn - (_mintInfo.amountXAddedToPair + _mintInfo.activeFeeX));
+            if (_mintInfo.amountXIn > _amountAddedPlusFee) {
+                tokenX.safeTransfer(_to, _mintInfo.amountXIn - _amountAddedPlusFee);
             }
-            if (_mintInfo.amountYIn > _mintInfo.amountYAddedToPair + _mintInfo.activeFeeY) {
-                tokenY.safeTransfer(_to, _mintInfo.amountYIn - (_mintInfo.amountYAddedToPair + _mintInfo.activeFeeY));
+
+            _amountAddedPlusFee = _mintInfo.amountYAddedToPair + _mintInfo.activeFeeY;
+            if (_mintInfo.amountYIn > _amountAddedPlusFee) {
+                tokenY.safeTransfer(_to, _mintInfo.amountYIn - _amountAddedPlusFee);
             }
 
             return (_mintInfo.amountXAddedToPair, _mintInfo.amountYAddedToPair, liquidityMinted);
@@ -663,16 +669,20 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @notice Collect fees of an user
     /// @param _account The address of the user
     /// @param _ids The list of bin ids to collect fees in
-    /// @return fees Fees claimed
+    /// @return amountX The amount of tokenX claimed
+    /// @return amountY The amount of tokenY claimed
     function collectFees(address _account, uint256[] memory _ids)
         external
         override
         nonReentrant
-        returns (Fees memory fees)
+        returns (uint256 amountX, uint256 amountY)
     {
         unchecked {
-            fees = _unclaimedFees[_account];
+            bytes32 _unclaimedData = _unclaimedFees[_account];
             delete _unclaimedFees[_account];
+
+            amountX = _unclaimedData.decode(type(uint128).max, 0);
+            amountY = _unclaimedData.decode(type(uint128).max, 128);
 
             for (uint256 i; i < _ids.length; ++i) {
                 uint256 _id = _ids[i];
@@ -681,55 +691,73 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 if (_balance != 0) {
                     Bin memory _bin = _bins[_id];
 
-                    _collectFees(fees, _bin, _account, _id, _balance);
+                    (uint256 _amountX, uint256 _amountY) = _collectFees(_bin, _account, _id, _balance);
                     _updateUserDebts(_bin, _account, _id, _balance);
+
+                    amountX += _amountX;
+                    amountY += _amountY;
                 }
             }
 
-            if (fees.tokenX != 0) {
-                _pairInformation.feesX.total -= fees.tokenX;
+            if (amountX != 0) {
+                _pairInformation.feesX.total -= uint128(amountX);
             }
-            if (fees.tokenY != 0) {
-                _pairInformation.feesY.total -= fees.tokenY;
+            if (amountY != 0) {
+                _pairInformation.feesY.total -= uint128(amountY);
             }
 
-            tokenX.safeTransfer(_account, fees.tokenX);
-            tokenY.safeTransfer(_account, fees.tokenY);
+            tokenX.safeTransfer(_account, amountX);
+            tokenY.safeTransfer(_account, amountY);
 
-            emit FeesCollected(msg.sender, _account, fees.tokenX, fees.tokenY);
+            emit FeesCollected(msg.sender, _account, amountX, amountY);
         }
     }
 
     /// @notice Collect the protocol fees and send them to the feeRecipient
     /// @dev The balances are not zeroed to save gas by not resetting the storage slot
     /// Only callable by the fee recipient
-    /// @return fees Fees claimed
-    function collectProtocolFees() external override nonReentrant returns (Fees memory fees) {
+    /// @return amountX The amount of tokenX claimed
+    /// @return amountY The amount of tokenY claimed
+    function collectProtocolFees() external override nonReentrant returns (uint256 amountX, uint256 amountY) {
         unchecked {
             address _feeRecipient = factory.feeRecipient();
 
             if (msg.sender != _feeRecipient) revert LBPair__OnlyFeeRecipient(_feeRecipient, msg.sender);
 
-            FeeHelper.FeesDistribution memory _fees = _pairInformation.feesX;
-            if (_fees.protocol != 0) {
-                fees.tokenX = _fees.protocol - 1;
-                _fees.total -= fees.tokenX;
-                _fees.protocol = 1;
-                _pairInformation.feesX = _fees;
+            (
+                uint256 _feesXTotal,
+                uint256 _feesYTotal,
+                uint256 _feesXProtocol,
+                uint256 _feesYProtocol
+            ) = _getGlobalFees();
+
+            if (_feesXProtocol > 1) {
+                amountX = _feesXProtocol - 1;
+                _feesXTotal -= amountX;
+
+                assembly {
+                    let _slotX := add(_pairInformation.slot, 2)
+
+                    sstore(_slotX, add(shl(128, _feesXTotal), 1))
+                }
+
+                tokenX.safeTransfer(_feeRecipient, amountX);
             }
 
-            _fees = _pairInformation.feesY;
-            if (_fees.protocol != 0) {
-                fees.tokenY = _fees.protocol - 1;
-                _fees.total -= fees.tokenY;
-                _fees.protocol = 1;
-                _pairInformation.feesY = _fees;
+            if (_feesYProtocol > 1) {
+                amountY = _feesYProtocol - 1;
+                _feesYTotal -= amountY;
+
+                assembly {
+                    let _slotY := add(_pairInformation.slot, 3)
+
+                    sstore(_slotY, add(shl(128, _feesYTotal), 1))
+                }
+
+                tokenY.safeTransfer(_feeRecipient, amountY);
             }
 
-            tokenX.safeTransfer(_feeRecipient, fees.tokenX);
-            tokenY.safeTransfer(_feeRecipient, fees.tokenY);
-
-            emit ProtocolFeesCollected(msg.sender, _feeRecipient, fees.tokenX, fees.tokenY);
+            emit ProtocolFeesCollected(msg.sender, _feeRecipient, amountX, amountY);
         }
     }
 
@@ -786,25 +814,22 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /** Private Functions **/
 
     /// @notice View function to collect fees of a given bin to memory
-    /// @param _fees The user's unclaimed fees
     /// @param _bin  The bin where the user is collecting fees
     /// @param _account The address of the user
     /// @param _id The id where the user is collecting fees
     /// @param _balance The previous balance of the user
+    /// @return amountX The amount of tokenX collected
+    /// @return amountY The amount of tokenY collected
     function _collectFees(
-        Fees memory _fees,
         Bin memory _bin,
         address _account,
         uint256 _id,
         uint256 _balance
-    ) private view {
+    ) private view returns (uint256 amountX, uint256 amountY) {
         Debts memory _debts = _accruedDebts[_account][_id];
 
-        _fees.tokenX += (_bin.accTokenXPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET) - _debts.debtX)
-            .safe128();
-
-        _fees.tokenY += (_bin.accTokenYPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET) - _debts.debtY)
-            .safe128();
+        amountX = _bin.accTokenXPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET) - _debts.debtX;
+        amountY = _bin.accTokenYPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET) - _debts.debtY;
     }
 
     /// @notice Update fees of a given user
@@ -838,23 +863,35 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint256 _previousBalance,
         uint256 _newBalance
     ) private {
-        Fees memory _fees = _unclaimedFees[_user];
+        unchecked {
+            bytes32 _unclaimedData = _unclaimedFees[_user];
 
-        _collectFees(_fees, _bin, _user, _id, _previousBalance);
-        _updateUserDebts(_bin, _user, _id, _newBalance);
+            uint256 amountX = _unclaimedData.decode(type(uint128).max, 0);
+            uint256 amountY = _unclaimedData.decode(type(uint128).max, 128);
 
-        _unclaimedFees[_user] = _fees;
+            (uint256 _amountX, uint256 _amountY) = _collectFees(_bin, _user, _id, _previousBalance);
+            _updateUserDebts(_bin, _user, _id, _newBalance);
+
+            (amountX += _amountX).safe128();
+            (amountY += _amountY).safe128();
+
+            _unclaimedFees[_user] = bytes32((amountY << 128) | amountX);
+        }
     }
 
     /// @notice Internal function to set the fee parameters of the pair
     /// @param _packedFeeParameters The packed fee parameters
     function _setFeesParameters(bytes32 _packedFeeParameters) internal {
-        uint256 _mask112 = type(uint112).max;
-        uint256 _mask144 = type(uint144).max;
+        bytes32 _feeStorageSlot;
         assembly {
-            let variableParameters := and(sload(_feeParameters.slot), shl(_OFFSET_VARIABLE_FEE_PARAMETERS, _mask112))
-            let parameters := add(variableParameters, and(_packedFeeParameters, _mask144))
-            sstore(_feeParameters.slot, parameters)
+            _feeStorageSlot := sload(_feeParameters.slot)
+        }
+
+        uint256 _varParameters = _feeStorageSlot.decode(type(uint112).max, _OFFSET_VARIABLE_FEE_PARAMETERS);
+        uint256 _newFeeParameters = _packedFeeParameters.decode(type(uint144).max, 0);
+
+        assembly {
+            sstore(_feeParameters.slot, or(_newFeeParameters, _varParameters))
         }
     }
 
@@ -869,6 +906,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             for (uint256 _id = _oracleSize; _id < _newSize; ++_id) {
                 _oracle.initialize(_id);
             }
+
             emit OracleSizeIncreased(_oracleSize, _newSize);
         }
     }
@@ -925,6 +963,36 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             activeId := and(_slot, _mask24)
         }
         reserveX = _slot.decode(_mask136, _OFFSET_PAIR_RESERVE_X);
+    }
+
+    /// @notice Internal view function to get the global fees information, the total fees and those for protocol
+    /// @dev The fees for users are `total - protocol`
+    /// @return feesXTotal The total fees of asset X
+    /// @return feesYTotal The total fees of asset Y
+    /// @return feesXProtocol The protocol fees of asset X
+    /// @return feesYProtocol The protocol fees of asset Y
+    function _getGlobalFees()
+        internal
+        view
+        returns (
+            uint256 feesXTotal,
+            uint256 feesYTotal,
+            uint256 feesXProtocol,
+            uint256 feesYProtocol
+        )
+    {
+        bytes32 _slotX;
+        bytes32 _slotY;
+        assembly {
+            _slotX := sload(add(_pairInformation.slot, 2))
+            _slotY := sload(add(_pairInformation.slot, 3))
+        }
+
+        feesXTotal = _slotX.decode(type(uint128).max, 0);
+        feesYTotal = _slotX.decode(type(uint128).max, 0);
+
+        feesXProtocol = _slotX.decode(type(uint128).max, _OFFSET_PROTOCOL_FEE);
+        feesYProtocol = _slotY.decode(type(uint128).max, _OFFSET_PROTOCOL_FEE);
     }
 
     function _getFlashLoanFee(uint256 _amount, uint256 _fee) internal pure returns (uint256) {

@@ -275,4 +275,41 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         assertEq(token18D.balanceOf(ALICE), amountYOutForSwap);
     }
+
+    function testInvalidTokenPathReverts() public {
+        uint256 _amountIn = 10e18;
+        uint256 _amountOutMinAVAX = 10e18;
+        uint256[] memory _pairBinSteps = new uint256[](1);
+        IERC20[] memory _tokenPath = new IERC20[](2);
+        _tokenPath[0] = token6D;
+        _tokenPath[1] = token18D;
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InvalidTokenPath.selector, _tokenPath[1]));
+        router.swapExactTokensForAVAX(_amountIn, _amountOutMinAVAX, _pairBinSteps, _tokenPath, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InvalidTokenPath.selector, _tokenPath[1]));
+        router.swapTokensForExactAVAX(_amountIn, _amountOutMinAVAX, _pairBinSteps, _tokenPath, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InvalidTokenPath.selector, _tokenPath[1]));
+        router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+            _amountIn,
+            _amountOutMinAVAX,
+            _pairBinSteps,
+            _tokenPath,
+            DEV,
+            block.timestamp
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InvalidTokenPath.selector, _tokenPath[0]));
+        router.swapAVAXForExactTokens(_amountIn, _pairBinSteps, _tokenPath, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InvalidTokenPath.selector, _tokenPath[0]));
+        router.swapExactAVAXForTokensSupportingFeeOnTransferTokens(
+            _amountIn,
+            _pairBinSteps,
+            _tokenPath,
+            DEV,
+            block.timestamp
+        );
+    }
 }

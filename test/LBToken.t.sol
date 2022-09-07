@@ -129,6 +129,5 @@ contract LiquidityBinTokenTest is TestHelper {
     function testPrivateViewFunctions() public {
         assertEq(pair.name(), "Liquidity Book Token");
         assertEq(pair.symbol(), "LBT");
-        assertEq(pair.decimals(), 18);
     }
 }

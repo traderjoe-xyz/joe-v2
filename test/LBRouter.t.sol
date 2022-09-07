@@ -333,4 +333,18 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(LBRouter__SwapOverflows.selector, _startId));
         router.getSwapIn(pair, amountXIn, false);
     }
+
+    function testSweep() public {
+        uint256 amountMinted = 100e6;
+        token6D.mint(address(router), amountMinted);
+        router.sweep(token6D, ALICE, amountMinted);
+        assertEq(token6D.balanceOf(ALICE), amountMinted);
+        assertEq(token6D.balanceOf(address(router)), 0);
+
+        uint256 amountAvax = 10e18;
+        vm.deal(address(router), amountAvax);
+        router.sweep(IERC20(address(0)), ALICE, amountAvax);
+        assertEq(ALICE.balance, amountAvax);
+        assertEq(address(router).balance, 0);
+    }
 }

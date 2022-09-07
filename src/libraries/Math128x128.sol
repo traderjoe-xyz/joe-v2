@@ -78,11 +78,21 @@ library Math128x128 {
     /// @return The result of `x^y`
     function power(uint256 x, int256 y) internal pure returns (uint256) {
         unchecked {
-            uint256 absY = y >= 0 ? uint256(y) : uint256(-y);
-
-            uint256 pow = type(uint256).max / x;
-
             uint256 result = Constants.SCALE;
+
+            uint256 absY;
+            uint256 pow;
+            bool invert;
+
+            if (y < 0) {
+                invert = !invert;
+                absY = uint256(-y);
+            }
+
+            if (x > type(uint128).max) {
+                pow = type(uint256).max / x;
+                invert = !invert;
+            } else pow = x;
 
             if (absY & 0x1 != 0) result = (result * pow) >> Constants.SCALE_OFFSET;
             pow = (pow * pow) >> Constants.SCALE_OFFSET;
@@ -126,7 +136,7 @@ library Math128x128 {
 
             if (result == 0 || absY > 0xfffff) revert Math128x128__PowerUnderflow(x, y);
 
-            return y <= 0 ? result : type(uint256).max / result;
+            return invert ? result : type(uint256).max / result;
         }
     }
 }

@@ -298,4 +298,39 @@ contract LiquidityBinRouterTest is TestHelper {
         id = router.getIdFromPrice(pair, 23749384962529715407923990466761537977856189636583);
         assertEq(id, ID_ONE + 10000);
     }
+
+    function testGetSwapInWrongAmountsReverts() public {
+        uint256 _amountYIn = 100e18;
+        uint24 _startId = ID_ONE;
+        uint24 _numberBins = 9;
+        uint24 _gap = 2;
+        uint256 amountXIn;
+        pair = createLBPairDefaultFees(token6D, token18D);
+        (, , , amountXIn) = addLiquidity(_amountYIn, _startId, _numberBins, _gap);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__WrongAmounts.selector, 0, _amountYIn));
+        router.getSwapIn(pair, 0, true);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__WrongAmounts.selector, _amountYIn + 1, _amountYIn));
+        router.getSwapIn(pair, _amountYIn + 1, true);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__WrongAmounts.selector, amountXIn, amountXIn - 3));
+        router.getSwapIn(pair, amountXIn, false);
+    }
+
+    function testGetSwapInOverflowReverts() public {
+        uint256 _amountYIn = type(uint112).max;
+        uint24 _startId = ID_ONE;
+        uint24 _numberBins = 1;
+        uint24 _gap = 2;
+        uint256 amountXIn;
+        pair = createLBPairDefaultFees(token6D, token18D);
+        (, , , amountXIn) = addLiquidity(_amountYIn, _startId, _numberBins, _gap);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__SwapOverflows.selector, _startId));
+        router.getSwapIn(pair, _amountYIn, true);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__SwapOverflows.selector, _startId));
+        router.getSwapIn(pair, amountXIn, false);
+    }
 }

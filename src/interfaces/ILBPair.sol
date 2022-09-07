@@ -74,6 +74,8 @@ interface ILBPair {
         uint256 id;
         uint256 amountX;
         uint256 amountY;
+        uint256 distributionX;
+        uint256 distributionY;
     }
 
     event Swap(
@@ -104,7 +106,9 @@ interface ILBPair {
         uint256 indexed id,
         uint256 minted,
         uint256 amountX,
-        uint256 amountY
+        uint256 amountY,
+        uint256 distributionX,
+        uint256 distributionY
     );
 
     event CompositionFee(

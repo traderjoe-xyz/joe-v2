@@ -40,12 +40,6 @@ contract LBToken is ILBToken {
         return _symbol;
     }
 
-    /// @notice Returns the number of decimals used to get its user representation
-    /// @return The number of decimals as uint8
-    function decimals() public view virtual override returns (uint8) {
-        return 18;
-    }
-
     /// @notice Returns the total supply of token of type `id`
     /// @dev This is the amount of token of type `id` minted minus the amount burned
     /// @param _id The token id

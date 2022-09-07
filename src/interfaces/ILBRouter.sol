@@ -79,7 +79,8 @@ interface ILBRouter {
         uint16 binStep,
         uint256 amountXMin,
         uint256 amountYMin,
-        ILBToken.LiquidityAmount[] memory ids,
+        uint256[] memory ids,
+        uint256[] memory amounts,
         address to,
         uint256 deadline
     ) external returns (uint256 amountX, uint256 amountY);
@@ -89,7 +90,8 @@ interface ILBRouter {
         uint16 binStep,
         uint256 amountTokenMin,
         uint256 amountAVAXMin,
-        ILBToken.LiquidityAmount[] memory ids,
+        uint256[] memory ids,
+        uint256[] memory amounts,
         address payable to,
         uint256 deadline
     ) external returns (uint256 amountToken, uint256 amountAVAX);

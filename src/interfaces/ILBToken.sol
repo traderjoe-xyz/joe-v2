@@ -13,7 +13,13 @@ interface ILBToken {
 
     event TransferSingle(address indexed sender, address indexed from, address indexed to, uint256 id, uint256 amount);
 
-    event TransferBatch(address indexed sender, address indexed from, address indexed to, LiquidityAmount[] amounts);
+    event TransferBatch(
+        address indexed sender,
+        address indexed from,
+        address indexed to,
+        uint256[] ids,
+        uint256[] amounts
+    );
 
     event ApprovalForAll(address indexed account, address indexed sender, bool approved);
 
@@ -38,6 +44,7 @@ interface ILBToken {
     function safeBatchTransferFrom(
         address from,
         address to,
-        LiquidityAmount[] memory amounts
+        uint256[] memory id,
+        uint256[] memory amount
     ) external;
 }

@@ -171,7 +171,11 @@ interface ILBPair {
             uint256[] memory liquidityMinted
         );
 
-    function burn(ILBToken.LiquidityAmount[] memory liquidityRemovals, address to) external returns (uint256, uint256);
+    function burn(
+        uint256[] memory ids,
+        uint256[] memory _amounts,
+        address to
+    ) external returns (uint256, uint256);
 
     function increaseOracleLength(uint16 _nb) external;
 

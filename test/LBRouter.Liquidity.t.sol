@@ -36,10 +36,11 @@ contract LiquidityBinRouterTest is TestHelper {
             DEFAULT_BIN_STEP
         );
 
-        ILBToken.LiquidityAmount[] memory liquidityRemovals = new ILBToken.LiquidityAmount[](_numberBins);
+        uint256[] memory amounts = new uint256[](_numberBins);
+        uint256[] memory ids = new uint256[](_numberBins);
         for (uint256 i; i < _numberBins; i++) {
-            liquidityRemovals[i].id = uint256(int256(uint256(ID_ONE)) + deposits[i].relativeId);
-            liquidityRemovals[i].amount = pair.balanceOf(DEV, liquidityRemovals[i].id);
+            ids[i] = deposits[i].id;
+            amounts[i] = pair.balanceOf(DEV, ids[i]);
         }
 
         pair.setApprovalForAll(address(router), true);
@@ -50,7 +51,8 @@ contract LiquidityBinRouterTest is TestHelper {
             DEFAULT_BIN_STEP,
             amountXIn - 10,
             _amountYIn,
-            liquidityRemovals,
+            ids,
+            amounts,
             DEV,
             block.timestamp
         );
@@ -75,10 +77,11 @@ contract LiquidityBinRouterTest is TestHelper {
             DEFAULT_BIN_STEP
         );
 
-        ILBToken.LiquidityAmount[] memory liquidityRemovals = new ILBToken.LiquidityAmount[](9);
+        uint256[] memory amounts = new uint256[](9);
+        uint256[] memory ids = new uint256[](9);
         for (uint256 i; i < 9; i++) {
-            liquidityRemovals[i].id = uint256(int256(uint256(ID_ONE)) + deposits[i].relativeId);
-            liquidityRemovals[i].amount = pair.balanceOf(DEV, liquidityRemovals[i].id);
+            ids[i] = deposits[i].id;
+            amounts[i] = pair.balanceOf(DEV, ids[i]);
         }
 
         pair.setApprovalForAll(address(router), true);
@@ -90,7 +93,8 @@ contract LiquidityBinRouterTest is TestHelper {
                 DEFAULT_BIN_STEP,
                 amountTokenIn - 10,
                 _amountAVAXIn,
-                liquidityRemovals,
+                ids,
+                amounts,
                 DEV,
                 block.timestamp
             );
@@ -116,10 +120,11 @@ contract LiquidityBinRouterTest is TestHelper {
             DEFAULT_BIN_STEP
         );
 
-        ILBToken.LiquidityAmount[] memory liquidityRemovals = new ILBToken.LiquidityAmount[](9);
+        uint256[] memory amounts = new uint256[](9);
+        uint256[] memory ids = new uint256[](9);
         for (uint256 i; i < 9; i++) {
-            liquidityRemovals[i].id = uint256(int256(uint256(ID_ONE)) + deposits[i].relativeId);
-            liquidityRemovals[i].amount = pair.balanceOf(DEV, liquidityRemovals[i].id);
+            ids[i] = deposits[i].id;
+            amounts[i] = pair.balanceOf(DEV, ids[i]);
         }
 
         pair.setApprovalForAll(address(router), true);
@@ -130,7 +135,8 @@ contract LiquidityBinRouterTest is TestHelper {
             DEFAULT_BIN_STEP,
             amountTokenIn / 2 - 10,
             _amountAVAXIn,
-            liquidityRemovals,
+            ids,
+            amounts,
             DEV,
             block.timestamp
         );
@@ -141,7 +147,8 @@ contract LiquidityBinRouterTest is TestHelper {
             DEFAULT_BIN_STEP,
             amountTokenIn / 2 - 10,
             _amountAVAXIn,
-            liquidityRemovals,
+            ids,
+            amounts,
             DEV,
             block.timestamp
         );

@@ -72,7 +72,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint256 amountY
     );
 
-    event Burn(address indexed sender, address indexed recipient, ILBToken.LiquidityAmount[] liquidityRemovals);
+    event Burn(address indexed sender, address indexed recipient, uint256[] ids, uint256[] amounts);
 
     event FeesCollected(address indexed sender, address indexed recipient, uint256 amountX, uint256 amountY);
 
@@ -596,22 +596,22 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     }
 
     /// @notice Performs a low level remove, this needs to be called from a contract which performs important safety checks
-    /// @param _liquidityRemovals Array of LBTokens being withdrawn
+    /// @param _ids The ids the user want to remove its liquidity
+    /// @param _amounts The amount of token to burn
     /// @param _to The address of the recipient
     /// @return amountX The amount of token X sent to `_to`
     /// @return amountY The amount of token Y sent to `_to`
-    function burn(ILBToken.LiquidityAmount[] memory _liquidityRemovals, address _to)
-        external
-        override
-        nonReentrant
-        returns (uint256 amountX, uint256 amountY)
-    {
+    function burn(
+        uint256[] memory _ids,
+        uint256[] memory _amounts,
+        address _to
+    ) external override nonReentrant returns (uint256 amountX, uint256 amountY) {
         unchecked {
             PairInformation memory _pair = _pairInformation;
 
-            for (uint256 i; i < _liquidityRemovals.length; ++i) {
-                uint256 _id = _liquidityRemovals[i].id.safe24();
-                uint256 _amountToBurn = _liquidityRemovals[i].amount;
+            for (uint256 i; i < _ids.length; ++i) {
+                uint256 _id = _ids[i].safe24();
+                uint256 _amountToBurn = _amounts[i];
 
                 if (_amountToBurn == 0) revert LBPair__InsufficientLiquidityBurned(_id);
 
@@ -658,7 +658,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             tokenX.safeTransfer(_to, amountX);
             tokenY.safeTransfer(_to, amountY);
 
-            emit Burn(msg.sender, _to, _liquidityRemovals);
+            emit Burn(msg.sender, _to, _ids, _amounts);
         }
     }
 

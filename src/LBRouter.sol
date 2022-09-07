@@ -286,7 +286,8 @@ contract LBRouter is ILBRouter {
     /// @param _tokenY The address of token Y
     /// @param _amountXMin The min amount to receive of token X
     /// @param _amountYMin The min amount to receive of token Y
-    /// @param _liquidityRemovals LBToken amounts that are removed
+    /// @param _ids The list of ids to burn
+    /// @param _amounts The list of amounts to burn of each id in `_ids`
     /// @param _to The address of the recipient
     /// @param _deadline The deadline of the tx
     /// @return amountX Amount of token X returned
@@ -297,7 +298,8 @@ contract LBRouter is ILBRouter {
         uint16 _binStep,
         uint256 _amountXMin,
         uint256 _amountYMin,
-        ILBToken.LiquidityAmount[] memory _liquidityRemovals,
+        uint256[] memory _ids,
+        uint256[] memory _amounts,
         address _to,
         uint256 _deadline
     ) external override ensure(_deadline) returns (uint256 amountX, uint256 amountY) {
@@ -307,7 +309,7 @@ contract LBRouter is ILBRouter {
             (_amountXMin, _amountYMin) = (_amountYMin, _amountXMin);
         }
 
-        (amountX, amountY) = _removeLiquidity(_LBPair, _amountXMin, _amountYMin, _liquidityRemovals, _to);
+        (amountX, amountY) = _removeLiquidity(_LBPair, _amountXMin, _amountYMin, _ids, _amounts, _to);
     }
 
     /// @notice Remove AVAX liquidity while performing safety checks
@@ -317,7 +319,8 @@ contract LBRouter is ILBRouter {
     /// @param _token The address of token
     /// @param _amountTokenMin The min amount to receive of token
     /// @param _amountAVAXMin The min amount to receive of AVAX
-    /// @param _liquidityRemovals LBToken amounts that are removed
+    /// @param _ids The list of ids to burn
+    /// @param _amounts The list of amounts to burn of each id in `_ids`
     /// @param _to The address of the recipient
     /// @param _deadline The deadline of the tx
     /// @return amountToken Amount of token returned
@@ -327,7 +330,8 @@ contract LBRouter is ILBRouter {
         uint16 _binStep,
         uint256 _amountTokenMin,
         uint256 _amountAVAXMin,
-        ILBToken.LiquidityAmount[] memory _liquidityRemovals,
+        uint256[] memory _ids,
+        uint256[] memory _amounts,
         address payable _to,
         uint256 _deadline
     ) external override ensure(_deadline) returns (uint256 amountToken, uint256 amountAVAX) {
@@ -343,7 +347,8 @@ contract LBRouter is ILBRouter {
                 _LBPair,
                 _amountTokenMin,
                 _amountAVAXMin,
-                _liquidityRemovals,
+                _ids,
+                _amounts,
                 address(this)
             );
 
@@ -725,7 +730,8 @@ contract LBRouter is ILBRouter {
     /// @param _LBPair The address of the LBPair
     /// @param _amountXMin The min amount to receive of token X
     /// @param _amountYMin The min amount to receive of token Y
-    /// @param _liquidityRemovals LBToken amounts that are removed
+    /// @param _ids The list of ids to burn
+    /// @param _amounts The list of amounts to burn of each id in `_ids`
     /// @param _to The address of the recipient
     /// @param amountX The amount of token X sent by the pair
     /// @param amountY The amount of token Y sent by the pair
@@ -733,11 +739,12 @@ contract LBRouter is ILBRouter {
         ILBPair _LBPair,
         uint256 _amountXMin,
         uint256 _amountYMin,
-        ILBToken.LiquidityAmount[] memory _liquidityRemovals,
+        uint256[] memory _ids,
+        uint256[] memory _amounts,
         address _to
     ) private returns (uint256 amountX, uint256 amountY) {
-        ILBToken(address(_LBPair)).safeBatchTransferFrom(msg.sender, address(_LBPair), _liquidityRemovals);
-        (amountX, amountY) = _LBPair.burn(_liquidityRemovals, _to);
+        ILBToken(address(_LBPair)).safeBatchTransferFrom(msg.sender, address(_LBPair), _ids, _amounts);
+        (amountX, amountY) = _LBPair.burn(_ids, _amounts, _to);
         if (amountX < _amountXMin || amountY < _amountYMin)
             revert LBRouter__AmountSlippageCaught(_amountXMin, amountX, _amountYMin, amountY);
     }

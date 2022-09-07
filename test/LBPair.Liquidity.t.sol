@@ -109,17 +109,16 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
 
         pair.mint(deposits, BOB);
 
-        ILBToken.LiquidityAmount[] memory liquidityAmounts = new ILBToken.LiquidityAmount[](5);
         uint256[] memory _ids = new uint256[](5);
+        uint256[] memory _amounts = new uint256[](5);
         for (uint256 i; i < 5; i++) {
-            liquidityAmounts[i].id = deposits[i].id;
-            liquidityAmounts[i].amount = pair.balanceOf(BOB, liquidityAmounts[i].id);
-            _ids[i] = liquidityAmounts[i].id;
+            _ids[i] = deposits[i].id;
+            _amounts[i] = pair.balanceOf(BOB, deposits[i].id);
         }
 
         vm.startPrank(BOB);
-        pair.safeBatchTransferFrom(BOB, address(pair), liquidityAmounts);
-        pair.burn(liquidityAmounts, BOB);
+        pair.safeBatchTransferFrom(BOB, address(pair), _ids, _amounts);
+        pair.burn(_ids, _amounts, BOB);
         pair.collectFees(BOB, _ids); // the excess token were sent to fees, so they need to be claimed
         vm.stopPrank();
 

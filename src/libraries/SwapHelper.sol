@@ -64,6 +64,8 @@ library SwapHelper {
             amountOutOfBin = swapForY
                 ? _price.mulShiftRoundDown(amountInToBin, Constants.SCALE_OFFSET)
                 : amountInToBin.shiftDivRoundDown(Constants.SCALE_OFFSET, _price);
+            // Safety check in case rounding returns a higher value than expected
+            if (amountOutOfBin > _reserve) amountOutOfBin = _reserve;
         }
     }
 

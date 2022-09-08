@@ -74,16 +74,18 @@ library TreeMath {
     }
 
     function removeFromTree(mapping(uint256 => uint256)[3] storage _tree, uint256 _id) internal {
-        // removes 1 at the right indices
-        uint256 _idDepth2 = _id / 256;
-        uint256 _newLeafValue = _tree[2][_idDepth2] & (type(uint256).max - (1 << (_id % 256)));
-        _tree[2][_idDepth2] = _newLeafValue;
-        if (_newLeafValue == 0) {
-            uint256 _idDepth1 = _id / 65_536;
-            _newLeafValue = _tree[1][_idDepth1] & (type(uint256).max - (1 << (_idDepth2 % 256)));
-            _tree[1][_idDepth1] = _newLeafValue;
+        unchecked {
+            // removes 1 at the right indices
+            uint256 _idDepth2 = _id / 256;
+            uint256 _newLeafValue = _tree[2][_idDepth2] & (type(uint256).max - (1 << (_id % 256)));
+            _tree[2][_idDepth2] = _newLeafValue;
             if (_newLeafValue == 0) {
-                _tree[0][0] &= type(uint256).max - (1 << _idDepth1);
+                uint256 _idDepth1 = _id / 65_536;
+                _newLeafValue = _tree[1][_idDepth1] & (type(uint256).max - (1 << (_idDepth2 % 256)));
+                _tree[1][_idDepth1] = _newLeafValue;
+                if (_newLeafValue == 0) {
+                    _tree[0][0] &= type(uint256).max - (1 << _idDepth1);
+                }
             }
         }
     }

@@ -989,7 +989,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         }
 
         feesXTotal = _slotX.decode(type(uint128).max, 0);
-        feesYTotal = _slotX.decode(type(uint128).max, 0);
+        feesYTotal = _slotY.decode(type(uint128).max, 0);
 
         feesXProtocol = _slotX.decode(type(uint128).max, _OFFSET_PROTOCOL_FEE);
         feesYProtocol = _slotY.decode(type(uint128).max, _OFFSET_PROTOCOL_FEE);

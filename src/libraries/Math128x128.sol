@@ -87,6 +87,8 @@ library Math128x128 {
             if (y < 0) {
                 invert = !invert;
                 absY = uint256(-y);
+            } else {
+                absY = uint256(y);
             }
 
             if (x > type(uint128).max) {
@@ -136,7 +138,7 @@ library Math128x128 {
 
             if (result == 0 || absY > 0xfffff) revert Math128x128__PowerUnderflow(x, y);
 
-            return invert ? result : type(uint256).max / result;
+            return invert ? type(uint256).max / result : result;
         }
     }
 }

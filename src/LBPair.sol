@@ -738,7 +738,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 assembly {
                     let _slotX := add(_pairInformation.slot, 2)
 
-                    sstore(_slotX, add(shl(128, _feesXTotal), 1))
+                    sstore(_slotX, add(shl(_OFFSET_PROTOCOL_FEE, 1), _feesXTotal))
                 }
 
                 tokenX.safeTransfer(_feeRecipient, amountX);
@@ -751,7 +751,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 assembly {
                     let _slotY := add(_pairInformation.slot, 3)
 
-                    sstore(_slotY, add(shl(128, _feesYTotal), 1))
+                    sstore(_slotY, add(shl(_OFFSET_PROTOCOL_FEE, 1), _feesYTotal))
                 }
 
                 tokenY.safeTransfer(_feeRecipient, amountY);

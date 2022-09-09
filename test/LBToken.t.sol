@@ -11,6 +11,7 @@ contract LiquidityBinTokenTest is TestHelper {
         uint256[] ids,
         uint256[] amounts
     );
+    event TransferSingle(address indexed sender, address indexed from, address indexed to, uint256 id, uint256 amount);
 
     function setUp() public {
         token6D = new ERC20MockDecimals(6);
@@ -58,7 +59,40 @@ contract LiquidityBinTokenTest is TestHelper {
         assertEq(pair.balanceOf(BOB, ID_ONE - 1), amountIn / 3);
     }
 
-    function testTransferNotApprovedReverts() public {
+    function testSafeTransferFrom() public {
+        uint256 amountIn = 1e18;
+
+        (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, 5, 0);
+
+        uint256[] memory amounts = new uint256[](5);
+        for (uint256 i; i < 5; i++) {
+            assertEq(pair.userPositionAt(DEV, i), _ids[i]);
+            amounts[i] = pair.balanceOf(DEV, _ids[i]);
+        }
+        assertEq(pair.userPositionNb(DEV), 5);
+
+        assertEq(pair.balanceOf(DEV, ID_ONE - 1), amountIn / 3);
+        vm.expectEmit(true, true, true, true);
+        emit TransferSingle(DEV, DEV, ALICE, _ids[0], amounts[0]);
+        pair.safeTransferFrom(DEV, ALICE, _ids[0], amounts[0]);
+        assertEq(pair.balanceOf(DEV, _ids[0]), 0);
+        assertEq(pair.balanceOf(ALICE, _ids[0]), amountIn / 3);
+
+        vm.prank(ALICE);
+        pair.setApprovalForAll(BOB, true);
+        assertTrue(pair.isApprovedForAll(ALICE, BOB));
+        assertFalse(pair.isApprovedForAll(BOB, ALICE));
+
+        vm.prank(BOB);
+        vm.expectEmit(true, true, true, true);
+        emit TransferSingle(BOB, ALICE, BOB, _ids[0], amounts[0]);
+        pair.safeTransferFrom(ALICE, BOB, _ids[0], amounts[0]);
+        assertEq(pair.balanceOf(DEV, _ids[0]), 0);
+        assertEq(pair.balanceOf(ALICE, _ids[0]), 0);
+        assertEq(pair.balanceOf(BOB, _ids[0]), amountIn / 3);
+    }
+
+    function testSafeBatchTransferNotApprovedReverts() public {
         uint256 amountIn = 1e18;
         (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, 5, 0);
 
@@ -71,6 +105,21 @@ contract LiquidityBinTokenTest is TestHelper {
         vm.prank(BOB);
         vm.expectRevert(abi.encodeWithSelector(LBToken__SpenderNotApproved.selector, DEV, BOB));
         pair.safeBatchTransferFrom(DEV, BOB, _ids, amounts);
+    }
+
+    function testSafeTransferNotApprovedReverts() public {
+        uint256 amountIn = 1e18;
+        (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, 5, 0);
+
+        uint256[] memory amounts = new uint256[](5);
+        for (uint256 i; i < 5; i++) {
+            assertEq(pair.userPositionAt(DEV, i), _ids[i]);
+            amounts[i] = pair.balanceOf(DEV, _ids[i]);
+        }
+
+        vm.prank(BOB);
+        vm.expectRevert(abi.encodeWithSelector(LBToken__SpenderNotApproved.selector, DEV, BOB));
+        pair.safeTransferFrom(DEV, BOB, _ids[0], amounts[0]);
     }
 
     function testSafeBatchTransferFromReverts() public {
@@ -104,6 +153,38 @@ contract LiquidityBinTokenTest is TestHelper {
         _ids[1] = ID_ONE + binAmount;
         vm.expectRevert(abi.encodeWithSelector(LBToken__TransferExceedsBalance.selector, DEV, _ids[1], amounts[1]));
         pair.safeBatchTransferFrom(DEV, ALICE, _ids, amounts);
+    }
+
+    function testSafeTransferFromReverts() public {
+        uint24 binAmount = 11;
+        uint256 amountIn = 1e18;
+        (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, binAmount, 0);
+
+        uint256[] memory amounts = new uint256[](binAmount);
+        for (uint256 i; i < binAmount; i++) {
+            assertEq(pair.userPositionAt(DEV, i), _ids[i]);
+            amounts[i] = pair.balanceOf(DEV, _ids[i]);
+        }
+
+        vm.prank(BOB);
+        vm.expectRevert(abi.encodeWithSelector(LBToken__SpenderNotApproved.selector, DEV, BOB));
+        pair.safeTransferFrom(DEV, BOB, _ids[0], amounts[0]);
+
+        vm.prank(address(0));
+        vm.expectRevert(LBToken__TransferFromOrToAddress0.selector);
+        pair.safeTransferFrom(address(0), BOB, _ids[0], amounts[0]);
+
+        vm.prank(DEV);
+        vm.expectRevert(LBToken__TransferFromOrToAddress0.selector);
+        pair.safeTransferFrom(DEV, address(0), _ids[0], amounts[0]);
+
+        amounts[0] += 1;
+        vm.expectRevert(abi.encodeWithSelector(LBToken__TransferExceedsBalance.selector, DEV, _ids[0], amounts[0]));
+        pair.safeTransferFrom(DEV, ALICE, _ids[0], amounts[0]);
+
+        _ids[1] = ID_ONE + binAmount;
+        vm.expectRevert(abi.encodeWithSelector(LBToken__TransferExceedsBalance.selector, DEV, _ids[1], amounts[1]));
+        pair.safeTransferFrom(DEV, ALICE, _ids[1], amounts[1]);
     }
 
     function testIdLengthMismatch() public {

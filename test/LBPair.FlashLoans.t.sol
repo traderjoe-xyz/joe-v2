@@ -39,9 +39,9 @@ contract LiquidityBinPairFlashLoansTest is TestHelper {
 
         borrower.flashBorrow(amountXBorrowed, amountYBorrowed);
 
-        ILBPair.Fees memory feesForDev = pair.pendingFees(DEV, _ids);
-        assertGt(feesForDev.tokenX, 0, "DEV should have fees on token X");
-        assertGt(feesForDev.tokenY, 0, "DEV should have fees on token Y");
+        (uint256 feesForDevX, uint256 feesForDevY) = pair.pendingFees(DEV, _ids);
+        assertGt(feesForDevX, 0, "DEV should have fees on token X");
+        assertGt(feesForDevY, 0, "DEV should have fees on token Y");
     }
 
     function testFailFlashloanMoreThanReserves() public {

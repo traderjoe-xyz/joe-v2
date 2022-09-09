@@ -43,18 +43,19 @@ contract LiquidityBinPairFeesTest is TestHelper {
         for (uint256 i; i < 5; i++) {
             orderedIds[i] = startId - 2 + i;
         }
-        ILBPair.Fees memory fees = pair.pendingFees(DEV, orderedIds);
 
-        assertApproxEqAbs(accumulatedYFees, fees.tokenY, 1);
+        (uint256 feeX, uint256 feeY) = pair.pendingFees(DEV, orderedIds);
+
+        assertApproxEqAbs(accumulatedYFees, feeY, 1);
 
         uint256 balanceBefore = token18D.balanceOf(DEV);
         pair.collectFees(DEV, orderedIds);
-        assertEq(fees.tokenY, token18D.balanceOf(DEV) - balanceBefore);
+        assertEq(feeY, token18D.balanceOf(DEV) - balanceBefore);
 
         // Trying to claim a second time
         balanceBefore = token18D.balanceOf(DEV);
-        fees = pair.pendingFees(DEV, orderedIds);
-        assertEq(fees.tokenY, 0);
+        (feeX, feeY) = pair.pendingFees(DEV, orderedIds);
+        assertEq(feeY, 0);
         pair.collectFees(DEV, orderedIds);
         assertEq(token18D.balanceOf(DEV), balanceBefore);
     }
@@ -80,27 +81,22 @@ contract LiquidityBinPairFeesTest is TestHelper {
         token18D.mint(address(pair), amountYForSwap);
         pair.swap(false, ALICE);
 
-        ILBPair.Fees memory feesForDev = pair.pendingFees(DEV, _ids);
-        ILBPair.Fees memory feesForBob = pair.pendingFees(BOB, _ids);
+        (uint256 feesForDevX, uint256 feesForDevY) = pair.pendingFees(DEV, _ids);
+        (uint256 feesForBobX, uint256 feesForBobY) = pair.pendingFees(BOB, _ids);
 
-        assertGt(feesForDev.tokenY, 0, "DEV should have fees on token Y");
-        assertGt(feesForBob.tokenY, 0, "BOB should also have fees on token Y");
+        assertGt(feesForDevY, 0, "DEV should have fees on token Y");
+        assertGt(feesForBobY, 0, "BOB should also have fees on token Y");
 
         (, uint256 feesYTotal, , uint256 feesYProtocol) = pair.getGlobalFees();
 
         uint256 accumulatedYFees = feesYTotal - feesYProtocol;
 
-        assertApproxEqAbs(
-            feesForDev.tokenY + feesForBob.tokenY,
-            accumulatedYFees,
-            1,
-            "Sum of users fees = accumulated fees"
-        );
+        assertApproxEqAbs(feesForDevY + feesForBobY, accumulatedYFees, 1, "Sum of users fees = accumulated fees");
 
         uint256 balanceBefore = token18D.balanceOf(DEV);
         pair.collectFees(DEV, _ids);
         assertEq(
-            feesForDev.tokenY,
+            feesForDevY,
             token18D.balanceOf(DEV) - balanceBefore,
             "DEV gets the expected amount when withdrawing fees"
         );
@@ -108,7 +104,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         balanceBefore = token18D.balanceOf(BOB);
         pair.collectFees(BOB, _ids);
         assertEq(
-            feesForBob.tokenY,
+            feesForBobY,
             token18D.balanceOf(BOB) - balanceBefore,
             "BOB gets the expected amount when withdrawing fees"
         );

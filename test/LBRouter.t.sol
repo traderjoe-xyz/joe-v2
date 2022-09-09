@@ -276,7 +276,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 price;
 
         price = router.getPriceFromId(pair, ID_ONE);
-        assertEq(price, 340282366920938463463374607431768211456);
+        assertEq(price, 340282366920938463463374607431768211455);
 
         price = router.getPriceFromId(pair, ID_ONE - 10000);
         assertEq(price, 4875582648561453899431769403);
@@ -314,12 +314,12 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(LBRouter__WrongAmounts.selector, _amountYIn + 1, _amountYIn));
         router.getSwapIn(pair, _amountYIn + 1, true);
 
-        vm.expectRevert(abi.encodeWithSelector(LBRouter__WrongAmounts.selector, amountXIn + 1, amountXIn));
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__WrongAmounts.selector, amountXIn + 1, amountXIn - 3));
         router.getSwapIn(pair, amountXIn + 1, false);
     }
 
     function testGetSwapInOverflowReverts() public {
-        uint256 _amountYIn = type(uint112).max;
+        uint256 _amountYIn = type(uint112).max - 1;
         uint24 _startId = ID_ONE;
         uint24 _numberBins = 1;
         uint24 _gap = 2;

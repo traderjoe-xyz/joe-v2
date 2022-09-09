@@ -13,6 +13,8 @@ contract LiquidityBinFactoryTestM is TestHelper {
         token18D = new ERC20MockDecimals(18);
 
         factory = new LBFactory(DEV, 8e14);
+        addAllAssetsToQuoteWhitelist(factory);
+
         ILBPair _LBPairImplementation = new LBPair(factory);
         factory.setLBPairImplementation(_LBPairImplementation);
 

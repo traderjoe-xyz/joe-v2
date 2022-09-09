@@ -12,7 +12,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
         factory.setLBPairImplementation(_LBPairImplementation);
-
+        addAllAssetsToQuoteWhitelist(factory);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
 
         router = new LBRouter(ILBFactory(DEV), IJoeFactory(DEV), IWAVAX(DEV));

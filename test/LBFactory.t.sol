@@ -48,9 +48,14 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testSetFeeRecipient() public {
-        factory.setFeeRecipient(ALICE);
+        vm.expectRevert(LBFactory__ZeroAddress.selector);
+        factory.setFeeRecipient(address(0));
 
+        factory.setFeeRecipient(ALICE);
         assertEq(factory.feeRecipient(), ALICE);
+
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__SameFeeRecipient.selector, ALICE));
+        factory.setFeeRecipient(ALICE);
     }
 
     function testSetFeeRecipientNotByOwnerReverts() public {

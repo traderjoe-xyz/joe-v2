@@ -8,6 +8,13 @@ contract LiquidityBinFactoryTest is TestHelper {
     event QuoteAssetAdded(IERC20 indexed _quoteAsset);
     event LBPairImplementationSet(ILBPair oldLBPairImplementation, ILBPair LBPairImplementation);
 
+    struct LBPairAvailable {
+        uint256 binStep;
+        ILBPair LBPair;
+        bool createdByOwner;
+        bool isBlacklisted;
+    }
+
     function setUp() public {
         token6D = new ERC20MockDecimals(6);
         token12D = new ERC20MockDecimals(12);
@@ -32,6 +39,9 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setLBPairImplementation(_LBPairImplementation);
 
         LBFactory anotherFactory = new LBFactory(DEV, 7e14);
+        vm.expectRevert(LBFactory__ImplementationNotSet.selector);
+        anotherFactory.createLBPair(token6D, token18D, ID_ONE, DEFAULT_BIN_STEP);
+
         ILBPair _LBPairImplementationAnotherFactory = new LBPair(anotherFactory);
         vm.expectRevert(
             abi.encodeWithSelector(LBFactory__LBPairSafetyCheckFailed.selector, _LBPairImplementationAnotherFactory)
@@ -42,6 +52,16 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.expectEmit(true, true, true, true);
         emit LBPairImplementationSet(_LBPairImplementation, _LBPairImplementationNew);
         factory.setLBPairImplementation(_LBPairImplementationNew);
+    }
+
+    function testGetAvailableLBPairsBinStep() public {
+        //LBPairAvailable[] memory availableLBPairsBinSteps = new LBPairAvailable[];
+        assertEq(factory.getAvailableLBPairsBinStep(token6D, token18D).length, 0);
+        ILBPair pair = createLBPairDefaultFees(token6D, token18D);
+        assertEq(factory.getAvailableLBPairsBinStep(token6D, token18D).length, 1);
+        // router.createLBPair(token6D, token18D, ID_ONE, 50);
+        // assertEq(factory.getAvailableLBPairsBinStep(token6D, token18D).length, 2);
+        //TODO - fails now if amount of pairs > 1
     }
 
     function testCreateLBPair() public {
@@ -410,6 +430,8 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.RemoveQuoteAsset(token24D);
 
         assertEq(factory.isQuoteAsset(token24D), false);
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__QuoteAssetNotWhitelisted.selector, token24D));
+        factory.createLBPair(token6D, token24D, ID_ONE, DEFAULT_BIN_STEP);
 
         vm.expectEmit(true, true, true, true);
         emit QuoteAssetAdded(token24D);

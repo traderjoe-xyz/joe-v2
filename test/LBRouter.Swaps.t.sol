@@ -373,7 +373,6 @@ contract LiquidityBinRouterForkTest is TestHelper {
 
     function setUp() public {
         vm.createSelectFork(vm.rpcUrl("avalanche"), 19_358_000);
-
         token6D = new ERC20MockDecimals(6);
         token10D = new ERC20MockDecimals(10);
         token12D = new ERC20MockDecimals(12);
@@ -388,7 +387,7 @@ contract LiquidityBinRouterForkTest is TestHelper {
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
         factory.setLBPairImplementation(_LBPairImplementation);
-
+        addAllAssetsToQuoteWhitelist(factory);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
 
         router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(address(wavax)));

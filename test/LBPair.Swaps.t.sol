@@ -12,7 +12,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         ILBPair _LBPairImplementation = new LBPair(factory);
         factory.setLBPairImplementation(_LBPairImplementation);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
-
+        addAllAssetsToQuoteWhitelist(factory);
         router = new LBRouter(ILBFactory(DEV), IJoeFactory(DEV), IWAVAX(DEV));
 
         pair = createLBPairDefaultFees(token6D, token18D);

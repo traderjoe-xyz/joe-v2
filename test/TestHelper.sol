@@ -316,4 +316,14 @@ abstract contract TestHelper is Test {
                 block.timestamp
             );
     }
+
+    function addAllAssetsToQuoteWhitelist(LBFactory factory) internal {
+        if (address(wavax) != address(0)) factory.AddQuoteAsset(wavax);
+        if (address(taxToken) != address(0)) factory.AddQuoteAsset(taxToken);
+        if (address(token6D) != address(0)) factory.AddQuoteAsset(token6D);
+        if (address(token10D) != address(0)) factory.AddQuoteAsset(token10D);
+        if (address(token12D) != address(0)) factory.AddQuoteAsset(token12D);
+        if (address(token18D) != address(0)) factory.AddQuoteAsset(token18D);
+        if (address(token24D) != address(0)) factory.AddQuoteAsset(token24D);
+    }
 }

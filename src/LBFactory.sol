@@ -471,15 +471,16 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @notice Function to add an asset to the whitelist of quote assets
     /// @param _quoteAsset The quote asset (e.g: AVAX, USDC...)
     function AddQuoteAsset(IERC20 _quoteAsset) external override onlyOwner {
-        if (_quoteAssetWhitelist.add(address(_quoteAsset))) revert LBFactory__QuoteAssetAlreadyWhitelisted(_quoteAsset);
+        if (!_quoteAssetWhitelist.add(address(_quoteAsset)))
+            revert LBFactory__QuoteAssetAlreadyWhitelisted(_quoteAsset);
 
         emit QuoteAssetAdded(_quoteAsset);
     }
 
-    /// @notice Function to add an asset to the whitelist of quote assets
+    /// @notice Function to remove an asset to the whitelist of quote assets
     /// @param _quoteAsset The quote asset (e.g: AVAX, USDC...)
     function RemoveQuoteAsset(IERC20 _quoteAsset) external override onlyOwner {
-        if (_quoteAssetWhitelist.remove(address(_quoteAsset))) revert LBFactory__QuoteAssetNotWhitelisted(_quoteAsset);
+        if (!_quoteAssetWhitelist.remove(address(_quoteAsset))) revert LBFactory__QuoteAssetNotWhitelisted(_quoteAsset);
 
         emit QuoteAssetRemoved(_quoteAsset);
     }

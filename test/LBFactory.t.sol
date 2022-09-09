@@ -4,6 +4,9 @@ pragma solidity 0.8.7;
 import "./TestHelper.sol";
 
 contract LiquidityBinFactoryTest is TestHelper {
+    event QuoteAssetRemoved(IERC20 indexed _quoteAsset);
+    event QuoteAssetAdded(IERC20 indexed _quoteAsset);
+
     function setUp() public {
         token6D = new ERC20MockDecimals(6);
         token12D = new ERC20MockDecimals(12);
@@ -360,5 +363,35 @@ contract LiquidityBinFactoryTest is TestHelper {
     function testInvalidBinStepWhileCreatingLBPair() public {
         vm.expectRevert(abi.encodeWithSelector(LBFactory__BinStepHasNoPreset.selector, DEFAULT_BIN_STEP + 1));
         createLBPairDefaultFeesFromStartIdAndBinStep(token6D, token12D, ID_ONE, DEFAULT_BIN_STEP + 1);
+    }
+
+    function testQuoteAssets() public {
+        assertEq(factory.getQuoteAssetCount(), 3);
+        assertEq(address(factory.getQuoteAsset(0)), address(token6D));
+        assertEq(address(factory.getQuoteAsset(1)), address(token12D));
+        assertEq(address(factory.getQuoteAsset(2)), address(token18D));
+        assertEq(factory.isQuoteAsset(token6D), true);
+        assertEq(factory.isQuoteAsset(token12D), true);
+        assertEq(factory.isQuoteAsset(token18D), true);
+
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__QuoteAssetAlreadyWhitelisted.selector, token12D));
+        factory.AddQuoteAsset(token12D);
+
+        token24D = new ERC20MockDecimals(24);
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__QuoteAssetNotWhitelisted.selector, token24D));
+        factory.RemoveQuoteAsset(token24D);
+
+        assertEq(factory.isQuoteAsset(token24D), false);
+
+        vm.expectEmit(true, true, true, true);
+        emit QuoteAssetAdded(token24D);
+        factory.AddQuoteAsset(token24D);
+        assertEq(factory.isQuoteAsset(token24D), true);
+        assertEq(address(factory.getQuoteAsset(3)), address(token24D));
+
+        vm.expectEmit(true, true, true, true);
+        emit QuoteAssetRemoved(token24D);
+        factory.RemoveQuoteAsset(token24D);
+        assertEq(factory.isQuoteAsset(token24D), false);
     }
 }

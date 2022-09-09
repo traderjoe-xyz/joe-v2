@@ -301,8 +301,11 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testForSettingFlashloanFee() public {
-        factory.setFlashLoanFee(7e14);
-        assertEq(factory.flashLoanFee(), 7e14);
+        uint256 flashFee = 7e14;
+        factory.setFlashLoanFee(flashFee);
+        assertEq(factory.flashLoanFee(), flashFee);
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__SameFlashLoanFee.selector, flashFee));
+        factory.setFlashLoanFee(flashFee);
     }
 
     function testForInvalidFeeRecipient() public {

@@ -6,6 +6,7 @@ import "./TestHelper.sol";
 contract LiquidityBinFactoryTest is TestHelper {
     event QuoteAssetRemoved(IERC20 indexed _quoteAsset);
     event QuoteAssetAdded(IERC20 indexed _quoteAsset);
+    event LBPairImplementationSet(ILBPair oldLBPairImplementation, ILBPair LBPairImplementation);
 
     function setUp() public {
         token6D = new ERC20MockDecimals(6);
@@ -22,6 +23,25 @@ contract LiquidityBinFactoryTest is TestHelper {
     function testConstructor() public {
         assertEq(factory.feeRecipient(), DEV);
         assertEq(factory.flashLoanFee(), 8e14);
+    }
+
+    function testSetLBPairImplementation() public {
+        ILBPair _LBPairImplementation = new LBPair(factory);
+        factory.setLBPairImplementation(_LBPairImplementation);
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__SameImplementation.selector, _LBPairImplementation));
+        factory.setLBPairImplementation(_LBPairImplementation);
+
+        LBFactory anotherFactory = new LBFactory(DEV, 7e14);
+        ILBPair _LBPairImplementationAnotherFactory = new LBPair(anotherFactory);
+        vm.expectRevert(
+            abi.encodeWithSelector(LBFactory__LBPairSafetyCheckFailed.selector, _LBPairImplementationAnotherFactory)
+        );
+        factory.setLBPairImplementation(_LBPairImplementationAnotherFactory);
+
+        ILBPair _LBPairImplementationNew = new LBPair(factory);
+        vm.expectEmit(true, true, true, true);
+        emit LBPairImplementationSet(_LBPairImplementation, _LBPairImplementationNew);
+        factory.setLBPairImplementation(_LBPairImplementationNew);
     }
 
     function testCreateLBPair() public {

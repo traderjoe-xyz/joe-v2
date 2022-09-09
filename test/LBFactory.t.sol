@@ -81,8 +81,12 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testForZeroAddressPairReverts() public {
+        factory.AddQuoteAsset(IERC20(address(0)));
         vm.expectRevert(LBFactory__ZeroAddress.selector);
         factory.createLBPair(token6D, IERC20(address(0)), ID_ONE, DEFAULT_BIN_STEP);
+
+        vm.expectRevert(LBFactory__ZeroAddress.selector);
+        factory.createLBPair(IERC20(address(0)), token6D, ID_ONE, DEFAULT_BIN_STEP);
     }
 
     function testIfPairAlreadyExistsReverts() public {

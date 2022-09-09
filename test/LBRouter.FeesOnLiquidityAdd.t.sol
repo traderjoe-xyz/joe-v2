@@ -12,7 +12,8 @@ contract LiquidityBinRouterTest is TestHelper {
         wavax = new WAVAX();
         uint16 binStep = 100;
         factory = new LBFactory(DEV, 8e14);
-        new LBFactoryHelper(factory);
+        ILBPair _LBPairImplementation = new LBPair(factory);
+        factory.setLBPairImplementation(_LBPairImplementation);
         factory.setPreset(
             binStep,
             uint16(Constants.BASIS_POINT_MAX),

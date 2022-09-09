@@ -131,8 +131,8 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.expectRevert(
             abi.encodeWithSelector(
                 LBRouter__AmountSlippageCaught.selector,
+                amountXIn + 1,
                 amountXIn,
-                amountXIn - 3,
                 _amountYIn,
                 _amountYIn
             )
@@ -141,7 +141,7 @@ contract LiquidityBinRouterTest is TestHelper {
             token6D,
             token18D,
             DEFAULT_BIN_STEP,
-            amountXIn,
+            amountXIn + 1,
             _amountYIn,
             ids,
             amounts,
@@ -152,7 +152,7 @@ contract LiquidityBinRouterTest is TestHelper {
             abi.encodeWithSelector(
                 LBRouter__AmountSlippageCaught.selector,
                 amountXIn,
-                amountXIn - 3,
+                amountXIn,
                 _amountYIn + 1,
                 _amountYIn
             )

@@ -314,8 +314,8 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(LBRouter__WrongAmounts.selector, _amountYIn + 1, _amountYIn));
         router.getSwapIn(pair, _amountYIn + 1, true);
 
-        vm.expectRevert(abi.encodeWithSelector(LBRouter__WrongAmounts.selector, amountXIn, amountXIn - 3));
-        router.getSwapIn(pair, amountXIn, false);
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__WrongAmounts.selector, amountXIn + 1, amountXIn));
+        router.getSwapIn(pair, amountXIn + 1, false);
     }
 
     function testGetSwapInOverflowReverts() public {

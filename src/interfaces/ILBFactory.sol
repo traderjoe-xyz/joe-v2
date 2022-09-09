@@ -75,6 +75,10 @@ interface ILBFactory is IPendingOwnable {
 
     event PresetRemoved(uint256 indexed binStep);
 
+    event QuoteAssetAdded(IERC20 indexed _quoteAsset);
+
+    event QuoteAssetRemoved(IERC20 indexed _quoteAsset);
+
     function MAX_FEE() external pure returns (uint256);
 
     function MIN_BIN_STEP() external pure returns (uint256);
@@ -84,6 +88,12 @@ interface ILBFactory is IPendingOwnable {
     function MAX_PROTOCOL_SHARE() external pure returns (uint256);
 
     function LBPairImplementation() external view returns (ILBPair);
+
+    function getQuoteAssetCount() external view returns (uint256);
+
+    function getQuoteAsset(uint256 index) external view returns (IERC20);
+
+    function isQuoteAsset(IERC20 token) external view returns (bool);
 
     function feeRecipient() external view returns (address);
 
@@ -171,5 +181,9 @@ interface ILBFactory is IPendingOwnable {
 
     function setFactoryLocked(bool locked) external;
 
-    function forceDecay(ILBPair _LBPair) external;
+    function AddQuoteAsset(IERC20 quoteAsset) external;
+
+    function RemoveQuoteAsset(IERC20 quoteAsset) external;
+
+    function forceDecay(ILBPair LBPair) external;
 }

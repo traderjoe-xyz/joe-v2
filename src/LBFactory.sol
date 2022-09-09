@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.7;
 
+import "openzeppelin/utils/structs/EnumerableSet.sol";
 import "openzeppelin/proxy/Clones.sol";
 
 import "./LBErrors.sol";
@@ -12,6 +13,7 @@ import "./libraries/Decoder.sol";
 
 contract LBFactory is PendingOwnable, ILBFactory {
     using Decoder for bytes32;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     uint256 public constant override MAX_FEE = 1e17; // 10%
 
@@ -37,12 +39,14 @@ contract LBFactory is PendingOwnable, ILBFactory {
     // The max binStep set is 247. We use this method instead of an array to keep it ordered and to reduce gas
     bytes32 private _availablePresets;
 
+    // The parameters presets
+    mapping(uint256 => bytes32) private _presets;
+
+    EnumerableSet.AddressSet private _quoteAssetWhitelist;
+
     // Whether a LBPair was created with a bin step, if the bit at `index` is 1, it means that the LBPair with binStep `index` exists
     // The max binStep set is 247. We use this method instead of an array to keep it ordered and to reduce gas
     mapping(IERC20 => mapping(IERC20 => bytes32)) private _availableLBPairBinSteps;
-
-    // The parameters presets
-    mapping(uint256 => bytes32) private _presets;
 
     /// @notice Constructor
     /// @param _feeRecipient The address of the fee recipient
@@ -57,6 +61,26 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @return The number of LBPair
     function allPairsLength() external view override returns (uint256) {
         return allLBPairs.length;
+    }
+
+    /// @notice View function to return the number of quote assets whitelisted
+    /// @return The number of quote assets
+    function getQuoteAssetCount() external view override returns (uint256) {
+        return _quoteAssetWhitelist.length();
+    }
+
+    /// @notice View function to return the quote asset whitelisted at index `index`
+    /// @param _index The index
+    /// @return The address of the _quoteAsset at index `index`
+    function getQuoteAsset(uint256 _index) external view override returns (IERC20) {
+        return IERC20(_quoteAssetWhitelist.at(_index));
+    }
+
+    /// @notice View function to return whether a token is a quotedAsset (true) or not (false)
+    /// @param _token The address of the asset
+    /// @return Whether the token is a quote asset or not
+    function isQuoteAsset(IERC20 _token) external view override returns (bool) {
+        return _quoteAssetWhitelist.contains(address(_token));
     }
 
     /// @notice Returns the address of the LBPair if it exists,
@@ -149,7 +173,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
         returns (LBPairAvailable[] memory LBPairsAvailable)
     {
         unchecked {
-            (_tokenX, _tokenY) = _sortTokens(_tokenX, _tokenY);
             bytes32 _avLBPairBinSteps = _availableLBPairBinSteps[_tokenX][_tokenY];
             uint256 _nbAvailable = _avLBPairBinSteps.decode(type(uint8).max, 248);
 
@@ -159,7 +182,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
                 uint256 _index;
                 for (uint256 i = MIN_BIN_STEP; i <= MAX_BIN_STEP; ++i) {
                     if (_avLBPairBinSteps.decode(1, i) == 1) {
-                        LBPairInfo memory _LBPairInfo = _LBPairsInfo[_tokenX][_tokenY][i];
+                        LBPairInfo memory _LBPairInfo = _getLBPairInfo(_tokenX, _tokenY, i);
 
                         LBPairsAvailable[_index] = LBPairAvailable({
                             binStep: i,
@@ -207,10 +230,14 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         if (address(_LBPairImplementation) == address(0)) revert LBFactory__ImplementationNotSet();
 
+        if (!_quoteAssetWhitelist.contains(address(_tokenY))) revert LBFactory__QuoteAssetNotWhitelisted(_tokenY);
+
         if (_tokenX == _tokenY) revert LBFactory__IdenticalAddresses(_tokenX);
-        if (address(_tokenX) == address(0) || address(_tokenY) == address(0)) revert LBFactory__ZeroAddress();
+
+        // We sort token for storage efficiency, only one input needs to be stored
         (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);
         // single check is sufficient
+        if (address(_tokenA) == address(0)) revert LBFactory__ZeroAddress();
         if (address(_LBPairsInfo[_tokenA][_tokenB][_binStep].LBPair) != address(0))
             revert LBFactory__LBPairAlreadyExists(_tokenX, _tokenY, _binStep);
 
@@ -274,8 +301,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint256 _binStep,
         bool _blacklisted
     ) external override onlyOwner {
-        (_tokenX, _tokenY) = _sortTokens(_tokenX, _tokenY);
-        LBPairInfo memory _LBPairInfo = _LBPairsInfo[_tokenX][_tokenY][_binStep];
+        LBPairInfo memory _LBPairInfo = _getLBPairInfo(_tokenX, _tokenY, _binStep);
         if (_LBPairInfo.isBlacklisted == _blacklisted) revert LBFactory__LBPairBlacklistIsAlreadyInTheSameState();
 
         _LBPairsInfo[_tokenX][_tokenY][_binStep].isBlacklisted = _blacklisted;
@@ -317,7 +343,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         // The last 16 bits are reserved for sampleLifetime
         bytes32 _preset = bytes32(
-            (uint256(_packedFeeParameters) & type(uint240).max) | (uint256(_sampleLifetime) << 240)
+            (uint256(_packedFeeParameters) & type(uint144).max) | (uint256(_sampleLifetime) << 240)
         );
 
         _presets[_binStep] = _preset;
@@ -440,6 +466,22 @@ contract LBFactory is PendingOwnable, ILBFactory {
         if (unlocked == !_locked) revert LBFactory__FactoryLockIsAlreadyInTheSameState();
         unlocked = !_locked;
         emit FactoryLocked(_locked);
+    }
+
+    /// @notice Function to add an asset to the whitelist of quote assets
+    /// @param _quoteAsset The quote asset (e.g: AVAX, USDC...)
+    function AddQuoteAsset(IERC20 _quoteAsset) external override onlyOwner {
+        if (_quoteAssetWhitelist.add(address(_quoteAsset))) revert LBFactory__QuoteAssetAlreadyWhitelisted(_quoteAsset);
+
+        emit QuoteAssetAdded(_quoteAsset);
+    }
+
+    /// @notice Function to add an asset to the whitelist of quote assets
+    /// @param _quoteAsset The quote asset (e.g: AVAX, USDC...)
+    function RemoveQuoteAsset(IERC20 _quoteAsset) external override onlyOwner {
+        if (_quoteAssetWhitelist.remove(address(_quoteAsset))) revert LBFactory__QuoteAssetNotWhitelisted(_quoteAsset);
+
+        emit QuoteAssetRemoved(_quoteAsset);
     }
 
     /// @notice Internal function to set the recipient of the fee

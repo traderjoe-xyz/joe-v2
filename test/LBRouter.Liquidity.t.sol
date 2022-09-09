@@ -14,7 +14,6 @@ contract LiquidityBinRouterTest is TestHelper {
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
         factory.setLBPairImplementation(_LBPairImplementation);
-        addAllAssetsToQuoteWhitelist(factory);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
         addAllAssetsToQuoteWhitelist(factory);
         router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(address(wavax)));
@@ -126,13 +125,12 @@ contract LiquidityBinRouterTest is TestHelper {
             ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
             amounts[i] = pair.balanceOf(DEV, ids[i]);
         }
-
         pair.setApprovalForAll(address(router), true);
         vm.expectRevert(
             abi.encodeWithSelector(
                 LBRouter__AmountSlippageCaught.selector,
                 amountXIn + 1,
-                amountXIn,
+                amountXIn - 3,
                 _amountYIn,
                 _amountYIn
             )
@@ -152,7 +150,7 @@ contract LiquidityBinRouterTest is TestHelper {
             abi.encodeWithSelector(
                 LBRouter__AmountSlippageCaught.selector,
                 amountXIn,
-                amountXIn,
+                amountXIn - 3,
                 _amountYIn + 1,
                 _amountYIn
             )

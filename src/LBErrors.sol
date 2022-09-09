@@ -50,6 +50,8 @@ error LBToken__TransferExceedsBalance(address from, uint256 id, uint256 amount);
 /** LBFactory errors */
 
 error LBFactory__IdenticalAddresses(IERC20 token);
+error LBFactory__QuoteAssetNotWhitelisted(IERC20 quoteAsset);
+error LBFactory__QuoteAssetAlreadyWhitelisted(IERC20 quoteAsset);
 error LBFactory__ZeroAddress();
 error LBFactory__LBPairAlreadyExists(IERC20 tokenX, IERC20 tokenY, uint256 _binStep);
 error LBFactory__LBPairNotCreated(IERC20 tokenX, IERC20 tokenY, uint256 binStep);

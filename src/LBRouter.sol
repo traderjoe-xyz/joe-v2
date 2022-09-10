@@ -638,7 +638,7 @@ contract LBRouter is ILBRouter {
             if (_liq.deltaIds.length != _liq.distributionX.length && _liq.deltaIds.length != _liq.distributionY.length)
                 revert LBRouter__LengthsMismatch();
 
-            if (_liq.activeIdDesired > type(uint24).max && _liq.idSlippage > type(uint24).max)
+            if (_liq.activeIdDesired > type(uint24).max || _liq.idSlippage > type(uint24).max)
                 revert LBRouter__IdDesiredOverflows(_liq.activeIdDesired, _liq.idSlippage);
 
             (, , uint256 _activeId) = _LBPair.getReservesAndId();

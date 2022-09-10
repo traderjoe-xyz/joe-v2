@@ -173,7 +173,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
         returns (LBPairAvailable[] memory LBPairsAvailable)
     {
         unchecked {
-            bytes32 _avLBPairBinSteps = _availableLBPairBinSteps[_tokenX][_tokenY];
+            (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);
+
+            bytes32 _avLBPairBinSteps = _availableLBPairBinSteps[_tokenA][_tokenB];
             uint256 _nbAvailable = _avLBPairBinSteps.decode(type(uint8).max, 248);
 
             if (_nbAvailable > 0) {
@@ -182,7 +184,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
                 uint256 _index;
                 for (uint256 i = MIN_BIN_STEP; i <= MAX_BIN_STEP; ++i) {
                     if (_avLBPairBinSteps.decode(1, i) == 1) {
-                        LBPairInfo memory _LBPairInfo = _getLBPairInfo(_tokenX, _tokenY, i);
+                        LBPairInfo memory _LBPairInfo = _LBPairsInfo[_tokenA][_tokenB][i];
 
                         LBPairsAvailable[_index] = LBPairAvailable({
                             binStep: i,
@@ -303,10 +305,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint256 _binStep,
         bool _blacklisted
     ) external override onlyOwner {
-        LBPairInfo memory _LBPairInfo = _getLBPairInfo(_tokenX, _tokenY, _binStep);
+        (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);
+
+        LBPairInfo memory _LBPairInfo = _LBPairsInfo[_tokenA][_tokenB][_binStep];
         if (_LBPairInfo.isBlacklisted == _blacklisted) revert LBFactory__LBPairBlacklistIsAlreadyInTheSameState();
 
-        _LBPairsInfo[_tokenX][_tokenY][_binStep].isBlacklisted = _blacklisted;
+        _LBPairsInfo[_tokenA][_tokenB][_binStep].isBlacklisted = _blacklisted;
 
         emit LBPairBlacklistedStateChanged(_LBPairInfo.LBPair, _blacklisted);
     }

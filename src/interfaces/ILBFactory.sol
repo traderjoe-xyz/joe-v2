@@ -57,7 +57,7 @@ interface ILBFactory is IPendingOwnable {
 
     event FactoryLocked(bool unlocked);
 
-    event LBPairImplementationSet(ILBPair oldLBPairImplementation, ILBPair LBPairImplementation);
+    event LBPairImplementationSet(address oldLBPairImplementation, address LBPairImplementation);
 
     event LBPairBlacklistedStateChanged(ILBPair LBPair, bool blacklist);
 
@@ -87,7 +87,7 @@ interface ILBFactory is IPendingOwnable {
 
     function MAX_PROTOCOL_SHARE() external pure returns (uint256);
 
-    function LBPairImplementation() external view returns (ILBPair);
+    function LBPairImplementation() external view returns (address);
 
     function getQuoteAssetCount() external view returns (uint256);
 
@@ -132,7 +132,7 @@ interface ILBFactory is IPendingOwnable {
         view
         returns (LBPairAvailable[] memory LBPairsBinStep);
 
-    function setLBPairImplementation(ILBPair LBPairImplementation) external;
+    function setLBPairImplementation(address LBPairImplementation) external;
 
     function createLBPair(
         IERC20 tokenX,
@@ -181,9 +181,9 @@ interface ILBFactory is IPendingOwnable {
 
     function setFactoryLocked(bool locked) external;
 
-    function AddQuoteAsset(IERC20 quoteAsset) external;
+    function addQuoteAsset(IERC20 quoteAsset) external;
 
-    function RemoveQuoteAsset(IERC20 quoteAsset) external;
+    function removeQuoteAsset(IERC20 quoteAsset) external;
 
     function forceDecay(ILBPair LBPair) external;
 }

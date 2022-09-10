@@ -269,7 +269,7 @@ contract LBToken is ILBToken {
         return _owner == _spender || _spenderApprovals[_owner][_spender];
     }
 
-    /// @notice Internal function to add an id to   n user's set
+    /// @notice Internal function to add an id to an user's set
     /// @param _account The user's address
     /// @param _id The id of the token
     /// @param _accountBalance The user's balance

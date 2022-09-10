@@ -69,8 +69,8 @@ error LBFactory__LBPairBlacklistIsAlreadyInTheSameState();
 error LBFactory__BinStepHasNoPreset(uint256 binStep);
 error LBFactory__SameFeeRecipient(address feeRecipient);
 error LBFactory__SameFlashLoanFee(uint256 flashLoanFee);
-error LBFactory__LBPairSafetyCheckFailed(ILBPair LBPairImplementation);
-error LBFactory__SameImplementation(ILBPair LBPairImplementation);
+error LBFactory__LBPairSafetyCheckFailed(address LBPairImplementation);
+error LBFactory__SameImplementation(address LBPairImplementation);
 error LBFactory__ImplementationNotSet();
 
 /** LBPair errors */

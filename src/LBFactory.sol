@@ -22,7 +22,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     uint256 public constant override MAX_PROTOCOL_SHARE = 2_500; // 25%
 
-    ILBPair public override LBPairImplementation;
+    address public override LBPairImplementation;
 
     address public override feeRecipient;
 
@@ -197,12 +197,14 @@ contract LBFactory is PendingOwnable, ILBFactory {
         }
     }
 
-    /// @notice Set the factory helper address
-    /// @dev Needs to be called by the factory helper
-    function setLBPairImplementation(ILBPair _LBPairImplementation) external override onlyOwner {
-        if (_LBPairImplementation.factory() != this) revert LBFactory__LBPairSafetyCheckFailed(_LBPairImplementation);
+    /// @notice Set the LBPair implementation address
+    /// @dev Needs to be called by the owner
+    /// @param _LBPairImplementation The address of the implementation
+    function setLBPairImplementation(address _LBPairImplementation) external override onlyOwner {
+        if (ILBPair(_LBPairImplementation).factory() != this)
+            revert LBFactory__LBPairSafetyCheckFailed(_LBPairImplementation);
 
-        ILBPair _oldLBPairImplementation = LBPairImplementation;
+        address _oldLBPairImplementation = LBPairImplementation;
         if (_oldLBPairImplementation == _LBPairImplementation)
             revert LBFactory__SameImplementation(_LBPairImplementation);
 
@@ -226,9 +228,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
         address _owner = owner();
         if (!unlocked && msg.sender != _owner) revert LBFactory__FunctionIsLockedForUsers(msg.sender);
 
-        ILBPair _LBPairImplementation = LBPairImplementation;
+        address _LBPairImplementation = LBPairImplementation;
 
-        if (address(_LBPairImplementation) == address(0)) revert LBFactory__ImplementationNotSet();
+        if (_LBPairImplementation == address(0)) revert LBFactory__ImplementationNotSet();
 
         if (!_quoteAssetWhitelist.contains(address(_tokenY))) revert LBFactory__QuoteAssetNotWhitelisted(_tokenY);
 
@@ -249,7 +251,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         _preset &= bytes32(uint256(type(uint144).max));
 
         _LBPair = ILBPair(
-            Clones.cloneDeterministic(address(_LBPairImplementation), keccak256(abi.encode(_tokenX, _tokenY, _binStep)))
+            Clones.cloneDeterministic(_LBPairImplementation, keccak256(abi.encode(_tokenX, _tokenY, _binStep)))
         );
 
         _LBPair.initialize(_tokenX, _tokenY, _activeId, uint16(_sampleLifetime), _preset);
@@ -470,7 +472,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /// @notice Function to add an asset to the whitelist of quote assets
     /// @param _quoteAsset The quote asset (e.g: AVAX, USDC...)
-    function AddQuoteAsset(IERC20 _quoteAsset) external override onlyOwner {
+    function addQuoteAsset(IERC20 _quoteAsset) external override onlyOwner {
         if (!_quoteAssetWhitelist.add(address(_quoteAsset)))
             revert LBFactory__QuoteAssetAlreadyWhitelisted(_quoteAsset);
 
@@ -479,7 +481,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /// @notice Function to remove an asset to the whitelist of quote assets
     /// @param _quoteAsset The quote asset (e.g: AVAX, USDC...)
-    function RemoveQuoteAsset(IERC20 _quoteAsset) external override onlyOwner {
+    function removeQuoteAsset(IERC20 _quoteAsset) external override onlyOwner {
         if (!_quoteAssetWhitelist.remove(address(_quoteAsset))) revert LBFactory__QuoteAssetNotWhitelisted(_quoteAsset);
 
         emit QuoteAssetRemoved(_quoteAsset);

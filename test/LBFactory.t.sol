@@ -19,7 +19,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         token6D = new ERC20MockDecimals(6);
         token12D = new ERC20MockDecimals(12);
         token18D = new ERC20MockDecimals(18);
-
+        wavax = new WAVAX();
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
         factory.setLBPairImplementation(_LBPairImplementation);
@@ -55,13 +55,46 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testGetAvailableLBPairsBinStep() public {
-        //LBPairAvailable[] memory availableLBPairsBinSteps = new LBPairAvailable[];
         assertEq(factory.getAvailableLBPairsBinStep(token6D, token18D).length, 0);
-        ILBPair pair = createLBPairDefaultFees(token6D, token18D);
+        ILBPair pair25 = createLBPairDefaultFees(token6D, token18D);
         assertEq(factory.getAvailableLBPairsBinStep(token6D, token18D).length, 1);
-        // router.createLBPair(token6D, token18D, ID_ONE, 50);
-        // assertEq(factory.getAvailableLBPairsBinStep(token6D, token18D).length, 2);
-        //TODO - fails now if amount of pairs > 1
+        setDefaultFactoryPresets(1);
+        ILBPair pair1 = factory.createLBPair(token6D, token18D, ID_ONE, 1);
+        assertEq(factory.getAvailableLBPairsBinStep(token6D, token18D).length, 2);
+
+        factory.setPreset(
+            50,
+            DEFAULT_BASE_FACTOR / 4,
+            DEFAULT_FILTER_PERIOD,
+            DEFAULT_DECAY_PERIOD,
+            DEFAULT_REDUCTION_FACTOR,
+            DEFAULT_VARIABLE_FEE_CONTROL / 4,
+            DEFAULT_PROTOCOL_SHARE,
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED,
+            DEFAULT_SAMPLE_LIFETIME
+        );
+        router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(WAVAX_AVALANCHE_ADDRESS));
+        factory.setFactoryLocked(false);
+        ILBPair pair50 = router.createLBPair(token6D, token18D, ID_ONE, 50);
+        factory.setLBPairBlacklist(token6D, token18D, 50, true);
+        assertEq(factory.getAvailableLBPairsBinStep(token6D, token18D).length, 3);
+
+        ILBFactory.LBPairAvailable[] memory LBPairsAvailable = factory.getAvailableLBPairsBinStep(token6D, token18D);
+
+        assertEq(LBPairsAvailable[0].binStep, 1);
+        assertEq(address(LBPairsAvailable[0].LBPair), address(pair1));
+        assertEq(LBPairsAvailable[0].createdByOwner, true);
+        assertEq(LBPairsAvailable[0].isBlacklisted, false);
+
+        assertEq(LBPairsAvailable[1].binStep, 25);
+        assertEq(address(LBPairsAvailable[1].LBPair), address(pair25));
+        assertEq(LBPairsAvailable[1].createdByOwner, true);
+        assertEq(LBPairsAvailable[1].isBlacklisted, false);
+
+        assertEq(LBPairsAvailable[2].binStep, 50);
+        assertEq(address(LBPairsAvailable[2].LBPair), address(pair50));
+        assertEq(LBPairsAvailable[2].createdByOwner, false);
+        assertEq(LBPairsAvailable[2].isBlacklisted, true);
     }
 
     function testCreateLBPair() public {

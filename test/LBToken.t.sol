@@ -187,7 +187,7 @@ contract LiquidityBinTokenTest is TestHelper {
         pair.safeTransferFrom(DEV, ALICE, _ids[1], amounts[1]);
     }
 
-    function testIdLengthMismatch() public {
+    function testModifierCheckLength() public {
         uint24 binAmount = 11;
         uint256 amountIn = 1e18;
         (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, binAmount, 0);
@@ -200,6 +200,13 @@ contract LiquidityBinTokenTest is TestHelper {
 
         vm.expectRevert(abi.encodeWithSelector(LBToken__LengthMismatch.selector, _ids.length, amounts.length));
         pair.safeBatchTransferFrom(DEV, ALICE, _ids, amounts);
+
+        address[] memory accounts = new address[](binAmount - 1);
+        for (uint256 i; i < binAmount - 1; i++) {
+            accounts[i] = DEV;
+        }
+        vm.expectRevert(abi.encodeWithSelector(LBToken__LengthMismatch.selector, accounts.length, _ids.length));
+        pair.balanceOfBatch(accounts, _ids);
     }
 
     function testSelfApprovalReverts() public {

@@ -83,7 +83,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         return _quoteAssetWhitelist.contains(address(_token));
     }
 
-    /// @notice Returns the address of the LBPair if it exists,
+    /// @notice Returns the LBPairInfo if it exists,
     /// if not, then the address 0 is returned. The order doesn't matter
     /// @param _tokenA The address of the first token of the pair
     /// @param _tokenB The address of the second token of the pair
@@ -569,7 +569,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             );
     }
 
-    /// @notice Returns the address of the LBPair if it exists,
+    /// @notice Returns the LBPairInfo if it exists,
     /// if not, then the address 0 is returned. The order doesn't matter
     /// @param _tokenA The address of the first token of the pair
     /// @param _tokenB The address of the second token of the pair

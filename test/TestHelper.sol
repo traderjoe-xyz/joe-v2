@@ -318,12 +318,12 @@ abstract contract TestHelper is Test {
     }
 
     function addAllAssetsToQuoteWhitelist(LBFactory factory) internal {
-        if (address(wavax) != address(0)) factory.AddQuoteAsset(wavax);
-        if (address(taxToken) != address(0)) factory.AddQuoteAsset(taxToken);
-        if (address(token6D) != address(0)) factory.AddQuoteAsset(token6D);
-        if (address(token10D) != address(0)) factory.AddQuoteAsset(token10D);
-        if (address(token12D) != address(0)) factory.AddQuoteAsset(token12D);
-        if (address(token18D) != address(0)) factory.AddQuoteAsset(token18D);
-        if (address(token24D) != address(0)) factory.AddQuoteAsset(token24D);
+        if (address(wavax) != address(0)) factory.addQuoteAsset(wavax);
+        if (address(taxToken) != address(0)) factory.addQuoteAsset(taxToken);
+        if (address(token6D) != address(0)) factory.addQuoteAsset(token6D);
+        if (address(token10D) != address(0)) factory.addQuoteAsset(token10D);
+        if (address(token12D) != address(0)) factory.addQuoteAsset(token12D);
+        if (address(token18D) != address(0)) factory.addQuoteAsset(token18D);
+        if (address(token24D) != address(0)) factory.addQuoteAsset(token24D);
     }
 }

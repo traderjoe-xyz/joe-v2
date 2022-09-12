@@ -172,7 +172,7 @@ interface ILBPair {
             uint256 max
         );
 
-    function getOracleSampleFrom(uint256 _ago)
+    function getOracleSampleFrom(uint256 ago)
         external
         view
         returns (
@@ -187,7 +187,7 @@ interface ILBPair {
 
     function getBin(uint24 id) external view returns (uint256 reserveX, uint256 reserveY);
 
-    function pendingFees(address _account, uint256[] memory _ids)
+    function pendingFees(address account, uint256[] memory ids)
         external
         view
         returns (uint256 amountX, uint256 amountY);
@@ -202,10 +202,10 @@ interface ILBPair {
     ) external;
 
     function mint(
-        uint256[] memory _ids,
-        uint256[] memory _distributionX,
-        uint256[] memory _distributionY,
-        address _to
+        uint256[] memory ids,
+        uint256[] memory distributionX,
+        uint256[] memory distributionY,
+        address to
     )
         external
         returns (
@@ -216,13 +216,13 @@ interface ILBPair {
 
     function burn(
         uint256[] memory ids,
-        uint256[] memory _amounts,
+        uint256[] memory amounts,
         address to
     ) external returns (uint256, uint256);
 
-    function increaseOracleLength(uint16 _nb) external;
+    function increaseOracleLength(uint16 nb) external;
 
-    function collectFees(address _account, uint256[] memory _ids) external returns (uint256 amountX, uint256 amountY);
+    function collectFees(address account, uint256[] memory ids) external returns (uint256 amountX, uint256 amountY);
 
     function collectProtocolFees() external returns (uint256 amountX, uint256 amountY);
 

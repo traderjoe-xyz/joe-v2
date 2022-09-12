@@ -21,7 +21,7 @@ library SwapHelper {
     /// @param fp The fee parameters
     /// @param activeId The active id of the pair
     /// @param swapForY Whether you've swapping token X for token Y (true) or token Y for token X (false)
-    /// @param amountIn The amount sent to the user
+    /// @param amountIn The amount sent by the user
     /// @return amountInToBin The amount of token that is added to the bin without the fees
     /// @return amountOutOfBin The amount of token that is removed from the bin
     /// @return fees The swap fees

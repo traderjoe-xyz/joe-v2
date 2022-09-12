@@ -22,7 +22,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         wavax = new WAVAX();
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
-        factory.setLBPairImplementation(_LBPairImplementation);
+        factory.setLBPairImplementation(address(_LBPairImplementation));
         addAllAssetsToQuoteWhitelist(factory);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
     }
@@ -34,9 +34,9 @@ contract LiquidityBinFactoryTest is TestHelper {
 
     function testSetLBPairImplementation() public {
         ILBPair _LBPairImplementation = new LBPair(factory);
-        factory.setLBPairImplementation(_LBPairImplementation);
+        factory.setLBPairImplementation(address(_LBPairImplementation));
         vm.expectRevert(abi.encodeWithSelector(LBFactory__SameImplementation.selector, _LBPairImplementation));
-        factory.setLBPairImplementation(_LBPairImplementation);
+        factory.setLBPairImplementation(address(_LBPairImplementation));
 
         LBFactory anotherFactory = new LBFactory(DEV, 7e14);
         vm.expectRevert(LBFactory__ImplementationNotSet.selector);
@@ -46,12 +46,12 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.expectRevert(
             abi.encodeWithSelector(LBFactory__LBPairSafetyCheckFailed.selector, _LBPairImplementationAnotherFactory)
         );
-        factory.setLBPairImplementation(_LBPairImplementationAnotherFactory);
+        factory.setLBPairImplementation(address(_LBPairImplementationAnotherFactory));
 
         ILBPair _LBPairImplementationNew = new LBPair(factory);
         vm.expectEmit(true, true, true, true);
         emit LBPairImplementationSet(_LBPairImplementation, _LBPairImplementationNew);
-        factory.setLBPairImplementation(_LBPairImplementationNew);
+        factory.setLBPairImplementation(address(_LBPairImplementationNew));
     }
 
     function testGetAvailableLBPairsBinStep() public {
@@ -162,7 +162,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testForZeroAddressPairReverts() public {
-        factory.AddQuoteAsset(IERC20(address(0)));
+        factory.addQuoteAsset(IERC20(address(0)));
         vm.expectRevert(LBFactory__ZeroAddress.selector);
         factory.createLBPair(token6D, IERC20(address(0)), ID_ONE, DEFAULT_BIN_STEP);
 
@@ -458,11 +458,11 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(factory.isQuoteAsset(token18D), true);
 
         vm.expectRevert(abi.encodeWithSelector(LBFactory__QuoteAssetAlreadyWhitelisted.selector, token12D));
-        factory.AddQuoteAsset(token12D);
+        factory.addQuoteAsset(token12D);
 
         token24D = new ERC20MockDecimals(24);
         vm.expectRevert(abi.encodeWithSelector(LBFactory__QuoteAssetNotWhitelisted.selector, token24D));
-        factory.RemoveQuoteAsset(token24D);
+        factory.removeQuoteAsset(token24D);
 
         assertEq(factory.isQuoteAsset(token24D), false);
         vm.expectRevert(abi.encodeWithSelector(LBFactory__QuoteAssetNotWhitelisted.selector, token24D));
@@ -470,13 +470,13 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         vm.expectEmit(true, true, true, true);
         emit QuoteAssetAdded(token24D);
-        factory.AddQuoteAsset(token24D);
+        factory.addQuoteAsset(token24D);
         assertEq(factory.isQuoteAsset(token24D), true);
         assertEq(address(factory.getQuoteAsset(4)), address(token24D));
 
         vm.expectEmit(true, true, true, true);
         emit QuoteAssetRemoved(token24D);
-        factory.RemoveQuoteAsset(token24D);
+        factory.removeQuoteAsset(token24D);
         assertEq(factory.isQuoteAsset(token24D), false);
     }
 }

@@ -13,7 +13,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
-        factory.setLBPairImplementation(_LBPairImplementation);
+        factory.setLBPairImplementation(address(_LBPairImplementation));
         addAllAssetsToQuoteWhitelist(factory);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
 

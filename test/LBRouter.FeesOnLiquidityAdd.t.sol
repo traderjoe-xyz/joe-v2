@@ -13,7 +13,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint16 binStep = 100;
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
-        factory.setLBPairImplementation(_LBPairImplementation);
+        factory.setLBPairImplementation(address(_LBPairImplementation));
         addAllAssetsToQuoteWhitelist(factory);
         factory.setPreset(
             binStep,

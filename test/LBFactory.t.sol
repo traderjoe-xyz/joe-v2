@@ -447,10 +447,12 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testQuoteAssets() public {
-        assertEq(factory.getQuoteAssetCount(), 3);
-        assertEq(address(factory.getQuoteAsset(0)), address(token6D));
-        assertEq(address(factory.getQuoteAsset(1)), address(token12D));
-        assertEq(address(factory.getQuoteAsset(2)), address(token18D));
+        assertEq(factory.getQuoteAssetCount(), 4);
+        assertEq(address(factory.getQuoteAsset(0)), address(wavax));
+        assertEq(address(factory.getQuoteAsset(1)), address(token6D));
+        assertEq(address(factory.getQuoteAsset(2)), address(token12D));
+        assertEq(address(factory.getQuoteAsset(3)), address(token18D));
+        assertEq(factory.isQuoteAsset(wavax), true);
         assertEq(factory.isQuoteAsset(token6D), true);
         assertEq(factory.isQuoteAsset(token12D), true);
         assertEq(factory.isQuoteAsset(token18D), true);
@@ -470,7 +472,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         emit QuoteAssetAdded(token24D);
         factory.AddQuoteAsset(token24D);
         assertEq(factory.isQuoteAsset(token24D), true);
-        assertEq(address(factory.getQuoteAsset(3)), address(token24D));
+        assertEq(address(factory.getQuoteAsset(4)), address(token24D));
 
         vm.expectEmit(true, true, true, true);
         emit QuoteAssetRemoved(token24D);

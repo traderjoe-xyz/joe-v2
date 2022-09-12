@@ -40,8 +40,7 @@ library Samples {
         uint256 _volatilityAccumulated,
         uint256 _binCrossed
     ) internal view returns (bytes32 packedSample) {
-        uint256 _currentTimestamp = block.timestamp;
-        uint256 _deltaTime = _currentTimestamp - timestamp(_lastSample);
+        uint256 _deltaTime = block.timestamp - timestamp(_lastSample);
 
         unchecked {
             uint256 _cumulativeId = cumulativeId(_lastSample) + _activeId * _deltaTime;
@@ -50,7 +49,7 @@ library Samples {
                 _deltaTime;
             uint256 _cumulativeBinCrossed = cumulativeBinCrossed(_lastSample) + _binCrossed * _deltaTime;
 
-            return pack(_cumulativeBinCrossed, _cumulativeVolatilityAccumulated, _cumulativeId, _currentTimestamp, 1);
+            return pack(_cumulativeBinCrossed, _cumulativeVolatilityAccumulated, _cumulativeId, block.timestamp, 1);
         }
     }
 

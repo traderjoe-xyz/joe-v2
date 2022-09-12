@@ -75,9 +75,9 @@ interface ILBFactory is IPendingOwnable {
 
     event PresetRemoved(uint256 indexed binStep);
 
-    event QuoteAssetAdded(IERC20 indexed _quoteAsset);
+    event QuoteAssetAdded(IERC20 indexed quoteAsset);
 
-    event QuoteAssetRemoved(IERC20 indexed _quoteAsset);
+    event QuoteAssetRemoved(IERC20 indexed quoteAsset);
 
     function MAX_FEE() external pure returns (uint256);
 
@@ -177,7 +177,7 @@ interface ILBFactory is IPendingOwnable {
 
     function setFeeRecipient(address feeRecipient) external;
 
-    function setFlashLoanFee(uint256 _flashLoanFee) external;
+    function setFlashLoanFee(uint256 flashLoanFee) external;
 
     function setFactoryLocked(bool locked) external;
 

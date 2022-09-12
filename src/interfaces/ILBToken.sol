@@ -21,14 +21,14 @@ interface ILBToken {
 
     function balanceOf(address account, uint256 id) external view returns (uint256);
 
-    function balanceOfBatch(address[] memory _accounts, uint256[] memory _ids)
+    function balanceOfBatch(address[] memory accounts, uint256[] memory ids)
         external
         view
         returns (uint256[] memory batchBalances);
 
-    function userPositionAt(address _account, uint256 _index) external view returns (uint256);
+    function userPositionAt(address account, uint256 index) external view returns (uint256);
 
-    function userPositionNb(address _account) external view returns (uint256);
+    function userPositionNb(address account) external view returns (uint256);
 
     function totalSupply(uint256 id) external view returns (uint256);
 
@@ -37,10 +37,10 @@ interface ILBToken {
     function setApprovalForAll(address sender, bool approved) external;
 
     function safeTransferFrom(
-        address _from,
-        address _to,
-        uint256 _id,
-        uint256 _amount
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount
     ) external;
 
     function safeBatchTransferFrom(

@@ -471,7 +471,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     function setFactoryLocked(bool _locked) external override onlyOwner {
         if (unlocked == !_locked) revert LBFactory__FactoryLockIsAlreadyInTheSameState();
         unlocked = !_locked;
-        emit FactoryLocked(_locked);
+        emit FactoryLockedStatusUpdated(_locked);
     }
 
     /// @notice Function to add an asset to the whitelist of quote assets

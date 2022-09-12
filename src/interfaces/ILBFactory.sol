@@ -55,7 +55,7 @@ interface ILBFactory is IPendingOwnable {
         uint256 maxVolatilityAccumulated
     );
 
-    event FactoryLocked(bool unlocked);
+    event FactoryLockedStatusUpdated(bool unlocked);
 
     event LBPairImplementationSet(address oldLBPairImplementation, address LBPairImplementation);
 

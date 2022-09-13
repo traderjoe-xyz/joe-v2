@@ -33,10 +33,10 @@ contract LiquidityBinTokenTest is TestHelper {
 
         uint256[] memory amounts = new uint256[](5);
         for (uint256 i; i < 5; i++) {
-            assertEq(pair.userPositionAt(DEV, i), _ids[i]);
+            assertEq(pair.userPositionAtIndex(DEV, i), _ids[i]);
             amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
-        assertEq(pair.userPositionNb(DEV), 5);
+        assertEq(pair.userPositionNumber(DEV), 5);
 
         assertEq(pair.balanceOf(DEV, ID_ONE - 1), amountIn / 3);
         vm.expectEmit(true, true, true, true);
@@ -66,10 +66,10 @@ contract LiquidityBinTokenTest is TestHelper {
 
         uint256[] memory amounts = new uint256[](5);
         for (uint256 i; i < 5; i++) {
-            assertEq(pair.userPositionAt(DEV, i), _ids[i]);
+            assertEq(pair.userPositionAtIndex(DEV, i), _ids[i]);
             amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
-        assertEq(pair.userPositionNb(DEV), 5);
+        assertEq(pair.userPositionNumber(DEV), 5);
 
         assertEq(pair.balanceOf(DEV, ID_ONE - 1), amountIn / 3);
         vm.expectEmit(true, true, true, true);
@@ -98,7 +98,7 @@ contract LiquidityBinTokenTest is TestHelper {
 
         uint256[] memory amounts = new uint256[](5);
         for (uint256 i; i < 5; i++) {
-            assertEq(pair.userPositionAt(DEV, i), _ids[i]);
+            assertEq(pair.userPositionAtIndex(DEV, i), _ids[i]);
             amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
 
@@ -113,7 +113,7 @@ contract LiquidityBinTokenTest is TestHelper {
 
         uint256[] memory amounts = new uint256[](5);
         for (uint256 i; i < 5; i++) {
-            assertEq(pair.userPositionAt(DEV, i), _ids[i]);
+            assertEq(pair.userPositionAtIndex(DEV, i), _ids[i]);
             amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
 
@@ -129,7 +129,7 @@ contract LiquidityBinTokenTest is TestHelper {
 
         uint256[] memory amounts = new uint256[](binAmount);
         for (uint256 i; i < binAmount; i++) {
-            assertEq(pair.userPositionAt(DEV, i), _ids[i]);
+            assertEq(pair.userPositionAtIndex(DEV, i), _ids[i]);
             amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
 
@@ -162,7 +162,7 @@ contract LiquidityBinTokenTest is TestHelper {
 
         uint256[] memory amounts = new uint256[](binAmount);
         for (uint256 i; i < binAmount; i++) {
-            assertEq(pair.userPositionAt(DEV, i), _ids[i]);
+            assertEq(pair.userPositionAtIndex(DEV, i), _ids[i]);
             amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
 
@@ -194,7 +194,7 @@ contract LiquidityBinTokenTest is TestHelper {
 
         uint256[] memory amounts = new uint256[](binAmount - 1);
         for (uint256 i; i < binAmount - 1; i++) {
-            assertEq(pair.userPositionAt(DEV, i), _ids[i]);
+            assertEq(pair.userPositionAtIndex(DEV, i), _ids[i]);
             amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
 

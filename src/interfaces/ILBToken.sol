@@ -26,9 +26,9 @@ interface ILBToken {
         view
         returns (uint256[] memory batchBalances);
 
-    function userPositionAt(address account, uint256 index) external view returns (uint256);
+    function userPositionAtIndex(address account, uint256 index) external view returns (uint256);
 
-    function userPositionNb(address account) external view returns (uint256);
+    function userPositionNumber(address account) external view returns (uint256);
 
     function totalSupply(uint256 id) external view returns (uint256);
 

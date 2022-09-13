@@ -605,7 +605,7 @@ contract LBRouter is ILBRouter {
 
     /// @notice Unstuck tokens that are sent to this contract by mistake
     /// @dev Only callable by the factory owner
-    /// @param _token THe address of the token
+    /// @param _token The address of the token
     /// @param _to The address of the user to send back the tokens
     /// @param _amount The amount to send
     function sweep(
@@ -620,6 +620,21 @@ contract LBRouter is ILBRouter {
             if (_amount == type(uint256).max) _amount = _token.balanceOf(address(this));
             _token.safeTransfer(_to, _amount);
         }
+    }
+
+    /// @notice Unstuck LBTokens that are sent to this contract by mistake
+    /// @dev Only callable by the factory owner
+    /// @param _lbToken The address of the LBToken
+    /// @param _to The address of the user to send back the tokens
+    /// @param _ids The list of token ids
+    /// @param _amounts The list of amounts to send
+    function sweepLBToken(
+        ILBToken _lbToken,
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _amounts
+    ) external override onlyFactoryOwner {
+        _lbToken.safeBatchTransferFrom(address(this), _to, _ids, _amounts);
     }
 
     /// @notice Helper function to add liquidity

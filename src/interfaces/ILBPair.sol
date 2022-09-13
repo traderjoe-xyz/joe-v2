@@ -182,7 +182,7 @@ interface ILBPair {
             uint256 max
         );
 
-    function getOracleSampleFrom(uint256 ago)
+    function getOracleSampleFrom(uint256 timeDelta)
         external
         view
         returns (

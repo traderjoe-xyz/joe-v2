@@ -188,13 +188,13 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         max = oracleSampleLifetime * oracleActiveSize;
     }
 
-    /// @notice View function to get the oracle's sample at `_ago` seconds
+    /// @notice View function to get the oracle's sample at `_timeDelta` seconds
     /// @dev Return a linearized sample, the weighted average of 2 neighboring samples
-    /// @param _ago The number of seconds before the current timestamp
+    /// @param _timeDelta The number of seconds before the current timestamp
     /// @return cumulativeId The weighted average cumulative id
     /// @return cumulativeVolatilityAccumulated The weighted average cumulative volatility accumulated
     /// @return cumulativeBinCrossed The weighted average cumulative bin crossed
-    function getOracleSampleFrom(uint256 _ago)
+    function getOracleSampleFrom(uint256 _timeDelta)
         external
         view
         override
@@ -204,7 +204,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             uint256 cumulativeBinCrossed
         )
     {
-        uint256 _lookUpTimestamp = block.timestamp - _ago;
+        uint256 _lookUpTimestamp = block.timestamp - _timeDelta;
 
         unchecked {
             (, , uint256 _oracleActiveSize, , uint256 _oracleId) = _getOracleParameters();

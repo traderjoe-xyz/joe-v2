@@ -254,13 +254,28 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(feeParameters.maxVolatilityAccumulated, DEFAULT_MAX_VOLATILITY_ACCUMULATED - 1);
     }
 
-    function testSetFeesParametersOnPairNotByOwner() public {
+    function testSetFeesParametersOnPairReverts() public {
         createLBPairDefaultFees(token6D, token12D);
         vm.prank(ALICE);
         vm.expectRevert(PendingOwnable__NotOwner.selector);
         factory.setFeesParametersOnPair(
             token6D,
             token12D,
+            DEFAULT_BIN_STEP,
+            DEFAULT_BASE_FACTOR,
+            DEFAULT_FILTER_PERIOD,
+            DEFAULT_DECAY_PERIOD,
+            DEFAULT_REDUCTION_FACTOR,
+            DEFAULT_VARIABLE_FEE_CONTROL,
+            DEFAULT_PROTOCOL_SHARE,
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(LBFactory__LBPairNotCreated.selector, token6D, token18D, DEFAULT_BIN_STEP)
+        );
+        factory.setFeesParametersOnPair(
+            token6D,
+            token18D,
             DEFAULT_BIN_STEP,
             DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,

@@ -8,7 +8,7 @@ import "./interfaces/ILBRouter.sol";
 import "./libraries/JoeLibrary.sol";
 import "./libraries/BinHelper.sol";
 
-contract Quoter {
+contract LBQuoter {
     /// @notice Dex V2 router address
     address public immutable routerV2;
     /// @notice Dex V1 factory address

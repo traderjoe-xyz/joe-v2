@@ -70,8 +70,10 @@ contract LiquidityBinRouterTest is TestHelper {
         pairVersions[0] = DEFAULT_BIN_STEP;
 
         uint256 amountOut = router.getSwapOut(pair, amountIn, true);
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 1, amountOut));
+        router.swapExactTokensForTokens(amountIn, amountOut + 1, pairVersions, tokenList, DEV, block.timestamp);
 
-        router.swapExactTokensForTokens(amountIn, 0, pairVersions, tokenList, DEV, block.timestamp);
+        router.swapExactTokensForTokens(amountIn, amountOut, pairVersions, tokenList, DEV, block.timestamp);
 
         assertApproxEqAbs(token18D.balanceOf(DEV), amountOut, 10);
     }
@@ -93,7 +95,10 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 amountOut = router.getSwapOut(pair, amountIn, true);
 
         uint256 devBalanceBefore = ALICE.balance;
-        router.swapExactTokensForAVAX(amountIn, 0, pairVersions, tokenList, ALICE, block.timestamp);
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 1, amountOut));
+        router.swapExactTokensForAVAX(amountIn, amountOut + 1, pairVersions, tokenList, ALICE, block.timestamp);
+
+        router.swapExactTokensForAVAX(amountIn, amountOut, pairVersions, tokenList, ALICE, block.timestamp);
         vm.stopPrank();
 
         assertEq(ALICE.balance - devBalanceBefore, amountOut);
@@ -111,7 +116,10 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 amountOut = router.getSwapOut(pairWavax, amountIn, false);
 
         vm.deal(DEV, amountIn);
-        router.swapExactAVAXForTokens{value: amountIn}(0, pairVersions, tokenList, DEV, block.timestamp);
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 1, amountOut));
+        router.swapExactAVAXForTokens{value: amountIn}(amountOut + 1, pairVersions, tokenList, DEV, block.timestamp);
+
+        router.swapExactAVAXForTokens{value: amountIn}(amountOut, pairVersions, tokenList, DEV, block.timestamp);
 
         assertApproxEqAbs(token6D.balanceOf(DEV), amountOut, 10);
     }
@@ -129,6 +137,8 @@ contract LiquidityBinRouterTest is TestHelper {
         tokenList[1] = token18D;
         uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = DEFAULT_BIN_STEP;
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__MaxAmountInExceeded.selector, amountIn - 1, amountIn));
+        router.swapTokensForExactTokens(amountOut, amountIn - 1, pairVersions, tokenList, DEV, block.timestamp);
 
         router.swapTokensForExactTokens(amountOut, amountIn, pairVersions, tokenList, DEV, block.timestamp);
 
@@ -151,6 +161,10 @@ contract LiquidityBinRouterTest is TestHelper {
         pairVersions[0] = DEFAULT_BIN_STEP;
 
         uint256 devBalanceBefore = ALICE.balance;
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__MaxAmountInExceeded.selector, amountIn - 1, amountIn));
+        router.swapTokensForExactAVAX(amountOut, amountIn - 1, pairVersions, tokenList, ALICE, block.timestamp);
+
         router.swapTokensForExactAVAX(amountOut, amountIn, pairVersions, tokenList, ALICE, block.timestamp);
         vm.stopPrank();
 
@@ -169,6 +183,10 @@ contract LiquidityBinRouterTest is TestHelper {
         pairVersions[0] = DEFAULT_BIN_STEP;
 
         vm.deal(DEV, amountIn);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__MaxAmountInExceeded.selector, amountIn - 1, amountIn));
+        router.swapAVAXForExactTokens{value: amountIn - 1}(amountOut, pairVersions, tokenList, ALICE, block.timestamp);
+
         router.swapAVAXForExactTokens{value: amountIn}(amountOut, pairVersions, tokenList, DEV, block.timestamp);
 
         assertApproxEqAbs(token6D.balanceOf(DEV), amountOut, 10);
@@ -187,8 +205,16 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = DEFAULT_BIN_STEP;
 
-        uint256 amountOut = router.getSwapOut(taxTokenPair, amountIn, true);
-
+        uint256 amountOut = router.getSwapOut(taxTokenPair, amountIn, true) / 2;
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 1, amountOut));
+        router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            amountIn,
+            amountOut + 1,
+            pairVersions,
+            tokenList,
+            DEV,
+            block.timestamp
+        );
         router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
             amountIn,
             0,
@@ -199,7 +225,7 @@ contract LiquidityBinRouterTest is TestHelper {
         );
 
         // 50% tax to take into account
-        assertApproxEqAbs(wavax.balanceOf(DEV), amountOut / 2, 10);
+        assertApproxEqAbs(wavax.balanceOf(DEV), amountOut, 10);
 
         // Swap back in the other direction
         amountIn = wavax.balanceOf(DEV);
@@ -207,19 +233,29 @@ contract LiquidityBinRouterTest is TestHelper {
         tokenList[0] = wavax;
         tokenList[1] = taxToken;
 
-        amountOut = router.getSwapOut(taxTokenPair, amountIn, true);
+        amountOut = router.getSwapOut(taxTokenPair, amountIn, true) / 2;
 
         uint256 balanceBefore = taxToken.balanceOf(DEV);
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 2, amountOut + 1));
         router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
             amountIn,
-            0,
+            amountOut + 2,
             pairVersions,
             tokenList,
             DEV,
             block.timestamp
         );
 
-        assertApproxEqAbs(taxToken.balanceOf(DEV) - balanceBefore, amountOut / 2, 10);
+        router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            amountIn,
+            amountOut,
+            pairVersions,
+            tokenList,
+            DEV,
+            block.timestamp
+        );
+
+        assertApproxEqAbs(taxToken.balanceOf(DEV) - balanceBefore, amountOut, 10);
     }
 
     function testSwapExactTokensForAVAXSupportingFeeOnTransferTokens() public {
@@ -236,12 +272,21 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = DEFAULT_BIN_STEP;
 
-        uint256 amountOut = router.getSwapOut(taxTokenPair, amountIn, true);
+        uint256 amountOut = router.getSwapOut(taxTokenPair, amountIn, true) / 2;
 
         uint256 devBalanceBefore = ALICE.balance;
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 1, amountOut));
         router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
             amountIn,
-            0,
+            amountOut + 1,
+            pairVersions,
+            tokenList,
+            ALICE,
+            block.timestamp
+        );
+        router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+            amountIn,
+            amountOut,
             pairVersions,
             tokenList,
             ALICE,
@@ -249,7 +294,7 @@ contract LiquidityBinRouterTest is TestHelper {
         );
         vm.stopPrank();
 
-        assertGe(ALICE.balance - devBalanceBefore, amountOut / 2);
+        assertGe(ALICE.balance - devBalanceBefore, amountOut);
     }
 
     function testSwapExactAVAXForTokensSupportingFeeOnTransferTokens() public {
@@ -261,18 +306,26 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = DEFAULT_BIN_STEP;
 
-        uint256 amountOut = router.getSwapOut(taxTokenPair, amountIn, true);
+        uint256 amountOut = router.getSwapOut(taxTokenPair, amountIn, true) / 2;
 
         vm.deal(DEV, amountIn);
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 2, amountOut + 1));
         router.swapExactAVAXForTokensSupportingFeeOnTransferTokens{value: amountIn}(
-            0,
+            amountOut + 2,
+            pairVersions,
+            tokenList,
+            DEV,
+            block.timestamp
+        );
+        router.swapExactAVAXForTokensSupportingFeeOnTransferTokens{value: amountIn}(
+            amountOut,
             pairVersions,
             tokenList,
             DEV,
             block.timestamp
         );
 
-        assertApproxEqAbs(taxToken.balanceOf(DEV), amountOut / 2, 10);
+        assertApproxEqAbs(taxToken.balanceOf(DEV), amountOut, 10);
     }
 
     function testSwapExactTokensForTokensMultiplePairs() public {
@@ -297,7 +350,10 @@ contract LiquidityBinRouterTest is TestHelper {
         token6D.approve(address(router), 100e18);
 
         (IERC20[] memory tokenList, uint256[] memory pairVersions) = _buildComplexSwapRoute();
-
+        vm.expectRevert(
+            abi.encodeWithSelector(LBRouter__MaxAmountInExceeded.selector, 100500938281494149, 1005009382814941410)
+        );
+        router.swapTokensForExactTokens(amountOut, 100500938281494149, pairVersions, tokenList, DEV, block.timestamp);
         router.swapTokensForExactTokens(amountOut, 100e18, pairVersions, tokenList, DEV, block.timestamp);
 
         assertEq(token24D.balanceOf(DEV), amountOut);

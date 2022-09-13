@@ -27,8 +27,8 @@ contract PlaygroundDeployer is Script {
     address private constant ROUTER_V1_FUJI = 0xd7f655E3376cE2D7A2b08fF01Eb3B1023191A901;
     address private constant WAVAX_FUJI = 0xd00ae08403B9bbb9124bB305C09058E32C39A48c;
 
-    address private constant FACTORY_V2_FUJI = 0xF4Aa1047dEebB0D01933B7124c67393aF66D2Bd2;
-    address private constant ROUTER_V2_FUJI = 0x670E135F3eC6D3635B67db5fCB5841F6cA85787C;
+    address private constant FACTORY_V2_FUJI = 0x2c2A4F4F0d5BABB0E501784F4D66a7131eff86F1;
+    address private constant ROUTER_V2_FUJI = 0x88080086a243616008294725A4B0fD78B4d6a6c2;
 
     LBFactory.LBPairInfo internal pair;
 
@@ -48,6 +48,12 @@ contract PlaygroundDeployer is Script {
 
         console.log("USDC ->", address(usdc));
         console.log("USDT ->", address(usdt));
+
+        // Whitelisting tokens to be Y tokens
+        vm.startBroadcast();
+        factory.addQuoteAsset(IERC20(address(usdc)));
+        factory.addQuoteAsset(IERC20(address(usdt)));
+        vm.stopBroadcast();
 
         // Minting and giving approval
         vm.startBroadcast();

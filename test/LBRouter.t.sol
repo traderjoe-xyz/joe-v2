@@ -347,4 +347,18 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(ALICE.balance, amountAvax);
         assertEq(address(router).balance, 0);
     }
+
+    function testSweepMax() public {
+        uint256 amountMinted = 1000e6;
+        token6D.mint(address(router), amountMinted);
+        router.sweep(token6D, ALICE, type(uint256).max);
+        assertEq(token6D.balanceOf(ALICE), amountMinted);
+        assertEq(token6D.balanceOf(address(router)), 0);
+
+        uint256 amountAvax = 100e18;
+        vm.deal(address(router), amountAvax);
+        router.sweep(IERC20(address(0)), ALICE, type(uint256).max);
+        assertEq(ALICE.balance, amountAvax);
+        assertEq(address(router).balance, 0);
+    }
 }

@@ -15,7 +15,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     using Decoder for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    uint256 public constant override MAX_FEE = 1e17; // 10%
+    uint256 public constant override MAX_FEE = 0.1e18; // 10%
 
     uint256 public constant override MIN_BIN_STEP = 1; // 0.01%
     uint256 public constant override MAX_BIN_STEP = 100; // 1%, can't be greater than 247 for indexing reasons

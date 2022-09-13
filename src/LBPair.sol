@@ -70,6 +70,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     mapping(address => mapping(uint256 => Debts)) private _accruedDebts;
     /// @dev Oracle array
     bytes32[65_536] private _oracle;
+    /// @dev Equivalent to type(uint112).max, that we can't use because this constant is used in an assembly block
+    uint256 private constant _MASK_112 = 2**112 - 1;
 
     /** OffSets */
 
@@ -246,7 +248,6 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @return reserveX The reserve of tokenX of the bin
     /// @return reserveY The reserve of tokenY of the bin
     function getBin(uint24 _id) external view override returns (uint256 reserveX, uint256 reserveY) {
-        uint256 _mask112 = type(uint112).max;
         bytes32 _data;
         // low level read of mapping to only load 1 storage slot
         assembly {
@@ -254,9 +255,9 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             mstore(32, _bins.slot)
             _data := sload(keccak256(0, 64))
 
-            reserveX := and(_data, _mask112)
+            reserveX := and(_data, _MASK_112)
         }
-        reserveY = _data.decode(_mask112, _OFFSET_BIN_RESERVE_Y);
+        reserveY = _data.decode(_MASK_112, _OFFSET_BIN_RESERVE_Y);
     }
 
     /// @notice View function to get the pending fees of a user

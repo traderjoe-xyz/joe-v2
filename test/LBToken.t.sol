@@ -218,4 +218,37 @@ contract LiquidityBinTokenTest is TestHelper {
         assertEq(pair.name(), "Liquidity Book Token");
         assertEq(pair.symbol(), "LBT");
     }
+
+    function testBalanceOfBatch() public {
+        uint24 binAmount = 5;
+        uint256 amountIn = 1e18;
+        uint24 _startId = ID_ONE;
+        uint24 _gap = 0;
+        uint256[] memory batchBalances = new uint256[](binAmount);
+
+        uint256[] memory _ids = new uint256[](binAmount);
+        for (uint256 i; i < binAmount / 2; i++) {
+            _ids[i] = _startId - (binAmount / 2) * (1 + _gap) + i * (1 + _gap);
+        }
+
+        address[] memory accounts = new address[](binAmount);
+        for (uint256 i; i < binAmount; i++) {
+            accounts[i] = DEV;
+        }
+        batchBalances = pair.balanceOfBatch(accounts, _ids);
+        for (uint256 i; i < binAmount; i++) {
+            assertEq(batchBalances[i], 0);
+        }
+
+        (_ids, , , ) = addLiquidity(amountIn, _startId, binAmount, _gap);
+        uint256[] memory amounts = new uint256[](binAmount);
+        for (uint256 i; i < binAmount; i++) {
+            assertEq(pair.userPositionAt(DEV, i), _ids[i]);
+            amounts[i] = pair.balanceOf(DEV, _ids[i]);
+        }
+        batchBalances = pair.balanceOfBatch(accounts, _ids);
+        for (uint256 i; i < binAmount; i++) {
+            assertEq(batchBalances[i], amounts[i]);
+        }
+    }
 }

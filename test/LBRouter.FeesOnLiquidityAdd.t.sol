@@ -117,7 +117,7 @@ contract LiquidityBinRouterTest is TestHelper {
         router.removeLiquidity(token6D, token18D, binStep, 0, 0, ids, amounts, ALICE, block.timestamp);
 
         (feesXTotal, , , ) = pair.getGlobalFees();
-        assert(feesXTotal > amountXIn / 199);
+        assertGt(feesXTotal, amountXIn / 199);
 
         //remove BOB's liquidity to ALICE account
         for (uint256 i; i < _numberBins; i++) {
@@ -131,7 +131,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
         uint256 ALICE6DbalanceAfterSecondRemove = token6D.balanceOf(ALICE);
 
-        assert(ALICE6DbalanceAfterSecondRemove + feesXTotal == amountXIn);
+        assertEq(ALICE6DbalanceAfterSecondRemove + feesXTotal, amountXIn);
     }
 
     function testFeeOnActiveBinReverse() public {
@@ -231,7 +231,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 ALICE6DbalanceAfterSecondRemove = token18D.balanceOf(ALICE);
 
         (, feesYTotal, , ) = pair.getGlobalFees();
-        assert(feesYTotal > amountYIn / 199);
-        assert(ALICE6DbalanceAfterSecondRemove + feesYTotal == amountYIn);
+        assertGt(feesYTotal, amountYIn / 199);
+        assertEq(ALICE6DbalanceAfterSecondRemove + feesYTotal, amountYIn);
     }
 }

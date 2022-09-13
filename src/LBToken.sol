@@ -96,14 +96,14 @@ contract LBToken is ILBToken {
     /// @param _account The address of the account
     /// @param _index The position index
     /// @return The `account` non-zero position at index `_index`
-    function userPositionAt(address _account, uint256 _index) public view virtual override returns (uint256) {
+    function userPositionAtIndex(address _account, uint256 _index) public view virtual override returns (uint256) {
         return _userIds[_account].at(_index);
     }
 
     /// @notice Returns the number of non-zero balances of `account`
     /// @param _account The address of the account
     /// @return The number of non-zero balances of `account`
-    function userPositionNb(address _account) public view virtual override returns (uint256) {
+    function userPositionNumber(address _account) public view virtual override returns (uint256) {
         return _userIds[_account].length();
     }
 

@@ -3,6 +3,7 @@
 pragma solidity >=0.8.7;
 
 import "./ILBPair.sol";
+import "./ILBToken.sol";
 import "./IWAVAX.sol";
 import "./IJoeFactory.sol";
 
@@ -182,5 +183,12 @@ interface ILBRouter {
         IERC20 token,
         address to,
         uint256 amount
+    ) external;
+
+    function sweepLBToken(
+        ILBToken _lbToken,
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _amounts
     ) external;
 }

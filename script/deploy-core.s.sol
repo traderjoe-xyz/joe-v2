@@ -5,8 +5,8 @@ pragma solidity 0.8.7;
 import "forge-std/Script.sol";
 
 import "src/LBFactory.sol";
-import "src/LBFactoryHelper.sol";
 import "src/LBRouter.sol";
+import "src/LBPair.sol";
 import "src/LBQuoter.sol";
 
 import "./config/bips-config.sol";
@@ -34,19 +34,26 @@ contract CoreDeployer is Script {
 
         vm.broadcast();
         LBFactory factory = new LBFactory(msg.sender, FLASHLOAN_FEE);
-        console.log("Factory deployed -->", address(factory));
+        console.log("LBFactory deployed -->", address(factory));
 
         vm.broadcast();
-        LBFactoryHelper factoryHelper = new LBFactoryHelper(factory);
-        console.log("FactoryHelper deployed -->", address(factoryHelper));
+        LBPair pairImplementation = new LBPair(factory);
+        console.log("LBPair implementation deployed -->", address(pairImplementation));
 
         vm.broadcast();
         LBRouter router = new LBRouter(factory, IJoeFactory(factoryV1), IWAVAX(wavax));
         console.log("LBRouter deployed -->", address(router));
 
-        vm.broadcast();
+        vm.startBroadcast();
         LBQuoter quoter = new LBQuoter(address(router), address(factoryV1), address(factory), wavax);
         console.log("LBQuoter deployed -->", address(quoter));
+
+        factory.setLBPairImplementation(address(pairImplementation));
+        console.log("LBPair implementation set on factory");
+
+        factory.addQuoteAsset(IERC20(wavax));
+        console.log("Wavax whitelisted as quote asset");
+        vm.stopBroadcast();
 
         vm.startBroadcast();
         uint256[] memory presetList = BipsConfig.getPresetList();

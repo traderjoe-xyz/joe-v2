@@ -7,7 +7,7 @@ import "forge-std/Script.sol";
 import "src/LBFactory.sol";
 import "src/LBFactoryHelper.sol";
 import "src/LBRouter.sol";
-import "src/Quoter.sol";
+import "src/LBQuoter.sol";
 
 import "./config/bips-config.sol";
 
@@ -45,8 +45,8 @@ contract CoreDeployer is Script {
         console.log("LBRouter deployed -->", address(router));
 
         vm.broadcast();
-        Quoter quoter = new Quoter(address(router), address(factoryV1), address(factory), wavax);
-        console.log("Quoter deployed -->", address(quoter));
+        LBQuoter quoter = new LBQuoter(address(router), address(factoryV1), address(factory), wavax);
+        console.log("LBQuoter deployed -->", address(quoter));
 
         vm.startBroadcast();
         uint256[] memory presetList = BipsConfig.getPresetList();

@@ -15,8 +15,6 @@ contract LBQuoter {
     address public immutable factoryV1;
     /// @notice Dex V2 factory address
     address public immutable factoryV2;
-    /// @notice Wrapped avax address
-    address public immutable wavax;
 
     struct Quote {
         address[] route;
@@ -30,17 +28,14 @@ contract LBQuoter {
     /// @param _routerV2 Dex V2 router address
     /// @param _factoryV1 Dex V1 factory address
     /// @param _factoryV2 Dex V2 factory address
-    /// @param _wavax Wrapped avax address
     constructor(
         address _routerV2,
         address _factoryV1,
-        address _factoryV2,
-        address _wavax
+        address _factoryV2
     ) {
         routerV2 = _routerV2;
         factoryV1 = _factoryV1;
         factoryV2 = _factoryV2;
-        wavax = _wavax;
     }
 
     /// @notice Finds the best path given a list of tokens and the input amount wanted from the swap
@@ -62,7 +57,7 @@ contract LBQuoter {
             quote.pairs[i] = IJoeFactory(factoryV1).getPair(_route[i], _route[i + 1]);
 
             if (quote.pairs[i] != address(0) && quote.amounts[i] > 0) {
-                (uint256 reserveIn, uint256 reserveOut) = JoeLibrary.getReserves(factoryV1, _route[i], _route[i + 1]);
+                (uint256 reserveIn, uint256 reserveOut) = _getReserves(quote.pairs[i], _route[i], _route[i + 1]);
 
                 quote.amounts[i + 1] = JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut);
                 quote.midPrice[i] = JoeLibrary.quote(1e18, reserveIn, reserveOut);
@@ -119,7 +114,7 @@ contract LBQuoter {
             quote.pairs[i - 1] = IJoeFactory(factoryV1).getPair(_route[i - 1], _route[i]);
             quote.amounts[i - 1] = type(uint256).max;
             if (quote.pairs[i - 1] != address(0) && quote.amounts[i] > 0) {
-                (uint256 reserveIn, uint256 reserveOut) = JoeLibrary.getReserves(factoryV1, _route[i - 1], _route[i]);
+                (uint256 reserveIn, uint256 reserveOut) = _getReserves(quote.pairs[i - 1], _route[i - 1], _route[i]);
                 quote.amounts[i - 1] = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut);
 
                 quote.midPrice[i - 1] = JoeLibrary.quote(1e18, reserveIn, reserveOut);
@@ -152,5 +147,17 @@ contract LBQuoter {
                 }
             }
         }
+    }
+
+    // Forked from JoeLibrary
+    // Doesn't rely on the init code hash of the factory
+    function _getReserves(
+        address pair,
+        address tokenA,
+        address tokenB
+    ) internal view returns (uint256 reserveA, uint256 reserveB) {
+        (address token0, ) = JoeLibrary.sortTokens(tokenA, tokenB);
+        (uint256 reserve0, uint256 reserve1, ) = IJoePair(pair).getReserves();
+        (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
 }

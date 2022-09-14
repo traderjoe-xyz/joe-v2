@@ -87,7 +87,7 @@ contract LBQuoter {
                         if (swapAmountOut > quote.amounts[i + 1]) {
                             quote.amounts[i + 1] = swapAmountOut;
                             quote.pairs[i] = address(LBPairsAvailable[j].LBPair);
-                            quote.binSteps[i] = LBPairsAvailable[j].LBPair.feeParameters().binStep;
+                            quote.binSteps[i] = LBPairsAvailable[j].binStep;
 
                             // Getting current price
                             (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
@@ -150,7 +150,7 @@ contract LBQuoter {
                         if (swapAmountIn != 0 && (swapAmountIn < quote.amounts[i - 1] || quote.amounts[i - 1] == 0)) {
                             quote.amounts[i - 1] = swapAmountIn;
                             quote.pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
-                            quote.binSteps[i - 1] = LBPairsAvailable[j].LBPair.feeParameters().binStep;
+                            quote.binSteps[i - 1] = LBPairsAvailable[j].binStep;
 
                             // Getting current price
                             (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();

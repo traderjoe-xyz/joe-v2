@@ -71,20 +71,22 @@ contract LBQuoter {
 
             if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
                 for (uint256 j; j < LBPairsAvailable.length; j++) {
-                    uint256 swapAmountOut = ILBRouter(routerV2).getSwapOut(
-                        LBPairsAvailable[j].LBPair,
-                        quote.amounts[i],
-                        address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i + 1]
-                    );
+                    if (!LBPairsAvailable[j].isBlacklisted) {
+                        uint256 swapAmountOut = ILBRouter(routerV2).getSwapOut(
+                            LBPairsAvailable[j].LBPair,
+                            quote.amounts[i],
+                            address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i + 1]
+                        );
 
-                    if (swapAmountOut > quote.amounts[i + 1]) {
-                        quote.amounts[i + 1] = swapAmountOut;
-                        quote.pairs[i] = address(LBPairsAvailable[j].LBPair);
-                        quote.binSteps[i] = LBPairsAvailable[j].LBPair.feeParameters().binStep;
+                        if (swapAmountOut > quote.amounts[i + 1]) {
+                            quote.amounts[i + 1] = swapAmountOut;
+                            quote.pairs[i] = address(LBPairsAvailable[j].LBPair);
+                            quote.binSteps[i] = LBPairsAvailable[j].LBPair.feeParameters().binStep;
 
-                        // Getting current price
-                        (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
-                        quote.midPrice[i] = (BinHelper.getPriceFromId(activeId, quote.binSteps[i]) * 1e18) / 2**128;
+                            // Getting current price
+                            (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
+                            quote.midPrice[i] = (BinHelper.getPriceFromId(activeId, quote.binSteps[i]) * 1e18) / 2**128;
+                        }
                     }
                 }
             }
@@ -128,21 +130,23 @@ contract LBQuoter {
 
             if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
                 for (uint256 j; j < LBPairsAvailable.length; j++) {
-                    uint256 swapAmountIn = ILBRouter(routerV2).getSwapIn(
-                        LBPairsAvailable[j].LBPair,
-                        quote.amounts[i],
-                        address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i]
-                    );
-                    if (swapAmountIn != 0 && (swapAmountIn < quote.amounts[i - 1] || quote.amounts[i - 1] == 0)) {
-                        quote.amounts[i - 1] = swapAmountIn;
-                        quote.pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
-                        quote.binSteps[i - 1] = LBPairsAvailable[j].LBPair.feeParameters().binStep;
+                    if (!LBPairsAvailable[j].isBlacklisted) {
+                        uint256 swapAmountIn = ILBRouter(routerV2).getSwapIn(
+                            LBPairsAvailable[j].LBPair,
+                            quote.amounts[i],
+                            address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i]
+                        );
+                        if (swapAmountIn != 0 && (swapAmountIn < quote.amounts[i - 1] || quote.amounts[i - 1] == 0)) {
+                            quote.amounts[i - 1] = swapAmountIn;
+                            quote.pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
+                            quote.binSteps[i - 1] = LBPairsAvailable[j].LBPair.feeParameters().binStep;
 
-                        // Getting current price
-                        (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
-                        quote.midPrice[i - 1] =
-                            (BinHelper.getPriceFromId(activeId, quote.binSteps[i - 1]) * 1e18) /
-                            2**128;
+                            // Getting current price
+                            (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
+                            quote.midPrice[i - 1] =
+                                (BinHelper.getPriceFromId(activeId, quote.binSteps[i - 1]) * 1e18) /
+                                2**128;
+                        }
                     }
                 }
             }

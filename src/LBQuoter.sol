@@ -77,7 +77,7 @@ contract LBQuoter {
 
             if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
                 for (uint256 j; j < LBPairsAvailable.length; j++) {
-                    if (!LBPairsAvailable[j].isBlacklisted) {
+                    if (!LBPairsAvailable[j].ignoredForRouting) {
                         try
                             ILBRouter(routerV2).getSwapOut(
                                 LBPairsAvailable[j].LBPair,
@@ -143,7 +143,7 @@ contract LBQuoter {
 
             if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
                 for (uint256 j; j < LBPairsAvailable.length; j++) {
-                    if (!LBPairsAvailable[j].isBlacklisted) {
+                    if (!LBPairsAvailable[j].ignoredForRouting) {
                         try
                             ILBRouter(routerV2).getSwapIn(
                                 LBPairsAvailable[j].LBPair,

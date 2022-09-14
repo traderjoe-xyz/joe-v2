@@ -8,6 +8,8 @@ import "./interfaces/ILBRouter.sol";
 import "./libraries/JoeLibrary.sol";
 import "./libraries/BinHelper.sol";
 
+error LBQuoter_InvalidLength();
+
 contract LBQuoter {
     /// @notice Dex V2 router address
     address public immutable routerV2;
@@ -21,7 +23,7 @@ contract LBQuoter {
         address[] pairs;
         uint256[] binSteps;
         uint256[] amounts;
-        uint256[] midPrice;
+        uint256[] virtualAmountsWithoutSlippage;
     }
 
     /// @notice Constructor
@@ -42,12 +44,16 @@ contract LBQuoter {
     /// @param _route List of the tokens to go through
     /// @param _amountIn Swap amount in
     function findBestPathAmountIn(address[] memory _route, uint256 _amountIn) public view returns (Quote memory quote) {
+        if (_route.length < 2) {
+            revert LBQuoter_InvalidLength();
+        }
+
         quote.route = _route;
 
         uint256 swapLength = _route.length - 1;
         quote.pairs = new address[](swapLength);
         quote.binSteps = new uint256[](swapLength);
-        quote.midPrice = new uint256[](swapLength);
+        quote.virtualAmountsWithoutSlippage = new uint256[](swapLength);
         quote.amounts = new uint256[](_route.length);
 
         quote.amounts[0] = _amountIn;
@@ -60,7 +66,7 @@ contract LBQuoter {
                 (uint256 reserveIn, uint256 reserveOut) = _getReserves(quote.pairs[i], _route[i], _route[i + 1]);
 
                 quote.amounts[i + 1] = JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut);
-                quote.midPrice[i] = JoeLibrary.quote(1e18, reserveIn, reserveOut);
+                quote.virtualAmountsWithoutSlippage[i] = JoeLibrary.quote(quote.amounts[i], reserveIn, reserveOut);
             }
 
             // Fetch swaps for V2
@@ -85,7 +91,9 @@ contract LBQuoter {
 
                             // Getting current price
                             (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
-                            quote.midPrice[i] = (BinHelper.getPriceFromId(activeId, quote.binSteps[i]) * 1e18) / 2**128;
+                            quote.virtualAmountsWithoutSlippage[i] =
+                                (BinHelper.getPriceFromId(activeId, quote.binSteps[i]) * quote.amounts[i]) /
+                                2**128;
                         }
                     }
                 }
@@ -101,12 +109,15 @@ contract LBQuoter {
         view
         returns (Quote memory quote)
     {
+        if (_route.length < 2) {
+            revert LBQuoter_InvalidLength();
+        }
         quote.route = _route;
 
         uint256 swapLength = _route.length - 1;
         quote.pairs = new address[](swapLength);
         quote.binSteps = new uint256[](swapLength);
-        quote.midPrice = new uint256[](swapLength);
+        quote.virtualAmountsWithoutSlippage = new uint256[](swapLength);
         quote.amounts = new uint256[](_route.length);
 
         quote.amounts[swapLength] = _amountOut;
@@ -119,7 +130,7 @@ contract LBQuoter {
                 (uint256 reserveIn, uint256 reserveOut) = _getReserves(quote.pairs[i - 1], _route[i - 1], _route[i]);
                 quote.amounts[i - 1] = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut);
 
-                quote.midPrice[i - 1] = JoeLibrary.quote(1e18, reserveIn, reserveOut);
+                quote.virtualAmountsWithoutSlippage[i - 1] = JoeLibrary.quote(quote.amounts[i], reserveIn, reserveOut);
             }
 
             // Fetch swaps for V2
@@ -143,8 +154,8 @@ contract LBQuoter {
 
                             // Getting current price
                             (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
-                            quote.midPrice[i - 1] =
-                                (BinHelper.getPriceFromId(activeId, quote.binSteps[i - 1]) * 1e18) /
+                            quote.virtualAmountsWithoutSlippage[i - 1] =
+                                (BinHelper.getPriceFromId(activeId, quote.binSteps[i - 1]) * quote.amounts[i]) /
                                 2**128;
                         }
                     }

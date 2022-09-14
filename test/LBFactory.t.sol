@@ -12,7 +12,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         uint256 binStep;
         ILBPair LBPair;
         bool createdByOwner;
-        bool isBlacklisted;
+        bool ignoredForRouting;
     }
 
     function setUp() public {
@@ -76,7 +76,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(WAVAX_AVALANCHE_ADDRESS));
         factory.setFactoryLocked(false);
         ILBPair pair50 = router.createLBPair(token6D, token18D, ID_ONE, 50);
-        factory.setLBPairBlacklist(token6D, token18D, 50, true);
+        factory.setLBPairIgnored(token6D, token18D, 50, true);
         assertEq(factory.getAvailableLBPairsBinStep(token6D, token18D).length, 3);
 
         ILBFactory.LBPairAvailable[] memory LBPairsAvailable = factory.getAvailableLBPairsBinStep(token6D, token18D);
@@ -84,17 +84,17 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(LBPairsAvailable[0].binStep, 1);
         assertEq(address(LBPairsAvailable[0].LBPair), address(pair1));
         assertEq(LBPairsAvailable[0].createdByOwner, true);
-        assertEq(LBPairsAvailable[0].isBlacklisted, false);
+        assertEq(LBPairsAvailable[0].ignoredForRouting, false);
 
         assertEq(LBPairsAvailable[1].binStep, 25);
         assertEq(address(LBPairsAvailable[1].LBPair), address(pair25));
         assertEq(LBPairsAvailable[1].createdByOwner, true);
-        assertEq(LBPairsAvailable[1].isBlacklisted, false);
+        assertEq(LBPairsAvailable[1].ignoredForRouting, false);
 
         assertEq(LBPairsAvailable[2].binStep, 50);
         assertEq(address(LBPairsAvailable[2].LBPair), address(pair50));
         assertEq(LBPairsAvailable[2].createdByOwner, false);
-        assertEq(LBPairsAvailable[2].isBlacklisted, true);
+        assertEq(LBPairsAvailable[2].ignoredForRouting, true);
     }
 
     function testCreateLBPair() public {
@@ -152,7 +152,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         ILBFactory.LBPairAvailable[] memory LBPairBinSteps = factory.getAvailableLBPairsBinStep(token6D, token12D);
         assertEq(LBPairBinSteps.length, 1);
         assertEq(LBPairBinSteps[0].binStep, DEFAULT_BIN_STEP);
-        assertEq(LBPairBinSteps[0].isBlacklisted, false);
+        assertEq(LBPairBinSteps[0].ignoredForRouting, false);
         assertEq(LBPairBinSteps[0].createdByOwner, false);
     }
 
@@ -367,10 +367,10 @@ contract LiquidityBinFactoryTest is TestHelper {
         );
     }
 
-    function testForDoubleBlacklisting() public {
-        factory.setLBPairBlacklist(token6D, token18D, DEFAULT_BIN_STEP, true);
-        vm.expectRevert(LBFactory__LBPairBlacklistIsAlreadyInTheSameState.selector);
-        factory.setLBPairBlacklist(token6D, token18D, DEFAULT_BIN_STEP, true);
+    function testForDoubleIgnored() public {
+        factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, true);
+        vm.expectRevert(LBFactory__LBPairIgnoredIsAlreadyInTheSameState.selector);
+        factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, true);
     }
 
     function testForSettingFlashloanFee() public {

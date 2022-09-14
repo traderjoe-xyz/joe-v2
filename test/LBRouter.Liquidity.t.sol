@@ -303,7 +303,7 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(wavax.balanceOf(DEV), _amountAVAXIn);
     }
 
-    function testAddLiquidityBlacklistedPairReverts() public {
+    function testAddLiquidityIgnored() public {
         uint256 _amountYIn = 100e18;
         uint24 _startId = ID_ONE;
         uint24 _numberBins = 9;
@@ -311,7 +311,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
         addLiquidityFromRouter(token6D, token18D, _amountYIn, _startId, _numberBins, _gap, DEFAULT_BIN_STEP);
 
-        factory.setLBPairBlacklist(token6D, token18D, DEFAULT_BIN_STEP, true);
+        factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, true);
         ILBRouter.LiquidityParameters memory _liquidityParameters = prepareLiquidityParameters(
             token6D,
             token18D,
@@ -322,7 +322,6 @@ contract LiquidityBinRouterTest is TestHelper {
             DEFAULT_BIN_STEP
         );
 
-        vm.expectRevert(abi.encodeWithSelector(LBRouter__LBPairBlacklisted.selector, address(pair)));
         router.addLiquidity(_liquidityParameters);
     }
 

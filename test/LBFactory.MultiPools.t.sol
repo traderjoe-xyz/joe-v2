@@ -162,25 +162,25 @@ contract LiquidityBinFactoryTestM is TestHelper {
         assertEq(LBPairBinStepsAfterPresetRemoval[1].binStep, 75);
         assertEq(LBPairBinStepsAfterPresetRemoval[2].binStep, 98);
 
-        factory.setLBPairBlacklist(token6D, token18D, DEFAULT_BIN_STEP, true);
-        factory.setLBPairBlacklist(token18D, token6D, 98, true);
+        factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, true);
+        factory.setLBPairIgnored(token18D, token6D, 98, true);
 
-        ILBFactory.LBPairAvailable[] memory LBPairBinStepsAfterBlacklisting = factory.getAvailableLBPairsBinStep(
+        ILBFactory.LBPairAvailable[] memory LBPairBinStepsAfterIgnored = factory.getAvailableLBPairsBinStep(
             token6D,
             token18D
         );
-        assertEq(LBPairBinStepsAfterBlacklisting.length, 3);
-        assertEq(LBPairBinStepsAfterBlacklisting[0].isBlacklisted, true);
-        assertEq(LBPairBinStepsAfterBlacklisting[1].isBlacklisted, false);
-        assertEq(LBPairBinStepsAfterBlacklisting[2].isBlacklisted, true);
+        assertEq(LBPairBinStepsAfterIgnored.length, 3);
+        assertEq(LBPairBinStepsAfterIgnored[0].ignoredForRouting, true);
+        assertEq(LBPairBinStepsAfterIgnored[1].ignoredForRouting, false);
+        assertEq(LBPairBinStepsAfterIgnored[2].ignoredForRouting, true);
 
-        factory.setLBPairBlacklist(token6D, token18D, DEFAULT_BIN_STEP, false);
+        factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, false);
 
-        ILBFactory.LBPairAvailable[] memory LBPairBinStepsAfterRemovalOfBlacklisting = factory
+        ILBFactory.LBPairAvailable[] memory LBPairBinStepsAfterRemovalOfIgnored = factory
             .getAvailableLBPairsBinStep(token6D, token18D);
-        assertEq(LBPairBinStepsAfterRemovalOfBlacklisting.length, 3);
-        assertEq(LBPairBinStepsAfterRemovalOfBlacklisting[0].isBlacklisted, false);
-        assertEq(LBPairBinStepsAfterRemovalOfBlacklisting[1].isBlacklisted, false);
-        assertEq(LBPairBinStepsAfterRemovalOfBlacklisting[2].isBlacklisted, true);
+        assertEq(LBPairBinStepsAfterRemovalOfIgnored.length, 3);
+        assertEq(LBPairBinStepsAfterRemovalOfIgnored[0].ignoredForRouting, false);
+        assertEq(LBPairBinStepsAfterRemovalOfIgnored[1].ignoredForRouting, false);
+        assertEq(LBPairBinStepsAfterRemovalOfIgnored[2].ignoredForRouting, true);
     }
 }

@@ -227,8 +227,7 @@ contract LBRouter is ILBRouter {
         ILBPair _LBPair = _getLBPairInfo(
             _liquidityParameters.tokenX,
             _liquidityParameters.tokenY,
-            _liquidityParameters.binStep,
-            true
+            _liquidityParameters.binStep
         );
         if (_liquidityParameters.tokenX != _LBPair.tokenX()) revert LBRouter__WrongTokenOrder();
 

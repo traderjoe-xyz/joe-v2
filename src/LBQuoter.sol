@@ -78,23 +78,25 @@ contract LBQuoter {
             if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
                 for (uint256 j; j < LBPairsAvailable.length; j++) {
                     if (!LBPairsAvailable[j].isBlacklisted) {
-                        uint256 swapAmountOut = ILBRouter(routerV2).getSwapOut(
-                            LBPairsAvailable[j].LBPair,
-                            quote.amounts[i],
-                            address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i + 1]
-                        );
+                        try
+                            ILBRouter(routerV2).getSwapOut(
+                                LBPairsAvailable[j].LBPair,
+                                quote.amounts[i],
+                                address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i + 1]
+                            )
+                        returns (uint256 swapAmountOut) {
+                            if (swapAmountOut > quote.amounts[i + 1]) {
+                                quote.amounts[i + 1] = swapAmountOut;
+                                quote.pairs[i] = address(LBPairsAvailable[j].LBPair);
+                                quote.binSteps[i] = LBPairsAvailable[j].binStep;
 
-                        if (swapAmountOut > quote.amounts[i + 1]) {
-                            quote.amounts[i + 1] = swapAmountOut;
-                            quote.pairs[i] = address(LBPairsAvailable[j].LBPair);
-                            quote.binSteps[i] = LBPairsAvailable[j].binStep;
-
-                            // Getting current price
-                            (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
-                            quote.virtualAmountsWithoutSlippage[i] =
-                                (BinHelper.getPriceFromId(activeId, quote.binSteps[i]) * quote.amounts[i]) >>
-                                128;
-                        }
+                                // Getting current price
+                                (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
+                                quote.virtualAmountsWithoutSlippage[i] =
+                                    (BinHelper.getPriceFromId(activeId, quote.binSteps[i]) * quote.amounts[i]) >>
+                                    128;
+                            }
+                        } catch {}
                     }
                 }
             }
@@ -142,22 +144,27 @@ contract LBQuoter {
             if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
                 for (uint256 j; j < LBPairsAvailable.length; j++) {
                     if (!LBPairsAvailable[j].isBlacklisted) {
-                        uint256 swapAmountIn = ILBRouter(routerV2).getSwapIn(
-                            LBPairsAvailable[j].LBPair,
-                            quote.amounts[i],
-                            address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i]
-                        );
-                        if (swapAmountIn != 0 && (swapAmountIn < quote.amounts[i - 1] || quote.amounts[i - 1] == 0)) {
-                            quote.amounts[i - 1] = swapAmountIn;
-                            quote.pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
-                            quote.binSteps[i - 1] = LBPairsAvailable[j].binStep;
+                        try
+                            ILBRouter(routerV2).getSwapIn(
+                                LBPairsAvailable[j].LBPair,
+                                quote.amounts[i],
+                                address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i]
+                            )
+                        returns (uint256 swapAmountIn) {
+                            if (
+                                swapAmountIn != 0 && (swapAmountIn < quote.amounts[i - 1] || quote.amounts[i - 1] == 0)
+                            ) {
+                                quote.amounts[i - 1] = swapAmountIn;
+                                quote.pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
+                                quote.binSteps[i - 1] = LBPairsAvailable[j].binStep;
 
-                            // Getting current price
-                            (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
-                            quote.virtualAmountsWithoutSlippage[i - 1] =
-                                (BinHelper.getPriceFromId(activeId, quote.binSteps[i - 1]) * quote.amounts[i]) >>
-                                128;
-                        }
+                                // Getting current price
+                                (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
+                                quote.virtualAmountsWithoutSlippage[i - 1] =
+                                    (BinHelper.getPriceFromId(activeId, quote.binSteps[i - 1]) * quote.amounts[i]) >>
+                                    128;
+                            }
+                        } catch {}
                     }
                 }
             }

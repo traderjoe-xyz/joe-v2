@@ -8,6 +8,7 @@ contract LiquidityBinRouterTest is TestHelper {
     LBPair internal pair1;
     LBPair internal pair2;
     LBPair internal pair3;
+    LBPair internal pair4;
     LBPair internal taxTokenPair;
 
     function setUp() public {
@@ -40,7 +41,8 @@ contract LiquidityBinRouterTest is TestHelper {
         addLiquidityFromRouter(token12D, token18D, 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
         pair3 = createLBPairDefaultFees(token18D, token24D);
         addLiquidityFromRouter(token18D, token24D, 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
-
+        pair4 = createLBPairDefaultFees(token6D, taxToken);
+        addLiquidityFromRouter(token6D, ERC20MockDecimals(address(taxToken)), 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
         taxTokenPair = createLBPairDefaultFees(taxToken, wavax);
         addLiquidityFromRouter(
             ERC20MockDecimals(address(taxToken)),
@@ -121,7 +123,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
         router.swapExactAVAXForTokens{value: amountIn}(amountOut, pairVersions, tokenList, DEV, block.timestamp);
 
-        assertApproxEqAbs(token6D.balanceOf(DEV), amountOut, 10);
+        assertApproxEqAbs(token6D.balanceOf(DEV), amountOut, 13);
     }
 
     function testSwapTokensForExactTokensSinglePair() public {
@@ -186,10 +188,9 @@ contract LiquidityBinRouterTest is TestHelper {
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__MaxAmountInExceeded.selector, amountIn - 1, amountIn));
         router.swapAVAXForExactTokens{value: amountIn - 1}(amountOut, pairVersions, tokenList, ALICE, block.timestamp);
-
         router.swapAVAXForExactTokens{value: amountIn}(amountOut, pairVersions, tokenList, DEV, block.timestamp);
 
-        assertApproxEqAbs(token6D.balanceOf(DEV), amountOut, 10);
+        assertApproxEqAbs(token6D.balanceOf(DEV), amountOut, 13);
     }
 
     function testSwapExactTokensForTokensSupportingFeeOnTransferTokens() public {
@@ -417,6 +418,76 @@ contract LiquidityBinRouterTest is TestHelper {
         pairVersions[3] = DEFAULT_BIN_STEP;
     }
 
+    function testSwappingOnNotExistingV2PairReverts() public {
+        IERC20[] memory tokenListAvaxIn;
+        IERC20[] memory tokenList;
+        uint256[] memory pairVersions;
+
+        uint256 amountIn2 = 1e18;
+        vm.deal(DEV, amountIn2);
+
+        tokenList = new IERC20[](3);
+        tokenList[0] = token6D;
+        tokenList[1] = token18D;
+        tokenList[2] = wavax;
+
+        pairVersions = new uint256[](2);
+        pairVersions[0] = DEFAULT_BIN_STEP;
+        pairVersions[1] = DEFAULT_BIN_STEP + 1;
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
+        router.swapExactTokensForTokens(amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
+        router.swapExactTokensForAVAX(amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
+        router.swapTokensForExactTokens(amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
+        router.swapTokensForExactAVAX(amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
+        router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            amountIn2,
+            0,
+            pairVersions,
+            tokenList,
+            DEV,
+            block.timestamp
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
+        router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+            amountIn2,
+            0,
+            pairVersions,
+            tokenList,
+            DEV,
+            block.timestamp
+        );
+
+        tokenListAvaxIn = new IERC20[](3);
+        tokenListAvaxIn[0] = wavax;
+        tokenListAvaxIn[1] = token6D;
+        tokenListAvaxIn[2] = token18D;
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token6D, token18D, pairVersions[1]));
+        router.swapExactAVAXForTokens{value: amountIn2}(0, pairVersions, tokenListAvaxIn, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token6D, token18D, pairVersions[1]));
+        router.swapAVAXForExactTokens{value: amountIn2}(0, pairVersions, tokenListAvaxIn, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token6D, token18D, pairVersions[1]));
+        router.swapExactAVAXForTokensSupportingFeeOnTransferTokens{value: amountIn2}(
+            0,
+            pairVersions,
+            tokenListAvaxIn,
+            DEV,
+            block.timestamp
+        );
+    }
+
     receive() external payable {}
 }
 
@@ -561,6 +632,121 @@ contract LiquidityBinRouterForkTest is TestHelper {
         assertEq(token6D.balanceOf(DEV) - balanceBefore, amountOut);
 
         vm.stopPrank();
+    }
+
+    function testTaxTokenSwappedOnV1Pair() public {
+        if (block.number < 1000) {
+            console.log("fork mainnet for V1 testing support");
+            return;
+        }
+        uint256 amountIn = 100e18;
+        taxTokenPair = createLBPairDefaultFees(taxToken, token6D);
+        addLiquidityFromRouter(ERC20MockDecimals(address(taxToken)), token6D, 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
+
+        //create taxToken-AVAX pair in DEXv1
+        IJoeFactory factoryv1 = IJoeFactory(JOE_V1_FACTORY_ADDRESS);
+        address taxPairv1 = factoryv1.createPair(address(taxToken), address(wavax));
+        taxToken.mint(taxPairv1, amountIn);
+        vm.deal(DEV, amountIn);
+        wavax.deposit{value: amountIn}();
+        wavax.transfer(taxPairv1, amountIn);
+        IJoePair(taxPairv1).mint(DEV);
+
+        token6D.mint(DEV, amountIn);
+        token6D.approve(address(router), amountIn);
+
+        IERC20[] memory tokenList;
+        uint256[] memory pairVersions;
+
+        tokenList = new IERC20[](3);
+        tokenList[0] = token6D;
+        tokenList[1] = taxToken;
+        tokenList[2] = wavax;
+
+        pairVersions = new uint256[](2);
+        pairVersions[0] = DEFAULT_BIN_STEP;
+        pairVersions[1] = 0;
+        uint256 amountIn2 = 1e18;
+        vm.expectRevert("Joe: K");
+        router.swapExactTokensForAVAX(amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp);
+        router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+            amountIn2,
+            0,
+            pairVersions,
+            tokenList,
+            DEV,
+            block.timestamp
+        );
+    }
+
+    function testSwappingOnNotExistingV1PairReverts() public {
+        IERC20[] memory tokenListAvaxIn;
+        IERC20[] memory tokenList;
+        uint256[] memory pairVersions;
+
+        uint256 amountIn2 = 1e18;
+        vm.deal(DEV, amountIn2);
+
+        tokenList = new IERC20[](3);
+        tokenList[0] = token6D;
+        tokenList[1] = token18D;
+        tokenList[2] = wavax;
+
+        pairVersions = new uint256[](2);
+        pairVersions[0] = DEFAULT_BIN_STEP;
+        pairVersions[1] = 0;
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
+        router.swapExactTokensForTokens(amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
+        router.swapExactTokensForAVAX(amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
+        router.swapTokensForExactTokens(amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
+        router.swapTokensForExactAVAX(amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
+        router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            amountIn2,
+            0,
+            pairVersions,
+            tokenList,
+            DEV,
+            block.timestamp
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
+        router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+            amountIn2,
+            0,
+            pairVersions,
+            tokenList,
+            DEV,
+            block.timestamp
+        );
+
+        tokenListAvaxIn = new IERC20[](3);
+        tokenListAvaxIn[0] = wavax;
+        tokenListAvaxIn[1] = token6D;
+        tokenListAvaxIn[2] = token18D;
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token6D, token18D, pairVersions[1]));
+        router.swapExactAVAXForTokens{value: amountIn2}(0, pairVersions, tokenListAvaxIn, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token6D, token18D, pairVersions[1]));
+        router.swapAVAXForExactTokens{value: amountIn2}(0, pairVersions, tokenListAvaxIn, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token6D, token18D, pairVersions[1]));
+        router.swapExactAVAXForTokensSupportingFeeOnTransferTokens{value: amountIn2}(
+            0,
+            pairVersions,
+            tokenListAvaxIn,
+            DEV,
+            block.timestamp
+        );
     }
 
     receive() external payable {}

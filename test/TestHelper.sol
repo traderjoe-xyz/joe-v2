@@ -7,8 +7,10 @@ import "forge-std/Test.sol";
 import "src/LBFactory.sol";
 import "src/LBPair.sol";
 import "src/LBRouter.sol";
+import "src/LBQuoter.sol";
 import "src/LBErrors.sol";
 import "src/interfaces/ILBRouter.sol";
+import "src/interfaces/IJoeRouter02.sol";
 import "src/LBToken.sol";
 import "src/libraries/Math512Bits.sol";
 import "src/libraries/Constants.sol";
@@ -39,11 +41,13 @@ abstract contract TestHelper is Test {
     address payable internal constant BOB = payable(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
 
     address internal constant JOE_V1_FACTORY_ADDRESS = 0x9Ad6C38BE94206cA50bb0d90783181662f0Cfa10;
+    address internal constant JOE_V1_ROUTER_ADDRESS = 0x60aE616a2155Ee3d9A68541Ba4544862310933d4;
     address internal constant WAVAX_AVALANCHE_ADDRESS = 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7;
     address internal constant USDC_AVALANCHE_ADDRESS = 0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E;
 
     WAVAX internal wavax;
     ERC20MockDecimals internal usdc;
+    ERC20MockDecimals internal usdt;
 
     ERC20MockDecimals internal token6D;
     ERC20MockDecimals internal token10D;
@@ -55,9 +59,10 @@ abstract contract TestHelper is Test {
 
     LBFactory internal factory;
     LBRouter internal router;
-    LBRouter internal routerV1 = LBRouter(payable(JOE_V1_FACTORY_ADDRESS));
+    IJoeRouter02 internal routerV1 = IJoeRouter02(JOE_V1_ROUTER_ADDRESS);
     LBPair internal pair;
     LBPair internal pairWavax;
+    LBQuoter internal quoter;
 
     function getPriceFromId(uint24 _id) internal pure returns (uint256 price) {
         price = BinHelper.getPriceFromId(_id, DEFAULT_BIN_STEP);
@@ -198,7 +203,7 @@ abstract contract TestHelper is Test {
             _amountYIn,
             0,
             0,
-            ID_ONE,
+            _startId,
             0,
             _deltaIds,
             _distributionX,
@@ -319,6 +324,8 @@ abstract contract TestHelper is Test {
 
     function addAllAssetsToQuoteWhitelist(LBFactory factory) internal {
         if (address(wavax) != address(0)) factory.addQuoteAsset(wavax);
+        if (address(usdc) != address(0)) factory.addQuoteAsset(usdc);
+        if (address(usdt) != address(0)) factory.addQuoteAsset(usdt);
         if (address(taxToken) != address(0)) factory.addQuoteAsset(taxToken);
         if (address(token6D) != address(0)) factory.addQuoteAsset(token6D);
         if (address(token10D) != address(0)) factory.addQuoteAsset(token10D);

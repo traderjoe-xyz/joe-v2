@@ -113,6 +113,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
     function testClaimProtocolFees() public {
         uint256 amountYInLiquidity = 100e18;
         uint256 amountXOutForSwap = 1e6;
+        uint256 amountYOutForSwap = 1e6;
         uint24 startId = ID_ONE;
 
         addLiquidity(amountYInLiquidity, startId, 5, 0);
@@ -137,5 +138,15 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         pair.collectProtocolFees();
         assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesYProtocol - 1);
+
+        //Claiming rewards for X
+        uint256 amountXInForSwap = router.getSwapIn(pair, amountXOutForSwap, true);
+
+        token6D.mint(address(pair), amountXInForSwap);
+        vm.prank(BOB);
+        pair.swap(true, DEV);
+        balanceBefore = token6D.balanceOf(protocolFeesReceiver);
+        pair.collectProtocolFees();
+        assertEq(token6D.balanceOf(protocolFeesReceiver) - balanceBefore, feesYProtocol - 1);
     }
 }

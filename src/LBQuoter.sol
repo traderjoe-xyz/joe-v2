@@ -49,15 +49,15 @@ contract LBQuoter {
     function findBestPathAmountIn(address[] memory _route, uint256 _amountIn) public view returns (Quote memory quote) {
         quote.route = _route;
 
-        uint256 routeLength = _route.length;
-        quote.pairs = new address[](routeLength - 1);
-        quote.binSteps = new uint256[](routeLength - 1);
-        quote.midPrice = new uint256[](routeLength - 1);
-        quote.amounts = new uint256[](routeLength);
+        uint256 swapLength = _route.length - 1;
+        quote.pairs = new address[](swapLength);
+        quote.binSteps = new uint256[](swapLength);
+        quote.midPrice = new uint256[](swapLength);
+        quote.amounts = new uint256[](_route.length);
 
         quote.amounts[0] = _amountIn;
 
-        for (uint256 i; i < routeLength - 1; i++) {
+        for (uint256 i; i < swapLength; i++) {
             // Fetch swap for V1
             quote.pairs[i] = IJoeFactory(factoryV1).getPair(_route[i], _route[i + 1]);
 
@@ -106,15 +106,15 @@ contract LBQuoter {
     {
         quote.route = _route;
 
-        uint256 routeLength = _route.length;
-        quote.pairs = new address[](routeLength - 1);
-        quote.binSteps = new uint256[](routeLength - 1);
-        quote.midPrice = new uint256[](routeLength - 1);
-        quote.amounts = new uint256[](routeLength);
+        uint256 swapLength = _route.length - 1;
+        quote.pairs = new address[](swapLength);
+        quote.binSteps = new uint256[](swapLength);
+        quote.midPrice = new uint256[](swapLength);
+        quote.amounts = new uint256[](_route.length);
 
-        quote.amounts[routeLength - 1] = _amountOut;
+        quote.amounts[swapLength] = _amountOut;
 
-        for (uint256 i = routeLength - 1; i > 0; i--) {
+        for (uint256 i = swapLength; i > 0; i--) {
             // Fetch swap for V1
             quote.pairs[i - 1] = IJoeFactory(factoryV1).getPair(_route[i - 1], _route[i]);
             quote.amounts[i - 1] = type(uint256).max;

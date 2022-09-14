@@ -24,8 +24,8 @@ library TreeMath {
         unchecked {
             uint256 current;
 
-            uint256 bit = _binId % 256;
-            _binId /= 256;
+            uint256 bit = _binId & 255;
+            _binId >>= 8;
 
             // Search in depth 2
             if ((_rightSide && bit != 0) || (!_rightSide && bit != 255)) {
@@ -36,8 +36,8 @@ library TreeMath {
                 }
             }
 
-            bit = _binId % 256;
-            _binId /= 256;
+            bit = _binId & 255;
+            _binId >>= 8;
 
             // Search in depth 1
             if ((_rightSide && bit != 0) || (!_rightSide && bit != 255)) {
@@ -68,8 +68,8 @@ library TreeMath {
         uint256 _idDepth2 = _id >> 8;
         uint256 _idDepth1 = _id >> 16;
 
-        _tree[2][_idDepth2] |= 1 << (_id % 256);
-        _tree[1][_idDepth1] |= 1 << (_idDepth2 % 256);
+        _tree[2][_idDepth2] |= 1 << (_id & 255);
+        _tree[1][_idDepth1] |= 1 << (_idDepth2 & 255);
         _tree[0][0] |= 1 << _idDepth1;
     }
 
@@ -77,14 +77,14 @@ library TreeMath {
         unchecked {
             // removes 1 at the right indices
             uint256 _idDepth2 = _id >> 8;
-            uint256 _newLeafValue = _tree[2][_idDepth2] & (type(uint256).max - (1 << (_id % 256)));
+            uint256 _newLeafValue = _tree[2][_idDepth2] & (type(uint256).max ^ (1 << (_id & 255)));
             _tree[2][_idDepth2] = _newLeafValue;
             if (_newLeafValue == 0) {
                 uint256 _idDepth1 = _id >> 16;
-                _newLeafValue = _tree[1][_idDepth1] & (type(uint256).max - (1 << (_idDepth2 % 256)));
+                _newLeafValue = _tree[1][_idDepth1] & (type(uint256).max ^ (1 << (_idDepth2 & 255)));
                 _tree[1][_idDepth1] = _newLeafValue;
                 if (_newLeafValue == 0) {
-                    _tree[0][0] &= type(uint256).max - (1 << _idDepth1);
+                    _tree[0][0] &= type(uint256).max ^ (1 << _idDepth1);
                 }
             }
         }

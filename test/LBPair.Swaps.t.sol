@@ -18,6 +18,13 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         pair = createLBPairDefaultFees(token6D, token18D);
     }
 
+    function testSwapInsufficientAmountReverts() public {
+        vm.expectRevert(LBPair__InsufficientAmounts.selector);
+        pair.swap(true, DEV);
+        vm.expectRevert(LBPair__InsufficientAmounts.selector);
+        pair.swap(false, DEV);
+    }
+
     function testSwapXtoYSingleBinFromGetSwapOut() public {
         uint256 tokenAmount = 100e18;
         token18D.mint(address(pair), tokenAmount);

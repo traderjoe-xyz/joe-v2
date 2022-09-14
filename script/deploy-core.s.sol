@@ -45,7 +45,7 @@ contract CoreDeployer is Script {
         console.log("LBRouter deployed -->", address(router));
 
         vm.startBroadcast();
-        LBQuoter quoter = new LBQuoter(address(router), address(factoryV1), address(factory), wavax);
+        LBQuoter quoter = new LBQuoter(address(router), address(factoryV1), address(factory));
         console.log("LBQuoter deployed -->", address(quoter));
 
         factory.setLBPairImplementation(address(pairImplementation));

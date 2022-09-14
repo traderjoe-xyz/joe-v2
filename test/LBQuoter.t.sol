@@ -62,7 +62,7 @@ contract LiquidityBinQuoterTest is TestHelper {
 
         LBQuoter.Quote memory quote = quoter.findBestPathAmountIn(route, 1e18);
 
-        assertGt(quote.amounts[2], 0, "Should find an output to this two step swap");
+        assertApproxEqAbs(quote.amounts[2], 20e6, 2e6, "Price of 1 AVAX should be approx 20 USDT");
     }
 
     function testGetSwapIn() public {
@@ -72,9 +72,9 @@ contract LiquidityBinQuoterTest is TestHelper {
         route[1] = address(usdc);
         route[2] = address(usdt);
 
-        LBQuoter.Quote memory quote = quoter.findBestPathAmountOut(route, 10e6);
+        LBQuoter.Quote memory quote = quoter.findBestPathAmountOut(route, 20e6);
 
-        assertGt(quote.amounts[0], 0, "Should find an output to this two step swap");
+        assertApproxEqAbs(quote.amounts[0], 1e18, 0.1e18, "Price of 1 AVAX should be approx 20 USDT");
     }
 
     function convertIdAvaxToUSD(uint16 _binStep) internal pure returns (uint24 id) {

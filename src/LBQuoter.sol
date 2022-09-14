@@ -92,8 +92,8 @@ contract LBQuoter {
                             // Getting current price
                             (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
                             quote.virtualAmountsWithoutSlippage[i] =
-                                (BinHelper.getPriceFromId(activeId, quote.binSteps[i]) * quote.amounts[i]) /
-                                2**128;
+                                (BinHelper.getPriceFromId(activeId, quote.binSteps[i]) * quote.amounts[i]) >>
+                                128;
                         }
                     }
                 }
@@ -155,8 +155,8 @@ contract LBQuoter {
                             // Getting current price
                             (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
                             quote.virtualAmountsWithoutSlippage[i - 1] =
-                                (BinHelper.getPriceFromId(activeId, quote.binSteps[i - 1]) * quote.amounts[i]) /
-                                2**128;
+                                (BinHelper.getPriceFromId(activeId, quote.binSteps[i - 1]) * quote.amounts[i]) >>
+                                128;
                         }
                     }
                 }

@@ -24,7 +24,6 @@ contract LBQuoter {
         uint256[] binSteps;
         uint256[] amounts;
         uint256[] midPrice;
-        uint256 tradeValueAVAX;
     }
 
     /// @notice Constructor
@@ -57,9 +56,6 @@ contract LBQuoter {
         quote.amounts = new uint256[](routeLength);
 
         quote.amounts[0] = _amountIn;
-        if (_route[0] == wavax) {
-            quote.tradeValueAVAX = _amountIn;
-        }
 
         for (uint256 i; i < routeLength - 1; i++) {
             // Fetch swap for V1
@@ -97,15 +93,6 @@ contract LBQuoter {
                     }
                 }
             }
-
-            if (_route[i + 1] == wavax) {
-                quote.tradeValueAVAX = quote.amounts[i + 1];
-            }
-        }
-
-        // If we don't go through an AVAX pair directly, check all tokens against AVAX
-        if (quote.tradeValueAVAX == 0) {
-            quote.tradeValueAVAX = _getPriceAgainstAVAX(quote);
         }
     }
 
@@ -126,9 +113,6 @@ contract LBQuoter {
         quote.amounts = new uint256[](routeLength);
 
         quote.amounts[routeLength - 1] = _amountOut;
-        if (_route[routeLength - 1] == wavax) {
-            quote.tradeValueAVAX = _amountOut;
-        }
 
         for (uint256 i = routeLength - 1; i > 0; i--) {
             // Fetch swap for V1
@@ -164,50 +148,6 @@ contract LBQuoter {
                         quote.midPrice[i - 1] =
                             (BinHelper.getPriceFromId(activeId, quote.binSteps[i - 1]) * 1e18) /
                             2**128;
-                    }
-                }
-            }
-
-            if (_route[i - 1] == wavax) {
-                quote.tradeValueAVAX = quote.amounts[i - 1];
-            }
-        }
-
-        // If we don't go through an AVAX pair directly, check all tokens against AVAX
-        if (quote.tradeValueAVAX == 0) {
-            quote.tradeValueAVAX = _getPriceAgainstAVAX(quote);
-        }
-    }
-
-    /// @notice Tries to fetch an equivalent to the swap amount in AVAX, by looping on all the tokens on the route
-    /// @param _quote Current quote
-    function _getPriceAgainstAVAX(Quote memory _quote) private view returns (uint256 tradeValueAVAX) {
-        uint256 routeLength = _quote.route.length;
-        for (uint256 i; i < routeLength - 1; i++) {
-            address avaxPair = IJoeFactory(factoryV1).getPair(_quote.route[i], wavax);
-            if (avaxPair != address(0) && _quote.amounts[i] > 0) {
-                (uint256 reserveIn, uint256 reserveOut) = JoeLibrary.getReserves(factoryV1, _quote.route[i], wavax);
-                tradeValueAVAX = JoeLibrary.getAmountOut(_quote.amounts[i], reserveIn, reserveOut);
-            }
-
-            // Fetch swaps for V2
-            ILBFactory.LBPairAvailable[] memory LBPairsAvailable = ILBFactory(factoryV2).getAvailableLBPairsBinStep(
-                IERC20(_quote.route[i]),
-                IERC20(wavax)
-            );
-
-            if (LBPairsAvailable.length > 0 && _quote.amounts[i] > 0) {
-                uint256 swapOut;
-                for (uint256 j; j < LBPairsAvailable.length; j++) {
-                    swapOut = ILBRouter(routerV2).getSwapOut(
-                        LBPairsAvailable[j].LBPair,
-                        _quote.amounts[i],
-                        address(LBPairsAvailable[j].LBPair.tokenY()) == wavax
-                    );
-
-                    // We keep the biggest amount to be the most accurate
-                    if (swapOut > tradeValueAVAX) {
-                        tradeValueAVAX = swapOut;
                     }
                 }
             }

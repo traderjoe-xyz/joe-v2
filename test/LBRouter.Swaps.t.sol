@@ -8,7 +8,7 @@ contract LiquidityBinRouterTest is TestHelper {
     LBPair internal pair1;
     LBPair internal pair2;
     LBPair internal pair3;
-    LBPair internal pair4;
+    LBPair internal taxTokenPair1;
     LBPair internal taxTokenPair;
 
     function setUp() public {
@@ -41,8 +41,9 @@ contract LiquidityBinRouterTest is TestHelper {
         addLiquidityFromRouter(token12D, token18D, 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
         pair3 = createLBPairDefaultFees(token18D, token24D);
         addLiquidityFromRouter(token18D, token24D, 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
-        pair4 = createLBPairDefaultFees(token6D, taxToken);
+        taxTokenPair1 = createLBPairDefaultFees(token6D, taxToken);
         addLiquidityFromRouter(token6D, ERC20MockDecimals(address(taxToken)), 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
+
         taxTokenPair = createLBPairDefaultFees(taxToken, wavax);
         addLiquidityFromRouter(
             ERC20MockDecimals(address(taxToken)),
@@ -418,6 +419,54 @@ contract LiquidityBinRouterTest is TestHelper {
         pairVersions[3] = DEFAULT_BIN_STEP;
     }
 
+    function testTaxTokenEqualOnlyV2Swap() public {
+        uint256 amountIn = 1e18;
+
+        taxToken.mint(ALICE, amountIn);
+        taxToken.mint(BOB, amountIn);
+        token6D.mint(ALICE, amountIn);
+        token6D.mint(BOB, amountIn);
+
+        IERC20[] memory tokenList = new IERC20[](3);
+        tokenList[0] = token6D;
+        tokenList[1] = taxToken;
+        tokenList[2] = wavax;
+        uint256[] memory pairVersions = new uint256[](2);
+        pairVersions[0] = DEFAULT_BIN_STEP;
+        pairVersions[1] = DEFAULT_BIN_STEP;
+
+        vm.startPrank(ALICE);
+        token6D.approve(address(router), amountIn);
+        taxToken.approve(address(router), amountIn);
+        uint256 aliceBalanceBefore = ALICE.balance;
+        uint256 amountOutNotSupporting = router.swapExactTokensForAVAX(
+            amountIn,
+            0,
+            pairVersions,
+            tokenList,
+            ALICE,
+            block.timestamp
+        );
+        vm.stopPrank();
+
+        vm.startPrank(BOB);
+        token6D.approve(address(router), amountIn);
+        taxToken.approve(address(router), amountIn);
+        uint256 bobBalanceBefore = BOB.balance;
+        uint256 amountOutSupporting = router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+            amountIn,
+            0,
+            pairVersions,
+            tokenList,
+            BOB,
+            block.timestamp
+        );
+        vm.stopPrank();
+
+        assertEq(ALICE.balance, BOB.balance);
+        assertEq(amountOutNotSupporting, amountOutSupporting);
+    }
+
     function testSwappingOnNotExistingV2PairReverts() public {
         IERC20[] memory tokenListAvaxIn;
         IERC20[] memory tokenList;
@@ -634,23 +683,27 @@ contract LiquidityBinRouterForkTest is TestHelper {
         vm.stopPrank();
     }
 
-    function testTaxTokenSwappedOnV1Pair() public {
+    function testTaxTokenSwappedOnV1Pairs() public {
         if (block.number < 1000) {
             console.log("fork mainnet for V1 testing support");
             return;
         }
         uint256 amountIn = 100e18;
-        taxTokenPair = createLBPairDefaultFees(taxToken, token6D);
-        addLiquidityFromRouter(ERC20MockDecimals(address(taxToken)), token6D, 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
 
-        //create taxToken-AVAX pair in DEXv1
         IJoeFactory factoryv1 = IJoeFactory(JOE_V1_FACTORY_ADDRESS);
-        address taxPairv1 = factoryv1.createPair(address(taxToken), address(wavax));
-        taxToken.mint(taxPairv1, amountIn);
+        //create taxToken-AVAX pair in DEXv1
+        address taxPairv11 = factoryv1.createPair(address(taxToken), address(wavax));
+        taxToken.mint(taxPairv11, amountIn);
         vm.deal(DEV, amountIn);
         wavax.deposit{value: amountIn}();
-        wavax.transfer(taxPairv1, amountIn);
-        IJoePair(taxPairv1).mint(DEV);
+        wavax.transfer(taxPairv11, amountIn);
+        IJoePair(taxPairv11).mint(DEV);
+
+        //create taxToken-token6D pair in DEXv1
+        address taxPairv12 = factoryv1.createPair(address(taxToken), address(token6D));
+        taxToken.mint(taxPairv12, amountIn);
+        token6D.mint(taxPairv12, amountIn);
+        IJoePair(taxPairv12).mint(DEV);
 
         token6D.mint(DEV, amountIn);
         token6D.approve(address(router), amountIn);
@@ -664,13 +717,40 @@ contract LiquidityBinRouterForkTest is TestHelper {
         tokenList[2] = wavax;
 
         pairVersions = new uint256[](2);
-        pairVersions[0] = DEFAULT_BIN_STEP;
+        pairVersions[0] = 0;
         pairVersions[1] = 0;
         uint256 amountIn2 = 1e18;
+
+        vm.expectRevert("Joe: K");
+        router.swapExactTokensForTokens(amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp);
+        router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            amountIn2,
+            0,
+            pairVersions,
+            tokenList,
+            DEV,
+            block.timestamp
+        );
+        vm.deal(DEV, amountIn2);
         vm.expectRevert("Joe: K");
         router.swapExactTokensForAVAX(amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp);
         router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
             amountIn2,
+            0,
+            pairVersions,
+            tokenList,
+            DEV,
+            block.timestamp
+        );
+
+        tokenList[0] = wavax;
+        tokenList[1] = taxToken;
+        tokenList[2] = token6D;
+
+        vm.deal(DEV, amountIn2);
+        vm.expectRevert("Joe: K");
+        router.swapExactAVAXForTokens{value: amountIn2}(0, pairVersions, tokenList, DEV, block.timestamp);
+        router.swapExactAVAXForTokensSupportingFeeOnTransferTokens{value: amountIn2}(
             0,
             pairVersions,
             tokenList,

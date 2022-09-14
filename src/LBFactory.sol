@@ -190,7 +190,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
                             binStep: i,
                             LBPair: _LBPairInfo.LBPair,
                             createdByOwner: _LBPairInfo.createdByOwner,
-                            isBlacklisted: _LBPairInfo.isBlacklisted
+                            ignoredForRouting: _LBPairInfo.ignoredForRouting
                         });
                         if (++_index == _nbAvailable) break;
                     }
@@ -261,7 +261,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         _LBPairsInfo[_tokenA][_tokenB][_binStep] = LBPairInfo({
             LBPair: _LBPair,
             createdByOwner: msg.sender == _owner,
-            isBlacklisted: false
+            ignoredForRouting: false
         });
 
         allLBPairs.push(_LBPair);
@@ -294,25 +294,25 @@ contract LBFactory is PendingOwnable, ILBFactory {
         );
     }
 
-    /// @notice Function to set the blacklist state of a pair, it will make the pair unusable by the router
+    /// @notice Function to set whether the pair is ignored or not for routing, it will make the pair unusable by the router
     /// @param _tokenX The address of the first token of the pair
     /// @param _tokenY The address of the second token of the pair
     /// @param _binStep The bin step in basis point of the pair
-    /// @param _blacklisted Whether to blacklist (true) or not (false) the pair
-    function setLBPairBlacklist(
+    /// @param _ignored Whether to ignore (true) or not (false) the pair for routing
+    function setLBPairIgnored(
         IERC20 _tokenX,
         IERC20 _tokenY,
         uint256 _binStep,
-        bool _blacklisted
+        bool _ignored
     ) external override onlyOwner {
         (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);
 
         LBPairInfo memory _LBPairInfo = _LBPairsInfo[_tokenA][_tokenB][_binStep];
-        if (_LBPairInfo.isBlacklisted == _blacklisted) revert LBFactory__LBPairBlacklistIsAlreadyInTheSameState();
+        if (_LBPairInfo.ignoredForRouting == _ignored) revert LBFactory__LBPairIgnoredIsAlreadyInTheSameState();
 
-        _LBPairsInfo[_tokenA][_tokenB][_binStep].isBlacklisted = _blacklisted;
+        _LBPairsInfo[_tokenA][_tokenB][_binStep].ignoredForRouting = _ignored;
 
-        emit LBPairBlacklistedStateChanged(_LBPairInfo.LBPair, _blacklisted);
+        emit LBPairIgnoredStateChanged(_LBPairInfo.LBPair, _ignored);
     }
 
     /// @notice Sets the preset parameters of a bin step

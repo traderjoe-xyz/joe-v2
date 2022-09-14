@@ -203,8 +203,7 @@ contract LBRouter is ILBRouter {
         ILBPair _LBPair = _getLBPairInfo(
             _liquidityParameters.tokenX,
             _liquidityParameters.tokenY,
-            _liquidityParameters.binStep,
-            true
+            _liquidityParameters.binStep
         );
         if (_liquidityParameters.tokenX != _LBPair.tokenX()) revert LBRouter__WrongTokenOrder();
 
@@ -274,7 +273,7 @@ contract LBRouter is ILBRouter {
         address _to,
         uint256 _deadline
     ) external override ensure(_deadline) returns (uint256 amountX, uint256 amountY) {
-        ILBPair _LBPair = _getLBPairInfo(_tokenX, _tokenY, _binStep, false);
+        ILBPair _LBPair = _getLBPairInfo(_tokenX, _tokenY, _binStep);
         if (_tokenX != _LBPair.tokenX()) {
             (_tokenX, _tokenY) = (_tokenY, _tokenX);
             (_amountXMin, _amountYMin) = (_amountYMin, _amountXMin);
@@ -306,7 +305,7 @@ contract LBRouter is ILBRouter {
         address payable _to,
         uint256 _deadline
     ) external override ensure(_deadline) returns (uint256 amountToken, uint256 amountAVAX) {
-        ILBPair _LBPair = _getLBPairInfo(_token, IERC20(wavax), _binStep, false);
+        ILBPair _LBPair = _getLBPairInfo(_token, IERC20(wavax), _binStep);
 
         bool _isAVAXTokenY = IERC20(wavax) == _LBPair.tokenY();
         {
@@ -885,17 +884,14 @@ contract LBRouter is ILBRouter {
     /// @param _tokenX The address of the tokenX
     /// @param _tokenY The address of the tokenY
     /// @param _binStep The bin step of the LBPair
-    /// @param _checkBlacklist Whether to check if the pair is blacklisted (true), or not (false)
     /// @return The address of the LBPair
     function _getLBPairInfo(
         IERC20 _tokenX,
         IERC20 _tokenY,
-        uint256 _binStep,
-        bool _checkBlacklist
+        uint256 _binStep
     ) private view returns (ILBPair) {
         ILBFactory.LBPairInfo memory _LBPairInfo = factory.getLBPairInfo(_tokenX, _tokenY, _binStep);
         if (address(_LBPairInfo.LBPair) == address(0)) revert LBRouter__PairNotCreated(_tokenX, _tokenY, _binStep);
-        if (_checkBlacklist && _LBPairInfo.isBlacklisted) revert LBRouter__LBPairBlacklisted(_LBPairInfo.LBPair);
         return _LBPairInfo.LBPair;
     }
 
@@ -913,7 +909,7 @@ contract LBRouter is ILBRouter {
         if (_binStep == 0) {
             _pair = oldFactory.getPair(address(_tokenX), address(_tokenY));
             if (_pair == address(0)) revert LBRouter__PairNotCreated(_tokenX, _tokenY, _binStep);
-        } else _pair = address(_getLBPairInfo(_tokenX, _tokenY, _binStep, true));
+        } else _pair = address(_getLBPairInfo(_tokenX, _tokenY, _binStep));
     }
 
     function _getPairs(uint256[] memory _pairBinSteps, IERC20[] memory _tokenPath)

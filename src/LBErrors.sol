@@ -27,7 +27,6 @@ error LBRouter__InsufficientAmountOut(uint256 amountOutMin, uint256 amountOut);
 error LBRouter__MaxAmountInExceeded(uint256 amountInMax, uint256 amountIn);
 error LBRouter__InvalidTokenPath(IERC20 wrongToken);
 error LBRouter__InvalidVersion(uint256 version);
-error LBRouter__LBPairBlacklisted(ILBPair LBPair);
 error LBRouter__WrongAvaxLiquidityParameters(
     IERC20 tokenX,
     IERC20 tokenY,
@@ -65,7 +64,7 @@ error LBFactory__BinStepRequirementsBreached(uint256 lowerBound, uint16 binStep,
 error LBFactory__ProtocolShareOverflows(uint16 protocolShare, uint256 max);
 error LBFactory__FunctionIsLockedForUsers(address user);
 error LBFactory__FactoryLockIsAlreadyInTheSameState();
-error LBFactory__LBPairBlacklistIsAlreadyInTheSameState();
+error LBFactory__LBPairIgnoredIsAlreadyInTheSameState();
 error LBFactory__BinStepHasNoPreset(uint256 binStep);
 error LBFactory__SameFeeRecipient(address feeRecipient);
 error LBFactory__SameFlashLoanFee(uint256 flashLoanFee);

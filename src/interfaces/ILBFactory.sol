@@ -11,23 +11,23 @@ interface ILBFactory is IPendingOwnable {
     /// @dev Structure to store LBPair information, such as:
     /// - LBPair: The address of the LBPair
     /// - createdByOwner: Whether the pair was created by the owner of the factory
-    /// - isBlacklisted: Whether the pair is blacklisted or not. A blacklisted pair will not be usable within the router
+    /// - ignoredForRouting: Whether the pair is ignored for routing or not. An ignored pair will not be explored during routes finding
     struct LBPairInfo {
         ILBPair LBPair;
         bool createdByOwner;
-        bool isBlacklisted;
+        bool ignoredForRouting;
     }
 
     /// @dev Structure to store the LBPair available, such as:
     /// - binStep: The bin step of the LBPair
     /// - LBPair: The address of the LBPair
     /// - createdByOwner: Whether the pair was created by the owner of the factory
-    /// - isBlacklisted: Whether the pair is blacklisted or not. A blacklisted pair will not be usable within the router
+    /// - ignoredForRouting: Whether the pair is ignored for routing or not. An ignored pair will not be explored during routes finding
     struct LBPairAvailable {
         uint256 binStep;
         ILBPair LBPair;
         bool createdByOwner;
-        bool isBlacklisted;
+        bool ignoredForRouting;
     }
 
     event LBPairCreated(
@@ -59,7 +59,7 @@ interface ILBFactory is IPendingOwnable {
 
     event LBPairImplementationSet(address oldLBPairImplementation, address LBPairImplementation);
 
-    event LBPairBlacklistedStateChanged(ILBPair LBPair, bool blacklist);
+    event LBPairIgnoredStateChanged(ILBPair LBPair, bool ignored);
 
     event PresetSet(
         uint256 indexed binStep,
@@ -141,11 +141,11 @@ interface ILBFactory is IPendingOwnable {
         uint16 binStep
     ) external returns (ILBPair pair);
 
-    function setLBPairBlacklist(
+    function setLBPairIgnored(
         IERC20 tokenX,
         IERC20 tokenY,
         uint256 binStep,
-        bool blacklisted
+        bool ignored
     ) external;
 
     function setPreset(

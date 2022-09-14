@@ -361,4 +361,17 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(ALICE.balance, amountAvax);
         assertEq(address(router).balance, 0);
     }
+
+    function testGetSwapInMoreBins() public {
+        uint256 _amountYIn = 100e18;
+        uint24 _startId = ID_ONE;
+        uint24 _numberBins = 9;
+        uint24 _gap = 2;
+        uint256 amountXIn;
+        pair = createLBPairDefaultFees(token6D, token18D);
+        (, , , amountXIn) = addLiquidity(_amountYIn, _startId, _numberBins, _gap);
+        //getSwapIn goes through all bins with liquidity
+        uint256 amountIn = router.getSwapIn(pair, amountXIn - 100, false);
+        uint256 amountIn2 = router.getSwapIn(pair, _amountYIn - 100, true);
+    }
 }

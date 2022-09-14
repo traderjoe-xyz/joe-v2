@@ -67,11 +67,15 @@ interface ILBPair {
     /// - amountYIn: The amount of token Y sent
     /// - amountXAddedToPair: The amount of token X that have been actually added to the pair
     /// - amountYAddedToPair: The amount of token Y that have been actually added to the pair
+    /// - activeFeeX: Fees X currently generated
+    /// - activeFeeY: Fees Y currently generated
     /// - totalDistributionX: Total distribution of token X. Should be 1e18 (100%) or 0 (0%)
     /// - totalDistributionY: Total distribution of token Y. Should be 1e18 (100%) or 0 (0%)
     /// - id: Id of the current working bin when looping on the distribution array
     /// - amountX: The amount of token X deposited in the current bin
     /// - amountY: The amount of token Y deposited in the current bin
+    /// - distributionX: Distribution of token X for the current working bin
+    /// - distributionY: Distribution of token Y for the current working bin
     struct MintInfo {
         uint256 amountXIn;
         uint256 amountYIn;

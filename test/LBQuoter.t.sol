@@ -84,4 +84,13 @@ contract LiquidityBinQuoterTest is TestHelper {
     function getIdFromPrice(uint256 _price, uint16 _binStep) internal pure returns (uint24 id) {
         id = BinHelper.getIdFromPrice(_price, _binStep);
     }
+
+    function testInvalidLength() public {
+        address[] memory route;
+        route = new address[](1);
+        vm.expectRevert(LBQuoter_InvalidLength.selector);
+        quoter.findBestPathAmountIn(route, 1e18);
+        vm.expectRevert(LBQuoter_InvalidLength.selector);
+        quoter.findBestPathAmountOut(route, 20e6);
+    }
 }

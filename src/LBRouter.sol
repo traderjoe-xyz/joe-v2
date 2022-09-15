@@ -705,7 +705,7 @@ contract LBRouter is ILBRouter {
 
             if (_binStep == 0) {
                 (uint256 _reserveIn, uint256 _reserveOut, ) = IJoePair(_pair).getReserves();
-                if (IJoePair(_pair).token1() == address(_token)) {
+                if (_token > _tokenPath[i]) {
                     (_reserveIn, _reserveOut) = (_reserveOut, _reserveIn);
                 }
 
@@ -776,7 +776,9 @@ contract LBRouter is ILBRouter {
                 if (_binStep == 0) {
                     (uint256 _reserve0, uint256 _reserve1, ) = IJoePair(_pair).getReserves();
 
-                    if (address(_token) == IJoePair(_pair).token0()) {
+                    IERC20 _token0 = _token < _tokenNext ? _token : _tokenNext;
+
+                    if (_token < _tokenNext) {
                         amountOut = (_reserve1 * amountOut * 997) / (_reserve0 * 1_000 + amountOut * 997);
                         IJoePair(_pair).swap(0, amountOut, _recipient, "");
                     } else {
@@ -828,7 +830,7 @@ contract LBRouter is ILBRouter {
 
                 if (_binStep == 0) {
                     amountOut = _amountsIn[i + 1];
-                    if (_token < _tokenPath[i + 1]) {
+                    if (_token < _tokenNext) {
                         IJoePair(_pair).swap(0, amountOut, _recipient, "");
                     } else {
                         IJoePair(_pair).swap(amountOut, 0, _recipient, "");
@@ -875,7 +877,7 @@ contract LBRouter is ILBRouter {
 
                 if (_binStep == 0) {
                     (uint256 _reserve0, uint256 _reserve1, ) = IJoePair(_pair).getReserves();
-                    if (address(_token) == IJoePair(_pair).token0()) {
+                    if (_token < _tokenNext) {
                         uint256 _balance = _token.balanceOf(_pair);
                         uint256 _amountOut = (_reserve1 * (_balance - _reserve0) * 997) / (_balance * 1_000);
 

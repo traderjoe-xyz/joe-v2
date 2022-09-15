@@ -65,8 +65,10 @@ contract LBQuoter {
             if (quote.pairs[i] != address(0) && quote.amounts[i] > 0) {
                 (uint256 reserveIn, uint256 reserveOut) = _getReserves(quote.pairs[i], _route[i], _route[i + 1]);
 
-                quote.amounts[i + 1] = JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut);
-                quote.virtualAmountsWithoutSlippage[i] = JoeLibrary.quote(quote.amounts[i], reserveIn, reserveOut);
+                if (reserveIn > 0 && reserveOut > 0) {
+                    quote.amounts[i + 1] = JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut);
+                    quote.virtualAmountsWithoutSlippage[i] = JoeLibrary.quote(quote.amounts[i], reserveIn, reserveOut);
+                }
             }
 
             // Fetch swaps for V2
@@ -127,12 +129,17 @@ contract LBQuoter {
         for (uint256 i = swapLength; i > 0; i--) {
             // Fetch swap for V1
             quote.pairs[i - 1] = IJoeFactory(factoryV1).getPair(_route[i - 1], _route[i]);
-            quote.amounts[i - 1] = type(uint256).max;
             if (quote.pairs[i - 1] != address(0) && quote.amounts[i] > 0) {
                 (uint256 reserveIn, uint256 reserveOut) = _getReserves(quote.pairs[i - 1], _route[i - 1], _route[i]);
-                quote.amounts[i - 1] = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut);
 
-                quote.virtualAmountsWithoutSlippage[i - 1] = JoeLibrary.quote(quote.amounts[i], reserveIn, reserveOut);
+                if (reserveIn > 0 && reserveOut > quote.amounts[i]) {
+                    quote.amounts[i - 1] = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut);
+                    quote.virtualAmountsWithoutSlippage[i - 1] = JoeLibrary.quote(
+                        quote.amounts[i],
+                        reserveIn,
+                        reserveOut
+                    );
+                }
             }
 
             // Fetch swaps for V2

@@ -241,7 +241,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         // We sort token for storage efficiency, only one input needs to be stored
         (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);
         // single check is sufficient
-        if (address(_tokenA) == address(0)) revert LBFactory__ZeroAddress();
+        if (address(_tokenA) == address(0)) revert LBFactory__AddressZero();
         if (address(_LBPairsInfo[_tokenA][_tokenB][_binStep].LBPair) != address(0))
             revert LBFactory__LBPairAlreadyExists(_tokenX, _tokenY, _binStep);
 
@@ -494,7 +494,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @notice Internal function to set the recipient of the fee
     /// @param _feeRecipient The address of the recipient
     function _setFeeRecipient(address _feeRecipient) internal {
-        if (_feeRecipient == address(0)) revert LBFactory__ZeroAddress();
+        if (_feeRecipient == address(0)) revert LBFactory__AddressZero();
 
         address _oldFeeRecipient = feeRecipient;
         if (_oldFeeRecipient == _feeRecipient) revert LBFactory__SameFeeRecipient(_feeRecipient);

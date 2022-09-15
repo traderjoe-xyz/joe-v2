@@ -68,7 +68,10 @@ library Oracle {
                             (_sample.cumulativeId() * _weightPrev + _next.cumulativeId() * _weightNext) /
                             _totalWeight;
                         cumulativeVolatilityAccumulated =
-                            (_sample.cumulativeVolatilityAccumulated() * _weightPrev + _next.cumulativeVolatilityAccumulated() * _weightNext) /
+                            (_sample.cumulativeVolatilityAccumulated() *
+                                _weightPrev +
+                                _next.cumulativeVolatilityAccumulated() *
+                                _weightNext) /
                             _totalWeight;
                         cumulativeBinCrossed =
                             (_sample.cumulativeBinCrossed() *

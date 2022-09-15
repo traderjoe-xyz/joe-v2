@@ -122,7 +122,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testSetFeeRecipient() public {
-        vm.expectRevert(LBFactory__ZeroAddress.selector);
+        vm.expectRevert(LBFactory__AddressZero.selector);
         factory.setFeeRecipient(address(0));
 
         factory.setFeeRecipient(ALICE);
@@ -164,10 +164,10 @@ contract LiquidityBinFactoryTest is TestHelper {
 
     function testForZeroAddressPairReverts() public {
         factory.addQuoteAsset(IERC20(address(0)));
-        vm.expectRevert(LBFactory__ZeroAddress.selector);
+        vm.expectRevert(LBFactory__AddressZero.selector);
         factory.createLBPair(token6D, IERC20(address(0)), ID_ONE, DEFAULT_BIN_STEP);
 
-        vm.expectRevert(LBFactory__ZeroAddress.selector);
+        vm.expectRevert(LBFactory__AddressZero.selector);
         factory.createLBPair(IERC20(address(0)), token6D, ID_ONE, DEFAULT_BIN_STEP);
     }
 
@@ -398,7 +398,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testForInvalidFeeRecipient() public {
-        vm.expectRevert(LBFactory__ZeroAddress.selector);
+        vm.expectRevert(LBFactory__AddressZero.selector);
         factory = new LBFactory(address(0), 8e14);
     }
 

@@ -243,7 +243,7 @@ contract LiquidityBinTokenTest is TestHelper {
         (_ids, , , ) = addLiquidity(amountIn, _startId, binAmount, _gap);
         uint256[] memory amounts = new uint256[](binAmount);
         for (uint256 i; i < binAmount; i++) {
-            assertEq(pair.userPositionAt(DEV, i), _ids[i]);
+            assertEq(pair.userPositionAtIndex(DEV, i), _ids[i]);
             amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
         batchBalances = pair.balanceOfBatch(accounts, _ids);

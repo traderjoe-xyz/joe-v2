@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.7;
+
+pragma solidity ^0.8.0;
 
 import "./TestHelper.sol";
 
@@ -176,8 +177,10 @@ contract LiquidityBinFactoryTestM is TestHelper {
 
         factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, false);
 
-        ILBFactory.LBPairAvailable[] memory LBPairBinStepsAfterRemovalOfIgnored = factory
-            .getAvailableLBPairsBinStep(token6D, token18D);
+        ILBFactory.LBPairAvailable[] memory LBPairBinStepsAfterRemovalOfIgnored = factory.getAvailableLBPairsBinStep(
+            token6D,
+            token18D
+        );
         assertEq(LBPairBinStepsAfterRemovalOfIgnored.length, 3);
         assertEq(LBPairBinStepsAfterRemovalOfIgnored[0].ignoredForRouting, false);
         assertEq(LBPairBinStepsAfterRemovalOfIgnored[1].ignoredForRouting, false);

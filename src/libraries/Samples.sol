@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
+pragma solidity ^0.8.0;
+
 import "./Encoder.sol";
 import "./Decoder.sol";
-
-pragma solidity 0.8.7;
 
 library Samples {
     using Encoder for uint256;

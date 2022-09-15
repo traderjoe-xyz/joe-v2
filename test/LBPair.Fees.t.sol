@@ -22,7 +22,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         pair = createLBPairDefaultFees(token6D, token18D);
     }
 
-    function testClaimFees() public {
+    function testClaimFeesY() public {
         uint256 amountYInLiquidity = 100e18;
         uint256 amountXOutForSwap = 1e18;
         uint24 startId = ID_ONE;
@@ -58,6 +58,44 @@ contract LiquidityBinPairFeesTest is TestHelper {
         assertEq(feeY, 0);
         pair.collectFees(DEV, orderedIds);
         assertEq(token18D.balanceOf(DEV), balanceBefore);
+    }
+
+    function testClaimFeesX() public {
+        uint256 amountYInLiquidity = 100e18;
+        uint256 amountYOutForSwap = 1e18;
+        uint24 startId = ID_ONE;
+
+        addLiquidity(amountYInLiquidity, startId, 5, 0);
+
+        uint256 amountXInForSwap = router.getSwapIn(pair, amountYOutForSwap, true);
+
+        token6D.mint(address(pair), amountXInForSwap);
+        vm.prank(ALICE);
+        pair.swap(true, DEV);
+
+        (uint256 feesXTotal, , uint256 feesXProtocol, ) = pair.getGlobalFees();
+
+        uint256 accumulatedXFees = feesXTotal - feesXProtocol;
+
+        uint256[] memory orderedIds = new uint256[](5);
+        for (uint256 i; i < 5; i++) {
+            orderedIds[i] = startId - 2 + i;
+        }
+
+        (uint256 feeX, uint256 feeY) = pair.pendingFees(DEV, orderedIds);
+
+        assertApproxEqAbs(accumulatedXFees, feeX, 1);
+
+        uint256 balanceBefore = token6D.balanceOf(DEV);
+        pair.collectFees(DEV, orderedIds);
+        assertEq(feeX, token6D.balanceOf(DEV) - balanceBefore);
+
+        // Trying to claim a second time
+        balanceBefore = token6D.balanceOf(DEV);
+        (feeX, feeY) = pair.pendingFees(DEV, orderedIds);
+        assertEq(feeX, 0);
+        pair.collectFees(DEV, orderedIds);
+        assertEq(token6D.balanceOf(DEV), balanceBefore);
     }
 
     function testFeesOnTokenTransfer() public {
@@ -148,5 +186,36 @@ contract LiquidityBinPairFeesTest is TestHelper {
         balanceBefore = token6D.balanceOf(protocolFeesReceiver);
         pair.collectProtocolFees();
         assertEq(token6D.balanceOf(protocolFeesReceiver) - balanceBefore, feesYProtocol - 1);
+    }
+
+    function testForceDecay() public {
+        uint256 amountYInLiquidity = 100e18;
+        uint24 startId = ID_ONE;
+
+        FeeHelper.FeeParameters memory _feeParameters = pair.feeParameters();
+        addLiquidity(amountYInLiquidity, startId, 51, 5);
+
+        uint256 amountYInForSwap = router.getSwapIn(pair, amountYInLiquidity / 4, true);
+        token6D.mint(address(pair), amountYInForSwap);
+        vm.prank(ALICE);
+        pair.swap(true, ALICE);
+
+        vm.warp(block.timestamp + 90);
+
+        amountYInForSwap = router.getSwapIn(pair, amountYInLiquidity / 4, true);
+        token6D.mint(address(pair), amountYInForSwap);
+        vm.prank(ALICE);
+        pair.swap(true, ALICE);
+
+        _feeParameters = pair.feeParameters();
+        uint256 referenceBeforeForceDecay = _feeParameters.volatilityReference;
+        uint256 referenceAfterForceDecayExpected = (uint256(_feeParameters.reductionFactor) *
+            referenceBeforeForceDecay) / Constants.BASIS_POINT_MAX;
+
+        factory.forceDecay(pair);
+
+        _feeParameters = pair.feeParameters();
+        uint256 referenceAfterForceDecay = _feeParameters.volatilityReference;
+        assertEq(referenceAfterForceDecay, referenceAfterForceDecayExpected);
     }
 }

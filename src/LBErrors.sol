@@ -165,3 +165,10 @@ error SafeCast__Exceeds8Bits(uint256 x);
 /** TreeMath errors */
 
 error TreeMath__ErrorDepthSearch();
+
+/** JoeLibrary errors */
+
+error JoeLibrary__IdenticalAddresses();
+error JoeLibrary__AddressZero();
+error JoeLibrary__InsufficientAmount();
+error JoeLibrary__InsufficientLiquidity();

@@ -337,6 +337,8 @@ contract LiquidityBinRouterTest is TestHelper {
             totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
             totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
         }
+        assertApproxEqAbs(totalXbalance, amountXIn, 1000);
+        assertApproxEqAbs(totalYBalance, _amountYIn, 1000);
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__WrongAmounts.selector, amountXIn + 1, totalXbalance));
         router.getSwapIn(pair, amountXIn + 1, false);

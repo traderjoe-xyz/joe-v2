@@ -133,6 +133,9 @@ contract LiquidityBinRouterTest is TestHelper {
             totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
             totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
         }
+        assertApproxEqAbs(totalXbalance, amountXIn, 1000);
+        assertApproxEqAbs(totalYBalance, _amountYIn, 1000);
+
         pair.setApprovalForAll(address(router), true);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -220,7 +223,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
     function testAddLiquidityAVAXReversed() public {
         pair = createLBPairDefaultFees(wavax, token6D);
-        uint24 _numberBins = 9;
+        uint24 _numberBins = 21;
         uint256 amountTokenIn = 100e18;
         uint24 _gap = 2;
         (int256[] memory _deltaIds, , , uint256 _amountAVAXIn) = addLiquidityFromRouter(
@@ -237,7 +240,6 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 totalXbalance;
         uint256 totalYBalance;
         for (uint256 i; i < _numberBins; i++) {
-            //amountXIn is rounded down, so below code is neccessary to get precise value
             ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
             uint256 LBTokenAmount = pair.balanceOf(DEV, ids[i]);
             amounts[i] = LBTokenAmount;
@@ -247,9 +249,10 @@ contract LiquidityBinRouterTest is TestHelper {
             totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
             totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
         }
+        assertApproxEqAbs(totalXbalance, _amountAVAXIn, 1000);
+        assertApproxEqAbs(totalYBalance, amountTokenIn, 1000);
 
         pair.setApprovalForAll(address(router), true);
-
         uint256 AVAXBalanceBefore = address(DEV).balance;
         {
             router.removeLiquidityAVAX(
@@ -263,7 +266,7 @@ contract LiquidityBinRouterTest is TestHelper {
                 block.timestamp
             );
         }
-        assertEq(token6D.balanceOf(DEV), totalYBalance);
+        assertEq(token6D.balanceOf(DEV), amountTokenIn);
         assertEq(address(DEV).balance - AVAXBalanceBefore, totalXbalance);
     }
 

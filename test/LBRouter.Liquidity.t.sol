@@ -39,10 +39,20 @@ contract LiquidityBinRouterTest is TestHelper {
 
         uint256[] memory amounts = new uint256[](_numberBins);
         uint256[] memory ids = new uint256[](_numberBins);
+        uint256 totalXbalance;
+        uint256 totalYBalance;
         for (uint256 i; i < _numberBins; i++) {
             ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            amounts[i] = pair.balanceOf(DEV, ids[i]);
+            uint256 LBTokenAmount = pair.balanceOf(DEV, ids[i]);
+            amounts[i] = LBTokenAmount;
+            (uint256 reserveX, uint256 reserveY) = pair.getBin(uint24(ids[i]));
+            bool hasXBalanceInBin = (LBTokenAmount != 0) && (reserveX != 0);
+            bool hasYBalanceInBin = (LBTokenAmount != 0) && (reserveY != 0);
+            totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
+            totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
         }
+        assertApproxEqAbs(totalXbalance, amountXIn, 1000);
+        assertApproxEqAbs(totalYBalance, _amountYIn, 1000);
 
         pair.setApprovalForAll(address(router), true);
 
@@ -50,8 +60,8 @@ contract LiquidityBinRouterTest is TestHelper {
             token6D,
             token18D,
             DEFAULT_BIN_STEP,
-            amountXIn - 10,
-            _amountYIn,
+            totalXbalance,
+            totalYBalance,
             ids,
             amounts,
             DEV,
@@ -80,10 +90,20 @@ contract LiquidityBinRouterTest is TestHelper {
 
         uint256[] memory amounts = new uint256[](_numberBins);
         uint256[] memory ids = new uint256[](_numberBins);
+        uint256 totalXbalance;
+        uint256 totalYBalance;
         for (uint256 i; i < _numberBins; i++) {
             ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            amounts[i] = pair.balanceOf(DEV, ids[i]);
+            uint256 LBTokenAmount = pair.balanceOf(DEV, ids[i]);
+            amounts[i] = LBTokenAmount;
+            (uint256 reserveX, uint256 reserveY) = pair.getBin(uint24(ids[i]));
+            bool hasXBalanceInBin = (LBTokenAmount != 0) && (reserveX != 0);
+            bool hasYBalanceInBin = (LBTokenAmount != 0) && (reserveY != 0);
+            totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
+            totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
         }
+        assertApproxEqAbs(totalXbalance, amountXIn, 1000);
+        assertApproxEqAbs(totalYBalance, _amountYIn, 1000);
 
         pair.setApprovalForAll(address(router), true);
 
@@ -92,7 +112,7 @@ contract LiquidityBinRouterTest is TestHelper {
             token6D,
             DEFAULT_BIN_STEP,
             _amountYIn,
-            amountXIn - 10,
+            totalXbalance,
             ids,
             amounts,
             DEV,
@@ -181,26 +201,36 @@ contract LiquidityBinRouterTest is TestHelper {
 
     function testAddLiquidityAVAX() public {
         pair = createLBPairDefaultFees(token6D, wavax);
-
-        uint256 _amountAVAXIn = 100e18;
+        uint24 _numberBins = 23;
+        uint256 _amountYIn = 100e18; //AVAX
         uint24 _gap = 2;
 
-        (int256[] memory _deltaIds, , , uint256 amountTokenIn) = addLiquidityFromRouter(
+        (int256[] memory _deltaIds, , , uint256 amountXIn) = addLiquidityFromRouter(
             token6D,
             ERC20MockDecimals(address(wavax)),
-            _amountAVAXIn,
+            _amountYIn,
             ID_ONE,
-            9,
+            _numberBins,
             _gap,
             DEFAULT_BIN_STEP
         );
 
-        uint256[] memory amounts = new uint256[](9);
-        uint256[] memory ids = new uint256[](9);
-        for (uint256 i; i < 9; i++) {
+        uint256[] memory amounts = new uint256[](_numberBins);
+        uint256[] memory ids = new uint256[](_numberBins);
+        uint256 totalXbalance;
+        uint256 totalYBalance;
+        for (uint256 i; i < _numberBins; i++) {
             ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            amounts[i] = pair.balanceOf(DEV, ids[i]);
+            uint256 LBTokenAmount = pair.balanceOf(DEV, ids[i]);
+            amounts[i] = LBTokenAmount;
+            (uint256 reserveX, uint256 reserveY) = pair.getBin(uint24(ids[i]));
+            bool hasXBalanceInBin = (LBTokenAmount != 0) && (reserveX != 0);
+            bool hasYBalanceInBin = (LBTokenAmount != 0) && (reserveY != 0);
+            totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
+            totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
         }
+        assertApproxEqAbs(totalXbalance, amountXIn, 1000);
+        assertApproxEqAbs(totalYBalance, _amountYIn, 1000);
 
         pair.setApprovalForAll(address(router), true);
 
@@ -209,16 +239,16 @@ contract LiquidityBinRouterTest is TestHelper {
             router.removeLiquidityAVAX(
                 token6D,
                 DEFAULT_BIN_STEP,
-                amountTokenIn - 10,
-                _amountAVAXIn,
+                totalXbalance,
+                totalYBalance,
                 ids,
                 amounts,
                 DEV,
                 block.timestamp
             );
         }
-        assertEq(token6D.balanceOf(DEV), amountTokenIn);
-        assertEq(address(DEV).balance - AVAXBalanceBefore, _amountAVAXIn);
+        assertEq(token6D.balanceOf(DEV), amountXIn);
+        assertEq(address(DEV).balance - AVAXBalanceBefore, totalYBalance);
     }
 
     function testAddLiquidityAVAXReversed() public {
@@ -273,7 +303,7 @@ contract LiquidityBinRouterTest is TestHelper {
     function testAddLiquidityTaxToken() public {
         taxToken = new ERC20WithTransferTax();
         pair = createLBPairDefaultFees(taxToken, wavax);
-
+        uint24 _numberBins = 9;
         uint256 _amountAVAXIn = 100e18;
         uint24 _gap = 2;
 
@@ -282,16 +312,24 @@ contract LiquidityBinRouterTest is TestHelper {
             ERC20MockDecimals(address(wavax)),
             _amountAVAXIn,
             ID_ONE,
-            9,
+            _numberBins,
             _gap,
             DEFAULT_BIN_STEP
         );
 
-        uint256[] memory amounts = new uint256[](9);
-        uint256[] memory ids = new uint256[](9);
-        for (uint256 i; i < 9; i++) {
+        uint256[] memory amounts = new uint256[](_numberBins);
+        uint256[] memory ids = new uint256[](_numberBins);
+        uint256 totalXbalance;
+        uint256 totalYBalance;
+        for (uint256 i; i < _numberBins; i++) {
             ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            amounts[i] = pair.balanceOf(DEV, ids[i]);
+            uint256 LBTokenAmount = pair.balanceOf(DEV, ids[i]);
+            amounts[i] = LBTokenAmount;
+            (uint256 reserveX, uint256 reserveY) = pair.getBin(uint24(ids[i]));
+            bool hasXBalanceInBin = (LBTokenAmount != 0) && (reserveX != 0);
+            bool hasYBalanceInBin = (LBTokenAmount != 0) && (reserveY != 0);
+            totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
+            totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
         }
 
         pair.setApprovalForAll(address(router), true);
@@ -300,7 +338,7 @@ contract LiquidityBinRouterTest is TestHelper {
         router.removeLiquidityAVAX(
             taxToken,
             DEFAULT_BIN_STEP,
-            amountTokenIn / 2 - 10,
+            totalXbalance,
             _amountAVAXIn,
             ids,
             amounts,
@@ -312,7 +350,7 @@ contract LiquidityBinRouterTest is TestHelper {
             taxToken,
             wavax,
             DEFAULT_BIN_STEP,
-            amountTokenIn / 2 - 10,
+            totalXbalance,
             _amountAVAXIn,
             ids,
             amounts,
@@ -320,7 +358,7 @@ contract LiquidityBinRouterTest is TestHelper {
             block.timestamp
         );
 
-        assertEq(taxToken.balanceOf(DEV), amountTokenIn / 4 + 1);
+        assertEq(taxToken.balanceOf(DEV), amountTokenIn / 4 + 1); //2 transfers with 50% tax
         assertEq(wavax.balanceOf(DEV), _amountAVAXIn);
     }
 

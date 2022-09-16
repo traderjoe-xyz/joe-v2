@@ -305,8 +305,17 @@ contract LiquidityBinRouterTest is TestHelper {
         uint24 _numberBins = 9;
         uint24 _gap = 2;
         uint256 amountXIn;
+        int256[] memory _deltaIds;
         pair = createLBPairDefaultFees(token6D, token18D);
-        (, , , amountXIn) = addLiquidity(_amountYIn, _startId, _numberBins, _gap);
+        (_deltaIds, , , amountXIn) = addLiquidityFromRouter(
+            token6D,
+            token18D,
+            _amountYIn,
+            _startId,
+            _numberBins,
+            _gap,
+            DEFAULT_BIN_STEP
+        );
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__WrongAmounts.selector, 0, _amountYIn));
         router.getSwapIn(pair, 0, true);
@@ -314,7 +323,22 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(LBRouter__WrongAmounts.selector, _amountYIn + 1, _amountYIn));
         router.getSwapIn(pair, _amountYIn + 1, true);
 
-        vm.expectRevert(abi.encodeWithSelector(LBRouter__WrongAmounts.selector, amountXIn + 1, amountXIn - 3));
+        uint256[] memory amounts = new uint256[](_numberBins);
+        uint256[] memory ids = new uint256[](_numberBins);
+        uint256 totalXbalance;
+        uint256 totalYBalance;
+        for (uint256 i; i < _numberBins; i++) {
+            ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
+            uint256 LBTokenAmount = pair.balanceOf(DEV, ids[i]);
+            amounts[i] = LBTokenAmount;
+            (uint256 reserveX, uint256 reserveY) = pair.getBin(uint24(ids[i]));
+            bool hasXBalanceInBin = (LBTokenAmount != 0) && (reserveX != 0);
+            bool hasYBalanceInBin = (LBTokenAmount != 0) && (reserveY != 0);
+            totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
+            totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
+        }
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__WrongAmounts.selector, amountXIn + 1, totalXbalance));
         router.getSwapIn(pair, amountXIn + 1, false);
     }
 

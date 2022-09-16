@@ -106,7 +106,7 @@ contract LiquidityBinRouterTest is TestHelper {
     function testRemoveLiquiditySlippageReverts() public {
         uint256 _amountYIn = 100e18;
         uint24 _startId = ID_ONE;
-        uint24 _numberBins = 9;
+        uint24 _numberBins = 23;
         uint24 _gap = 2;
 
         (int256[] memory _deltaIds, , , uint256 amountXIn) = addLiquidityFromRouter(
@@ -121,26 +121,34 @@ contract LiquidityBinRouterTest is TestHelper {
 
         uint256[] memory amounts = new uint256[](_numberBins);
         uint256[] memory ids = new uint256[](_numberBins);
+        uint256 totalXbalance;
+        uint256 totalYBalance;
         for (uint256 i; i < _numberBins; i++) {
             ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            amounts[i] = pair.balanceOf(DEV, ids[i]);
+            uint256 LBTokenAmount = pair.balanceOf(DEV, ids[i]);
+            amounts[i] = LBTokenAmount;
+            (uint256 reserveX, uint256 reserveY) = pair.getBin(uint24(ids[i]));
+            bool hasXBalanceInBin = (LBTokenAmount != 0) && (reserveX != 0);
+            bool hasYBalanceInBin = (LBTokenAmount != 0) && (reserveY != 0);
+            totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
+            totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
         }
         pair.setApprovalForAll(address(router), true);
         vm.expectRevert(
             abi.encodeWithSelector(
                 LBRouter__AmountSlippageCaught.selector,
-                amountXIn + 1,
-                amountXIn - 3,
-                _amountYIn,
-                _amountYIn
+                totalXbalance + 1,
+                totalXbalance,
+                totalYBalance,
+                totalYBalance
             )
         );
         router.removeLiquidity(
             token6D,
             token18D,
             DEFAULT_BIN_STEP,
-            amountXIn + 1,
-            _amountYIn,
+            totalXbalance + 1,
+            totalYBalance,
             ids,
             amounts,
             DEV,
@@ -149,18 +157,18 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.expectRevert(
             abi.encodeWithSelector(
                 LBRouter__AmountSlippageCaught.selector,
-                amountXIn,
-                amountXIn - 3,
-                _amountYIn + 1,
-                _amountYIn
+                totalXbalance,
+                totalXbalance,
+                totalYBalance + 1,
+                totalYBalance
             )
         );
         router.removeLiquidity(
             token6D,
             token18D,
             DEFAULT_BIN_STEP,
-            amountXIn,
-            _amountYIn + 1,
+            totalXbalance,
+            totalYBalance + 1,
             ids,
             amounts,
             DEV,
@@ -212,7 +220,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
     function testAddLiquidityAVAXReversed() public {
         pair = createLBPairDefaultFees(wavax, token6D);
-
+        uint24 _numberBins = 9;
         uint256 amountTokenIn = 100e18;
         uint24 _gap = 2;
         (int256[] memory _deltaIds, , , uint256 _amountAVAXIn) = addLiquidityFromRouter(
@@ -220,16 +228,26 @@ contract LiquidityBinRouterTest is TestHelper {
             token6D,
             amountTokenIn,
             ID_ONE,
-            9,
+            _numberBins,
             _gap,
             DEFAULT_BIN_STEP
         );
-        uint256[] memory amounts = new uint256[](9);
-        uint256[] memory ids = new uint256[](9);
-        for (uint256 i; i < 9; i++) {
+        uint256[] memory amounts = new uint256[](_numberBins);
+        uint256[] memory ids = new uint256[](_numberBins);
+        uint256 totalXbalance;
+        uint256 totalYBalance;
+        for (uint256 i; i < _numberBins; i++) {
+            //amountXIn is rounded down, so below code is neccessary to get precise value
             ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            amounts[i] = pair.balanceOf(DEV, ids[i]);
+            uint256 LBTokenAmount = pair.balanceOf(DEV, ids[i]);
+            amounts[i] = LBTokenAmount;
+            (uint256 reserveX, uint256 reserveY) = pair.getBin(uint24(ids[i]));
+            bool hasXBalanceInBin = (LBTokenAmount != 0) && (reserveX != 0);
+            bool hasYBalanceInBin = (LBTokenAmount != 0) && (reserveY != 0);
+            totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
+            totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
         }
+
         pair.setApprovalForAll(address(router), true);
 
         uint256 AVAXBalanceBefore = address(DEV).balance;
@@ -237,16 +255,16 @@ contract LiquidityBinRouterTest is TestHelper {
             router.removeLiquidityAVAX(
                 token6D,
                 DEFAULT_BIN_STEP,
-                amountTokenIn,
-                _amountAVAXIn - 10,
+                totalYBalance,
+                totalXbalance,
                 ids,
                 amounts,
                 DEV,
                 block.timestamp
             );
         }
-        assertEq(token6D.balanceOf(DEV), amountTokenIn);
-        assertEq(address(DEV).balance - AVAXBalanceBefore, _amountAVAXIn - 3); //TODO why magic number needed
+        assertEq(token6D.balanceOf(DEV), totalYBalance);
+        assertEq(address(DEV).balance - AVAXBalanceBefore, totalXbalance);
     }
 
     function testAddLiquidityTaxToken() public {

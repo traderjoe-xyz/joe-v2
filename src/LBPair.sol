@@ -90,6 +90,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     /// @notice Set the factory address
     /// @param _factory The address of the factory
     constructor(ILBFactory _factory) LBToken() {
+        if (address(_factory) == address(0)) revert LBPair__AddressZero();
         factory = _factory;
     }
 
@@ -109,7 +110,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
         uint16 _sampleLifetime,
         bytes32 _packedFeeParameters
     ) external override onlyFactory {
-        if (address(_tokenX) == address(0)) revert LBPair__AddressZero();
+        if (address(_tokenX) == address(0) || address(_tokenY) == address(0)) revert LBPair__AddressZero();
         if (address(tokenX) != address(0)) revert LBPair__AlreadyInitialized();
 
         tokenX = _tokenX;

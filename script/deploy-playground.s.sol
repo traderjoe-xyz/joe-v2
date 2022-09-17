@@ -30,7 +30,7 @@ contract PlaygroundDeployer is Script {
     address private constant FACTORY_V2_FUJI = 0x2c2A4F4F0d5BABB0E501784F4D66a7131eff86F1;
     address private constant ROUTER_V2_FUJI = 0x88080086a243616008294725A4B0fD78B4d6a6c2;
 
-    LBFactory.LBPairInfo internal pair;
+    LBFactory.LBPairInformation internal pair;
 
     function run() external {
         // Addresses initialization
@@ -73,13 +73,13 @@ contract PlaygroundDeployer is Script {
         createPairV1(address(usdc), address(usdt));
         console.log("V1 Pair USDC-USDT ->", factory_V1.getPair(address(usdc), address(usdt)));
         createPairV2(address(usdc), address(usdt), ID_ONE, 1);
-        pair = factory.getLBPairInfo(IERC20(usdc), IERC20(usdt), 1);
+        pair = factory.getLBPairInformation(IERC20(usdc), IERC20(usdt), 1);
         console.log("V2 Pair USDC-USDT ->", address(pair.LBPair));
 
         createPairV1(address(wavax), address(usdc));
         console.log("V1 Pair AVAX-USDC ->", factory_V1.getPair(address(wavax), address(usdc)));
         createPairV2(address(wavax), address(usdc), convertIdAvaxToUSD(20), 20);
-        pair = factory.getLBPairInfo(IERC20(wavax), IERC20(usdc), 20);
+        pair = factory.getLBPairInformation(IERC20(wavax), IERC20(usdc), 20);
         console.log("V2 Pair AVAX-USDC ->", address(pair.LBPair));
 
         vm.stopBroadcast();

@@ -8,23 +8,13 @@ import "./ILBPair.sol";
 import "./IPendingOwnable.sol";
 
 interface ILBFactory is IPendingOwnable {
-    /// @dev Structure to store LBPair information, such as:
-    /// - LBPair: The address of the LBPair
-    /// - createdByOwner: Whether the pair was created by the owner of the factory
-    /// - ignoredForRouting: Whether the pair is ignored for routing or not. An ignored pair will not be explored during routes finding
-    struct LBPairInfo {
-        ILBPair LBPair;
-        bool createdByOwner;
-        bool ignoredForRouting;
-    }
-
-    /// @dev Structure to store the LBPair available, such as:
+    /// @dev Structure to store the LBPair information, such as:
     /// - binStep: The bin step of the LBPair
     /// - LBPair: The address of the LBPair
     /// - createdByOwner: Whether the pair was created by the owner of the factory
     /// - ignoredForRouting: Whether the pair is ignored for routing or not. An ignored pair will not be explored during routes finding
-    struct LBPairAvailable {
-        uint256 binStep;
+    struct LBPairInformation {
+        uint24 binStep;
         ILBPair LBPair;
         bool createdByOwner;
         bool ignoredForRouting;
@@ -89,7 +79,7 @@ interface ILBFactory is IPendingOwnable {
 
     function LBPairImplementation() external view returns (address);
 
-    function getQuoteAssetCount() external view returns (uint256);
+    function getNumberOfQuoteAssets() external view returns (uint256);
 
     function getQuoteAsset(uint256 index) external view returns (IERC20);
 
@@ -99,17 +89,17 @@ interface ILBFactory is IPendingOwnable {
 
     function flashLoanFee() external view returns (uint256);
 
-    function unlocked() external view returns (bool);
+    function creationUnlocked() external view returns (bool);
 
     function allLBPairs(uint256 id) external returns (ILBPair);
 
-    function allPairsLength() external view returns (uint256);
+    function getNumberOfLBPairs() external view returns (uint256);
 
-    function getLBPairInfo(
+    function getLBPairInformation(
         IERC20 tokenA,
         IERC20 tokenB,
         uint256 binStep
-    ) external view returns (LBPairInfo memory);
+    ) external view returns (LBPairInformation memory);
 
     function getPreset(uint16 binStep)
         external
@@ -125,12 +115,12 @@ interface ILBFactory is IPendingOwnable {
             uint256 sampleLifetime
         );
 
-    function getAvailablePresetsBinStep() external view returns (uint256[] memory presetsBinStep);
+    function getAllBinSteps() external view returns (uint256[] memory presetsBinStep);
 
-    function getAvailableLBPairsBinStep(IERC20 tokenX, IERC20 tokenY)
+    function getAllLBPairs(IERC20 tokenX, IERC20 tokenY)
         external
         view
-        returns (LBPairAvailable[] memory LBPairsBinStep);
+        returns (LBPairInformation[] memory LBPairsBinStep);
 
     function setLBPairImplementation(address LBPairImplementation) external;
 
@@ -179,7 +169,7 @@ interface ILBFactory is IPendingOwnable {
 
     function setFlashLoanFee(uint256 flashLoanFee) external;
 
-    function setFactoryLocked(bool locked) external;
+    function setFactoryLockedState(bool locked) external;
 
     function addQuoteAsset(IERC20 quoteAsset) external;
 

@@ -313,6 +313,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
         LBPairInformation memory _LBPairInformation = _LBPairsInfo[_tokenA][_tokenB][_binStep];
         if (address(_LBPairInformation.LBPair) == address(0)) revert LBFactory__AddressZero();
 
+        if (_LBPairInformation.ignoredForRouting == _ignored) revert LBFactory__LBPairIgnoredIsAlreadyInTheSameState();
+
         _LBPairsInfo[_tokenA][_tokenB][_binStep].ignoredForRouting = _ignored;
 
         emit LBPairIgnoredStateChanged(_LBPairInformation.LBPair, _ignored);

@@ -13,7 +13,7 @@ library BinHelper {
     /// @notice Returns the id corresponding to the given price
     /// @dev The id may be inaccurate due to rounding issues, always trust getPriceFromId rather than
     /// getIdFromPrice
-    /// @param _price The price of y per x (with 36 decimals)
+    /// @param _price The price of y per x as a 128.128-binary fixed-point number
     /// @param _binStep The bin step
     /// @return The id corresponding to this price
     function getIdFromPrice(uint256 _price, uint256 _binStep) internal pure returns (uint24) {
@@ -27,11 +27,11 @@ library BinHelper {
         }
     }
 
-    /// @notice Returns the price corresponding to the given ID (with 36 decimals)
+    /// @notice Returns the price corresponding to the given ID, as a 128.128-binary fixed-point number
     /// @dev This is the trusted function to link id to price, the other way may be inaccurate
     /// @param _id The id
     /// @param _binStep The bin step
-    /// @return The price corresponding to this id (with 36 decimals)
+    /// @return The price corresponding to this id, as a 128.128-binary fixed-point number
     function getPriceFromId(uint256 _id, uint256 _binStep) internal pure returns (uint256) {
         unchecked {
             int256 _realId = int256(_id) - INT24_SHIFT;

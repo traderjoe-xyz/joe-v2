@@ -34,7 +34,7 @@ library BinHelper {
     /// @return The price corresponding to this id (with 36 decimals)
     function getPriceFromId(uint256 _id, uint256 _binStep) internal pure returns (uint256) {
         unchecked {
-            int256 _realId = int256(uint256(_id)) - INT24_SHIFT;
+            int256 _realId = int256(_id) - INT24_SHIFT;
 
             return _getBPValue(_binStep).power(_realId);
         }

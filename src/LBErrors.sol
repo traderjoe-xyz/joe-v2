@@ -92,7 +92,8 @@ error LBPair__AlreadyInitialized();
 /** BinHelper errors */
 
 error BinHelper__BinStepOverflows(uint256 bp);
-error BinHelper__IdOverflows(int256 _id);
+error BinHelper__IdOverflows(int256 id);
+error BinHelper__IntOverflows(uint256 id);
 
 /** FeeDistributionHelper errors */
 

@@ -3,7 +3,8 @@
 pragma solidity ^0.8.0;
 
 library Decoder {
-    ///@notice Internal function to decode a bytes32 sample using a mask and offset
+    /// @notice Internal function to decode a bytes32 sample using a mask and offset
+    /// @dev This function can overflow
     /// @param _sample The sample as a bytes32
     /// @param _mask The mask
     /// @param _offset The offset

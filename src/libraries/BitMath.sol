@@ -67,7 +67,7 @@ library BitMath {
         unchecked {
             if (x >= 1 << 128) {
                 x >>= 128;
-                msb += 128;
+                msb = 128;
             }
             if (x >= 1 << 64) {
                 x >>= 64;
@@ -106,7 +106,7 @@ library BitMath {
         unchecked {
             if (x << 128 != 0) {
                 x <<= 128;
-                lsb += 128;
+                lsb = 128;
             }
             if (x << 64 != 0) {
                 x <<= 64;

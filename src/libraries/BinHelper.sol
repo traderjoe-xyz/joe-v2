@@ -8,7 +8,7 @@ import "../LBErrors.sol";
 library BinHelper {
     using Math128x128 for uint256;
 
-    int256 private constant INT24_SHIFT = 1<<23;
+    int256 private constant REAL_ID_SHIFT = 1<<23;
 
     /// @notice Returns the id corresponding to the given price
     /// @dev The id may be inaccurate due to rounding issues, always trust getPriceFromId rather than
@@ -21,7 +21,7 @@ library BinHelper {
             uint256 _binStepValue = _getBPValue(_binStep);
 
             // can't overflow as `2**23 + log2(price) < 2**23 + 2**128 < max(uint256)`
-            int256 _id = INT24_SHIFT + _price.log2() / _binStepValue.log2();
+            int256 _id = REAL_ID_SHIFT + _price.log2() / _binStepValue.log2();
 
             if (_id < 0 || uint256(_id) > type(uint24).max) revert BinHelper__IdOverflows(_id);
             return uint24(uint256(_id));
@@ -36,7 +36,7 @@ library BinHelper {
     function getPriceFromId(uint256 _id, uint256 _binStep) internal pure returns (uint256) {
         if (_id > uint256(type(int256).max)) revert BinHelper__IntOverflows(_id);
         unchecked {
-            int256 _realId = int256(_id) - INT24_SHIFT;
+            int256 _realId = int256(_id) - REAL_ID_SHIFT;
 
             return _getBPValue(_binStep).power(_realId);
         }

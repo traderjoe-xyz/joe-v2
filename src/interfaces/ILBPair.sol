@@ -234,7 +234,7 @@ interface ILBPair {
         address to
     ) external returns (uint256, uint256);
 
-    function increaseOracleLength(uint16 nb) external;
+    function increaseOracleLength(uint16 newSize) external;
 
     function collectFees(address account, uint256[] memory ids) external returns (uint256 amountX, uint256 amountY);
 

@@ -88,6 +88,7 @@ error LBPair__OnlyFeeRecipient(address feeRecipient, address sender);
 error LBPair__OracleNotEnoughSample();
 error LBPair__FlashLoanCallbackFailed();
 error LBPair__AlreadyInitialized();
+error LBPair__NewSizeTooSmall(uint256 newSize, uint256 oracleSize);
 
 /** BinHelper errors */
 

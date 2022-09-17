@@ -65,7 +65,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
         ) = pair.getOracleParameters();
 
         assertEq(newOracleSampleLifetime, oracleSampleLifetime);
-        assertEq(newOracleSize, oracleSize + 100);
+        assertEq(newOracleSize, 100);
         assertEq(newOracleActiveSize, oracleActiveSize);
         assertEq(newOracleLastTimestamp, oracleLastTimestamp);
         assertEq(newOracleId, oracleId);
@@ -187,10 +187,12 @@ contract LiquidityBinPairOracleTest is TestHelper {
 
         uint256 startTimestamp;
 
+        uint16 newSize = 2;
         for (uint256 i; i < 50; ++i) {
             token6D.mint(address(pair), 1e18);
 
-            pair.increaseOracleLength(2);
+            newSize += 2;
+            pair.increaseOracleLength(newSize);
 
             vm.warp(1500 + 100 * i);
             pair.swap(true, DEV);

@@ -663,9 +663,9 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     }
 
     /// @notice Increase the length of the oracle
-    /// @param _nb The number of sample to add to the oracle
-    function increaseOracleLength(uint16 _nb) external override {
-        _increaseOracle(_nb);
+    /// @param _newSize The new size of the oracle. Needs to be bigger than current one
+    function increaseOracleLength(uint16 _newSize) external override {
+        _increaseOracle(_newSize);
     }
 
     /// @notice Collect fees of an user
@@ -900,19 +900,21 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     }
 
     /// @notice Private function to increase the oracle's number of sample
-    /// @param _nb The number of sample to add to the oracle
-    function _increaseOracle(uint16 _nb) private {
-        unchecked {
-            uint256 _oracleSize = _pairInformation.oracleSize;
-            uint256 _newSize = _oracleSize + uint256(_nb);
+    /// @param _newSize The new size of the oracle. Needs to be bigger than current one
+    function _increaseOracle(uint16 _newSize) private {
+        uint256 _oracleSize = _pairInformation.oracleSize;
 
-            _pairInformation.oracleSize = _newSize.safe16();
+        if (_oracleSize >= _newSize) revert LBPair__NewSizeTooSmall(_newSize, _oracleSize);
+
+        _pairInformation.oracleSize = _newSize;
+
+        unchecked {
             for (uint256 _id = _oracleSize; _id < _newSize; ++_id) {
                 _oracle.initialize(_id);
             }
-
-            emit OracleSizeIncreased(_oracleSize, _newSize);
         }
+
+        emit OracleSizeIncreased(_oracleSize, _newSize);
     }
 
     /// @notice Private view function to return the oracle's parameters

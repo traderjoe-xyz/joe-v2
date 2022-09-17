@@ -799,16 +799,18 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
             Bin memory _bin = _bins[_id];
 
-            if (_from != address(0) && _from != address(this)) {
-                uint256 _balanceFrom = balanceOf(_from, _id);
+            if (_from != _to) {
+                if (_from != address(0) && _from != address(this)) {
+                    uint256 _balanceFrom = balanceOf(_from, _id);
 
-                _cacheFees(_bin, _from, _id, _balanceFrom, _balanceFrom - _amount);
-            }
+                    _cacheFees(_bin, _from, _id, _balanceFrom, _balanceFrom - _amount);
+                }
 
-            if (_to != address(0) && _to != address(this) && _to != _from) {
-                uint256 _balanceTo = balanceOf(_to, _id);
+                if (_to != address(0) && _to != address(this)) {
+                    uint256 _balanceTo = balanceOf(_to, _id);
 
-                _cacheFees(_bin, _to, _id, _balanceTo, _balanceTo + _amount);
+                    _cacheFees(_bin, _to, _id, _balanceTo, _balanceTo + _amount);
+                }
             }
         }
     }

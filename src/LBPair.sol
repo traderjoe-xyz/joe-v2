@@ -515,6 +515,7 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                     (_mintInfo.totalDistributionY += _mintInfo.distributionY) > Constants.PRECISION
                 ) revert LBPair__DistributionsOverflow();
 
+                // Can't overflow as amounts are uint128 and distributions are smaller or equal to 1e18
                 _mintInfo.amountX = (_mintInfo.amountXIn * _mintInfo.distributionX) / Constants.PRECISION;
                 _mintInfo.amountY = (_mintInfo.amountYIn * _mintInfo.distributionY) / Constants.PRECISION;
 

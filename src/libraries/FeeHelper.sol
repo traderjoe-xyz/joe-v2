@@ -114,9 +114,7 @@ library FeeHelper {
     /// @param _amount The amount of token sent
     /// @return The fee amount
     function getFeeAmount(FeeParameters memory _fp, uint256 _amount) internal pure returns (uint256) {
-        unchecked {
-            return (_amount * getTotalFee(_fp)) / (Constants.PRECISION);
-        }
+        return (_amount * getTotalFee(_fp)) / (Constants.PRECISION);
     }
 
     /// @notice Return the fees from an amount
@@ -124,10 +122,8 @@ library FeeHelper {
     /// @param _amountPlusFee The amount of token sent
     /// @return The fee amount
     function getFeeAmountFrom(FeeParameters memory _fp, uint256 _amountPlusFee) internal pure returns (uint256) {
-        unchecked {
-            uint256 _fee = getTotalFee(_fp);
-            return (_amountPlusFee * _fee) / (Constants.PRECISION + _fee);
-        }
+        uint256 _fee = getTotalFee(_fp);
+        return (_amountPlusFee * _fee) / (Constants.PRECISION + _fee);
     }
 
     /// @notice Return the fees added when an user adds liquidity and change the ratio in the active bin
@@ -135,10 +131,8 @@ library FeeHelper {
     /// @param _amountPlusFee The amount of token sent
     /// @return The fee amount
     function getFeeAmountForC(FeeParameters memory _fp, uint256 _amountPlusFee) internal pure returns (uint256) {
-        unchecked {
-            uint256 _fee = getTotalFee(_fp);
-            return (_amountPlusFee * _fee * (_fee + Constants.PRECISION)) / (Constants.PRECISION * Constants.PRECISION);
-        }
+        uint256 _fee = getTotalFee(_fp);
+        return (_amountPlusFee * _fee * (_fee + Constants.PRECISION)) / (Constants.PRECISION * Constants.PRECISION);
     }
 
     /// @notice Return the fees distribution added to an amount

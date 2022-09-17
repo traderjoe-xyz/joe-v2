@@ -28,8 +28,7 @@ library BitMath {
         } else return leastSignificantBit(_integer);
     }
 
-    /// @notice Returns a tuple (uint256 id, bool found),
-    /// id is the index of the closest bit on the right of x that is non null
+    /// @notice Returns the index of the closest bit on the right of x that is non null
     /// @param x The value as a uint256
     /// @param bit The index of the bit to start searching at
     /// @return id The index of the closest non null bit on the right of x.
@@ -44,8 +43,7 @@ library BitMath {
         }
     }
 
-    /// @notice Returns a tuple (uint256 id, bool found),
-    /// id is the index of the closest bit on the left of x that is non null
+    /// @notice Returns the index of the closest bit on the left of x that is non null
     /// @param x The value as a uint256
     /// @param bit The index of the bit to start searching at
     /// @return id The index of the closest non null bit on the left of x.

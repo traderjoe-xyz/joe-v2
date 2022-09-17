@@ -433,8 +433,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
         uint256 _fee = factory.flashLoanFee();
 
-        FeeHelper.FeesDistribution memory _feesX = _fp.getFeesDistribution(_getFlashLoanFee(_amountXOut, _fee));
-        FeeHelper.FeesDistribution memory _feesY = _fp.getFeesDistribution(_getFlashLoanFee(_amountYOut, _fee));
+        FeeHelper.FeesDistribution memory _feesX = _fp.getFeeAmountDistribution(_getFlashLoanFee(_amountXOut, _fee));
+        FeeHelper.FeesDistribution memory _feesY = _fp.getFeeAmountDistribution(_getFlashLoanFee(_amountYOut, _fee));
 
         (uint256 _reserveX, uint256 _reserveY, uint256 _id) = _getReservesAndId();
 
@@ -532,8 +532,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                         _fp.updateVariableFeeParameters(_mintInfo.id);
 
                         if (_mintInfo.amountX > _receivedX) {
-                            FeeHelper.FeesDistribution memory _fees = _fp.getFeesDistribution(
-                                _fp.getFeesForC(_mintInfo.amountX - _receivedX)
+                            FeeHelper.FeesDistribution memory _fees = _fp.getFeeAmountDistribution(
+                                _fp.getFeeAmountForC(_mintInfo.amountX - _receivedX)
                             );
 
                             _mintInfo.amountX -= _fees.total;
@@ -543,8 +543,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
 
                             emit CompositionFee(msg.sender, _to, _mintInfo.id, _fees.total, 0);
                         } else if (_mintInfo.amountY > _receivedY) {
-                            FeeHelper.FeesDistribution memory _fees = _fp.getFeesDistribution(
-                                _fp.getFeesForC(_mintInfo.amountY - _receivedY)
+                            FeeHelper.FeesDistribution memory _fees = _fp.getFeeAmountDistribution(
+                                _fp.getFeeAmountForC(_mintInfo.amountY - _receivedY)
                             );
 
                             _mintInfo.amountY -= _fees.total;

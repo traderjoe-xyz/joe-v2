@@ -35,11 +35,13 @@ library BitMath {
     /// If there is no closest bit, it returns max(uint256)
     function closestBitRight(uint256 x, uint8 bit) internal pure returns (uint256 id) {
         unchecked {
-            x <<= 255 - bit;
+            uint256 _shift = 255 - bit;
+            x <<= _shift;
 
             if (x == 0) return type(uint256).max;
 
-            return mostSignificantBit(x) - (255 - bit);
+            // can't overflow as it's non-zero and we shifted it by `_shift`
+            return mostSignificantBit(x) - _shift;
         }
     }
 

@@ -3,7 +3,8 @@
 pragma solidity ^0.8.0;
 
 library Encoder {
-    ///@notice Internal function to encode a uint256 value using a mask and offset
+    /// @notice Internal function to encode a uint256 value using a mask and offset
+    /// @dev This function can underflow
     /// @param _value The value as a uint256
     /// @param _mask The mask
     /// @param _offset The offset

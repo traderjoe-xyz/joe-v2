@@ -20,6 +20,7 @@ library BinHelper {
         unchecked {
             uint256 _binStepValue = _getBPValue(_binStep);
 
+            // can't overflow as `2**23 + log2(price) < 2**23 + 2**128 < max(uint256)`
             int256 _id = INT24_SHIFT + _price.log2() / _binStepValue.log2();
 
             if (_id < 0 || uint256(_id) > type(uint24).max) revert BinHelper__IdOverflows(_id);
@@ -33,6 +34,7 @@ library BinHelper {
     /// @param _binStep The bin step
     /// @return The price corresponding to this id, as a 128.128-binary fixed-point number
     function getPriceFromId(uint256 _id, uint256 _binStep) internal pure returns (uint256) {
+        if (_id > uint256(type(int256).max)) revert BinHelper__IntOverflows(_id);
         unchecked {
             int256 _realId = int256(_id) - INT24_SHIFT;
 
@@ -47,6 +49,7 @@ library BinHelper {
         if (_binStep == 0 || _binStep > Constants.BASIS_POINT_MAX) revert BinHelper__BinStepOverflows(_binStep);
 
         unchecked {
+            // can't overflow as `max(result) = 2**128 + 10_000 << 128 / 10_000 < max(uint256)`
             return Constants.SCALE + (_binStep << Constants.SCALE_OFFSET) / Constants.BASIS_POINT_MAX;
         }
     }

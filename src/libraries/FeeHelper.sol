@@ -107,14 +107,13 @@ library FeeHelper {
         }
     }
 
-    /// @notice Return the fees added to an amount
+    /// @notice Return the amount of fees added to an amount
     /// @param _fp The current fee parameter
     /// @param _amount The amount of token sent
     /// @return The fee amount
-    function getFees(FeeParameters memory _fp, uint256 _amount) internal pure returns (uint256) {
+    function getFeeAmount(FeeParameters memory _fp, uint256 _amount) internal pure returns (uint256) {
         unchecked {
-            uint256 _feeShares = getFeeShares(_fp);
-            return (_amount * _feeShares) / (Constants.PRECISION);
+            return (_amount * getTotalFee(_fp)) / (Constants.PRECISION);
         }
     }
 
@@ -122,23 +121,21 @@ library FeeHelper {
     /// @param _fp The current fee parameter
     /// @param _amountPlusFee The amount of token sent
     /// @return The fee amount
-    function getFeesFrom(FeeParameters memory _fp, uint256 _amountPlusFee) internal pure returns (uint256) {
+    function getFeeAmountFrom(FeeParameters memory _fp, uint256 _amountPlusFee) internal pure returns (uint256) {
         unchecked {
-            uint256 _feeShares = getFeeShares(_fp);
-            return (_amountPlusFee * _feeShares) / (Constants.PRECISION + _feeShares);
+            uint256 _fee = getTotalFee(_fp);
+            return (_amountPlusFee * _fee) / (Constants.PRECISION + _fee);
         }
     }
 
-    /// @notice Return the fees added when an user adds liquidity and change c in the active bin
+    /// @notice Return the fees added when an user adds liquidity and change the ratio in the active bin
     /// @param _fp The current fee parameter
     /// @param _amountPlusFee The amount of token sent
     /// @return The fee amount
-    function getFeesForC(FeeParameters memory _fp, uint256 _amountPlusFee) internal pure returns (uint256) {
+    function getFeeAmountForC(FeeParameters memory _fp, uint256 _amountPlusFee) internal pure returns (uint256) {
         unchecked {
-            uint256 _feeShares = getFeeShares(_fp);
-            return
-                (_amountPlusFee * _feeShares * (_feeShares + Constants.PRECISION)) /
-                (Constants.PRECISION * Constants.PRECISION);
+            uint256 _fee = getTotalFee(_fp);
+            return (_amountPlusFee * _fee * (_fee + Constants.PRECISION)) / (Constants.PRECISION * Constants.PRECISION);
         }
     }
 
@@ -146,23 +143,24 @@ library FeeHelper {
     /// @param _fp The current fee parameter
     /// @param _fees The fee amount
     /// @return fees The fee distribution
-    function getFeesDistribution(FeeParameters memory _fp, uint256 _fees)
+    function getFeeAmountDistribution(FeeParameters memory _fp, uint256 _fees)
         internal
         pure
         returns (FeesDistribution memory fees)
     {
+        fees.total = _fees.safe128();
+        // unsafe math is fine because total >= protocol
         unchecked {
-            fees.total = _fees.safe128();
             fees.protocol = uint128((_fees * _fp.protocolShare) / Constants.BASIS_POINT_MAX);
         }
     }
 
-    /// @notice Return the fee share
+    /// @notice Return the total fee, i.e. baseFee + variableFee
     /// @param _fp The current fee parameter
-    /// @return feeShares The fee share, with 18 decimals
-    function getFeeShares(FeeParameters memory _fp) private pure returns (uint256 feeShares) {
+    /// @return The total fee, with 18 decimals
+    function getTotalFee(FeeParameters memory _fp) private pure returns (uint256) {
         unchecked {
-            feeShares = getBaseFee(_fp) + getVariableFee(_fp);
+            return getBaseFee(_fp) + getVariableFee(_fp);
         }
     }
 }

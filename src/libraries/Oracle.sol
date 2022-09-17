@@ -42,45 +42,44 @@ library Oracle {
             uint256 cumulativeBinCrossed
         )
     {
-        unchecked {
-            if (_activeSize == 0) revert Oracle__NotInitialized();
+        if (_activeSize == 0) revert Oracle__NotInitialized();
 
-            // Oldest sample
-            bytes32 _sample = _oracle[_activeId.addMod(1, _activeSize)];
+        // Oldest sample
+        uint256 _nextId;
+        assembly {
+            _nextId := addmod(_activeId, 1, _activeSize)
+        }
+        bytes32 _sample = _oracle[_nextId];
+        timestamp = _sample.timestamp();
+        if (timestamp > _lookUpTimestamp) revert Oracle__LookUpTimestampTooOld(timestamp, _lookUpTimestamp);
+
+        // Most recent sample
+        if (_activeSize != 1) {
+            _sample = _oracle[_activeId];
             timestamp = _sample.timestamp();
-            if (timestamp > _lookUpTimestamp) revert Oracle__LookUpTimestampTooOld(timestamp, _lookUpTimestamp);
 
-            // Most recent sample
-            if (_activeSize != 1) {
-                _sample = _oracle[_activeId];
-                timestamp = _sample.timestamp();
+            if (timestamp > _lookUpTimestamp) {
+                bytes32 _next;
+                (_sample, _next) = binarySearch(_oracle, _activeId, _lookUpTimestamp, _activeSize);
 
-                if (timestamp > _lookUpTimestamp) {
-                    bytes32 _next;
-                    (_sample, _next) = binarySearch(_oracle, _activeId, _lookUpTimestamp, _activeSize);
+                if (_sample != _next) {
+                    uint256 _weightPrev = _next.timestamp() - _lookUpTimestamp; // _next.timestamp() - _sample.timestamp() - (_lookUpTimestamp - _sample.timestamp())
+                    uint256 _weightNext = _lookUpTimestamp - _sample.timestamp(); // _next.timestamp() - _sample.timestamp() - (_next.timestamp() - _lookUpTimestamp)
+                    uint256 _totalWeight = _weightPrev + _weightNext; // _next.timestamp() - _sample.timestamp()
 
-                    if (_sample != _next) {
-                        uint256 _weightPrev = _next.timestamp() - _lookUpTimestamp; // _next.timestamp() - _sample.timestamp() - (_lookUpTimestamp - _sample.timestamp())
-                        uint256 _weightNext = _lookUpTimestamp - _sample.timestamp(); // _next.timestamp() - _sample.timestamp() - (_next.timestamp() - _lookUpTimestamp)
-                        uint256 _totalWeight = _weightPrev + _weightNext; // _next.timestamp() - _sample.timestamp()
-
-                        cumulativeId =
-                            (_sample.cumulativeId() * _weightPrev + _next.cumulativeId() * _weightNext) /
-                            _totalWeight;
-                        cumulativeVolatilityAccumulated =
-                            (_sample.cumulativeVolatilityAccumulated() *
-                                _weightPrev +
-                                _next.cumulativeVolatilityAccumulated() *
-                                _weightNext) /
-                            _totalWeight;
-                        cumulativeBinCrossed =
-                            (_sample.cumulativeBinCrossed() *
-                                _weightPrev +
-                                _next.cumulativeBinCrossed() *
-                                _weightNext) /
-                            _totalWeight;
-                        return (_lookUpTimestamp, cumulativeId, cumulativeVolatilityAccumulated, cumulativeBinCrossed);
-                    }
+                    cumulativeId =
+                        (_sample.cumulativeId() * _weightPrev + _next.cumulativeId() * _weightNext) /
+                        _totalWeight;
+                    cumulativeVolatilityAccumulated =
+                        (_sample.cumulativeVolatilityAccumulated() *
+                            _weightPrev +
+                            _next.cumulativeVolatilityAccumulated() *
+                            _weightNext) /
+                        _totalWeight;
+                    cumulativeBinCrossed =
+                        (_sample.cumulativeBinCrossed() * _weightPrev + _next.cumulativeBinCrossed() * _weightNext) /
+                        _totalWeight;
+                    return (_lookUpTimestamp, cumulativeId, cumulativeVolatilityAccumulated, cumulativeBinCrossed);
                 }
             }
 
@@ -111,14 +110,15 @@ library Oracle {
         uint256 _volatilityAccumulated,
         uint256 _binCrossed
     ) internal returns (uint256 updatedIndex) {
-        unchecked {
-            bytes32 _updatedPackedSample = _oracle[_lastIndex].update(_activeId, _volatilityAccumulated, _binCrossed);
-            updatedIndex = block.timestamp - _lastTimestamp >= _sampleLifetime && _lastTimestamp != 0
-                ? _lastIndex.addMod(1, _size)
-                : _lastIndex;
+        bytes32 _updatedPackedSample = _oracle[_lastIndex].update(_activeId, _volatilityAccumulated, _binCrossed);
 
-            _oracle[updatedIndex] = _updatedPackedSample;
-        }
+        if (block.timestamp - _lastTimestamp >= _sampleLifetime && _lastTimestamp != 0) {
+            assembly {
+                updatedIndex := addmod(_lastIndex, 1, _size)
+            }
+        } else updatedIndex = _lastIndex;
+
+        _oracle[updatedIndex] = _updatedPackedSample;
     }
 
     /// @notice Initialize the sample
@@ -145,19 +145,21 @@ library Oracle {
         uint256 _lookUpTimestamp,
         uint256 _activeSize
     ) private view returns (bytes32 prev, bytes32 next) {
-        unchecked {
-            // The sample with the lowest timestamp is the one right after _index
-            uint256 _low = 1;
-            uint256 _high = _activeSize;
+        // The sample with the lowest timestamp is the one right after _index
+        uint256 _low = 1;
+        uint256 _high = _activeSize;
 
-            uint256 _middle;
-            uint256 _id;
+        uint256 _middle;
+        uint256 _id;
 
-            bytes32 _sample;
-            uint256 _sampleTimestamp;
-            while (_high >= _low) {
+        bytes32 _sample;
+        uint256 _sampleTimestamp;
+        while (_high >= _low) {
+            unchecked {
                 _middle = (_low + _high) / 2;
-                _id = _middle.addMod(_index, _activeSize);
+                assembly {
+                    _id := addmod(_middle, _index, _activeSize)
+                }
                 _sample = _oracle[_id];
                 _sampleTimestamp = _sample.timestamp();
                 if (_sampleTimestamp < _lookUpTimestamp) {
@@ -168,10 +170,12 @@ library Oracle {
                     return (_sample, _sample);
                 }
             }
-
-            (prev, next) = _sampleTimestamp < _lookUpTimestamp
-                ? (_sample, _oracle[_id.addMod(1, _activeSize)])
-                : (_oracle[_id.before(_activeSize)], _sample);
         }
+        if (_sampleTimestamp < _lookUpTimestamp) {
+            assembly {
+                _id := addmod(_id, 1, _activeSize)
+            }
+            (prev, next) = (_sample, _oracle[_id]);
+        } else (prev, next) = (_oracle[_id.before(_activeSize)], _sample);
     }
 }

@@ -384,6 +384,8 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testForDoubleIgnored() public {
+        createLBPairDefaultFees(token6D, token18D);
+
         factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, true);
         vm.expectRevert(LBFactory__LBPairIgnoredIsAlreadyInTheSameState.selector);
         factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, true);

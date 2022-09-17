@@ -42,6 +42,9 @@ library Samples {
     ) internal view returns (bytes32 packedSample) {
         uint256 _deltaTime = block.timestamp - timestamp(_lastSample);
 
+        // cumulative can overflow without any issue as what matter is the delta cumulative.
+        // It would be an issue if 2 overflows would happen but way too much time should elapsed for it to happen.
+        // The delta calculation needs to be unchecked math to allow for it to overflow again.
         unchecked {
             uint256 _cumulativeId = cumulativeId(_lastSample) + _activeId * _deltaTime;
             uint256 _cumulativeVolatilityAccumulated = cumulativeVolatilityAccumulated(_lastSample) +

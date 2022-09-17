@@ -35,6 +35,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     ILBPair[] public override allLBPairs;
 
+    /// @dev Mapping from a (tokenA, tokenB, binStep) to a LBPair. The tokens are ordered to save gas, but they can be
+    /// in the reverse order in the actual pair. Always query one of the 2 tokens of the pair to assert the order of the 2 tokens
     mapping(IERC20 => mapping(IERC20 => mapping(uint256 => LBPairInformation))) private _LBPairsInfo;
 
     // Whether a preset was set or not, if the bit at `index` is 1, it means that the binStep `index` was set

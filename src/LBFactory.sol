@@ -254,9 +254,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
         // We remove the bits that are not part of the feeParameters
         _preset &= bytes32(uint256(type(uint144).max));
 
-        _LBPair = ILBPair(
-            Clones.cloneDeterministic(_LBPairImplementation, keccak256(abi.encode(_tokenA, _tokenB, _binStep)))
-        );
+        bytes32 _salt = keccak256(abi.encode(_tokenA, _tokenB, _binStep));
+        _LBPair = ILBPair(Clones.cloneDeterministic(_LBPairImplementation, _salt));
 
         _LBPair.initialize(_tokenX, _tokenY, _activeId, uint16(_sampleLifetime), _preset);
 

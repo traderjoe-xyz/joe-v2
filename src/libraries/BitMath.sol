@@ -3,11 +3,11 @@
 pragma solidity ^0.8.0;
 
 library BitMath {
-    /// @notice Returns the non-zero bit closest to the `_integer` to the right (or left) of the `bit` index
+    /// @notice Returns the closest non-zero bit of `integer` to the right (of left) of the `bit` bits that is not `bit`
     /// @param _integer The integer as a uint256
     /// @param _bit The bit index
     /// @param _rightSide Whether we're searching in the right side of the tree (true) or the left side (false)
-    /// @return The index of the closest non zero bit. If there is no closest bit, it returns max(uint256)
+    /// @return The index of the closest non-zero bit. If there is no closest bit, it returns max(uint256)
     function closestBit(
         uint256 _integer,
         uint8 _bit,

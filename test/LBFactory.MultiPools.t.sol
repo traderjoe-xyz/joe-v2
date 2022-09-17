@@ -107,14 +107,14 @@ contract LiquidityBinFactoryTestM is TestHelper {
     }
 
     function testAddRemovePresets() public {
-        uint256[] memory binSteps = factory.getAvailablePresetsBinStep();
+        uint256[] memory binSteps = factory.getAllBinSteps();
         assertEq(binSteps.length, 3);
         assertEq(binSteps[0], DEFAULT_BIN_STEP);
         assertEq(binSteps[1], 75);
         assertEq(binSteps[2], 98);
 
         setDefaultFactoryPresets(12);
-        binSteps = factory.getAvailablePresetsBinStep();
+        binSteps = factory.getAllBinSteps();
         assertEq(binSteps.length, 4);
         assertEq(binSteps[0], 12);
         assertEq(binSteps[1], DEFAULT_BIN_STEP);
@@ -122,7 +122,7 @@ contract LiquidityBinFactoryTestM is TestHelper {
         assertEq(binSteps[3], 98);
 
         factory.removePreset(75);
-        binSteps = factory.getAvailablePresetsBinStep();
+        binSteps = factory.getAllBinSteps();
         assertEq(binSteps.length, 3);
         assertEq(binSteps[0], 12);
         assertEq(binSteps[1], DEFAULT_BIN_STEP);
@@ -133,7 +133,7 @@ contract LiquidityBinFactoryTestM is TestHelper {
     }
 
     function testAvailableBinSteps() public {
-        ILBFactory.LBPairAvailable[] memory LBPairBinSteps = factory.getAvailableLBPairsBinStep(token6D, token18D);
+        ILBFactory.LBPairInformation[] memory LBPairBinSteps = factory.getAllLBPairs(token6D, token18D);
         assertEq(LBPairBinSteps.length, 3);
         assertEq(LBPairBinSteps[0].binStep, DEFAULT_BIN_STEP);
         assertEq(LBPairBinSteps[1].binStep, 75);
@@ -142,10 +142,7 @@ contract LiquidityBinFactoryTestM is TestHelper {
         assertEq(LBPairBinSteps[1].createdByOwner, true);
         assertEq(LBPairBinSteps[2].createdByOwner, true);
 
-        ILBFactory.LBPairAvailable[] memory LBPairBinStepsReversed = factory.getAvailableLBPairsBinStep(
-            token18D,
-            token6D
-        );
+        ILBFactory.LBPairInformation[] memory LBPairBinStepsReversed = factory.getAllLBPairs(token18D, token6D);
         assertEq(LBPairBinStepsReversed.length, 3);
         assertEq(LBPairBinStepsReversed[0].binStep, DEFAULT_BIN_STEP);
         assertEq(LBPairBinStepsReversed[1].binStep, 75);
@@ -154,7 +151,7 @@ contract LiquidityBinFactoryTestM is TestHelper {
         factory.removePreset(75);
         factory.removePreset(98);
 
-        ILBFactory.LBPairAvailable[] memory LBPairBinStepsAfterPresetRemoval = factory.getAvailableLBPairsBinStep(
+        ILBFactory.LBPairInformation[] memory LBPairBinStepsAfterPresetRemoval = factory.getAllLBPairs(
             token6D,
             token18D
         );
@@ -166,10 +163,7 @@ contract LiquidityBinFactoryTestM is TestHelper {
         factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, true);
         factory.setLBPairIgnored(token18D, token6D, 98, true);
 
-        ILBFactory.LBPairAvailable[] memory LBPairBinStepsAfterIgnored = factory.getAvailableLBPairsBinStep(
-            token6D,
-            token18D
-        );
+        ILBFactory.LBPairInformation[] memory LBPairBinStepsAfterIgnored = factory.getAllLBPairs(token6D, token18D);
         assertEq(LBPairBinStepsAfterIgnored.length, 3);
         assertEq(LBPairBinStepsAfterIgnored[0].ignoredForRouting, true);
         assertEq(LBPairBinStepsAfterIgnored[1].ignoredForRouting, false);
@@ -177,7 +171,7 @@ contract LiquidityBinFactoryTestM is TestHelper {
 
         factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, false);
 
-        ILBFactory.LBPairAvailable[] memory LBPairBinStepsAfterRemovalOfIgnored = factory.getAvailableLBPairsBinStep(
+        ILBFactory.LBPairInformation[] memory LBPairBinStepsAfterRemovalOfIgnored = factory.getAllLBPairs(
             token6D,
             token18D
         );

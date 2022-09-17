@@ -25,12 +25,12 @@ contract LiquidityBinRouterTest is TestHelper {
     }
 
     function testCreateLBPair() public {
-        factory.setFactoryLocked(false);
+        factory.setFactoryLockedState(false);
 
         router.createLBPair(token6D, token18D, ID_ONE, DEFAULT_BIN_STEP);
 
-        assertEq(factory.allPairsLength(), 1);
-        pair = LBPair(address(factory.getLBPairInfo(token6D, token18D, DEFAULT_BIN_STEP).LBPair));
+        assertEq(factory.getNumberOfLBPairs(), 1);
+        pair = LBPair(address(factory.getLBPairInformation(token6D, token18D, DEFAULT_BIN_STEP).LBPair));
 
         assertEq(address(pair.factory()), address(factory));
         assertEq(address(pair.tokenX()), address(token6D));
@@ -235,7 +235,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256[] memory _distributionX;
         uint256[] memory _distributionY;
         uint256 amountXIn;
-        factory.setFactoryLocked(false);
+        factory.setFactoryLockedState(false);
         router.createLBPair(token6D, token18D, ID_ONE, DEFAULT_BIN_STEP);
         router.createLBPair(token6D, wavax, ID_ONE, DEFAULT_BIN_STEP);
 

@@ -9,7 +9,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     event QuoteAssetAdded(IERC20 indexed _quoteAsset);
     event LBPairImplementationSet(ILBPair oldLBPairImplementation, ILBPair LBPairImplementation);
 
-    struct LBPairAvailable {
+    struct LBPairInformation {
         uint256 binStep;
         ILBPair LBPair;
         bool createdByOwner;
@@ -55,13 +55,13 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setLBPairImplementation(address(_LBPairImplementationNew));
     }
 
-    function testGetAvailableLBPairsBinStep() public {
-        assertEq(factory.getAvailableLBPairsBinStep(token6D, token18D).length, 0);
+    function testgetAllLBPairs() public {
+        assertEq(factory.getAllLBPairs(token6D, token18D).length, 0);
         ILBPair pair25 = createLBPairDefaultFees(token6D, token18D);
-        assertEq(factory.getAvailableLBPairsBinStep(token6D, token18D).length, 1);
+        assertEq(factory.getAllLBPairs(token6D, token18D).length, 1);
         setDefaultFactoryPresets(1);
         ILBPair pair1 = factory.createLBPair(token6D, token18D, ID_ONE, 1);
-        assertEq(factory.getAvailableLBPairsBinStep(token6D, token18D).length, 2);
+        assertEq(factory.getAllLBPairs(token6D, token18D).length, 2);
 
         factory.setPreset(
             50,
@@ -75,12 +75,12 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_SAMPLE_LIFETIME
         );
         router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(WAVAX_AVALANCHE_ADDRESS));
-        factory.setFactoryLocked(false);
+        factory.setFactoryLockedState(false);
         ILBPair pair50 = router.createLBPair(token6D, token18D, ID_ONE, 50);
         factory.setLBPairIgnored(token6D, token18D, 50, true);
-        assertEq(factory.getAvailableLBPairsBinStep(token6D, token18D).length, 3);
+        assertEq(factory.getAllLBPairs(token6D, token18D).length, 3);
 
-        ILBFactory.LBPairAvailable[] memory LBPairsAvailable = factory.getAvailableLBPairsBinStep(token6D, token18D);
+        ILBFactory.LBPairInformation[] memory LBPairsAvailable = factory.getAllLBPairs(token6D, token18D);
 
         assertEq(LBPairsAvailable[0].binStep, 1);
         assertEq(address(LBPairsAvailable[0].LBPair), address(pair1));
@@ -101,8 +101,8 @@ contract LiquidityBinFactoryTest is TestHelper {
     function testCreateLBPair() public {
         ILBPair pair = createLBPairDefaultFees(token6D, token12D);
 
-        assertEq(factory.allPairsLength(), 1);
-        assertEq(address(factory.getLBPairInfo(token6D, token12D, DEFAULT_BIN_STEP).LBPair), address(pair));
+        assertEq(factory.getNumberOfLBPairs(), 1);
+        assertEq(address(factory.getLBPairInformation(token6D, token12D, DEFAULT_BIN_STEP).LBPair), address(pair));
 
         assertEq(address(pair.factory()), address(factory));
         assertEq(address(pair.tokenX()), address(token6D));
@@ -145,12 +145,12 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testCreatePairWhenFactoryIsUnlocked() public {
-        factory.setFactoryLocked(false);
+        factory.setFactoryLockedState(false);
 
         vm.prank(ALICE);
         createLBPairDefaultFees(token6D, token12D);
 
-        ILBFactory.LBPairAvailable[] memory LBPairBinSteps = factory.getAvailableLBPairsBinStep(token6D, token12D);
+        ILBFactory.LBPairInformation[] memory LBPairBinSteps = factory.getAllLBPairs(token6D, token12D);
         assertEq(LBPairBinSteps.length, 1);
         assertEq(LBPairBinSteps[0].binStep, DEFAULT_BIN_STEP);
         assertEq(LBPairBinSteps[0].ignoredForRouting, false);
@@ -402,9 +402,9 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory = new LBFactory(address(0), 8e14);
     }
 
-    function testSetFactoryLocked() public {
+    function testsetFactoryLockedState() public {
         vm.expectRevert(LBFactory__FactoryLockIsAlreadyInTheSameState.selector);
-        factory.setFactoryLocked(true);
+        factory.setFactoryLockedState(true);
     }
 
     function testFeesAboveMaxBaseFactorReverts(uint8 baseFactorIncrement) public {
@@ -463,7 +463,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testQuoteAssets() public {
-        assertEq(factory.getQuoteAssetCount(), 4);
+        assertEq(factory.getNumberOfQuoteAssets(), 4);
         assertEq(address(factory.getQuoteAsset(0)), address(wavax));
         assertEq(address(factory.getQuoteAsset(1)), address(token6D));
         assertEq(address(factory.getQuoteAsset(2)), address(token12D));

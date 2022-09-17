@@ -200,7 +200,7 @@ contract LBRouter is ILBRouter {
         override
         returns (uint256[] memory depositIds, uint256[] memory liquidityMinted)
     {
-        ILBPair _LBPair = _getLBPairInfo(
+        ILBPair _LBPair = _getLBPairInformation(
             _liquidityParameters.tokenX,
             _liquidityParameters.tokenY,
             _liquidityParameters.binStep
@@ -224,7 +224,7 @@ contract LBRouter is ILBRouter {
         override
         returns (uint256[] memory depositIds, uint256[] memory liquidityMinted)
     {
-        ILBPair _LBPair = _getLBPairInfo(
+        ILBPair _LBPair = _getLBPairInformation(
             _liquidityParameters.tokenX,
             _liquidityParameters.tokenY,
             _liquidityParameters.binStep
@@ -272,7 +272,7 @@ contract LBRouter is ILBRouter {
         address _to,
         uint256 _deadline
     ) external override ensure(_deadline) returns (uint256 amountX, uint256 amountY) {
-        ILBPair _LBPair = _getLBPairInfo(_tokenX, _tokenY, _binStep);
+        ILBPair _LBPair = _getLBPairInformation(_tokenX, _tokenY, _binStep);
         if (_tokenX != _LBPair.tokenX()) {
             (_tokenX, _tokenY) = (_tokenY, _tokenX);
             (_amountXMin, _amountYMin) = (_amountYMin, _amountXMin);
@@ -304,7 +304,7 @@ contract LBRouter is ILBRouter {
         address payable _to,
         uint256 _deadline
     ) external override ensure(_deadline) returns (uint256 amountToken, uint256 amountAVAX) {
-        ILBPair _LBPair = _getLBPairInfo(_token, IERC20(wavax), _binStep);
+        ILBPair _LBPair = _getLBPairInformation(_token, IERC20(wavax), _binStep);
 
         bool _isAVAXTokenY = IERC20(wavax) == _LBPair.tokenY();
         {
@@ -901,14 +901,19 @@ contract LBRouter is ILBRouter {
     /// @param _tokenY The address of the tokenY
     /// @param _binStep The bin step of the LBPair
     /// @return The address of the LBPair
-    function _getLBPairInfo(
+    function _getLBPairInformation(
         IERC20 _tokenX,
         IERC20 _tokenY,
         uint256 _binStep
     ) private view returns (ILBPair) {
-        ILBFactory.LBPairInfo memory _LBPairInfo = factory.getLBPairInfo(_tokenX, _tokenY, _binStep);
-        if (address(_LBPairInfo.LBPair) == address(0)) revert LBRouter__PairNotCreated(_tokenX, _tokenY, _binStep);
-        return _LBPairInfo.LBPair;
+        ILBFactory.LBPairInformation memory _LBPairInformation = factory.getLBPairInformation(
+            _tokenX,
+            _tokenY,
+            _binStep
+        );
+        if (address(_LBPairInformation.LBPair) == address(0))
+            revert LBRouter__PairNotCreated(_tokenX, _tokenY, _binStep);
+        return _LBPairInformation.LBPair;
     }
 
     /// @notice Helper function to return the address of the pair (v1 or v2, according to `_binStep`)
@@ -925,7 +930,7 @@ contract LBRouter is ILBRouter {
         if (_binStep == 0) {
             _pair = oldFactory.getPair(address(_tokenX), address(_tokenY));
             if (_pair == address(0)) revert LBRouter__PairNotCreated(_tokenX, _tokenY, _binStep);
-        } else _pair = address(_getLBPairInfo(_tokenX, _tokenY, _binStep));
+        } else _pair = address(_getLBPairInformation(_tokenX, _tokenY, _binStep));
     }
 
     function _getPairs(uint256[] memory _pairBinSteps, IERC20[] memory _tokenPath)

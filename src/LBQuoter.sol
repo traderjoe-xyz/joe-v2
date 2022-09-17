@@ -72,7 +72,7 @@ contract LBQuoter {
             }
 
             // Fetch swaps for V2
-            ILBFactory.LBPairAvailable[] memory LBPairsAvailable = ILBFactory(factoryV2).getAvailableLBPairsBinStep(
+            ILBFactory.LBPairInformation[] memory LBPairsAvailable = ILBFactory(factoryV2).getAllLBPairs(
                 IERC20(_route[i]),
                 IERC20(_route[i + 1])
             );
@@ -143,7 +143,7 @@ contract LBQuoter {
             }
 
             // Fetch swaps for V2
-            ILBFactory.LBPairAvailable[] memory LBPairsAvailable = ILBFactory(factoryV2).getAvailableLBPairsBinStep(
+            ILBFactory.LBPairInformation[] memory LBPairsAvailable = ILBFactory(factoryV2).getAllLBPairs(
                 IERC20(_route[i - 1]),
                 IERC20(_route[i])
             );

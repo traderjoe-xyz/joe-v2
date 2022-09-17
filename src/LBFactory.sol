@@ -10,8 +10,10 @@ import "./interfaces/ILBFactory.sol";
 import "./libraries/PendingOwnable.sol";
 import "./libraries/Constants.sol";
 import "./libraries/Decoder.sol";
+import "./libraries/SafeCast.sol";
 
 contract LBFactory is PendingOwnable, ILBFactory {
+    using SafeCast for uint256;
     using Decoder for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -28,12 +30,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     uint256 public override flashLoanFee;
 
-    /// @notice Whether the createLBPair function is unlocked and can be called by anyone or only by owner
-    bool public override unlocked;
+    /// @notice Whether the createLBPair function is unlocked and can be called by anyone (true) or only by owner (false)
+    bool public override creationUnlocked;
 
     ILBPair[] public override allLBPairs;
 
-    mapping(IERC20 => mapping(IERC20 => mapping(uint256 => LBPairInfo))) private _LBPairsInfo;
+    mapping(IERC20 => mapping(IERC20 => mapping(uint256 => LBPairInformation))) private _LBPairsInfo;
 
     // Whether a preset was set or not, if the bit at `index` is 1, it means that the binStep `index` was set
     // The max binStep set is 247. We use this method instead of an array to keep it ordered and to reduce gas
@@ -59,13 +61,13 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /// @notice View function to return the number of LBPairs created
     /// @return The number of LBPair
-    function allPairsLength() external view override returns (uint256) {
+    function getNumberOfLBPairs() external view override returns (uint256) {
         return allLBPairs.length;
     }
 
     /// @notice View function to return the number of quote assets whitelisted
     /// @return The number of quote assets
-    function getQuoteAssetCount() external view override returns (uint256) {
+    function getNumberOfQuoteAssets() external view override returns (uint256) {
         return _quoteAssetWhitelist.length();
     }
 
@@ -83,18 +85,18 @@ contract LBFactory is PendingOwnable, ILBFactory {
         return _quoteAssetWhitelist.contains(address(_token));
     }
 
-    /// @notice Returns the LBPairInfo if it exists,
+    /// @notice Returns the LBPairInformation if it exists,
     /// if not, then the address 0 is returned. The order doesn't matter
     /// @param _tokenA The address of the first token of the pair
     /// @param _tokenB The address of the second token of the pair
     /// @param _binStep The bin step of the LBPair
-    /// @return The LBPairInfo
-    function getLBPairInfo(
+    /// @return The LBPairInformation
+    function getLBPairInformation(
         IERC20 _tokenA,
         IERC20 _tokenB,
         uint256 _binStep
-    ) external view override returns (LBPairInfo memory) {
-        return _getLBPairInfo(_tokenA, _tokenB, _binStep);
+    ) external view override returns (LBPairInformation memory) {
+        return _getLBPairInformation(_tokenA, _tokenB, _binStep);
     }
 
     /// @notice View function to return the different parameters of the preset
@@ -143,7 +145,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /// @notice View function to return the list of available binStep with a preset
     /// @return presetsBinStep The list of binStep
-    function getAvailablePresetsBinStep() external view override returns (uint256[] memory presetsBinStep) {
+    function getAllBinSteps() external view override returns (uint256[] memory presetsBinStep) {
         unchecked {
             bytes32 _avPresets = _availablePresets;
             uint256 _nbPresets = _avPresets.decode(type(uint8).max, 248);
@@ -162,15 +164,15 @@ contract LBFactory is PendingOwnable, ILBFactory {
         }
     }
 
-    /// @notice View function to return the list of available binStep with a preset
+    /// @notice View function to return all the LBPair of a pair of tokens
     /// @param _tokenX The first token of the pair
     /// @param _tokenY The second token of the pair
     /// @return LBPairsAvailable The list of available LBPairs
-    function getAvailableLBPairsBinStep(IERC20 _tokenX, IERC20 _tokenY)
+    function getAllLBPairs(IERC20 _tokenX, IERC20 _tokenY)
         external
         view
         override
-        returns (LBPairAvailable[] memory LBPairsAvailable)
+        returns (LBPairInformation[] memory LBPairsAvailable)
     {
         unchecked {
             (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);
@@ -179,18 +181,18 @@ contract LBFactory is PendingOwnable, ILBFactory {
             uint256 _nbAvailable = _avLBPairBinSteps.decode(type(uint8).max, 248);
 
             if (_nbAvailable > 0) {
-                LBPairsAvailable = new LBPairAvailable[](_nbAvailable);
+                LBPairsAvailable = new LBPairInformation[](_nbAvailable);
 
                 uint256 _index;
                 for (uint256 i = MIN_BIN_STEP; i <= MAX_BIN_STEP; ++i) {
                     if (_avLBPairBinSteps.decode(1, i) == 1) {
-                        LBPairInfo memory _LBPairInfo = _LBPairsInfo[_tokenA][_tokenB][i];
+                        LBPairInformation memory _LBPairInformation = _LBPairsInfo[_tokenA][_tokenB][i];
 
-                        LBPairsAvailable[_index] = LBPairAvailable({
-                            binStep: i,
-                            LBPair: _LBPairInfo.LBPair,
-                            createdByOwner: _LBPairInfo.createdByOwner,
-                            ignoredForRouting: _LBPairInfo.ignoredForRouting
+                        LBPairsAvailable[_index] = LBPairInformation({
+                            binStep: i.safe24(),
+                            LBPair: _LBPairInformation.LBPair,
+                            createdByOwner: _LBPairInformation.createdByOwner,
+                            ignoredForRouting: _LBPairInformation.ignoredForRouting
                         });
                         if (++_index == _nbAvailable) break;
                     }
@@ -228,7 +230,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 _binStep
     ) external override returns (ILBPair _LBPair) {
         address _owner = owner();
-        if (!unlocked && msg.sender != _owner) revert LBFactory__FunctionIsLockedForUsers(msg.sender);
+        if (!creationUnlocked && msg.sender != _owner) revert LBFactory__FunctionIsLockedForUsers(msg.sender);
 
         address _LBPairImplementation = LBPairImplementation;
 
@@ -258,7 +260,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         _LBPair.initialize(_tokenX, _tokenY, _activeId, uint16(_sampleLifetime), _preset);
 
-        _LBPairsInfo[_tokenA][_tokenB][_binStep] = LBPairInfo({
+        _LBPairsInfo[_tokenA][_tokenB][_binStep] = LBPairInformation({
+            binStep: _binStep,
             LBPair: _LBPair,
             createdByOwner: msg.sender == _owner,
             ignoredForRouting: false
@@ -307,12 +310,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
     ) external override onlyOwner {
         (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);
 
-        LBPairInfo memory _LBPairInfo = _LBPairsInfo[_tokenA][_tokenB][_binStep];
-        if (_LBPairInfo.ignoredForRouting == _ignored) revert LBFactory__LBPairIgnoredIsAlreadyInTheSameState();
+        LBPairInformation memory _LBPairInformation = _LBPairsInfo[_tokenA][_tokenB][_binStep];
+        if (address(_LBPairInformation.LBPair) == address(0)) revert LBFactory__AddressZero();
 
         _LBPairsInfo[_tokenA][_tokenB][_binStep].ignoredForRouting = _ignored;
 
-        emit LBPairIgnoredStateChanged(_LBPairInfo.LBPair, _ignored);
+        emit LBPairIgnoredStateChanged(_LBPairInformation.LBPair, _ignored);
     }
 
     /// @notice Sets the preset parameters of a bin step
@@ -379,6 +382,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
         );
     }
 
+    /// @notice Remove the preset linked to a binStep
+    /// @param _binStep The bin step to remove
     function removePreset(uint16 _binStep) external override onlyOwner {
         if (_presets[_binStep] == bytes32(0)) revert LBFactory__BinStepHasNoPreset(_binStep);
 
@@ -418,7 +423,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 _protocolShare,
         uint24 _maxVolatilityAccumulated
     ) external override onlyOwner {
-        ILBPair _LBPair = _getLBPairInfo(_tokenX, _tokenY, _binStep).LBPair;
+        ILBPair _LBPair = _getLBPairInformation(_tokenX, _tokenY, _binStep).LBPair;
 
         if (address(_LBPair) == address(0)) revert LBFactory__LBPairNotCreated(_tokenX, _tokenY, _binStep);
 
@@ -466,11 +471,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
         emit FlashLoanFeeSet(_oldFlashLoanFee, _flashLoanFee);
     }
 
-    /// @notice Function to lock the Factory and prevent anyone but the owner to create pairs.
-    /// @param _locked The new lock state
-    function setFactoryLocked(bool _locked) external override onlyOwner {
-        if (unlocked == !_locked) revert LBFactory__FactoryLockIsAlreadyInTheSameState();
-        unlocked = !_locked;
+    /// @notice Function to set the creation restriction of the Factory
+    /// @param _locked If the creation is restricted (true) or not (false)
+    function setFactoryLockedState(bool _locked) external override onlyOwner {
+        if (creationUnlocked != _locked) revert LBFactory__FactoryLockIsAlreadyInTheSameState();
+        creationUnlocked = !_locked;
         emit FactoryLockedStatusUpdated(_locked);
     }
 
@@ -569,17 +574,17 @@ contract LBFactory is PendingOwnable, ILBFactory {
             );
     }
 
-    /// @notice Returns the LBPairInfo if it exists,
+    /// @notice Returns the LBPairInformation if it exists,
     /// if not, then the address 0 is returned. The order doesn't matter
     /// @param _tokenA The address of the first token of the pair
     /// @param _tokenB The address of the second token of the pair
     /// @param _binStep The bin step of the LBPair
-    /// @return The LBPairInfo
-    function _getLBPairInfo(
+    /// @return The LBPairInformation
+    function _getLBPairInformation(
         IERC20 _tokenA,
         IERC20 _tokenB,
         uint256 _binStep
-    ) private view returns (LBPairInfo memory) {
+    ) private view returns (LBPairInformation memory) {
         (_tokenA, _tokenB) = _sortTokens(_tokenA, _tokenB);
         return _LBPairsInfo[_tokenA][_tokenB][_binStep];
     }

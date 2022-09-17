@@ -122,6 +122,7 @@ error PendingOwnable__NotOwner();
 error PendingOwnable__NotPendingOwner();
 error PendingOwnable__PendingOwnerAlreadySet();
 error PendingOwnable__NoPendingOwner();
+error PendingOwnable__AddressZero();
 
 /** ReentrancyGuard errors */
 

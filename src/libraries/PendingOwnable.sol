@@ -57,6 +57,7 @@ contract PendingOwnable is IPendingOwnable {
     /// @notice Sets the pending owner address. This address will be able to become
     /// the owner of this contract by calling {becomeOwner}
     function setPendingOwner(address pendingOwner_) public override onlyOwner {
+        if (pendingOwner_ == address(0)) revert PendingOwnable__AddressZero();
         if (_pendingOwner != address(0)) revert PendingOwnable__PendingOwnerAlreadySet();
         _setPendingOwner(pendingOwner_);
     }

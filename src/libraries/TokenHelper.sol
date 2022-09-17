@@ -12,7 +12,7 @@ error TokenHelper__TransferFailed(IERC20 token, address recipient, uint256 amoun
 /// contract returns false). Tokens that return no value (and instead revert or
 /// throw on failure) are also supported, non-reverting calls are assumed to be
 /// successful.
-/// To use this library you can add a `using SafeERC20 for IERC20;` statement to your contract,
+/// To use this library you can add a `using TokenHelper for IERC20;` statement to your contract,
 /// which allows you to call the safe operation as `token.safeTransfer(...)`
 library TokenHelper {
     /// @notice Transfers token only if the amount is greater than zero

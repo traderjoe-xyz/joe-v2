@@ -50,38 +50,36 @@ library FeeHelper {
     /// @param _fp The current fee parameters
     /// @param _activeId The current active id
     function updateVariableFeeParameters(FeeParameters memory _fp, uint256 _activeId) internal view {
-        unchecked {
-            uint256 _deltaT = block.timestamp - _fp.time;
+        uint256 _deltaT = block.timestamp - _fp.time;
 
-            if (_deltaT >= _fp.filterPeriod || _fp.time == 0) {
-                _fp.indexRef = uint24(_activeId);
-                if (_deltaT < _fp.decayPeriod) {
+        if (_deltaT >= _fp.filterPeriod || _fp.time == 0) {
+            _fp.indexRef = uint24(_activeId);
+            if (_deltaT < _fp.decayPeriod) {
+                unchecked {
+                    // This can't overflow as `reductionFactor <= BASIS_POINT_MAX`
                     _fp.volatilityReference = uint24(
-                        (_fp.reductionFactor * _fp.volatilityAccumulated) / Constants.BASIS_POINT_MAX
+                        (uint256(_fp.reductionFactor) * _fp.volatilityAccumulated) / Constants.BASIS_POINT_MAX
                     );
-                } else {
-                    _fp.volatilityReference = 0;
                 }
+            } else {
+                _fp.volatilityReference = 0;
             }
-
-            _fp.time = (block.timestamp).safe40();
-
-            updateVolatilityAccumulated(_fp, _activeId);
         }
+
+        _fp.time = (block.timestamp).safe40();
+
+        updateVolatilityAccumulated(_fp, _activeId);
     }
 
     /// @notice Update the volatility accumulated
     /// @param _fp The fee parameter
     /// @param _activeId The current active id
     function updateVolatilityAccumulated(FeeParameters memory _fp, uint256 _activeId) internal pure {
-        unchecked {
-            uint256 volatilityAccumulated = _fp.volatilityReference +
-                _activeId.absSub(_fp.indexRef) *
-                Constants.BASIS_POINT_MAX;
-            _fp.volatilityAccumulated = volatilityAccumulated > _fp.maxVolatilityAccumulated
-                ? _fp.maxVolatilityAccumulated
-                : uint16(volatilityAccumulated);
-        }
+        uint256 volatilityAccumulated = (_activeId.absSub(_fp.indexRef) * Constants.BASIS_POINT_MAX) +
+            _fp.volatilityReference;
+        _fp.volatilityAccumulated = volatilityAccumulated > _fp.maxVolatilityAccumulated
+            ? _fp.maxVolatilityAccumulated
+            : uint24(volatilityAccumulated);
     }
 
     /// @notice Returns the base fee added to a swap, with 18 decimals
@@ -95,15 +93,19 @@ library FeeHelper {
 
     /// @notice Returns the variable fee added to a swap, with 18 decimals
     /// @param _fp The current fee parameters
-    /// @return The variable fee with 18 decimals precision
-    function getVariableFee(FeeParameters memory _fp) internal pure returns (uint256) {
-        unchecked {
-            if (_fp.variableFeeControl == 0) return 0;
-
+    /// @return variableFee The variable fee with 18 decimals precision
+    function getVariableFee(FeeParameters memory _fp) internal pure returns (uint256 variableFee) {
+        if (_fp.variableFeeControl != 0) {
             // decimals(_fp.reductionFactor * (_fp.volatilityAccumulated * _fp.binStep)**2) = 4 + (4 + 4) * 2 - 2 = 18
-            return
-                (_fp.variableFeeControl *
-                    ((_fp.volatilityAccumulated * _fp.binStep) * (_fp.volatilityAccumulated * _fp.binStep))) / 100;
+            unchecked {
+                variableFee =
+                    (uint256(_fp.variableFeeControl) *
+                        _fp.volatilityAccumulated *
+                        _fp.binStep *
+                        _fp.volatilityAccumulated *
+                        _fp.binStep) /
+                    100;
+            }
         }
     }
 

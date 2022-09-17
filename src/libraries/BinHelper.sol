@@ -8,7 +8,7 @@ import "../LBErrors.sol";
 library BinHelper {
     using Math128x128 for uint256;
 
-    int256 private constant INT24_SHIFT = 2**23;
+    int256 private constant INT24_SHIFT = 1<<23;
 
     /// @notice Returns the id corresponding to the given price
     /// @dev The id may be inaccurate due to rounding issues, always trust getPriceFromId rather than

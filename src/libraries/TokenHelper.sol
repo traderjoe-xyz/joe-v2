@@ -17,6 +17,26 @@ error TokenHelper__TransferFailed(IERC20 token, address recipient, uint256 amoun
 library TokenHelper {
     /// @notice Transfers token only if the amount is greater than zero
     /// @param token The address of the token
+    /// @param owner The owner of the tokens
+    /// @param recipient The address of the recipient
+    /// @param amount The amount to send
+    function safeTransferFrom(
+        IERC20 token,
+        address owner,
+        address recipient,
+        uint256 amount
+    ) internal {
+        if (amount != 0) {
+            (bool success, bytes memory result) = address(token).call(
+                abi.encodeWithSelector(token.transferFrom.selector, owner, recipient, amount)
+            );
+
+            _catchTransferError(success, result);
+        }
+    }
+
+    /// @notice Transfers token only if the amount is greater than zero
+    /// @param token The address of the token
     /// @param recipient The address of the recipient
     /// @param amount The amount to send
     function safeTransfer(
@@ -28,12 +48,8 @@ library TokenHelper {
             (bool success, bytes memory result) = address(token).call(
                 abi.encodeWithSelector(token.transfer.selector, recipient, amount)
             );
-            // Look for revert reason and bubble it up if present
-            if (!(success && (result.length == 0 || abi.decode(result, (bool))))) {
-                assembly {
-                    revert(add(32, result), mload(result))
-                }
-            }
+
+            _catchTransferError(success, result);
         }
     }
 
@@ -52,5 +68,17 @@ library TokenHelper {
             _internalBalance = reserve + fees;
         }
         return token.balanceOf(address(this)) - _internalBalance;
+    }
+
+    /// @notice Private view function to catch the error and bubble it up if present
+    /// @param success Whether the transaction succeeded or not
+    /// @param result The result of the transaction
+    function _catchTransferError(bool success, bytes memory result) private view {
+        // Look for revert reason and bubble it up if present
+        if (!(success && (result.length == 0 || abi.decode(result, (bool))))) {
+            assembly {
+                revert(add(32, result), mload(result))
+            }
+        }
     }
 }

@@ -3,7 +3,6 @@
 pragma solidity ^0.8.0;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
-import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 
 import "./LBErrors.sol";
 import "./interfaces/ILBToken.sol";
@@ -11,12 +10,13 @@ import "./interfaces/IJoePair.sol";
 import "./interfaces/ILBRouter.sol";
 import "./libraries/BinHelper.sol";
 import "./libraries/FeeHelper.sol";
+import "./libraries/TokenHelper.sol";
 import "./libraries/Math512Bits.sol";
 import "./libraries/SwapHelper.sol";
 import "./libraries/Constants.sol";
 
 contract LBRouter is ILBRouter {
-    using SafeERC20 for IERC20;
+    using TokenHelper for IERC20;
     using FeeHelper for FeeHelper.FeeParameters;
     using Math512Bits for uint256;
     using SwapHelper for ILBPair.Bin;

@@ -209,21 +209,21 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     {
         uint256 _lookUpTimestamp = block.timestamp - _timeDelta;
 
-        unchecked {
-            (, , uint256 _oracleActiveSize, , uint256 _oracleId) = _getOracleParameters();
+        (, , uint256 _oracleActiveSize, , uint256 _oracleId) = _getOracleParameters();
 
-            uint256 timestamp;
-            (timestamp, cumulativeId, cumulativeVolatilityAccumulated, cumulativeBinCrossed) = _oracle.getSampleAt(
-                _oracleActiveSize,
-                _oracleId,
-                _lookUpTimestamp
-            );
+        uint256 timestamp;
+        (timestamp, cumulativeId, cumulativeVolatilityAccumulated, cumulativeBinCrossed) = _oracle.getSampleAt(
+            _oracleActiveSize,
+            _oracleId,
+            _lookUpTimestamp
+        );
 
-            if (timestamp < _lookUpTimestamp) {
-                FeeHelper.FeeParameters memory _fp = _feeParameters;
-                uint256 _activeId = _pairInformation.activeId;
-                _fp.updateVariableFeeParameters(_activeId);
+        if (timestamp < _lookUpTimestamp) {
+            FeeHelper.FeeParameters memory _fp = _feeParameters;
+            uint256 _activeId = _pairInformation.activeId;
+            _fp.updateVariableFeeParameters(_activeId);
 
+            unchecked {
                 uint256 _deltaT = _lookUpTimestamp - timestamp;
 
                 cumulativeId += _activeId * _deltaT;

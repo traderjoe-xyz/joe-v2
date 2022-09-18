@@ -651,6 +651,19 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
                 if (_bin.reserveX == 0 && _bin.reserveY == 0) _tree.removeFromTree(_id);
 
                 _bins[_id] = _bin;
+                {
+                    uint256 _reserveX = _bin.reserveX;
+                    uint256 _reserveY = _bin.reserveY;
+                    assembly {
+                        mstore(0, _id)
+                        mstore(32, _bins.slot)
+                        let slot := keccak256(0, 64)
+
+                        let reserves := add(shl(_OFFSET_BIN_RESERVE_Y, _reserveY), _reserveX)
+                        sstore(slot, reserves)
+                    }
+                }
+
                 _burn(address(this), _id, _amountToBurn);
 
                 emit LiquidityRemoved(msg.sender, _to, _id, _amountToBurn, _amountX, _amountY);

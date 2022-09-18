@@ -322,15 +322,15 @@ abstract contract TestHelper is Test {
             );
     }
 
-    function addAllAssetsToQuoteWhitelist(LBFactory factory) internal {
-        if (address(wavax) != address(0)) factory.addQuoteAsset(wavax);
-        if (address(usdc) != address(0)) factory.addQuoteAsset(usdc);
-        if (address(usdt) != address(0)) factory.addQuoteAsset(usdt);
-        if (address(taxToken) != address(0)) factory.addQuoteAsset(taxToken);
-        if (address(token6D) != address(0)) factory.addQuoteAsset(token6D);
-        if (address(token10D) != address(0)) factory.addQuoteAsset(token10D);
-        if (address(token12D) != address(0)) factory.addQuoteAsset(token12D);
-        if (address(token18D) != address(0)) factory.addQuoteAsset(token18D);
-        if (address(token24D) != address(0)) factory.addQuoteAsset(token24D);
+    function addAllAssetsToQuoteWhitelist(LBFactory _factory) internal {
+        if (address(wavax) != address(0)) _factory.addQuoteAsset(wavax);
+        if (address(usdc) != address(0)) _factory.addQuoteAsset(usdc);
+        if (address(usdt) != address(0)) _factory.addQuoteAsset(usdt);
+        if (address(taxToken) != address(0)) _factory.addQuoteAsset(taxToken);
+        if (address(token6D) != address(0)) _factory.addQuoteAsset(token6D);
+        if (address(token10D) != address(0)) _factory.addQuoteAsset(token10D);
+        if (address(token12D) != address(0)) _factory.addQuoteAsset(token12D);
+        if (address(token18D) != address(0)) _factory.addQuoteAsset(token18D);
+        if (address(token24D) != address(0)) _factory.addQuoteAsset(token24D);
     }
 }

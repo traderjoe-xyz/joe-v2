@@ -225,7 +225,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                 uint256 _deltaT = _lookUpTimestamp - timestamp;
 
                 cumulativeId += _activeId * _deltaT;
-                cumulativeVolatilityAccumulated += _fp.volatilityAccumulated * _deltaT;
+                cumulativeVolatilityAccumulated += uint256(_fp.volatilityAccumulated) * _deltaT;
             }
         }
     }

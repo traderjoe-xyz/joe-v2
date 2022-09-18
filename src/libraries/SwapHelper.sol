@@ -105,22 +105,22 @@ library SwapHelper {
         ILBPair.Bin memory bin,
         ILBPair.PairInformation memory pair,
         bool swapForY,
-        uint256 amountInToBin,
-        uint256 amountOutOfBin
+        uint112 amountInToBin,
+        uint112 amountOutOfBin
     ) internal pure {
         if (swapForY) {
-            bin.reserveX += uint112(amountInToBin);
-            unchecked {
-                bin.reserveY -= uint112(amountOutOfBin);
+            bin.reserveX += amountInToBin;
 
+            unchecked {
+                bin.reserveY -= amountOutOfBin;
                 pair.reserveX += uint136(amountInToBin);
                 pair.reserveY -= uint136(amountOutOfBin);
             }
         } else {
-            bin.reserveY += uint112(amountInToBin);
-            unchecked {
-                bin.reserveX -= uint112(amountOutOfBin);
+            bin.reserveY += amountInToBin;
 
+            unchecked {
+                bin.reserveX -= amountOutOfBin;
                 pair.reserveX -= uint136(amountOutOfBin);
                 pair.reserveY += uint136(amountInToBin);
             }

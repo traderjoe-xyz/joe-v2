@@ -28,7 +28,7 @@ library Oracle {
     /// @return cumulativeVolatilityAccumulated The weighted average cumulative volatility accumulated
     /// @return cumulativeBinCrossed The weighted average cumulative bin crossed
     function getSampleAt(
-        bytes32[65_536] storage _oracle,
+        bytes32[65_535] storage _oracle,
         uint256 _activeSize,
         uint256 _activeId,
         uint256 _lookUpTimestamp
@@ -101,7 +101,7 @@ library Oracle {
     /// @param _binCrossed The bin crossed during the latest swap
     /// @return updatedIndex The oracle updated index, it is either the same as before, or the next one
     function update(
-        bytes32[65_536] storage _oracle,
+        bytes32[65_535] storage _oracle,
         uint256 _size,
         uint256 _sampleLifetime,
         uint256 _lastTimestamp,
@@ -124,7 +124,7 @@ library Oracle {
     /// @notice Initialize the sample
     /// @param _oracle The oracle storage pointer
     /// @param _index The index to initialize
-    function initialize(bytes32[65_536] storage _oracle, uint256 _index) internal {
+    function initialize(bytes32[65_535] storage _oracle, uint256 _index) internal {
         _oracle[_index] |= bytes32(uint256(1));
     }
 
@@ -140,7 +140,7 @@ library Oracle {
     /// @return prev The last sample with a timestamp lower than the lookUpTimestamp
     /// @return next The first sample with a timestamp greater than the lookUpTimestamp
     function binarySearch(
-        bytes32[65_536] storage _oracle,
+        bytes32[65_535] storage _oracle,
         uint256 _index,
         uint256 _lookUpTimestamp,
         uint256 _activeSize

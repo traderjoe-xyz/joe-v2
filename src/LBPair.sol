@@ -36,7 +36,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     using SwapHelper for Bin;
     using Decoder for bytes32;
     using FeeDistributionHelper for FeeHelper.FeesDistribution;
-    using Oracle for bytes32[65_536];
+    using Oracle for bytes32[65_535];
 
     /** Modifiers **/
 
@@ -69,7 +69,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @dev Mapping from account to id to user's accruedDebt.
     mapping(address => mapping(uint256 => Debts)) private _accruedDebts;
     /// @dev Oracle array
-    bytes32[65_536] private _oracle;
+    bytes32[65_535] private _oracle;
 
     /** OffSets */
 
@@ -284,6 +284,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             for (uint256 i; i < _ids.length; ++i) {
                 uint256 _id = _ids[i];
 
+                // Ensures uniqueness of ids
                 if (_lastId >= _id && i != 0) revert LBPair__OnlyStrictlyIncreasingId();
 
                 uint256 _balance = balanceOf(_account, _id);
@@ -291,7 +292,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                 if (_balance != 0) {
                     Bin memory _bin = _bins[_id];
 
-                    (uint256 _amountX, uint256 _amountY) = _collectFees(_bin, _account, _id, _balance);
+                    (uint256 _amountX, uint256 _amountY) = _getPendingFees(_bin, _account, _id, _balance);
 
                     amountX += _amountX;
                     amountY += _amountY;
@@ -385,25 +386,26 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
         if (_amountOut == 0) revert LBPair__BrokenSwapSafetyCheck(); // Safety check
 
-        unchecked {
-            // We use oracleSize so it can start filling empty slot that were added recently
-            uint256 _updatedOracleId = _oracle.update(
-                _pair.oracleSize,
-                _pair.oracleSampleLifetime,
-                _pair.oracleLastTimestamp,
-                _pair.oracleId,
-                _pair.activeId,
-                _fp.volatilityAccumulated,
-                _startId.absSub(_pair.activeId)
-            );
+        // We use oracleSize so it can start filling empty slot that were added recently
+        uint256 _updatedOracleId = _oracle.update(
+            _pair.oracleSize,
+            _pair.oracleSampleLifetime,
+            _pair.oracleLastTimestamp,
+            _pair.oracleId,
+            _pair.activeId,
+            _fp.volatilityAccumulated,
+            _startId.absSub(_pair.activeId)
+        );
 
-            // We update the oracleId and lastTimestamp if the sample write on another slot
-            if (_updatedOracleId != _pair.oracleId || _pair.oracleLastTimestamp == 0) {
-                _pair.oracleId = uint24(_updatedOracleId);
-                _pair.oracleLastTimestamp = uint40(block.timestamp);
+        // We update the oracleId and lastTimestamp if the sample write on another slot
+        if (_updatedOracleId != _pair.oracleId || _pair.oracleLastTimestamp == 0) {
+            // Can't overflow as the updatedOracleId < oracleSize
+            _pair.oracleId = uint16(_updatedOracleId);
+            _pair.oracleLastTimestamp = uint40(block.timestamp);
 
-                // We increase the activeSize if the updated sample is written in a new slot
-                if (_updatedOracleId == _pair.oracleActiveSize) _pair.oracleActiveSize += 1;
+            // We increase the activeSize if the updated sample is written in a new slot
+            unchecked {
+                if (_updatedOracleId == _pair.oracleActiveSize) ++_pair.oracleActiveSize;
             }
         }
 
@@ -708,7 +710,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                 if (_balance != 0) {
                     Bin memory _bin = _bins[_id];
 
-                    (uint256 _amountX, uint256 _amountY) = _collectFees(_bin, _account, _id, _balance);
+                    (uint256 _amountX, uint256 _amountY) = _getPendingFees(_bin, _account, _id, _balance);
                     _updateUserDebts(_bin, _account, _id, _balance);
 
                     amountX += _amountX;
@@ -832,14 +834,14 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
     /** Private Functions **/
 
-    /// @notice View function to collect fees of a given bin to memory
+    /// @notice View function to get the pending fees of an account on a given bin
     /// @param _bin  The bin where the user is collecting fees
     /// @param _account The address of the user
     /// @param _id The id where the user is collecting fees
     /// @param _balance The previous balance of the user
-    /// @return amountX The amount of tokenX collected
-    /// @return amountY The amount of tokenY collected
-    function _collectFees(
+    /// @return amountX The amount of tokenX pending for the account
+    /// @return amountY The amount of tokenY pending for the account
+    function _getPendingFees(
         Bin memory _bin,
         address _account,
         uint256 _id,
@@ -888,7 +890,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             uint256 amountX = _unclaimedData.decode(type(uint128).max, 0);
             uint256 amountY = _unclaimedData.decode(type(uint128).max, 128);
 
-            (uint256 _amountX, uint256 _amountY) = _collectFees(_bin, _user, _id, _previousBalance);
+            (uint256 _amountX, uint256 _amountY) = _getPendingFees(_bin, _user, _id, _previousBalance);
             _updateUserDebts(_bin, _user, _id, _newBalance);
 
             (amountX += _amountX).safe128();

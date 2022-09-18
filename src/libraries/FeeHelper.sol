@@ -96,15 +96,12 @@ library FeeHelper {
     /// @return variableFee The variable fee with 18 decimals precision
     function getVariableFee(FeeParameters memory _fp) internal pure returns (uint256 variableFee) {
         if (_fp.variableFeeControl != 0) {
-            // decimals(_fp.reductionFactor * (_fp.volatilityAccumulated * _fp.binStep)**2) = 4 + (4 + 4) * 2 - 2 = 18
+            // Can't overflow as the max value is `max(uint24) * (max(uint24) * max(uint16)) ** 2 < max(uint104)`
+            // It returns 18 decimals as:
+            // decimals(variableFeeControl * (volatilityAccumulated * binStep)**2 / 100) = 4 + (4 + 4) * 2 - 2 = 18
             unchecked {
-                variableFee =
-                    (uint256(_fp.variableFeeControl) *
-                        _fp.volatilityAccumulated *
-                        _fp.binStep *
-                        _fp.volatilityAccumulated *
-                        _fp.binStep) /
-                    100;
+                uint256 _prod = uint256(_fp.volatilityAccumulated) * _fp.binStep;
+                variableFee = (_prod * _prod * _fp.variableFeeControl) / 100;
             }
         }
     }

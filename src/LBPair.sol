@@ -12,7 +12,7 @@ import "./libraries/SafeCast.sol";
 import "./libraries/SafeMath.sol";
 import "./libraries/TreeMath.sol";
 import "./libraries/Constants.sol";
-import "./libraries/ReentrancyGuard.sol";
+import "./libraries/ReentrancyGuardUpgradeable.sol";
 import "./libraries/Oracle.sol";
 import "./libraries/Decoder.sol";
 import "./libraries/SwapHelper.sol";
@@ -24,7 +24,7 @@ import "./interfaces/ILBPair.sol";
 /// @title Liquidity Bin Exchange
 /// @author Trader Joe
 /// @notice Implementation of pair
-contract LBPair is LBToken, ReentrancyGuard, ILBPair {
+contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /** Libraries **/
 
     using Math512Bits for uint256;
@@ -112,6 +112,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
     ) external override onlyFactory {
         if (address(_tokenX) == address(0) || address(_tokenY) == address(0)) revert LBPair__AddressZero();
         if (address(tokenX) != address(0)) revert LBPair__AlreadyInitialized();
+
+        __ReentrancyGuard_init();
 
         tokenX = _tokenX;
         tokenY = _tokenY;

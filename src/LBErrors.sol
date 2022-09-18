@@ -126,9 +126,10 @@ error PendingOwnable__PendingOwnerAlreadySet();
 error PendingOwnable__NoPendingOwner();
 error PendingOwnable__AddressZero();
 
-/** ReentrancyGuard errors */
+/** ReentrancyGuardUpgradeable errors */
 
-error ReentrancyGuard__ReentrantCall();
+error ReentrancyGuardUpgradeable__ReentrantCall();
+error ReentrancyGuardUpgradeable__AlreadyInitialized();
 
 /** SafeCast errors */
 

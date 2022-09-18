@@ -7,7 +7,7 @@ import "../LBErrors.sol";
 /// @title Reentrancy Guard
 /// @author Trader Joe
 /// @notice Contract module that helps prevent reentrant calls to a function
-abstract contract ReentrancyGuard {
+abstract contract ReentrancyGuardUpgradeable {
     // Booleans are more expensive than uint256 or any type that takes up a full
     // word because each write operation emits an extra SLOAD to first read the
     // slot's contents, replace the bits taken up by the boolean, and then write
@@ -24,7 +24,13 @@ abstract contract ReentrancyGuard {
 
     uint256 private _status;
 
-    constructor() {
+    function __ReentrancyGuard_init() internal {
+        __ReentrancyGuard_init_unchained();
+    }
+
+    function __ReentrancyGuard_init_unchained() internal {
+        if (_status != 0) revert ReentrancyGuardUpgradeable__AlreadyInitialized();
+
         _status = _NOT_ENTERED;
     }
 
@@ -35,7 +41,7 @@ abstract contract ReentrancyGuard {
     /// `private` function that does the actual work
     modifier nonReentrant() {
         // On the first call to nonReentrant, _notEntered will be true
-        if (_status == _ENTERED) revert ReentrancyGuard__ReentrantCall();
+        if (_status != _NOT_ENTERED) revert ReentrancyGuardUpgradeable__ReentrantCall();
 
         // Any calls to nonReentrant after this point will fail
         _status = _ENTERED;

@@ -197,7 +197,7 @@ interface ILBPair {
 
     function feeParameters() external view returns (FeeHelper.FeeParameters memory);
 
-    function findFirstNonEmptyBinId(uint24 id, bool sentTokenY) external view returns (uint256);
+    function findFirstNonEmptyBinId(uint24 id, bool sentTokenY) external view returns (uint24);
 
     function getBin(uint24 id) external view returns (uint256 reserveX, uint256 reserveY);
 

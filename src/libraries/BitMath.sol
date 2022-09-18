@@ -22,7 +22,7 @@ library BitMath {
     /// @param _integer The integer
     /// @param _isMostSignificant Whether we want the most (true) or the least (false) significant bit
     /// @return The index of the most (or least) significant bit
-    function significantBit(uint256 _integer, bool _isMostSignificant) internal pure returns (uint256) {
+    function significantBit(uint256 _integer, bool _isMostSignificant) internal pure returns (uint8) {
         if (_isMostSignificant) {
             return mostSignificantBit(_integer);
         } else return leastSignificantBit(_integer);
@@ -63,7 +63,7 @@ library BitMath {
     /// @notice Returns the index of the most significant bit of x
     /// @param x The value as a uint256
     /// @return msb The index of the most significant bit of x
-    function mostSignificantBit(uint256 x) internal pure returns (uint256 msb) {
+    function mostSignificantBit(uint256 x) internal pure returns (uint8 msb) {
         unchecked {
             if (x >= 1 << 128) {
                 x >>= 128;
@@ -102,7 +102,7 @@ library BitMath {
     /// @notice Returns the index of the least significant bit of x
     /// @param x The value as a uint256
     /// @return lsb The index of the least significant bit of x
-    function leastSignificantBit(uint256 x) internal pure returns (uint256 lsb) {
+    function leastSignificantBit(uint256 x) internal pure returns (uint8 lsb) {
         unchecked {
             if (x << 128 != 0) {
                 x <<= 128;

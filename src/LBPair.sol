@@ -70,8 +70,6 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     mapping(address => mapping(uint256 => Debts)) private _accruedDebts;
     /// @dev Oracle array
     bytes32[65_536] private _oracle;
-    /// @dev Equivalent to type(uint112).max, that we can't use because this constant is used in an assembly block
-    uint256 private constant _MASK_112 = 2**112 - 1;
 
     /** OffSets */
 
@@ -242,7 +240,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @param _id The bin id
     /// @param _swapForY Whether you've swapping token X for token Y (true) or token Y for token X (false)
     /// @return The id of the non empty bin
-    function findFirstNonEmptyBinId(uint24 _id, bool _swapForY) external view override returns (uint256) {
+    function findFirstNonEmptyBinId(uint24 _id, bool _swapForY) external view override returns (uint24) {
         return _tree.findFirstBin(_id, _swapForY);
     }
 
@@ -252,13 +250,14 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @return reserveY The reserve of tokenY of the bin
     function getBin(uint24 _id) external view override returns (uint256 reserveX, uint256 reserveY) {
         bytes32 _data;
+        uint256 _mask112 = type(uint112).max;
         // low level read of mapping to only load 1 storage slot
         assembly {
             mstore(0, _id)
             mstore(32, _bins.slot)
             _data := sload(keccak256(0, 64))
 
-            reserveX := and(_data, _MASK_112)
+            reserveX := and(_data, _mask112)
             reserveY := shr(_OFFSET_BIN_RESERVE_Y, _data)
         }
     }
@@ -378,7 +377,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             }
 
             if (_amountIn != 0) {
-                _pair.activeId = uint24(_tree.findFirstBin(_pair.activeId, _swapForY));
+                _pair.activeId = _tree.findFirstBin(_pair.activeId, _swapForY);
             } else {
                 break;
             }

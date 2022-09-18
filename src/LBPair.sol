@@ -249,17 +249,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @return reserveX The reserve of tokenX of the bin
     /// @return reserveY The reserve of tokenY of the bin
     function getBin(uint24 _id) external view override returns (uint256 reserveX, uint256 reserveY) {
-        bytes32 _data;
-        uint256 _mask112 = type(uint112).max;
-        // low level read of mapping to only load 1 storage slot
-        assembly {
-            mstore(0, _id)
-            mstore(32, _bins.slot)
-            _data := sload(keccak256(0, 64))
-
-            reserveX := and(_data, _mask112)
-            reserveY := shr(_OFFSET_BIN_RESERVE_Y, _data)
-        }
+        return _getBin(_id);
     }
 
     /// @notice View function to get the pending fees of a user
@@ -401,9 +391,10 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         if (_updatedOracleId != _pair.oracleId || _pair.oracleLastTimestamp == 0) {
             // Can't overflow as the updatedOracleId < oracleSize
             _pair.oracleId = uint16(_updatedOracleId);
-            _pair.oracleLastTimestamp = uint40(block.timestamp);
+            _pair.oracleLastTimestamp = (block.timestamp).safe40();
 
             // We increase the activeSize if the updated sample is written in a new slot
+            // Can't overflow as _updatedOracleId < maxSize = 2**16-1
             unchecked {
                 if (_updatedOracleId == _pair.oracleActiveSize) ++_pair.oracleActiveSize;
             }
@@ -487,21 +478,21 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             uint256[] memory liquidityMinted
         )
     {
+        if (_ids.length == 0 || _ids.length != _distributionX.length || _ids.length != _distributionY.length)
+            revert LBPair__WrongLengths();
+
+        PairInformation memory _pair = _pairInformation;
+
+        FeeHelper.FeeParameters memory _fp = _feeParameters;
+
+        MintInfo memory _mintInfo;
+
+        (_mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total)).safe128();
+        (_mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total)).safe128();
+
+        liquidityMinted = new uint256[](_ids.length);
+
         unchecked {
-            if (_ids.length == 0 || _ids.length != _distributionX.length || _ids.length != _distributionY.length)
-                revert LBPair__WrongLengths();
-
-            PairInformation memory _pair = _pairInformation;
-
-            FeeHelper.FeeParameters memory _fp = _feeParameters;
-
-            MintInfo memory _mintInfo;
-
-            (_mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total)).safe128();
-            (_mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total)).safe128();
-
-            liquidityMinted = new uint256[](_ids.length);
-
             for (uint256 i; i < _ids.length; ++i) {
                 _mintInfo.id = _ids[i].safe24();
                 Bin memory _bin = _bins[_mintInfo.id];
@@ -530,8 +521,10 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                         uint256 _userL = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) +
                             _mintInfo.amountY;
 
-                        uint256 _receivedX = (_userL * (_bin.reserveX + _mintInfo.amountX)) / (_totalSupply + _userL);
-                        uint256 _receivedY = (_userL * (_bin.reserveY + _mintInfo.amountY)) / (_totalSupply + _userL);
+                        uint256 _receivedX = (_userL * (uint256(_bin.reserveX) + _mintInfo.amountX)) /
+                            (_totalSupply + _userL);
+                        uint256 _receivedY = (_userL * (uint256(_bin.reserveY) + _mintInfo.amountY)) /
+                            (_totalSupply + _userL);
 
                         _fp.updateVariableFeeParameters(_mintInfo.id);
 
@@ -568,8 +561,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
                 liquidityMinted[i] = _liquidity;
 
-                _bin.reserveX = (_bin.reserveX + _mintInfo.amountX).safe112();
-                _bin.reserveY = (_bin.reserveY + _mintInfo.amountY).safe112();
+                _bin.reserveX = (_mintInfo.amountX + _bin.reserveX).safe112();
+                _bin.reserveY = (_mintInfo.amountY + _bin.reserveY).safe112();
 
                 _pair.reserveX += uint136(_mintInfo.amountX);
                 _pair.reserveY += uint136(_mintInfo.amountY);
@@ -604,9 +597,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             if (_mintInfo.amountYIn > _amountAddedPlusFee) {
                 tokenY.safeTransfer(_to, _mintInfo.amountYIn - _amountAddedPlusFee);
             }
-
-            return (_mintInfo.amountXAddedToPair, _mintInfo.amountYAddedToPair, liquidityMinted);
         }
+
+        return (_mintInfo.amountXAddedToPair, _mintInfo.amountYAddedToPair, liquidityMinted);
     }
 
     /// @notice Performs a low level remove, this needs to be called from a contract which performs important safety checks
@@ -620,63 +613,60 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         uint256[] memory _amounts,
         address _to
     ) external override nonReentrant returns (uint256 amountX, uint256 amountY) {
+        (uint256 _pairReserveX, uint256 _pairReserveY, uint256 _activeId) = _getReservesAndId();
         unchecked {
-            PairInformation memory _pair = _pairInformation;
-
             for (uint256 i; i < _ids.length; ++i) {
-                uint256 _id = _ids[i].safe24();
+                uint24 _id = _ids[i].safe24();
                 uint256 _amountToBurn = _amounts[i];
 
                 if (_amountToBurn == 0) revert LBPair__InsufficientLiquidityBurned(_id);
 
-                Bin memory _bin = _bins[_id];
+                (uint256 _reserveX, uint256 _reserveY) = _getBin(_id);
 
                 uint256 _totalSupply = totalSupply(_id);
 
                 uint256 _amountX;
                 uint256 _amountY;
 
-                if (_id <= _pair.activeId) {
-                    _amountY = _amountToBurn.mulDivRoundDown(_bin.reserveY, _totalSupply);
+                if (_id <= _activeId) {
+                    _amountY = _amountToBurn.mulDivRoundDown(_reserveY, _totalSupply);
 
                     amountY += _amountY;
-                    _bin.reserveY -= uint112(_amountY);
-                    _pair.reserveY -= uint136(_amountY);
+                    _reserveY -= _amountY;
+                    _pairReserveY -= _amountY;
                 }
-                if (_id >= _pair.activeId) {
-                    _amountX = _amountToBurn.mulDivRoundDown(_bin.reserveX, _totalSupply);
+                if (_id >= _activeId) {
+                    _amountX = _amountToBurn.mulDivRoundDown(_reserveX, _totalSupply);
 
                     amountX += _amountX;
-                    _bin.reserveX -= uint112(_amountX);
-                    _pair.reserveX -= uint136(_amountX);
+                    _reserveX -= _amountX;
+                    _pairReserveX -= _amountX;
                 }
 
-                if (_bin.reserveX == 0 && _bin.reserveY == 0) _tree.removeFromTree(_id);
+                if (_reserveX == 0 && _reserveY == 0) _tree.removeFromTree(_id);
 
-                _bins[_id] = _bin;
-                {
-                    uint256 _reserveX = _bin.reserveX;
-                    uint256 _reserveY = _bin.reserveY;
-                    assembly {
-                        mstore(0, _id)
-                        mstore(32, _bins.slot)
-                        let slot := keccak256(0, 64)
+                // Optimized `_bins[_id] = _bin` to do only 1 sstore
+                assembly {
+                    mstore(0, _id)
+                    mstore(32, _bins.slot)
+                    let slot := keccak256(0, 64)
 
-                        let reserves := add(shl(_OFFSET_BIN_RESERVE_Y, _reserveY), _reserveX)
-                        sstore(slot, reserves)
-                    }
+                    let reserves := add(shl(_OFFSET_BIN_RESERVE_Y, _reserveY), _reserveX)
+                    sstore(slot, reserves)
                 }
 
                 _burn(address(this), _id, _amountToBurn);
 
                 emit LiquidityRemoved(msg.sender, _to, _id, _amountToBurn, _amountX, _amountY);
             }
-
-            _pairInformation = _pair;
-
-            tokenX.safeTransfer(_to, amountX);
-            tokenY.safeTransfer(_to, amountY);
         }
+
+        // Optimization to do only 2 sstore
+        _pairInformation.reserveX = uint136(_pairReserveX);
+        _pairInformation.reserveY = uint136(_pairReserveY);
+
+        tokenX.safeTransfer(_to, amountX);
+        tokenY.safeTransfer(_to, amountY);
     }
 
     /// @notice Increase the length of the oracle
@@ -988,6 +978,24 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         reserveX = _slot.decode(_mask136, _OFFSET_PAIR_RESERVE_X);
     }
 
+    /// @notice Internal view function to get the bin at `id`
+    /// @param _id The bin id
+    /// @return reserveX The reserve of tokenX of the bin
+    /// @return reserveY The reserve of tokenY of the bin
+    function _getBin(uint24 _id) internal view returns (uint256 reserveX, uint256 reserveY) {
+        bytes32 _data;
+        uint256 _mask112 = type(uint112).max;
+        // low level read of mapping to only load 1 storage slot
+        assembly {
+            mstore(0, _id)
+            mstore(32, _bins.slot)
+            _data := sload(keccak256(0, 64))
+
+            reserveX := and(_data, _mask112)
+            reserveY := shr(_OFFSET_BIN_RESERVE_Y, _data)
+        }
+    }
+
     /// @notice Internal view function to get the global fees information, the total fees and those for protocol
     /// @dev The fees for users are `total - protocol`
     /// @return feesXTotal The total fees of asset X
@@ -1018,6 +1026,10 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         feesYProtocol = _slotY.decode(type(uint128).max, _OFFSET_PROTOCOL_FEE);
     }
 
+    /// @notice Internal pure function to return the flashloan fee amount
+    /// @param _amount The amount to flashloan
+    /// @param _fee the fee percentage, in basis point
+    /// @return The fee amount
     function _getFlashLoanFee(uint256 _amount, uint256 _fee) internal pure returns (uint256) {
         return (_amount * _fee) / Constants.PRECISION;
     }

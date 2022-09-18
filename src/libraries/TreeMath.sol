@@ -24,6 +24,7 @@ library TreeMath {
         unchecked {
             uint256 current;
 
+            // Optimization of `_binId % 256`
             uint256 bit = _binId & 255;
             _binId >>= 8;
 
@@ -32,10 +33,11 @@ library TreeMath {
                 current = _tree[2][_binId];
                 bit = current.closestBit(uint8(bit), _rightSide);
                 if (bit != type(uint256).max) {
-                    return _binId * 256 + bit;
+                    return (_binId << 8) + bit;
                 }
             }
 
+            // Optimization of `_binId % 256`
             bit = _binId & 255;
             _binId >>= 8;
 
@@ -44,10 +46,10 @@ library TreeMath {
                 current = _tree[1][_binId];
                 bit = current.closestBit(uint8(bit), _rightSide);
                 if (bit != type(uint256).max) {
-                    _binId = 256 * _binId + bit;
+                    _binId = (_binId << 8) + bit;
                     current = _tree[2][_binId];
                     bit = current.significantBit(_rightSide);
-                    return _binId * 256 + bit;
+                    return (_binId << 8) + bit;
                 }
             }
 
@@ -56,10 +58,10 @@ library TreeMath {
             _binId = current.closestBit(uint8(_binId), _rightSide);
             if (_binId == type(uint256).max) revert TreeMath__ErrorDepthSearch();
             current = _tree[1][_binId];
-            _binId = 256 * _binId + current.significantBit(_rightSide);
+            _binId = (_binId << 8) + current.significantBit(_rightSide);
             current = _tree[2][_binId];
             bit = current.significantBit(_rightSide);
-            return _binId * 256 + bit;
+            return (_binId << 8) + bit;
         }
     }
 
@@ -77,13 +79,16 @@ library TreeMath {
         unchecked {
             // removes 1 at the right indices
             uint256 _idDepth2 = _id >> 8;
+            // Optimization of `_tree[2][_idDepth2] & (type(uint256).max - (1 << (_id & 255)))`
             uint256 _newLeafValue = _tree[2][_idDepth2] & (type(uint256).max ^ (1 << (_id & 255)));
             _tree[2][_idDepth2] = _newLeafValue;
             if (_newLeafValue == 0) {
                 uint256 _idDepth1 = _id >> 16;
+                // Optimization of `_tree[1][_idDepth1] & (type(uint256).max - (1 << (_idDepth2 & 255)))`
                 _newLeafValue = _tree[1][_idDepth1] & (type(uint256).max ^ (1 << (_idDepth2 & 255)));
                 _tree[1][_idDepth1] = _newLeafValue;
                 if (_newLeafValue == 0) {
+                    // Optimization of `type(uint256).max - (1 << _idDepth1)`
                     _tree[0][0] &= type(uint256).max ^ (1 << _idDepth1);
                 }
             }

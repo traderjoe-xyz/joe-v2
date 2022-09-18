@@ -41,7 +41,7 @@ interface ILBPair {
         uint16 oracleSize;
         uint16 oracleActiveSize;
         uint40 oracleLastTimestamp;
-        uint24 oracleId;
+        uint16 oracleId;
         FeeHelper.FeesDistribution feesX;
         FeeHelper.FeesDistribution feesY;
     }

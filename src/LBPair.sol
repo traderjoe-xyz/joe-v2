@@ -341,7 +341,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
                 _bin.updateFees(_swapForY ? _pair.feesX : _pair.feesY, _fees, _swapForY, totalSupply(_pair.activeId));
 
-                _bin.updateReserves(_pair, _swapForY, _amountInToBin.safe112(), _amountOutOfBin);
+                _bin.updateReserves(_pair, _swapForY, _amountInToBin.safe112(), _amountOutOfBin.safe112());
 
                 _amountIn -= _amountInToBin + _fees.total;
                 _amountOut += _amountOutOfBin;

@@ -124,7 +124,7 @@ contract LBRouter is ILBRouter {
             }
 
             if (_amountOut != 0) {
-                _activeId = uint24(_LBPair.findFirstNonEmptyBinId(uint24(_activeId), _swapForY));
+                _activeId = _LBPair.findFirstNonEmptyBinId(uint24(_activeId), _swapForY);
             } else {
                 break;
             }

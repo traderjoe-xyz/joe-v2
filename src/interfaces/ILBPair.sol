@@ -197,7 +197,7 @@ interface ILBPair {
 
     function feeParameters() external view returns (FeeHelper.FeeParameters memory);
 
-    function findFirstNonEmptyBinId(uint24 id, bool sentTokenY) external view returns (uint24);
+    function findFirstNonEmptyBinId(uint24 id_, bool sentTokenY) external view returns (uint24 id);
 
     function getBin(uint24 id) external view returns (uint256 reserveX, uint256 reserveY);
 
@@ -206,7 +206,7 @@ interface ILBPair {
         view
         returns (uint256 amountX, uint256 amountY);
 
-    function swap(bool sentTokenY, address to) external returns (uint256, uint256);
+    function swap(bool sentTokenY, address to) external returns (uint256 amountXOut, uint256 amountYOut);
 
     function flashLoan(
         address to,
@@ -232,7 +232,7 @@ interface ILBPair {
         uint256[] memory ids,
         uint256[] memory amounts,
         address to
-    ) external returns (uint256, uint256);
+    ) external returns (uint256 amountX, uint256 amountY);
 
     function increaseOracleLength(uint16 newSize) external;
 

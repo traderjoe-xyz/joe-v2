@@ -551,11 +551,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
         {
             uint256 _baseFee = (uint256(_baseFactor) * _binStep) * 1e10;
 
-            // decimals((_variableFeeControl * (_maxVolatilityAccumulated * _binStep)**2)) = 4 + (4 + 4) * 2 - 2 = 18
-            // The result should use 18 decimals
-            uint256 _maxVariableFee = (_variableFeeControl *
-                (uint256(_maxVolatilityAccumulated) * _binStep) *
-                (uint256(_maxVolatilityAccumulated) * _binStep)) / 100;
+            // Can't overflow as the max value is `max(uint24) * (max(uint24) * max(uint16)) ** 2 < max(uint104)`
+            // It returns 18 decimals as:
+            // decimals(variableFeeControl * (volatilityAccumulated * binStep)**2 / 100) = 4 + (4 + 4) * 2 - 2 = 18
+            uint256 _prod = uint256(_maxVolatilityAccumulated) * _binStep;
+            uint256 _maxVariableFee = (_prod * _prod * _variableFeeControl) / 100;
+
             if (_baseFee + _maxVariableFee > MAX_FEE)
                 revert LBFactory__FeesAboveMax(_baseFee + _maxVariableFee, MAX_FEE);
         }

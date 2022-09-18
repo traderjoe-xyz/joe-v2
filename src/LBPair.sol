@@ -257,8 +257,8 @@ contract LBPair is LBToken, ReentrancyGuard, ILBPair {
             _data := sload(keccak256(0, 64))
 
             reserveX := and(_data, _MASK_112)
+            reserveY := shr(_OFFSET_BIN_RESERVE_Y, _data)
         }
-        reserveY = _data.decode(_MASK_112, _OFFSET_BIN_RESERVE_Y);
     }
 
     /// @notice View function to get the pending fees of a user

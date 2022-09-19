@@ -211,4 +211,31 @@ contract LiquidityBinPairOracleTest is TestHelper {
             (cId, cAcc, cBin) = (cumulativeId, cumulativeVolatilityAccumulated, cumulativeBinCrossed);
         }
     }
+
+    function testTLowerThanTimestamp() public {
+        uint256 amountYInLiquidity = 100e18;
+        uint24 startId = ID_ONE;
+
+        FeeHelper.FeeParameters memory _feeParameters = pair.feeParameters();
+        addLiquidity(amountYInLiquidity, startId, 51, 5);
+
+        uint256 amountYInForSwap = router.getSwapIn(pair, amountYInLiquidity / 4, true);
+        token6D.mint(address(pair), amountYInForSwap);
+        vm.prank(ALICE);
+        pair.swap(true, ALICE);
+
+        (uint256 cumulativeId, uint256 cumulativeVolatilityAccumulated, uint256 cumulativeBinCrossed) = pair
+            .getOracleSampleFrom(0);
+
+        vm.warp(block.timestamp + 90);
+        (
+            uint256 cumulativeIdAfter,
+            uint256 cumulativeVolatilityAccumulatedAfter,
+            uint256 cumulativeBinCrossedAfter
+        ) = pair.getOracleSampleFrom(0);
+
+        assertEq(cumulativeId * block.timestamp, cumulativeIdAfter);
+        assertLt(cumulativeVolatilityAccumulated, cumulativeVolatilityAccumulatedAfter);
+        assertEq(cumulativeBinCrossed, cumulativeBinCrossedAfter);
+    }
 }

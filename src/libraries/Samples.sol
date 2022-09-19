@@ -10,8 +10,8 @@ library Samples {
     using Decoder for bytes32;
 
     ///  [ cumulativeBinCrossed | cumulativeVolatilityAccumulated | cumulativeId | timestamp | initialized ]
-    ///  [        uint87        |    uint64    |    uint64    |   uint40  |    bool1    ]
-    /// MSB                                                                            LSB
+    ///  [        uint87        |              uint64             |    uint64    |   uint40  |    bool1    ]
+    /// MSB                                                                                               LSB
 
     uint256 private constant _OFFSET_INITIALIZED = 0;
     uint256 private constant _MASK_INITIALIZED = 1;

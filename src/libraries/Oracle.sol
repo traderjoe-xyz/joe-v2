@@ -82,12 +82,12 @@ library Oracle {
                     return (_lookUpTimestamp, cumulativeId, cumulativeVolatilityAccumulated, cumulativeBinCrossed);
                 }
             }
-
-            timestamp = _sample.timestamp();
-            cumulativeId = _sample.cumulativeId();
-            cumulativeVolatilityAccumulated = _sample.cumulativeVolatilityAccumulated();
-            cumulativeBinCrossed = _sample.cumulativeBinCrossed();
         }
+
+        timestamp = _sample.timestamp();
+        cumulativeId = _sample.cumulativeId();
+        cumulativeVolatilityAccumulated = _sample.cumulativeVolatilityAccumulated();
+        cumulativeBinCrossed = _sample.cumulativeBinCrossed();
     }
 
     /// @notice Function to update a sample

@@ -146,4 +146,57 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         assertEq(token6D.balanceOf(BOB), amount0In);
         assertEq(token18D.balanceOf(BOB), amount1In);
     }
+
+    function testFlawedCompositionFactor() public {
+        uint24 _numberBins = 5;
+        uint24 startId = ID_ONE;
+        uint256 amount0In = 3e12;
+        uint256 amount1In = 3e12;
+        pair = createLBPairDefaultFees(token6D, token18D);
+
+        addLiquidity(amount1In, startId, _numberBins, 0);
+
+        (uint256 reserveX, uint256 reserveY, uint256 activeId) = pair.getReservesAndId();
+
+        uint256[] memory _ids = new uint256[](3);
+        _ids[0] = activeId - 1;
+        _ids[1] = activeId;
+        _ids[2] = activeId + 1;
+        uint256[] memory _distributionX = new uint256[](3);
+        _distributionX[0] = Constants.PRECISION / 3;
+        _distributionX[1] = Constants.PRECISION / 3;
+        _distributionX[2] = Constants.PRECISION / 3;
+        uint256[] memory _distributionY = new uint256[](3);
+
+        token6D.mint(address(pair), amount0In);
+        token18D.mint(address(pair), amount1In);
+
+        vm.expectRevert(abi.encodeWithSelector(LBPair__CompositionFactorFlawed.selector, _ids[0]));
+        pair.mint(_ids, _distributionX, _distributionY, ALICE);
+
+        _distributionX[2] = 0;
+        _distributionX[1] = 0;
+        _distributionX[0] = 0;
+        _distributionY[0] = Constants.PRECISION / 3;
+        _distributionY[1] = Constants.PRECISION / 3;
+        _distributionY[2] = Constants.PRECISION / 3;
+
+        vm.expectRevert(abi.encodeWithSelector(LBPair__CompositionFactorFlawed.selector, _ids[2]));
+        pair.mint(_ids, _distributionX, _distributionY, ALICE);
+
+        uint256[] memory _ids2 = new uint256[](1);
+        uint256[] memory _distributionX2 = new uint256[](1);
+        uint256[] memory _distributionY2 = new uint256[](1);
+
+        _ids2[0] = activeId - 1;
+        _distributionX2[0] = Constants.PRECISION;
+        vm.expectRevert(abi.encodeWithSelector(LBPair__CompositionFactorFlawed.selector, _ids2[0]));
+        pair.mint(_ids2, _distributionX2, _distributionY2, ALICE);
+
+        _ids2[0] = activeId + 1;
+        _distributionY2[0] = Constants.PRECISION;
+        _distributionX2[0] = 0;
+        vm.expectRevert(abi.encodeWithSelector(LBPair__CompositionFactorFlawed.selector, _ids2[0]));
+        pair.mint(_ids2, _distributionX2, _distributionY2, ALICE);
+    }
 }

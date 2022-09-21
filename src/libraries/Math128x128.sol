@@ -90,6 +90,8 @@ library Math128x128 {
         bool invert;
         uint256 absY;
 
+        if (y == 0) return Constants.SCALE;
+
         assembly {
             absY := y
             if slt(absY, 0) {

@@ -209,10 +209,10 @@ contract LiquidityBinRouterTest is TestHelper {
         pairVersions[0] = DEFAULT_BIN_STEP;
 
         uint256 amountOut = router.getSwapOut(taxTokenPair, amountIn, true) / 2;
-        vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 1, amountOut));
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 2, amountOut + 1));
         router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
             amountIn,
-            amountOut + 1,
+            amountOut + 2,
             pairVersions,
             tokenList,
             DEV,
@@ -278,10 +278,10 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 amountOut = router.getSwapOut(taxTokenPair, amountIn, true) / 2;
 
         uint256 devBalanceBefore = ALICE.balance;
-        vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 1, amountOut));
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 2, amountOut + 1));
         router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
             amountIn,
-            amountOut + 1,
+            amountOut + 2,
             pairVersions,
             tokenList,
             ALICE,
@@ -354,7 +354,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
         (IERC20[] memory tokenList, uint256[] memory pairVersions) = _buildComplexSwapRoute();
         vm.expectRevert(
-            abi.encodeWithSelector(LBRouter__MaxAmountInExceeded.selector, 100500938281494149, 1005009382814941410)
+            abi.encodeWithSelector(LBRouter__MaxAmountInExceeded.selector, 100500938281494149, 1005009382814941406)
         );
         router.swapTokensForExactTokens(amountOut, 100500938281494149, pairVersions, tokenList, DEV, block.timestamp);
         router.swapTokensForExactTokens(amountOut, 100e18, pairVersions, tokenList, DEV, block.timestamp);

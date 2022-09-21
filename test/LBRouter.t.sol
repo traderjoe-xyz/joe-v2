@@ -272,7 +272,7 @@ contract LiquidityBinRouterTest is TestHelper {
         router.addLiquidity(_liquidityParameters);
     }
 
-    function testGetIdFromPrice() public {
+    function testGetPriceFromId() public {
         pair = createLBPairDefaultFees(token6D, token18D);
         uint256 price;
 
@@ -286,7 +286,7 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(price, 23749384962529715407923990466761537977856189636583);
     }
 
-    function testGetPriceFromId() public {
+    function testGetIdFromPrice() public {
         pair = createLBPairDefaultFees(token6D, token18D);
         uint24 id;
 

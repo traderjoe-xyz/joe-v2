@@ -277,7 +277,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 price;
 
         price = router.getPriceFromId(pair, ID_ONE);
-        assertEq(price, 340282366920938463463374607431768211455);
+        assertEq(price, 340282366920938463463374607431768211456);
 
         price = router.getPriceFromId(pair, ID_ONE - 10000);
         assertEq(price, 4875582648561453899431769403);

@@ -977,15 +977,14 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     {
         uint256 _mask24 = type(uint24).max;
         uint256 _mask136 = type(uint136).max;
-        bytes32 _slot;
         assembly {
-            _slot := sload(add(_pairInformation.slot, 1))
-            reserveY := and(_slot, _mask136)
+            let slot := sload(add(_pairInformation.slot, 1))
+            reserveY := and(slot, _mask136)
 
-            _slot := sload(_pairInformation.slot)
-            activeId := and(_slot, _mask24)
+            slot := sload(_pairInformation.slot)
+            activeId := and(slot, _mask24)
+            reserveX := and(shr(_OFFSET_PAIR_RESERVE_X, slot), _mask136)
         }
-        reserveX = _slot.decode(_mask136, _OFFSET_PAIR_RESERVE_X);
     }
 
     /// @notice Internal view function to get the bin at `id`

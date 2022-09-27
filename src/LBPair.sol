@@ -564,11 +564,13 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
                 liquidityMinted[i] = _liquidity;
 
+                // The addition can't overflow as the amounts are checked to be uint128 and the reserves are uint112
                 _bin.reserveX = (_mintInfo.amountX + _bin.reserveX).safe112();
                 _bin.reserveY = (_mintInfo.amountY + _bin.reserveY).safe112();
 
-                _pair.reserveX += uint136(_mintInfo.amountX);
-                _pair.reserveY += uint136(_mintInfo.amountY);
+                // The addition or the cast can't overflow as it would have reverted during the L568 and L569 if amounts were greater than uint112
+                _pair.reserveX += uint112(_mintInfo.amountX);
+                _pair.reserveY += uint112(_mintInfo.amountY);
 
                 _mintInfo.amountXAddedToPair += _mintInfo.amountX;
                 _mintInfo.amountYAddedToPair += _mintInfo.amountY;

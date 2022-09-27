@@ -34,9 +34,11 @@ library Math128x128 {
         // If we use an offset of 128 bits, y would need 129 bits and y**2 would would overflow and we would have to
         // use mulDiv, by reducing x to 129.127-binary fixed-point number we assert that y will use 128 bits, and we
         // can use the regular multiplication
-        x >>= 1;
 
+        if (x == 1) return 0;
         if (x == 0) revert Math128x128__LogUnderflow();
+
+        x >>= 1;
 
         unchecked {
             // This works because log2(x) = -log2(1/x).

@@ -521,10 +521,13 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                         uint256 _userL = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) +
                             _mintInfo.amountY;
 
-                        uint256 _receivedX = (_userL * (uint256(_bin.reserveX) + _mintInfo.amountX)) /
-                            (_totalSupply + _userL);
-                        uint256 _receivedY = (_userL * (uint256(_bin.reserveY) + _mintInfo.amountY)) /
-                            (_totalSupply + _userL);
+                        uint256 _receivedX;
+                        uint256 _receivedY;
+                        {
+                            uint256 _supply = _totalSupply + _userL;
+                            _receivedX = (_userL * (uint256(_bin.reserveX) + _mintInfo.amountX)) / _supply;
+                            _receivedY = (_userL * (uint256(_bin.reserveY) + _mintInfo.amountY)) / _supply;
+                        }
 
                         _fp.updateVariableFeeParameters(_mintInfo.id);
 

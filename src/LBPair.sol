@@ -391,7 +391,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         if (_updatedOracleId != _pair.oracleId || _pair.oracleLastTimestamp == 0) {
             // Can't overflow as the updatedOracleId < oracleSize
             _pair.oracleId = uint16(_updatedOracleId);
-            _pair.oracleLastTimestamp = (block.timestamp).safe40();
+            _pair.oracleLastTimestamp = block.timestamp.safe40();
 
             // We increase the activeSize if the updated sample is written in a new slot
             // Can't overflow as _updatedOracleId < maxSize = 2**16-1
@@ -487,8 +487,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
         MintInfo memory _mintInfo;
 
-        (_mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total)).safe128();
-        (_mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total)).safe128();
+        _mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total).safe128();
+        _mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total).safe128();
 
         liquidityMinted = new uint256[](_ids.length);
 

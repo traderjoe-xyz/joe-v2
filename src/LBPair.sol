@@ -738,6 +738,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
             if (msg.sender != _feeRecipient) revert LBPair__OnlyFeeRecipient(_feeRecipient, msg.sender);
 
+            // The fees returned can't be greater than uint128, so the assembly blocks are safe
             (
                 uint256 _feesXTotal,
                 uint256 _feesYTotal,

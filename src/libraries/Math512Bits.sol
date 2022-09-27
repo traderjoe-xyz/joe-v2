@@ -40,7 +40,7 @@ library Math512Bits {
     /// @dev Credit to Remco Bloemen under MIT license https://xn--2-umb.com/21/muldiv
     ///
     /// Requirements:
-    /// - The offset needs to be strictly lower than 512
+    /// - The offset needs to be strictly lower than 256
     /// - The result must fit within uint256
     ///
     /// Caveats:
@@ -55,7 +55,7 @@ library Math512Bits {
         uint256 y,
         uint256 offset
     ) internal pure returns (uint256 result) {
-        if (offset > 511) revert Math512Bits__OffsetOverflows(offset);
+        if (offset > 255) revert Math512Bits__OffsetOverflows(offset);
 
         (uint256 prod0, uint256 prod1) = _getMulProds(x, y);
 
@@ -65,8 +65,7 @@ library Math512Bits {
             if (prod1 >= 1 << offset) revert Math512Bits__MulShiftOverflow(prod1, offset);
 
             unchecked {
-                if (offset < 256) result += prod1 << (256 - offset);
-                else result == prod1 >> (offset - 256);
+                result += prod1 << (256 - offset);
             }
         }
     }
@@ -77,7 +76,7 @@ library Math512Bits {
     /// @dev Credit to Remco Bloemen under MIT license https://xn--2-umb.com/21/muldiv
     ///
     /// Requirements:
-    /// - The offset needs to be strictly lower than 512
+    /// - The offset needs to be strictly lower than 256
     /// - The result must fit within uint256
     ///
     /// Caveats:
@@ -119,19 +118,13 @@ library Math512Bits {
         uint256 offset,
         uint256 denominator
     ) internal pure returns (uint256 result) {
+        if (offset > 255) revert Math512Bits__OffsetOverflows(offset);
         uint256 prod0;
         uint256 prod1;
-        if (offset <= 256) {
-            prod0 = x << offset; // Least significant 256 bits of the product
-            unchecked {
-                prod1 = x >> (256 - offset); // Most significant 256 bits of the product
-            }
-        } else {
-            if (offset + x.mostSignificantBit() > 511) revert Math512Bits__OffsetOverflows(offset);
-            // Least significant 256 bits of the product are 0
-            unchecked {
-                prod1 = x << (offset - 256); // Most significant 256 bits of the product
-            }
+
+        prod0 = x << offset; // Least significant 256 bits of the product
+        unchecked {
+            prod1 = x >> (256 - offset); // Most significant 256 bits of the product
         }
 
         return _getEndOfDivRoundDown(x, 1 << offset, denominator, prod0, prod1);
@@ -143,7 +136,7 @@ library Math512Bits {
     /// @dev Credit to Remco Bloemen under MIT license https://xn--2-umb.com/21/muldiv
     ///
     /// Requirements:
-    /// - The offset needs to be strictly lower than 512 - mostSignificantBit(x)
+    /// - The offset needs to be strictly lower than 256
     /// - The result must fit within uint256
     ///
     /// Caveats:

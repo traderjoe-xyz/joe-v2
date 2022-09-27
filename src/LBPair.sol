@@ -749,6 +749,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                 amountX = _feesXProtocol - 1;
                 _feesXTotal -= amountX;
 
+                // Assembly block that does:
+                // _pairInformation.feesX = FeeHelper.FeesDistribution({total: _feesXTotal, protocol: 1});
                 assembly {
                     let _slotX := add(_pairInformation.slot, 2)
 
@@ -762,6 +764,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                 amountY = _feesYProtocol - 1;
                 _feesYTotal -= amountY;
 
+                // Assembly block that does:
+                // _pairInformation.feesY = FeeHelper.FeesDistribution({total: _feesYTotal, protocol: 1});
                 assembly {
                     let _slotY := add(_pairInformation.slot, 3)
 

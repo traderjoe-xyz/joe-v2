@@ -97,7 +97,7 @@ library Math128x128 {
         assembly {
             absY := y
             if slt(absY, 0) {
-                absY := add(not(absY), 1)
+                absY := sub(0, absY)
                 invert := not(invert)
             }
         }

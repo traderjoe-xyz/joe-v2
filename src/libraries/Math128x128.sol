@@ -111,83 +111,83 @@ library Math128x128 {
                     invert := iszero(invert)
                 }
 
-                if gt(and(absY, 0x1), 0) {
+                if and(absY, 0x1) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x2), 0) {
+                if and(absY, 0x2) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x4), 0) {
+                if and(absY, 0x4) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x8), 0) {
+                if and(absY, 0x8) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x10), 0) {
+                if and(absY, 0x10) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x20), 0) {
+                if and(absY, 0x20) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x40), 0) {
+                if and(absY, 0x40) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x80), 0) {
+                if and(absY, 0x80) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x100), 0) {
+                if and(absY, 0x100) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x200), 0) {
+                if and(absY, 0x200) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x400), 0) {
+                if and(absY, 0x400) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x800), 0) {
+                if and(absY, 0x800) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x1000), 0) {
+                if and(absY, 0x1000) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x2000), 0) {
+                if and(absY, 0x2000) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x4000), 0) {
+                if and(absY, 0x4000) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x8000), 0) {
+                if and(absY, 0x8000) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x10000), 0) {
+                if and(absY, 0x10000) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x20000), 0) {
+                if and(absY, 0x20000) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x40000), 0) {
+                if and(absY, 0x40000) {
                     result := shr(128, mul(result, pow))
                 }
                 pow := shr(128, mul(pow, pow))
-                if gt(and(absY, 0x80000), 0) {
+                if and(absY, 0x80000) {
                     result := shr(128, mul(result, pow))
                 }
             }

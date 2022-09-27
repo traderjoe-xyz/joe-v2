@@ -98,7 +98,7 @@ library Math128x128 {
             absY := y
             if slt(absY, 0) {
                 absY := sub(0, absY)
-                invert := not(invert)
+                invert := iszero(invert)
             }
         }
 
@@ -108,7 +108,7 @@ library Math128x128 {
                 let pow := x
                 if gt(x, 0xffffffffffffffffffffffffffffffff) {
                     pow := div(not(0), pow)
-                    invert := not(invert)
+                    invert := iszero(invert)
                 }
 
                 if gt(and(absY, 0x1), 0) {

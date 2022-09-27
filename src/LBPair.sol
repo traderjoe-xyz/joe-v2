@@ -999,6 +999,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             reserveX := and(_data, _mask112)
             reserveY := shr(_OFFSET_BIN_RESERVE_Y, _data)
         }
+
+        return (reserveX.safe112(), reserveY.safe112());
     }
 
     /// @notice Internal view function to get the global fees information, the total fees and those for protocol

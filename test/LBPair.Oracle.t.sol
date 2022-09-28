@@ -222,7 +222,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
         FeeHelper.FeeParameters memory _feeParameters = pair.feeParameters();
         addLiquidity(amountYInLiquidity, startId, 51, 5);
 
-        uint256 amountYInForSwap = router.getSwapIn(pair, amountYInLiquidity / 4, true);
+        (uint256 amountYInForSwap, ) = router.getSwapIn(pair, amountYInLiquidity / 4, true);
         token6D.mint(address(pair), amountYInForSwap);
         vm.prank(ALICE);
         pair.swap(true, ALICE);

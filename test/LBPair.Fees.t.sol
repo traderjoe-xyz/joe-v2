@@ -30,7 +30,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         addLiquidity(amountYInLiquidity, startId, 5, 0);
 
-        uint256 amountYInForSwap = router.getSwapIn(pair, amountXOutForSwap, false);
+        (uint256 amountYInForSwap, ) = router.getSwapIn(pair, amountXOutForSwap, false);
 
         token18D.mint(address(pair), amountYInForSwap);
         vm.prank(ALICE);
@@ -68,7 +68,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         addLiquidity(amountYInLiquidity, startId, 5, 0);
 
-        uint256 amountXInForSwap = router.getSwapIn(pair, amountYOutForSwap, true);
+        (uint256 amountXInForSwap, ) = router.getSwapIn(pair, amountYOutForSwap, true);
 
         token6D.mint(address(pair), amountXInForSwap);
         vm.prank(ALICE);
@@ -157,7 +157,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         addLiquidity(amountYInLiquidity, startId, 5, 0);
 
-        uint256 amountYInForSwap = router.getSwapIn(pair, amountXOutForSwap, false);
+        (uint256 amountYInForSwap, ) = router.getSwapIn(pair, amountXOutForSwap, false);
 
         token18D.mint(address(pair), amountYInForSwap);
         vm.prank(ALICE);
@@ -179,7 +179,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         assertEq(token18D.balanceOf(protocolFeesReceiver) - balanceBefore, feesYProtocol - 1);
 
         //Claiming rewards for X
-        uint256 amountXInForSwap = router.getSwapIn(pair, amountXOutForSwap, true);
+        (uint256 amountXInForSwap, ) = router.getSwapIn(pair, amountXOutForSwap, true);
 
         token6D.mint(address(pair), amountXInForSwap);
         vm.prank(BOB);
@@ -196,14 +196,14 @@ contract LiquidityBinPairFeesTest is TestHelper {
         FeeHelper.FeeParameters memory _feeParameters = pair.feeParameters();
         addLiquidity(amountYInLiquidity, startId, 51, 5);
 
-        uint256 amountYInForSwap = router.getSwapIn(pair, amountYInLiquidity / 4, true);
+        (uint256 amountYInForSwap, ) = router.getSwapIn(pair, amountYInLiquidity / 4, true);
         token6D.mint(address(pair), amountYInForSwap);
         vm.prank(ALICE);
         pair.swap(true, ALICE);
 
         vm.warp(block.timestamp + 90);
 
-        amountYInForSwap = router.getSwapIn(pair, amountYInLiquidity / 4, true);
+        (amountYInForSwap, ) = router.getSwapIn(pair, amountYInLiquidity / 4, true);
         token6D.mint(address(pair), amountYInForSwap);
         vm.prank(ALICE);
         pair.swap(true, ALICE);

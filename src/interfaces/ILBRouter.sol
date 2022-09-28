@@ -54,13 +54,13 @@ interface ILBRouter {
         ILBPair LBPair,
         uint256 amountOut,
         bool swapForY
-    ) external view returns (uint256 amountIn);
+    ) external view returns (uint256 amountIn, uint256 feesIn);
 
     function getSwapOut(
         ILBPair LBPair,
         uint256 amountIn,
         bool swapForY
-    ) external view returns (uint256 amountOut);
+    ) external view returns (uint256 amountOut, uint256 feesIn);
 
     function createLBPair(
         IERC20 tokenX,

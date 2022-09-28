@@ -86,7 +86,7 @@ contract LBRouter is ILBRouter {
         ILBPair _LBPair,
         uint256 _amountOut,
         bool _swapForY
-    ) public view override returns (uint256 amountIn) {
+    ) public view override returns (uint256 amountIn, uint256 feesIn) {
         (uint256 _pairReserveX, uint256 _pairReserveY, uint256 _activeId) = _LBPair.getReservesAndId();
 
         if (_amountOut == 0 || (_swapForY ? _amountOut > _pairReserveY : _amountOut > _pairReserveX))
@@ -116,10 +116,12 @@ contract LBRouter is ILBRouter {
 
                 // We update the fee, but we don't store the new volatility reference, volatility accumulated and indexRef to not penalize traders
                 _fp.updateVolatilityAccumulated(_activeId);
-                _amountInWithFees = _amountInToBin + _fp.getFeeAmount(_amountInToBin);
+                uint256 _fee = _fp.getFeeAmount(_amountInToBin);
+                _amountInWithFees = _amountInToBin + _fee;
 
                 if (_amountInWithFees + _reserve > type(uint112).max) revert LBRouter__SwapOverflows(_activeId);
                 amountIn += _amountInWithFees;
+                feesIn += _fee;
                 _amountOut -= _amountOutOfBin;
             }
 
@@ -141,7 +143,7 @@ contract LBRouter is ILBRouter {
         ILBPair _LBPair,
         uint256 _amountIn,
         bool _swapForY
-    ) external view override returns (uint256 _amountOut) {
+    ) external view override returns (uint256 _amountOut, uint256 feesIn) {
         (, , uint256 _activeId) = _LBPair.getReservesAndId();
 
         FeeHelper.FeeParameters memory _fp = _LBPair.feeParameters();
@@ -163,6 +165,7 @@ contract LBRouter is ILBRouter {
                 if (_amountInToBin > type(uint112).max) revert LBRouter__BinReserveOverflows(_activeId);
 
                 _amountIn -= _amountInToBin + _fees.total;
+                feesIn += _fees.total;
                 _amountOut += _amountOutOfBin;
             }
 
@@ -713,7 +716,7 @@ contract LBRouter is ILBRouter {
                 // Legacy uniswap way of rounding
                 amountsIn[i - 1] = (_reserveIn * amountOut_ * 1_000) / (_reserveOut - amountOut_ * 997) + 1;
             } else {
-                amountsIn[i - 1] = getSwapIn(ILBPair(_pair), amountsIn[i], ILBPair(_pair).tokenX() == _token);
+                (amountsIn[i - 1], ) = getSwapIn(ILBPair(_pair), amountsIn[i], ILBPair(_pair).tokenX() == _token);
             }
         }
     }

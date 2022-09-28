@@ -91,7 +91,7 @@ contract LBQuoter {
                                 quote.amounts[i],
                                 address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i + 1]
                             )
-                        returns (uint256 swapAmountOut) {
+                        returns (uint256 swapAmountOut, uint256) {
                             if (swapAmountOut > quote.amounts[i + 1]) {
                                 quote.amounts[i + 1] = swapAmountOut;
                                 quote.pairs[i] = address(LBPairsAvailable[j].LBPair);
@@ -164,7 +164,7 @@ contract LBQuoter {
                                 quote.amounts[i],
                                 address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i]
                             )
-                        returns (uint256 swapAmountIn) {
+                        returns (uint256 swapAmountIn, uint256) {
                             if (
                                 swapAmountIn != 0 && (swapAmountIn < quote.amounts[i - 1] || quote.amounts[i - 1] == 0)
                             ) {

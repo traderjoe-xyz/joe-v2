@@ -53,10 +53,11 @@ contract LBQuoter {
         uint256 swapLength = _route.length - 1;
         quote.pairs = new address[](swapLength);
         quote.binSteps = new uint256[](swapLength);
-        quote.virtualAmountsWithoutSlippage = new uint256[](swapLength);
         quote.amounts = new uint256[](_route.length);
+        quote.virtualAmountsWithoutSlippage = new uint256[](_route.length);
 
         quote.amounts[0] = _amountIn;
+        quote.virtualAmountsWithoutSlippage[0] = _amountIn;
 
         for (uint256 i; i < swapLength; i++) {
             // Fetch swap for V1
@@ -67,7 +68,11 @@ contract LBQuoter {
 
                 if (reserveIn > 0 && reserveOut > 0) {
                     quote.amounts[i + 1] = JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut);
-                    quote.virtualAmountsWithoutSlippage[i] = JoeLibrary.quote(quote.amounts[i], reserveIn, reserveOut);
+                    quote.virtualAmountsWithoutSlippage[i + 1] = JoeLibrary.quote(
+                        quote.virtualAmountsWithoutSlippage[i],
+                        reserveIn,
+                        reserveOut
+                    );
                 }
             }
 
@@ -94,8 +99,9 @@ contract LBQuoter {
 
                                 // Getting current price
                                 (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
-                                quote.virtualAmountsWithoutSlippage[i] =
-                                    (BinHelper.getPriceFromId(activeId, quote.binSteps[i]) * quote.amounts[i]) >>
+                                quote.virtualAmountsWithoutSlippage[i + 1] =
+                                    (BinHelper.getPriceFromId(activeId, quote.binSteps[i]) *
+                                        quote.virtualAmountsWithoutSlippage[i]) >>
                                     128;
                             }
                         } catch {}
@@ -121,10 +127,11 @@ contract LBQuoter {
         uint256 swapLength = _route.length - 1;
         quote.pairs = new address[](swapLength);
         quote.binSteps = new uint256[](swapLength);
-        quote.virtualAmountsWithoutSlippage = new uint256[](swapLength);
         quote.amounts = new uint256[](_route.length);
+        quote.virtualAmountsWithoutSlippage = new uint256[](_route.length);
 
         quote.amounts[swapLength] = _amountOut;
+        quote.virtualAmountsWithoutSlippage[swapLength] = _amountOut;
 
         for (uint256 i = swapLength; i > 0; i--) {
             // Fetch swap for V1
@@ -135,9 +142,9 @@ contract LBQuoter {
                 if (reserveIn > 0 && reserveOut > quote.amounts[i]) {
                     quote.amounts[i - 1] = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut);
                     quote.virtualAmountsWithoutSlippage[i - 1] = JoeLibrary.quote(
-                        quote.amounts[i],
-                        reserveIn,
-                        reserveOut
+                        quote.virtualAmountsWithoutSlippage[i],
+                        reserveOut,
+                        reserveIn
                     );
                 }
             }
@@ -168,7 +175,8 @@ contract LBQuoter {
                                 // Getting current price
                                 (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
                                 quote.virtualAmountsWithoutSlippage[i - 1] =
-                                    (BinHelper.getPriceFromId(activeId, quote.binSteps[i - 1]) * quote.amounts[i]) >>
+                                    (BinHelper.getPriceFromId(activeId, quote.binSteps[i - 1]) *
+                                        quote.virtualAmountsWithoutSlippage[i]) >>
                                     128;
                             }
                         } catch {}

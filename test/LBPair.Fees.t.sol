@@ -30,13 +30,14 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         addLiquidity(amountYInLiquidity, startId, 5, 0);
 
-        (uint256 amountYInForSwap, ) = router.getSwapIn(pair, amountXOutForSwap, false);
+        (uint256 amountYInForSwap, uint256 feesFromGetSwapIn) = router.getSwapIn(pair, amountXOutForSwap, false);
 
         token18D.mint(address(pair), amountYInForSwap);
         vm.prank(ALICE);
         pair.swap(false, DEV);
 
         (, uint256 feesYTotal, , uint256 feesYProtocol) = pair.getGlobalFees();
+        assertEq(feesYTotal, feesFromGetSwapIn);
 
         uint256 accumulatedYFees = feesYTotal - feesYProtocol;
 
@@ -68,14 +69,14 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         addLiquidity(amountYInLiquidity, startId, 5, 0);
 
-        (uint256 amountXInForSwap, ) = router.getSwapIn(pair, amountYOutForSwap, true);
+        (uint256 amountXInForSwap, uint256 feesFromGetSwapIn) = router.getSwapIn(pair, amountYOutForSwap, true);
 
         token6D.mint(address(pair), amountXInForSwap);
         vm.prank(ALICE);
         pair.swap(true, DEV);
 
         (uint256 feesXTotal, , uint256 feesXProtocol, ) = pair.getGlobalFees();
-
+        assertEq(feesXTotal, feesFromGetSwapIn);
         uint256 accumulatedXFees = feesXTotal - feesXProtocol;
 
         uint256[] memory orderedIds = new uint256[](5);
@@ -157,14 +158,14 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         addLiquidity(amountYInLiquidity, startId, 5, 0);
 
-        (uint256 amountYInForSwap, ) = router.getSwapIn(pair, amountXOutForSwap, false);
+        (uint256 amountYInForSwap, uint256 feesFromGetSwapIn) = router.getSwapIn(pair, amountXOutForSwap, false);
 
         token18D.mint(address(pair), amountYInForSwap);
         vm.prank(ALICE);
         pair.swap(false, DEV);
 
         (, uint256 feesYTotal, , uint256 feesYProtocol) = pair.getGlobalFees();
-
+        assertEq(feesFromGetSwapIn, feesYTotal);
         assertGt(feesYTotal, 0);
 
         address protocolFeesReceiver = factory.feeRecipient();

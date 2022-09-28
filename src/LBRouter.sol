@@ -138,12 +138,12 @@ contract LBRouter is ILBRouter {
     /// @param _LBPair The address of the LBPair
     /// @param _amountIn The amount of token sent
     /// @param _swapForY Whether you swap X for Y (true), or Y for X (false)
-    /// @return _amountOut The amount of token received if _amountIn tokenX are sent
+    /// @return amountOut The amount of token received if _amountIn tokenX are sent
     function getSwapOut(
         ILBPair _LBPair,
         uint256 _amountIn,
         bool _swapForY
-    ) external view override returns (uint256 _amountOut, uint256 feesIn) {
+    ) external view override returns (uint256 amountOut, uint256 feesIn) {
         (, , uint256 _activeId) = _LBPair.getReservesAndId();
 
         FeeHelper.FeeParameters memory _fp = _LBPair.feeParameters();
@@ -166,7 +166,7 @@ contract LBRouter is ILBRouter {
 
                 _amountIn -= _amountInToBin + _fees.total;
                 feesIn += _fees.total;
-                _amountOut += _amountOutOfBin;
+                amountOut += _amountOutOfBin;
             }
 
             if (_amountIn != 0) {

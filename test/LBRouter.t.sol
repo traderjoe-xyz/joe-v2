@@ -398,8 +398,8 @@ contract LiquidityBinRouterTest is TestHelper {
         pair = createLBPairDefaultFees(token6D, token18D);
         (, , , amountXIn) = addLiquidity(_amountYIn, _startId, _numberBins, _gap);
         //getSwapIn goes through all bins with liquidity
-        uint256 amountIn = router.getSwapIn(pair, amountXIn - 100, false);
-        uint256 amountIn2 = router.getSwapIn(pair, _amountYIn - 100, true);
+        (uint256 amountIn, ) = router.getSwapIn(pair, amountXIn - 100, false);
+        (uint256 amountIn2, ) = router.getSwapIn(pair, _amountYIn - 100, true);
     }
 
     function testSweepLBToken() public {

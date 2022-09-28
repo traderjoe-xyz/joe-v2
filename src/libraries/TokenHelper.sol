@@ -73,7 +73,7 @@ library TokenHelper {
     /// @notice Private view function to catch the error and bubble it up if present
     /// @param success Whether the transaction succeeded or not
     /// @param result The result of the transaction
-    function _catchTransferError(bool success, bytes memory result) private view {
+    function _catchTransferError(bool success, bytes memory result) private pure {
         // Look for revert reason and bubble it up if present
         if (!(success && (result.length == 0 || abi.decode(result, (bool))))) {
             assembly {

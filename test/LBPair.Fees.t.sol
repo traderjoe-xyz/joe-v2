@@ -220,4 +220,57 @@ contract LiquidityBinPairFeesTest is TestHelper {
         uint256 referenceAfterForceDecay = _feeParameters.volatilityReference;
         assertEq(referenceAfterForceDecay, referenceAfterForceDecayExpected);
     }
+
+    function testClaimFeesComplex(uint256 amountY, uint256 amountX) public {
+        vm.assume(amountY < 10e18);
+        vm.assume(amountY > 0);
+        vm.assume(amountX < 10e18);
+        vm.assume(amountX > 0);
+
+        uint256 amountYInLiquidity = 100e18;
+        uint256 totalFeesFromGetSwapX;
+        uint256 totalFeesFromGetSwapY;
+
+        addLiquidity(amountYInLiquidity, ID_ONE, 5, 0);
+
+        //swap X -> Y and accrue X fees
+        (uint256 amountXInForSwap, uint256 feesXFromGetSwap) = router.getSwapIn(pair, amountY, true);
+        totalFeesFromGetSwapX += feesXFromGetSwap;
+
+        token6D.mint(address(pair), amountXInForSwap);
+        vm.prank(ALICE);
+        pair.swap(true, DEV);
+        (uint256 feesXTotal, , uint256 feesXProtocol, ) = pair.getGlobalFees();
+        assertEq(feesXTotal, totalFeesFromGetSwapX);
+
+        //swap Y -> X and accrue Y fees
+        (uint256 amountYInForSwap, uint256 feesYFromGetSwap) = router.getSwapIn(pair, amountX, false);
+        totalFeesFromGetSwapY += feesYFromGetSwap;
+        token18D.mint(address(pair), amountYInForSwap);
+        vm.prank(ALICE);
+        pair.swap(false, DEV);
+
+        (, uint256 feesYTotal, , uint256 feesYProtocol) = pair.getGlobalFees();
+        assertEq(feesYTotal, totalFeesFromGetSwapY);
+
+        //swap Y -> X and accrue Y fees
+        (, feesYFromGetSwap) = router.getSwapOut(pair, amountY, false);
+        totalFeesFromGetSwapY += feesYFromGetSwap;
+        token18D.mint(address(pair), amountY);
+        vm.prank(ALICE);
+        pair.swap(false, DEV);
+
+        (, feesYTotal, , feesYProtocol) = pair.getGlobalFees();
+        assertEq(feesYTotal, totalFeesFromGetSwapY);
+
+        //swap X -> Y and accrue X fees
+        (, feesXFromGetSwap) = router.getSwapOut(pair, amountX, true);
+        totalFeesFromGetSwapX += feesXFromGetSwap;
+        token6D.mint(address(pair), amountX);
+        vm.prank(ALICE);
+        pair.swap(true, DEV);
+
+        (feesXTotal, , feesXProtocol, ) = pair.getGlobalFees();
+        assertEq(feesXTotal, totalFeesFromGetSwapX);
+    }
 }

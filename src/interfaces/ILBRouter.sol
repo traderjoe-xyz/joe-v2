@@ -104,7 +104,7 @@ interface ILBRouter {
     function swapExactTokensForTokens(
         uint256 amountIn,
         uint256 amountOutMin,
-        uint256[] memory pairVersions,
+        uint256[] memory pairBinSteps,
         IERC20[] memory tokenPath,
         address to,
         uint256 deadline
@@ -113,7 +113,7 @@ interface ILBRouter {
     function swapExactTokensForAVAX(
         uint256 amountIn,
         uint256 amountOutMinAVAX,
-        uint256[] memory pairVersions,
+        uint256[] memory pairBinSteps,
         IERC20[] memory tokenPath,
         address payable to,
         uint256 deadline
@@ -121,7 +121,7 @@ interface ILBRouter {
 
     function swapExactAVAXForTokens(
         uint256 amountOutMin,
-        uint256[] memory pairVersions,
+        uint256[] memory pairBinSteps,
         IERC20[] memory tokenPath,
         address to,
         uint256 deadline
@@ -130,7 +130,7 @@ interface ILBRouter {
     function swapTokensForExactTokens(
         uint256 amountOut,
         uint256 amountInMax,
-        uint256[] memory pairVersions,
+        uint256[] memory pairBinSteps,
         IERC20[] memory tokenPath,
         address to,
         uint256 deadline
@@ -139,7 +139,7 @@ interface ILBRouter {
     function swapTokensForExactAVAX(
         uint256 amountOut,
         uint256 amountInMax,
-        uint256[] memory pairVersions,
+        uint256[] memory pairBinSteps,
         IERC20[] memory tokenPath,
         address payable to,
         uint256 deadline
@@ -147,7 +147,7 @@ interface ILBRouter {
 
     function swapAVAXForExactTokens(
         uint256 amountOut,
-        uint256[] memory pairVersions,
+        uint256[] memory pairBinSteps,
         IERC20[] memory tokenPath,
         address to,
         uint256 deadline
@@ -156,7 +156,7 @@ interface ILBRouter {
     function swapExactTokensForTokensSupportingFeeOnTransferTokens(
         uint256 amountIn,
         uint256 amountOutMin,
-        uint256[] memory pairVersions,
+        uint256[] memory pairBinSteps,
         IERC20[] memory tokenPath,
         address to,
         uint256 deadline
@@ -165,7 +165,7 @@ interface ILBRouter {
     function swapExactTokensForAVAXSupportingFeeOnTransferTokens(
         uint256 amountIn,
         uint256 amountOutMinAVAX,
-        uint256[] memory pairVersions,
+        uint256[] memory pairBinSteps,
         IERC20[] memory tokenPath,
         address payable to,
         uint256 deadline
@@ -173,7 +173,7 @@ interface ILBRouter {
 
     function swapExactAVAXForTokensSupportingFeeOnTransferTokens(
         uint256 amountOutMin,
-        uint256[] memory pairVersions,
+        uint256[] memory pairBinSteps,
         IERC20[] memory tokenPath,
         address to,
         uint256 deadline

@@ -8,7 +8,7 @@ This repository contains the Liquidity Book contracts, as well as tests and depl
 
 - The [LBFactory](./src/LBPair.sol) is the contract used to deploy the different pairs and acts as a registry for all the pairs already created. It is also used for privileged function such as setting the parameters of the fees, the flashloan fee, setting the pair implementation, set if a pair should be ignored by the quoter and add new presets. Unless the `creationUnlocked` is `true`, only the owner of the factory can create pairs.
 
-- The [LBRouter](./src/LBRouter.sol) is the main contract that user will interact with as it adds sme security checks. Most users shouldn't interact directly with the pair.
+- The [LBRouter](./src/LBRouter.sol) is the main contract that user will interact with as it adds security checks. Most users shouldn't interact directly with the pair.
 
 - The [LBQuoter](./src/LBQuoter.sol) is a contract that is used to return the best route of all those given. This should be used before a swap to get the best return on a swap.
 

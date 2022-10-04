@@ -206,6 +206,11 @@ contract LBQuoter {
 
     /// @dev Forked from JoeLibrary
     /// @dev Doesn't rely on the init code hash of the factory
+    /// @param _pair Address of the pair
+    /// @param _tokenA Address of token A
+    /// @param _tokenB Address of token B
+    /// @return reserveA Reserve of token A in the pair
+    /// @return reserveB Reserve of token B in the pair
     function _getReserves(
         address _pair,
         address _tokenA,
@@ -217,6 +222,11 @@ contract LBQuoter {
     }
 
     /// @dev Calculates a quote for a V2 pair
+    /// @param _amount Amount in to consider
+    /// @param _activeId Current active Id of the considred pair
+    /// @param _binStep Bin step of the considered pair
+    /// @param _swapForY Boolean describing if we are swapping from X to Y or the opposite
+    /// @return quote Amount Out if _amount was swapped with no slippage and no fees
     function _getV2Quote(
         uint256 _amount,
         uint256 _activeId,

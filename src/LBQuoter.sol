@@ -7,10 +7,13 @@ import "./interfaces/ILBFactory.sol";
 import "./interfaces/ILBRouter.sol";
 import "./libraries/JoeLibrary.sol";
 import "./libraries/BinHelper.sol";
+import "./libraries/Math512Bits.sol";
 
 error LBQuoter_InvalidLength();
 
 contract LBQuoter {
+    using Math512Bits for uint256;
+
     /// @notice Dex V2 router address
     address public immutable routerV2;
     /// @notice Dex V1 factory address
@@ -24,6 +27,7 @@ contract LBQuoter {
         uint256[] binSteps;
         uint256[] amounts;
         uint256[] virtualAmountsWithoutSlippage;
+        uint256[] fees;
     }
 
     /// @notice Constructor
@@ -43,6 +47,7 @@ contract LBQuoter {
     /// @notice Finds the best path given a list of tokens and the input amount wanted from the swap
     /// @param _route List of the tokens to go through
     /// @param _amountIn Swap amount in
+    /// @return quote The Quote structure containing the necessary element to perform the swap
     function findBestPathAmountIn(address[] memory _route, uint256 _amountIn) public view returns (Quote memory quote) {
         if (_route.length < 2) {
             revert LBQuoter_InvalidLength();
@@ -53,6 +58,7 @@ contract LBQuoter {
         uint256 swapLength = _route.length - 1;
         quote.pairs = new address[](swapLength);
         quote.binSteps = new uint256[](swapLength);
+        quote.fees = new uint256[](swapLength);
         quote.amounts = new uint256[](_route.length);
         quote.virtualAmountsWithoutSlippage = new uint256[](_route.length);
 
@@ -73,6 +79,7 @@ contract LBQuoter {
                         reserveIn,
                         reserveOut
                     );
+                    quote.fees[i] = 0.003e18; // 0.3%
                 }
             }
 
@@ -85,13 +92,11 @@ contract LBQuoter {
             if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
                 for (uint256 j; j < LBPairsAvailable.length; j++) {
                     if (!LBPairsAvailable[j].ignoredForRouting) {
+                        bool swapForY = address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i + 1];
+
                         try
-                            ILBRouter(routerV2).getSwapOut(
-                                LBPairsAvailable[j].LBPair,
-                                quote.amounts[i],
-                                address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i + 1]
-                            )
-                        returns (uint256 swapAmountOut, uint256) {
+                            ILBRouter(routerV2).getSwapOut(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
+                        returns (uint256 swapAmountOut, uint256 fees) {
                             if (swapAmountOut > quote.amounts[i + 1]) {
                                 quote.amounts[i + 1] = swapAmountOut;
                                 quote.pairs[i] = address(LBPairsAvailable[j].LBPair);
@@ -99,10 +104,14 @@ contract LBQuoter {
 
                                 // Getting current price
                                 (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
-                                quote.virtualAmountsWithoutSlippage[i + 1] =
-                                    (BinHelper.getPriceFromId(activeId, quote.binSteps[i]) *
-                                        quote.virtualAmountsWithoutSlippage[i]) >>
-                                    128;
+                                quote.virtualAmountsWithoutSlippage[i + 1] = _getV2Quote(
+                                    quote.virtualAmountsWithoutSlippage[i],
+                                    activeId,
+                                    quote.binSteps[i],
+                                    swapForY
+                                );
+
+                                quote.fees[i] = (fees * 1e18) / quote.amounts[i]; // fee percentage in amountIn
                             }
                         } catch {}
                     }
@@ -114,6 +123,7 @@ contract LBQuoter {
     /// @notice Finds the best path given a list of tokens and the output amount wanted from the swap
     /// @param _route List of the tokens to go through
     /// @param _amountOut Swap amount out
+    /// @return quote The Quote structure containing the necessary element to perform the swap
     function findBestPathAmountOut(address[] memory _route, uint256 _amountOut)
         public
         view
@@ -127,6 +137,7 @@ contract LBQuoter {
         uint256 swapLength = _route.length - 1;
         quote.pairs = new address[](swapLength);
         quote.binSteps = new uint256[](swapLength);
+        quote.fees = new uint256[](swapLength);
         quote.amounts = new uint256[](_route.length);
         quote.virtualAmountsWithoutSlippage = new uint256[](_route.length);
 
@@ -146,6 +157,8 @@ contract LBQuoter {
                         reserveOut,
                         reserveIn
                     );
+
+                    quote.fees[i - 1] = 0.003e18; // 0.3%
                 }
             }
 
@@ -158,13 +171,10 @@ contract LBQuoter {
             if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
                 for (uint256 j; j < LBPairsAvailable.length; j++) {
                     if (!LBPairsAvailable[j].ignoredForRouting) {
+                        bool swapForY = address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i];
                         try
-                            ILBRouter(routerV2).getSwapIn(
-                                LBPairsAvailable[j].LBPair,
-                                quote.amounts[i],
-                                address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i]
-                            )
-                        returns (uint256 swapAmountIn, uint256) {
+                            ILBRouter(routerV2).getSwapIn(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
+                        returns (uint256 swapAmountIn, uint256 fees) {
                             if (
                                 swapAmountIn != 0 && (swapAmountIn < quote.amounts[i - 1] || quote.amounts[i - 1] == 0)
                             ) {
@@ -174,10 +184,14 @@ contract LBQuoter {
 
                                 // Getting current price
                                 (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
-                                quote.virtualAmountsWithoutSlippage[i - 1] =
-                                    (BinHelper.getPriceFromId(activeId, quote.binSteps[i - 1]) *
-                                        quote.virtualAmountsWithoutSlippage[i]) >>
-                                    128;
+                                quote.virtualAmountsWithoutSlippage[i - 1] = _getV2Quote(
+                                    quote.virtualAmountsWithoutSlippage[i],
+                                    activeId,
+                                    quote.binSteps[i - 1],
+                                    !swapForY
+                                );
+
+                                quote.fees[i - 1] = (fees * 1e18) / quote.amounts[i - 1]; // fee percentage in amountIn
                             }
                         } catch {}
                     }
@@ -186,15 +200,29 @@ contract LBQuoter {
         }
     }
 
-    // Forked from JoeLibrary
-    // Doesn't rely on the init code hash of the factory
+    /// @dev Forked from JoeLibrary
+    /// @dev Doesn't rely on the init code hash of the factory
     function _getReserves(
-        address pair,
-        address tokenA,
-        address tokenB
+        address _pair,
+        address _tokenA,
+        address _tokenB
     ) internal view returns (uint256 reserveA, uint256 reserveB) {
-        (address token0, ) = JoeLibrary.sortTokens(tokenA, tokenB);
-        (uint256 reserve0, uint256 reserve1, ) = IJoePair(pair).getReserves();
-        (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
+        (address token0, ) = JoeLibrary.sortTokens(_tokenA, _tokenB);
+        (uint256 reserve0, uint256 reserve1, ) = IJoePair(_pair).getReserves();
+        (reserveA, reserveB) = _tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
+    }
+
+    /// @dev Calculates a quote for a V2 pair
+    function _getV2Quote(
+        uint256 _amount,
+        uint256 _activeId,
+        uint256 _binStep,
+        bool _swapForY
+    ) internal pure returns (uint256 quote) {
+        if (_swapForY) {
+            quote = BinHelper.getPriceFromId(_activeId, _binStep).mulShiftRoundDown(_amount, Constants.SCALE_OFFSET);
+        } else {
+            quote = _amount.shiftDivRoundDown(Constants.SCALE_OFFSET, BinHelper.getPriceFromId(_activeId, _binStep));
+        }
     }
 }

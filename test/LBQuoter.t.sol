@@ -64,7 +64,8 @@ contract LiquidityBinQuoterTest is TestHelper {
         assertApproxEqAbs(quote.amounts[1], 20e6, 2e6, "Price of 1 AVAX should be approx 20 USDC");
         assertEq(quote.binSteps[0], DEFAULT_BIN_STEP);
         assertApproxEqAbs(quote.fees[0], defaultBaseFee, 1e14);
-        assertApproxEqAbs(quote.amounts[1], quote.virtualAmountsWithoutSlippage[1], 1e14);
+        // The tested swap stays in the current active bin, so the slippage is zero
+        assertApproxEqAbs(quote.amounts[0], quote.virtualAmountsWithoutSlippage[0], 1);
     }
 
     function testGetSwapInOnV2Pair() public {
@@ -80,10 +81,12 @@ contract LiquidityBinQuoterTest is TestHelper {
         assertApproxEqAbs(quote.amounts[0], 1e18, 0.1e18, "Price of 1 AVAX should be approx 20 USDT");
         assertEq(quote.binSteps[0], DEFAULT_BIN_STEP);
         assertApproxEqAbs(quote.fees[0], defaultBaseFee, 1e14);
-        assertApproxEqAbs(quote.amounts[0], quote.virtualAmountsWithoutSlippage[0], 1e16);
+        // The tested swap stays in the current active bin, so the slippage is zero
+        assertApproxEqAbs(quote.amounts[0], quote.virtualAmountsWithoutSlippage[0], 1);
     }
 
     function testGetSwapOutOnV1Pair() public {
+        uint256 amountIn = 1e18;
         routerV1.addLiquidity(address(testWavax), address(usdc), 1_000e18, 20_000e6, 0, 0, DEV, block.timestamp);
 
         address[] memory route;
@@ -91,15 +94,19 @@ contract LiquidityBinQuoterTest is TestHelper {
         route[0] = address(testWavax);
         route[1] = address(usdc);
 
-        LBQuoter.Quote memory quote = quoter.findBestPathFromAmountIn(route, 1e18);
+        LBQuoter.Quote memory quote = quoter.findBestPathFromAmountIn(route, amountIn);
 
         assertApproxEqAbs(quote.amounts[1], 20e6, 2e6, "Price of 1 AVAX should be approx 20 USDC");
         assertEq(quote.binSteps[0], 0);
         assertEq(quote.fees[0], 0.003e18);
-        assertApproxEqAbs(quote.amounts[1], quote.virtualAmountsWithoutSlippage[1], 1e16);
+
+        uint256 quoteAmountOut = JoeLibrary.quote(amountIn, 1_000e18, 20_000e6);
+        uint256 feePaid = (quoteAmountOut * quote.fees[0]) / 1e18;
+        assertEq(quote.virtualAmountsWithoutSlippage[1], quoteAmountOut - feePaid);
     }
 
     function testGetSwapInOnV1Pair() public {
+        uint256 amountOut = 20e6;
         routerV1.addLiquidity(address(testWavax), address(usdc), 1_000e18, 20_000e6, 0, 0, DEV, block.timestamp);
 
         address[] memory route;
@@ -107,12 +114,20 @@ contract LiquidityBinQuoterTest is TestHelper {
         route[0] = address(testWavax);
         route[1] = address(usdc);
 
-        LBQuoter.Quote memory quote = quoter.findBestPathFromAmountOut(route, 20e6);
+        LBQuoter.Quote memory quote = quoter.findBestPathFromAmountOut(route, amountOut);
 
         assertApproxEqAbs(quote.amounts[0], 1e18, 0.1e18, "Price of 1 AVAX should be approx 20 USDT");
         assertEq(quote.binSteps[0], 0);
         assertEq(quote.fees[0], 0.003e18);
-        assertApproxEqAbs(quote.amounts[0], quote.virtualAmountsWithoutSlippage[0], 1e16);
+
+        // Fees are expressed in the In token
+        // To get the theorical amountIn without slippage but with the fees, the calculation is amountIn = amountOut / price / (1 - fees)
+        uint256 quoteAmountInWithFees = JoeLibrary.quote(
+            (amountOut * 1e18) / (1e18 - quote.fees[0]),
+            20_000e6,
+            1_000e18
+        );
+        assertApproxEqAbs(quote.virtualAmountsWithoutSlippage[0], quoteAmountInWithFees, 1e12);
     }
 
     function testGetSwapOutOnComplexRoute() public {
@@ -132,7 +147,6 @@ contract LiquidityBinQuoterTest is TestHelper {
         assertEq(quote.binSteps[1], DEFAULT_BIN_STEP);
         assertEq(quote.fees[0], 0.003e18);
         assertApproxEqAbs(quote.fees[1], defaultBaseFee, 1e14);
-        assertApproxEqAbs(quote.amounts[2], quote.virtualAmountsWithoutSlippage[2], 1e16);
     }
 
     function testGetSwapInOnComplexRoute() public {
@@ -153,7 +167,6 @@ contract LiquidityBinQuoterTest is TestHelper {
         assertEq(quote.binSteps[1], DEFAULT_BIN_STEP);
         assertEq(quote.fees[0], 0.003e18);
         assertApproxEqAbs(quote.fees[1], defaultBaseFee, 1e14);
-        assertApproxEqAbs(quote.amounts[0], quote.virtualAmountsWithoutSlippage[0], 1e16);
     }
 
     function testGetSwapInWithMultipleChoices() public {

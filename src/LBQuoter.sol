@@ -48,7 +48,11 @@ contract LBQuoter {
     /// @param _route List of the tokens to go through
     /// @param _amountIn Swap amount in
     /// @return quote The Quote structure containing the necessary element to perform the swap
-    function findBestPathAmountIn(address[] memory _route, uint256 _amountIn) public view returns (Quote memory quote) {
+    function findBestPathFromAmountIn(address[] memory _route, uint256 _amountIn)
+        public
+        view
+        returns (Quote memory quote)
+    {
         if (_route.length < 2) {
             revert LBQuoter_InvalidLength();
         }
@@ -124,7 +128,7 @@ contract LBQuoter {
     /// @param _route List of the tokens to go through
     /// @param _amountOut Swap amount out
     /// @return quote The Quote structure containing the necessary element to perform the swap
-    function findBestPathAmountOut(address[] memory _route, uint256 _amountOut)
+    function findBestPathFromAmountOut(address[] memory _route, uint256 _amountOut)
         public
         view
         returns (Quote memory quote)

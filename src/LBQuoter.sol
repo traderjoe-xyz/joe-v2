@@ -79,7 +79,7 @@ contract LBQuoter {
                 if (reserveIn > 0 && reserveOut > 0) {
                     quote.amounts[i + 1] = JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut);
                     quote.virtualAmountsWithoutSlippage[i + 1] = JoeLibrary.quote(
-                        quote.virtualAmountsWithoutSlippage[i],
+                        (quote.virtualAmountsWithoutSlippage[i] * 997) / 1000,
                         reserveIn,
                         reserveOut
                     );
@@ -109,7 +109,7 @@ contract LBQuoter {
                                 // Getting current price
                                 (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
                                 quote.virtualAmountsWithoutSlippage[i + 1] = _getV2Quote(
-                                    quote.virtualAmountsWithoutSlippage[i],
+                                    quote.virtualAmountsWithoutSlippage[i] - fees,
                                     activeId,
                                     quote.binSteps[i],
                                     swapForY
@@ -156,11 +156,9 @@ contract LBQuoter {
 
                 if (reserveIn > 0 && reserveOut > quote.amounts[i]) {
                     quote.amounts[i - 1] = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut);
-                    quote.virtualAmountsWithoutSlippage[i - 1] = JoeLibrary.quote(
-                        quote.virtualAmountsWithoutSlippage[i],
-                        reserveOut,
-                        reserveIn
-                    );
+                    quote.virtualAmountsWithoutSlippage[i - 1] =
+                        (JoeLibrary.quote(quote.virtualAmountsWithoutSlippage[i], reserveOut, reserveIn) * 1000) /
+                        997;
 
                     quote.fees[i - 1] = 0.003e18; // 0.3%
                 }
@@ -188,12 +186,14 @@ contract LBQuoter {
 
                                 // Getting current price
                                 (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
-                                quote.virtualAmountsWithoutSlippage[i - 1] = _getV2Quote(
-                                    quote.virtualAmountsWithoutSlippage[i],
-                                    activeId,
-                                    quote.binSteps[i - 1],
-                                    !swapForY
-                                );
+                                quote.virtualAmountsWithoutSlippage[i - 1] =
+                                    _getV2Quote(
+                                        quote.virtualAmountsWithoutSlippage[i],
+                                        activeId,
+                                        quote.binSteps[i - 1],
+                                        !swapForY
+                                    ) +
+                                    fees;
 
                                 quote.fees[i - 1] = (fees * 1e18) / quote.amounts[i - 1]; // fee percentage in amountIn
                             }

@@ -21,7 +21,7 @@ contract CoreDeployer is Script {
     address private wavax;
     address private factoryV1;
 
-    uint256 private constant FLASHLOAN_FEE = 3e14;
+    uint256 private constant FLASHLOAN_FEE = 8e14;
 
     function run() external {
         if (block.chainid == 43114) {
@@ -67,7 +67,7 @@ contract CoreDeployer is Script {
                 preset.reductionFactor,
                 preset.variableFeeControl,
                 preset.protocolShare,
-                preset.maxAccumulator,
+                preset.maxVolatilityAccumulated,
                 preset.sampleLifetime
             );
         }

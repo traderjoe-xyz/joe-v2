@@ -11,6 +11,12 @@ import "./libraries/Math512Bits.sol";
 
 error LBQuoter_InvalidLength();
 
+/**
+ * @title Liquidity Book Quoter
+ * @author Trader Joe
+ * @notice Helper contract to determine best path through multiple markets
+ */
+
 contract LBQuoter {
     using Math512Bits for uint256;
 

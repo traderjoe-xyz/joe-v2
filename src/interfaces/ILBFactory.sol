@@ -7,6 +7,12 @@ import "openzeppelin/token/ERC20/IERC20.sol";
 import "./ILBPair.sol";
 import "./IPendingOwnable.sol";
 
+/**
+ * @title Liquidity Book Factory Interface
+ * @author Trader Joe
+ * @notice Required interface of LBFactory contract
+ */
+
 interface ILBFactory is IPendingOwnable {
     /// @dev Structure to store the LBPair information, such as:
     /// - binStep: The bin step of the LBPair

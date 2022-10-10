@@ -2,6 +2,12 @@
 
 pragma solidity ^0.8.0;
 
+/**
+ * @title Liquidity Book Token Interface
+ * @author Trader Joe
+ * @notice Required interface of LBToken contract
+ */
+
 interface ILBToken {
     event TransferSingle(address indexed sender, address indexed from, address indexed to, uint256 id, uint256 amount);
 

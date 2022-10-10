@@ -15,6 +15,12 @@ import "./libraries/Math512Bits.sol";
 import "./libraries/SwapHelper.sol";
 import "./libraries/Constants.sol";
 
+/**
+ * @title Liquidity Book Router
+ * @author Trader Joe
+ * @notice Main contract to interact with to swap and manage liquidity on Joe V2 exchange.
+ */
+
 contract LBRouter is ILBRouter {
     using TokenHelper for IERC20;
     using FeeHelper for FeeHelper.FeeParameters;
@@ -82,6 +88,7 @@ contract LBRouter is ILBRouter {
     /// @param _amountOut The amount of token to receive
     /// @param _swapForY Whether you swap X for Y (true), or Y for X (false)
     /// @return amountIn The amount of token to send in order to receive _amountOut token
+    /// @return feesIn The amount of fees paid in token sent
     function getSwapIn(
         ILBPair _LBPair,
         uint256 _amountOut,
@@ -139,6 +146,7 @@ contract LBRouter is ILBRouter {
     /// @param _amountIn The amount of token sent
     /// @param _swapForY Whether you swap X for Y (true), or Y for X (false)
     /// @return amountOut The amount of token received if _amountIn tokenX are sent
+    /// @return feesIn The amount of fees paid in token sent
     function getSwapOut(
         ILBPair _LBPair,
         uint256 _amountIn,
@@ -256,6 +264,7 @@ contract LBRouter is ILBRouter {
     /// @dev This function is compliant with fee on transfer tokens
     /// @param _tokenX The address of token X
     /// @param _tokenY The address of token Y
+    /// @param _binStep The bin step of the LBPair
     /// @param _amountXMin The min amount to receive of token X
     /// @param _amountYMin The min amount to receive of token Y
     /// @param _ids The list of ids to burn
@@ -289,6 +298,7 @@ contract LBRouter is ILBRouter {
     /// This is wanted as it would make users pays the fee on transfer twice,
     /// use the `removeLiquidity` function to remove liquidity with fee on transfer tokens.
     /// @param _token The address of token
+    /// @param _binStep The bin step of the LBPair
     /// @param _amountTokenMin The min amount to receive of token
     /// @param _amountAVAXMin The min amount to receive of AVAX
     /// @param _ids The list of ids to burn

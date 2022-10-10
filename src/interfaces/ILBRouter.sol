@@ -7,6 +7,12 @@ import "./ILBToken.sol";
 import "./IWAVAX.sol";
 import "./IJoeFactory.sol";
 
+/**
+ * @title Liquidity Book Router Interface
+ * @author Trader Joe
+ * @notice Required interface of LBRouter contract
+ */
+
 interface ILBRouter {
     /// @dev The liquidity parameters, such as:
     /// - tokenX: The address of token X

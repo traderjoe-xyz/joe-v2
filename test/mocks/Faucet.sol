@@ -2,9 +2,10 @@
 
 pragma solidity ^0.8.0;
 
-import "../../src/libraries/PendingOwnable.sol";
-
 import "openzeppelin/token/ERC20/extensions/IERC20Metadata.sol";
+import "openzeppelin/access/Ownable.sol";
+
+import "../../src/libraries/PendingOwnable.sol";
 
 interface IERC20Mintable is IERC20Metadata {
     function mint(address to, uint256 amount) external;
@@ -33,21 +34,12 @@ contract Faucet is PendingOwnable {
     FaucetToken[] public faucetTokens;
     mapping(address => uint256) tokenToIndices;
 
-    /// @notice Creates the different test tokens and their respective amount per request
-    /// @param _tokens The different tokens to add to the faucet
+    /// @notice Constructor of the faucet.
     /// @param _avaxPerRequest The avax received per request
     /// @param _requestCoolDown The request cool down
-    constructor(
-        FaucetToken[] memory _tokens,
-        uint96 _avaxPerRequest,
-        uint256 _requestCoolDown
-    ) payable {
+    constructor(uint96 _avaxPerRequest, uint256 _requestCoolDown) payable {
         _setRequestCoolDown(_requestCoolDown);
         _addFaucetToken(FaucetToken({ERC20: address(0), amountPerRequest: _avaxPerRequest}));
-
-        for (uint256 i; i < _tokens.length; ++i) {
-            _addFaucetToken(_tokens[i]);
-        }
     }
 
     /// @notice Allows to receive AVAX directly
@@ -84,6 +76,8 @@ contract Faucet is PendingOwnable {
     /// @param _token The address of the token
     /// @param _amountPerRequest The amount per request
     function addFaucetToken(address _token, uint96 _amountPerRequest) external onlyOwner {
+        require(Ownable(_token).owner() == address(this), "Faucet is not the owner of token");
+
         _addFaucetToken(FaucetToken({ERC20: _token, amountPerRequest: _amountPerRequest}));
     }
 
@@ -94,6 +88,8 @@ contract Faucet is PendingOwnable {
         uint256 index = tokenToIndices[_token];
 
         require(index >= 2, "Not a faucet token");
+
+        Ownable(_token).transferOwnership(owner());
 
         uint256 lastIndex = faucetTokens.length - 1;
         faucetTokens[index] = faucetTokens[lastIndex];

@@ -2,14 +2,13 @@
 
 pragma solidity ^0.8.0;
 
+import "./LBErrors.sol";
 import "./interfaces/IJoeFactory.sol";
 import "./interfaces/ILBFactory.sol";
 import "./interfaces/ILBRouter.sol";
 import "./libraries/JoeLibrary.sol";
 import "./libraries/BinHelper.sol";
 import "./libraries/Math512Bits.sol";
-
-error LBQuoter_InvalidLength();
 
 /// @title Liquidity Book Quoter
 /// @author Trader Joe

@@ -16,49 +16,68 @@ contract FaucetTest is Test {
     ERC20MockDecimalsOwnable token6;
     ERC20MockDecimalsOwnable token12;
 
+    address AVAX = address(0);
+
     uint96 constant TOKEN6_PER_REQUEST = 1_000e6;
     uint96 constant TOKEN12_PER_REQUEST = 1_000e12;
     uint96 constant AVAX_PER_REQUEST = 1e18;
     uint256 constant REQUEST_COOL_DOWN = 24 hours;
 
     function setUp() public {
-        Faucet.FaucetTokenParameter[] memory tokens = new Faucet.FaucetTokenParameter[](2);
-        tokens[0] = Faucet.FaucetTokenParameter({
-            name: "Mock Token 6 decimals",
-            symbol: "TOKEN6",
-            decimals: 6,
-            amountPerRequest: TOKEN6_PER_REQUEST
-        });
-        tokens[1] = Faucet.FaucetTokenParameter({
-            name: "Mock Token 12 decimals",
-            symbol: "TOKEN12",
-            decimals: 12,
-            amountPerRequest: TOKEN12_PER_REQUEST
-        });
+        token6 = new ERC20MockDecimalsOwnable("Mock Token 6 decimals", "TOKEN6", 6);
+        token12 = new ERC20MockDecimalsOwnable("Mock Token 12 decimals", "TOKEN12", 12);
+
+        Faucet.FaucetToken[] memory tokens = new Faucet.FaucetToken[](2);
+        tokens[0] = Faucet.FaucetToken({ERC20: address(token6), amountPerRequest: TOKEN6_PER_REQUEST});
+        tokens[1] = Faucet.FaucetToken({ERC20: address(token12), amountPerRequest: TOKEN12_PER_REQUEST});
 
         faucet = new Faucet{value: 1000e18}(tokens, AVAX_PER_REQUEST, REQUEST_COOL_DOWN);
 
-        (address token, ) = faucet.faucetTokens(1);
-        token6 = ERC20MockDecimalsOwnable(token);
-
-        (token, ) = faucet.faucetTokens(2);
-        token12 = ERC20MockDecimalsOwnable(token);
+        token6.transferOwnership(address(faucet));
+        token12.transferOwnership(address(faucet));
 
         // We increase timestamp so current timestamp is not 0
         vm.warp(365 days);
     }
 
+    function testAddToken() external {
+        vm.prank(ALICE);
+        vm.expectRevert(abi.encodeWithSelector(PendingOwnable__NotOwner.selector));
+        faucet.addFaucetToken(address(1), 1e18);
+        vm.stopPrank();
+
+        faucet.addFaucetToken(address(1), 1e18);
+
+        vm.expectRevert("Already a faucet token");
+        faucet.addFaucetToken(address(1), 1e18);
+    }
+
+    function testRemoveToken() external {
+        vm.prank(ALICE);
+        vm.expectRevert(abi.encodeWithSelector(PendingOwnable__NotOwner.selector));
+        faucet.removeFaucetToken(address(1));
+        vm.stopPrank();
+
+        vm.expectRevert("Not a faucet token");
+        faucet.removeFaucetToken(address(0));
+
+        faucet.removeFaucetToken(address(token6));
+
+        vm.expectRevert("Not a faucet token");
+        faucet.removeFaucetToken(address(token6));
+    }
+
     function testMintOnlyOwner() external {
-        vm.expectRevert("Function is restricted to owner");
+        vm.expectRevert("Ownable: caller is not the owner");
         token6.mint(DEV, 1e18);
 
         vm.prank(ALICE);
-        vm.expectRevert("Function is restricted to owner");
+        vm.expectRevert("Ownable: caller is not the owner");
         token6.mint(ALICE, 1e18);
         vm.stopPrank();
 
         assertEq(token6.balanceOf(ALICE), 0);
-        faucet.mint("TOKEN6", ALICE, 1e18);
+        faucet.mint(address(token6), ALICE, 1e18);
         assertEq(token6.balanceOf(ALICE), 1e18);
     }
 
@@ -87,12 +106,12 @@ contract FaucetTest is Test {
 
         vm.prank(ALICE);
         vm.expectRevert(abi.encodeWithSelector(PendingOwnable__NotOwner.selector));
-        faucet.setAmountPerRequest("AVAX", newRequestToken6Amount);
+        faucet.setAmountPerRequest(AVAX, newRequestToken6Amount);
         vm.stopPrank();
 
-        faucet.setAmountPerRequest("TOKEN6", newRequestToken6Amount);
-        faucet.setAmountPerRequest("TOKEN12", newRequestToken12Amount);
-        faucet.setAmountPerRequest("AVAX", newRequestAvaxAmount);
+        faucet.setAmountPerRequest(address(token6), newRequestToken6Amount);
+        faucet.setAmountPerRequest(address(token12), newRequestToken12Amount);
+        faucet.setAmountPerRequest(AVAX, newRequestAvaxAmount);
 
         vm.prank(ALICE);
         faucet.request();

@@ -2,6 +2,12 @@
 
 pragma solidity ^0.8.0;
 
+/**
+ * @title Liquidity Book Flashloan Callback Interface
+ * @author Trader Joe
+ * @notice Required interface to interact with LB flashloans
+ */
+
 interface ILBFlashLoanCallback {
     function LBFlashLoanCallback(
         address sender,

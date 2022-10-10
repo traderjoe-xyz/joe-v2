@@ -12,6 +12,14 @@ import "./libraries/Constants.sol";
 import "./libraries/Decoder.sol";
 import "./libraries/SafeCast.sol";
 
+/**
+ * @title Liquidity Book Factory
+ * @author Trader Joe
+ * @notice Contract used to deploy and register new LBPairs.
+ * Enables setting fee parameters, flashloan fees and LBPair implementation.
+ * Unless the `creationUnlocked` is `true`, only the owner of the factory can create pairs.
+ */
+
 contract LBFactory is PendingOwnable, ILBFactory {
     using SafeCast for uint256;
     using Decoder for bytes32;
@@ -54,6 +62,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /// @notice Constructor
     /// @param _feeRecipient The address of the fee recipient
+    /// @param _flashLoanFee The value of the fee for flash loan
     constructor(address _feeRecipient, uint256 _flashLoanFee) {
         _setFeeRecipient(_feeRecipient);
 
@@ -595,7 +604,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /// @notice Private view function to sort 2 tokens in ascending order
     /// @param _tokenA The first token
-    /// @param _tokenA The second token
+    /// @param _tokenB The second token
     /// @return The sorted first token
     /// @return The sorted second token
     function _sortTokens(IERC20 _tokenA, IERC20 _tokenB) private pure returns (IERC20, IERC20) {

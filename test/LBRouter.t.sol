@@ -300,6 +300,25 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(id, ID_ONE + 10000);
     }
 
+    function testGetPriceFromV2() public {
+        pair = createLBPairDefaultFees(token6D, token18D);
+        address token = address(token18D);
+        uint256 PRECISION = 1e18;
+        uint256 bitShift = 128;
+        uint256 price;
+        ILBPair pair1 = ILBPair(pair);
+        (, , uint256 activeID) = pair1.getReservesAndId();
+        console2.log(activeID);
+        uint256 priceScaled = router.getPriceFromId(pair1, uint24(activeID + 10000));
+        console2.log(priceScaled);
+        if (token == address(pair1.tokenX())) {
+            price = (priceScaled * PRECISION) >> bitShift;
+        } else if (token == address(pair1.tokenY())) {
+            price = ((type(uint256).max / priceScaled) * PRECISION) >> bitShift;
+        }
+        console2.log(price);
+    }
+
     function testGetSwapInWrongAmountsReverts() public {
         uint256 _amountYIn = 100e18;
         uint24 _startId = ID_ONE;

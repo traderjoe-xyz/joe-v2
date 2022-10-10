@@ -3,12 +3,13 @@
 pragma solidity ^0.8.0;
 
 import "./LBErrors.sol";
+import "./libraries/BinHelper.sol";
+import "./libraries/JoeLibrary.sol";
+import "./libraries/Math512Bits.sol";
 import "./interfaces/IJoeFactory.sol";
+import "./interfaces/IJoePair.sol";
 import "./interfaces/ILBFactory.sol";
 import "./interfaces/ILBRouter.sol";
-import "./libraries/JoeLibrary.sol";
-import "./libraries/BinHelper.sol";
-import "./libraries/Math512Bits.sol";
 
 /// @title Liquidity Book Quoter
 /// @author Trader Joe

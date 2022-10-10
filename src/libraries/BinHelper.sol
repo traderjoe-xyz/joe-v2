@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import "./Math128x128.sol";
 import "../LBErrors.sol";
+import "./Math128x128.sol";
 
 /// @title Liquidity Book Bin Helper Library
 /// @author Trader Joe

@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-import "../interfaces/ILBPair.sol";
-import "./FeeHelper.sol";
-import "./Constants.sol";
 import "./BinHelper.sol";
-import "./SafeMath.sol";
+import "./Constants.sol";
 import "./FeeDistributionHelper.sol";
+import "./FeeHelper.sol";
 import "./Math512Bits.sol";
+import "./SafeMath.sol";
+import "../interfaces/ILBPair.sol";
 
 /// @title Liquidity Book Swap Helper Library
 /// @author Trader Joe

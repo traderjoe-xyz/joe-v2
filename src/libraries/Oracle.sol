@@ -3,8 +3,8 @@
 pragma solidity ^0.8.0;
 
 import "../LBErrors.sol";
-import "./Samples.sol";
 import "./Buffer.sol";
+import "./Samples.sol";
 
 /// @title Liquidity Book Oracle Library
 /// @author Trader Joe

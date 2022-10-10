@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.0;
 
+import "./IJoeFactory.sol";
 import "./ILBPair.sol";
 import "./ILBToken.sol";
 import "./IWAVAX.sol";
-import "./IJoeFactory.sol";
 
 /// @title Liquidity Book Router Interface
 /// @author Trader Joe

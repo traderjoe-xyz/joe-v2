@@ -2,9 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import "./BitMath.sol";
-
 import "../LBErrors.sol";
+import "./BitMath.sol";
 
 /// @title Liquidity Book Tree Math Library
 /// @author Trader Joe

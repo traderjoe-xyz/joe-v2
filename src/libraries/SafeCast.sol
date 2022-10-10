@@ -4,12 +4,9 @@ pragma solidity ^0.8.0;
 
 import "../LBErrors.sol";
 
-/**
- * @title Liquidity Book Safe Cast Library
- * @author Trader Joe
- * @notice Helper contract used for converting uint values safely
- */
-
+/// @title Liquidity Book Safe Cast Library
+/// @author Trader Joe
+/// @notice Helper contract used for converting uint values safely
 library SafeCast {
     /// @notice Returns x on uint248 and check that it does not overflow
     /// @param x The value as an uint256

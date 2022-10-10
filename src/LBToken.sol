@@ -6,13 +6,10 @@ import "./LBErrors.sol";
 import "./interfaces/ILBToken.sol";
 import "openzeppelin/utils/structs/EnumerableSet.sol";
 
-/**
- * @title Liquidity Book Token
- * @author Trader Joe
- * @notice The LBToken is an implementation of a multi-token.
- * It allows to create multi-ERC20 represented by their ids
- */
-
+/// @title Liquidity Book Token
+/// @author Trader Joe
+/// @notice The LBToken is an implementation of a multi-token.
+/// It allows to create multi-ERC20 represented by their ids
 contract LBToken is ILBToken {
     using EnumerableSet for EnumerableSet.UintSet;
 

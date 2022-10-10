@@ -2,12 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-/**
- * @title Liquidity Book Buffer Library
- * @author Trader Joe
- * @notice Helper contract used for modulo calculation
- */
-
+/// @title Liquidity Book Buffer Library
+/// @author Trader Joe
+/// @notice Helper contract used for modulo calculation
 library Buffer {
     /// @notice Internal function to do positive (x - 1) % n
     /// @param x The value

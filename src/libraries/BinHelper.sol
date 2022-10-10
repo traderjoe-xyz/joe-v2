@@ -5,12 +5,9 @@ pragma solidity ^0.8.0;
 import "./Math128x128.sol";
 import "../LBErrors.sol";
 
-/**
- * @title Liquidity Book Bin Helper Library
- * @author Trader Joe
- * @notice Contract used to convert bin ID to price and back
- */
-
+/// @title Liquidity Book Bin Helper Library
+/// @author Trader Joe
+/// @notice Contract used to convert bin ID to price and back
 library BinHelper {
     using Math128x128 for uint256;
 

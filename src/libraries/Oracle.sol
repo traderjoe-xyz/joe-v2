@@ -6,12 +6,9 @@ import "../LBErrors.sol";
 import "./Samples.sol";
 import "./Buffer.sol";
 
-/**
- * @title Liquidity Book Oracle Library
- * @author Trader Joe
- * @notice Helper contract for oracle
- */
-
+/// @title Liquidity Book Oracle Library
+/// @author Trader Joe
+/// @notice Helper contract for oracle
 library Oracle {
     using Samples for bytes32;
     using Buffer for uint256;

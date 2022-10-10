@@ -5,12 +5,9 @@ pragma solidity ^0.8.0;
 import "../interfaces/IJoePair.sol";
 import "../LBErrors.sol";
 
-/**
- * @title Liquidity Book Joe Library Helper Library
- * @author Trader Joe
- * @notice Helper contract used for Joe V1 related calculations
- */
-
+/// @title Liquidity Book Joe Library Helper Library
+/// @author Trader Joe
+/// @notice Helper contract used for Joe V1 related calculations
 library JoeLibrary {
     // returns sorted token addresses, used to handle return values from pairs sorted in this order
     function sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {

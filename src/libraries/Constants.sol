@@ -2,6 +2,12 @@
 
 pragma solidity ^0.8.0;
 
+/**
+ * @title Liquidity Book Constants Library
+ * @author Trader Joe
+ * @notice Set of constants for Liquidity Book contracts
+ */
+
 library Constants {
     uint256 internal constant SCALE_OFFSET = 128;
     uint256 internal constant SCALE = 1 << SCALE_OFFSET;

@@ -10,6 +10,12 @@ import "./SafeMath.sol";
 import "./FeeDistributionHelper.sol";
 import "./Math512Bits.sol";
 
+/**
+ * @title Liquidity Book Swap Helper Library
+ * @author Trader Joe
+ * @notice Helper contract used for calculating swaps, fees and reserves changes
+ */
+
 library SwapHelper {
     using Math512Bits for uint256;
     using FeeHelper for FeeHelper.FeeParameters;

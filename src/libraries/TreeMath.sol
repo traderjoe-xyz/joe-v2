@@ -6,6 +6,12 @@ import "./BitMath.sol";
 
 import "../LBErrors.sol";
 
+/**
+ * @title Liquidity Book Tree Math Library
+ * @author Trader Joe
+ * @notice Helper contract used for finding closest bin with liquidity
+ */
+
 library TreeMath {
     using BitMath for uint256;
 

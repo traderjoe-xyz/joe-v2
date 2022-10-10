@@ -10,6 +10,12 @@ import "./Constants.sol";
 import "./TokenHelper.sol";
 import "./SafeCast.sol";
 
+/**
+ * @title Liquidity Book Fee Distribution Helper Library
+ * @author Trader Joe
+ * @notice Helper contract used for fees distribution calculations
+ */
+
 library FeeDistributionHelper {
     using TokenHelper for IERC20;
     using SafeCast for uint256;

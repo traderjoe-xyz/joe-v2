@@ -6,6 +6,12 @@ import "./SafeCast.sol";
 import "./SafeMath.sol";
 import "./Constants.sol";
 
+/**
+ * @title Liquidity Book Fee Helper Library
+ * @author Trader Joe
+ * @notice Helper contract used for fees calculation
+ */
+
 library FeeHelper {
     using SafeCast for uint256;
     using SafeMath for uint256;

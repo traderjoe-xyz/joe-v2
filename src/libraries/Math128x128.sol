@@ -7,6 +7,12 @@ import "./Math512Bits.sol";
 import "./BitMath.sol";
 import "./Constants.sol";
 
+/**
+ * @title Liquidity Book Math Helper Library
+ * @author Trader Joe
+ * @notice Helper contract used for power and log calculations
+ */
+
 library Math128x128 {
     using Math512Bits for uint256;
     using BitMath for uint256;

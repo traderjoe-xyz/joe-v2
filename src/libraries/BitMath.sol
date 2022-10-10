@@ -2,6 +2,12 @@
 
 pragma solidity ^0.8.0;
 
+/**
+ * @title Liquidity Book Bit Math Library
+ * @author Trader Joe
+ * @notice Helper contract used for bit calculations
+ */
+
 library BitMath {
     /// @notice Returns the closest non-zero bit of `integer` to the right (of left) of the `bit` bits that is not `bit`
     /// @param _integer The integer as a uint256

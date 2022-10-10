@@ -5,6 +5,12 @@ pragma solidity ^0.8.0;
 import "../LBErrors.sol";
 import "./BitMath.sol";
 
+/**
+ * @title Liquidity Book Math Helper Library
+ * @author Trader Joe
+ * @notice Helper contract used for full precision calculations
+ */
+
 library Math512Bits {
     using BitMath for uint256;
 

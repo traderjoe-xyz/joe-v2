@@ -2,6 +2,12 @@
 
 pragma solidity ^0.8.0;
 
+/**
+ * @title Liquidity Book Encoder Library
+ * @author Trader Joe
+ * @notice Helper contract used for encoding uint256 value
+ */
+
 library Encoder {
     /// @notice Internal function to encode a uint256 value using a mask and offset
     /// @dev This function can underflow

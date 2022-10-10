@@ -12,14 +12,11 @@ import "./libraries/Constants.sol";
 import "./libraries/Decoder.sol";
 import "./libraries/SafeCast.sol";
 
-/**
- * @title Liquidity Book Factory
- * @author Trader Joe
- * @notice Contract used to deploy and register new LBPairs.
- * Enables setting fee parameters, flashloan fees and LBPair implementation.
- * Unless the `creationUnlocked` is `true`, only the owner of the factory can create pairs.
- */
-
+/// @title Liquidity Book Factory
+/// @author Trader Joe
+/// @notice Contract used to deploy and register new LBPairs.
+/// Enables setting fee parameters, flashloan fees and LBPair implementation.
+/// Unless the `creationUnlocked` is `true`, only the owner of the factory can create pairs.
 contract LBFactory is PendingOwnable, ILBFactory {
     using SafeCast for uint256;
     using Decoder for bytes32;

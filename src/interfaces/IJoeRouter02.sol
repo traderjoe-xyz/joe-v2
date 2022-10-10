@@ -4,11 +4,8 @@ pragma solidity ^0.8.0;
 
 import "./IJoeRouter01.sol";
 
-/**
- * @title Joe V1 Router Interface
- * @notice Interface to interact with Joe V1 Router
- */
-
+/// @title Joe V1 Router Interface
+/// @notice Interface to interact with Joe V1 Router
 interface IJoeRouter02 is IJoeRouter01 {
     function removeLiquidityAVAXSupportingFeeOnTransferTokens(
         address token,

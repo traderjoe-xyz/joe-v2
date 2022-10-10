@@ -21,12 +21,9 @@ import "./libraries/TokenHelper.sol";
 import "./interfaces/ILBFlashLoanCallback.sol";
 import "./interfaces/ILBPair.sol";
 
-/**
- * @title Liquidity Book Pair
- * @author Trader Joe
- * @notice Implementation of pair
- */
-
+/// @title Liquidity Book Pair
+/// @author Trader Joe
+/// @notice Implementation of pair
 contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /** Libraries **/
 

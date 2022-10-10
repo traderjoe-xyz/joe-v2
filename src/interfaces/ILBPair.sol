@@ -7,12 +7,9 @@ import "openzeppelin/token/ERC20/IERC20.sol";
 import "./ILBFactory.sol";
 import "../libraries/FeeHelper.sol";
 
-/**
- * @title Liquidity Book Pair Interface
- * @author Trader Joe
- * @notice Required interface of LBPair contract
- */
-
+/// @title Liquidity Book Pair Interface
+/// @author Trader Joe
+/// @notice Required interface of LBPair contract
 interface ILBPair {
     /// @dev Structure to store the reserves of bins:
     /// - reserveX: The current reserve of tokenX of the bin

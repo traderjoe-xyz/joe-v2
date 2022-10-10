@@ -15,12 +15,9 @@ import "./libraries/Math512Bits.sol";
 import "./libraries/SwapHelper.sol";
 import "./libraries/Constants.sol";
 
-/**
- * @title Liquidity Book Router
- * @author Trader Joe
- * @notice Main contract to interact with to swap and manage liquidity on Joe V2 exchange.
- */
-
+/// @title Liquidity Book Router
+/// @author Trader Joe
+/// @notice Main contract to interact with to swap and manage liquidity on Joe V2 exchange.
 contract LBRouter is ILBRouter {
     using TokenHelper for IERC20;
     using FeeHelper for FeeHelper.FeeParameters;

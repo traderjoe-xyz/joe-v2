@@ -2,11 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-/**
- * @title Joe V1 Pair Interface
- * @notice Interface to interact with Joe V1 Pairs
- */
-
+/// @title Joe V1 Pair Interface
+/// @notice Interface to interact with Joe V1 Pairs
 interface IJoePair {
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event Transfer(address indexed from, address indexed to, uint256 value);

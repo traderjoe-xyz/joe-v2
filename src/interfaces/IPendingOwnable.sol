@@ -2,12 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-/**
- * @title Liquidity Book Pending Ownable Interface
- * @author Trader Joe
- * @notice Required interface of Pending Ownable contract used for LBFactory
- */
-
+/// @title Liquidity Book Pending Ownable Interface
+/// @author Trader Joe
+/// @notice Required interface of Pending Ownable contract used for LBFactory
 interface IPendingOwnable {
     event PendingOwnerSet(address indexed pendingOwner);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);

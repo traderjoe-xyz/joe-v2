@@ -5,12 +5,9 @@ pragma solidity ^0.8.0;
 import "./Encoder.sol";
 import "./Decoder.sol";
 
-/**
- * @title Liquidity Book Sample Helper Library
- * @author Trader Joe
- * @notice Helper contract used for oracle samples operations
- */
-
+/// @title Liquidity Book Sample Helper Library
+/// @author Trader Joe
+/// @notice Helper contract used for oracle samples operations
 library Samples {
     using Encoder for uint256;
     using Decoder for bytes32;

@@ -5,15 +5,15 @@ pragma solidity ^0.8.0;
 import "openzeppelin/token/ERC20/IERC20.sol";
 
 import "./LBErrors.sol";
-import "./interfaces/ILBToken.sol";
-import "./interfaces/IJoePair.sol";
-import "./interfaces/ILBRouter.sol";
 import "./libraries/BinHelper.sol";
+import "./libraries/Constants.sol";
 import "./libraries/FeeHelper.sol";
-import "./libraries/TokenHelper.sol";
 import "./libraries/Math512Bits.sol";
 import "./libraries/SwapHelper.sol";
-import "./libraries/Constants.sol";
+import "./libraries/TokenHelper.sol";
+import "./interfaces/IJoePair.sol";
+import "./interfaces/ILBToken.sol";
+import "./interfaces/ILBRouter.sol";
 
 /// @title Liquidity Book Router
 /// @author Trader Joe

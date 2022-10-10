@@ -7,23 +7,23 @@ pragma solidity ^0.8.0;
 import "./LBErrors.sol";
 import "./LBToken.sol";
 import "./libraries/BinHelper.sol";
+import "./libraries/Constants.sol";
+import "./libraries/Decoder.sol";
+import "./libraries/FeeDistributionHelper.sol";
 import "./libraries/Math512Bits.sol";
+import "./libraries/Oracle.sol";
+import "./libraries/ReentrancyGuardUpgradeable.sol";
 import "./libraries/SafeCast.sol";
 import "./libraries/SafeMath.sol";
-import "./libraries/TreeMath.sol";
-import "./libraries/Constants.sol";
-import "./libraries/ReentrancyGuardUpgradeable.sol";
-import "./libraries/Oracle.sol";
-import "./libraries/Decoder.sol";
 import "./libraries/SwapHelper.sol";
-import "./libraries/FeeDistributionHelper.sol";
 import "./libraries/TokenHelper.sol";
+import "./libraries/TreeMath.sol";
 import "./interfaces/ILBFlashLoanCallback.sol";
 import "./interfaces/ILBPair.sol";
 
 /// @title Liquidity Book Pair
 /// @author Trader Joe
-/// @notice Implementation of pair
+/// @notice The implementation of Liquidity Book Pair that also acts as the receipt token for liquidity positions
 contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /** Libraries **/
 

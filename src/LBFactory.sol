@@ -2,15 +2,15 @@
 
 pragma solidity ^0.8.0;
 
-import "openzeppelin/utils/structs/EnumerableSet.sol";
 import "openzeppelin/proxy/Clones.sol";
+import "openzeppelin/utils/structs/EnumerableSet.sol";
 
 import "./LBErrors.sol";
-import "./interfaces/ILBFactory.sol";
-import "./libraries/PendingOwnable.sol";
 import "./libraries/Constants.sol";
 import "./libraries/Decoder.sol";
+import "./libraries/PendingOwnable.sol";
 import "./libraries/SafeCast.sol";
+import "./interfaces/ILBFactory.sol";
 
 /// @title Liquidity Book Factory
 /// @author Trader Joe

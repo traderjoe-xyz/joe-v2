@@ -4,8 +4,6 @@ pragma solidity ^0.8.0;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 
-
-
 /// @title Safe Transfer
 /// @author Trader Joe
 /// @notice Wrappers around ERC20 operations that throw on failure (when the token

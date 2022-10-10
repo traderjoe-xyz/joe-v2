@@ -5,10 +5,10 @@ pragma solidity ^0.8.0;
 import "openzeppelin/token/ERC20/IERC20.sol";
 
 import "../LBErrors.sol";
-import "./FeeHelper.sol";
 import "./Constants.sol";
-import "./TokenHelper.sol";
+import "./FeeHelper.sol";
 import "./SafeCast.sol";
+import "./TokenHelper.sol";
 
 /// @title Liquidity Book Fee Distribution Helper Library
 /// @author Trader Joe

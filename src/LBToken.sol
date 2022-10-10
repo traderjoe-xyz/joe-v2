@@ -2,9 +2,10 @@
 
 pragma solidity ^0.8.0;
 
+import "openzeppelin/utils/structs/EnumerableSet.sol";
+
 import "./LBErrors.sol";
 import "./interfaces/ILBToken.sol";
-import "openzeppelin/utils/structs/EnumerableSet.sol";
 
 /// @title Liquidity Book Token
 /// @author Trader Joe

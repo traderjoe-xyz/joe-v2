@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
+import "./Constants.sol";
 import "./SafeCast.sol";
 import "./SafeMath.sol";
-import "./Constants.sol";
 
 /// @title Liquidity Book Fee Helper Library
 /// @author Trader Joe

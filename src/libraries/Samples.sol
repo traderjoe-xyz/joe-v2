@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import "./Encoder.sol";
 import "./Decoder.sol";
+import "./Encoder.sol";
 
 /// @title Liquidity Book Sample Helper Library
 /// @author Trader Joe

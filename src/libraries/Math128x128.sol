@@ -3,9 +3,9 @@
 pragma solidity ^0.8.0;
 
 import "../LBErrors.sol";
-import "./Math512Bits.sol";
 import "./BitMath.sol";
 import "./Constants.sol";
+import "./Math512Bits.sol";
 
 /// @title Liquidity Book Math Helper Library
 /// @author Trader Joe

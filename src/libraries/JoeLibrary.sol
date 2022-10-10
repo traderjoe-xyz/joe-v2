@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "../interfaces/IJoePair.sol";
 import "../LBErrors.sol";
 
 /// @title Liquidity Book Joe Library Helper Library

@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 
-import "./ILBFactory.sol";
 import "../libraries/FeeHelper.sol";
+import "./ILBFactory.sol";
 
 /// @title Liquidity Book Pair Interface
 /// @author Trader Joe

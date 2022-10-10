@@ -23,7 +23,7 @@ import "./interfaces/ILBPair.sol";
 
 /// @title Liquidity Book Pair
 /// @author Trader Joe
-/// @notice Implementation of pair
+/// @notice The implementation of Liquidity Book Pair that also acts as the receipt token for liquidity positions
 contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /** Libraries **/
 

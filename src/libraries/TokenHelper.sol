@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 
-error TokenHelper__TransferFailed(IERC20 token, address recipient, uint256 amount);
+
 
 /// @title Safe Transfer
 /// @author Trader Joe

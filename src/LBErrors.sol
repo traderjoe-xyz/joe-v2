@@ -176,3 +176,11 @@ error JoeLibrary__IdenticalAddresses();
 error JoeLibrary__AddressZero();
 error JoeLibrary__InsufficientAmount();
 error JoeLibrary__InsufficientLiquidity();
+
+/** TokenHelper errors */
+
+error TokenHelper__TransferFailed(IERC20 token, address recipient, uint256 amount);
+
+/** LBQuoter errors */
+
+error LBQuoter_InvalidLength();

@@ -21,13 +21,13 @@ contract FaucetTest is Test {
     uint96 constant TOKEN6_PER_REQUEST = 1_000e6;
     uint96 constant TOKEN12_PER_REQUEST = 1_000e12;
     uint96 constant AVAX_PER_REQUEST = 1e18;
-    uint256 constant REQUEST_COOL_DOWN = 24 hours;
+    uint256 constant REQUEST_COOLDOWN = 24 hours;
 
     function setUp() public {
         token6 = new ERC20MockDecimalsOwnable("Mock Token 6 decimals", "TOKEN6", 6);
         token12 = new ERC20MockDecimalsOwnable("Mock Token 12 decimals", "TOKEN12", 12);
 
-        faucet = new Faucet{value: 1000e18}(AVAX_PER_REQUEST, REQUEST_COOL_DOWN);
+        faucet = new Faucet{value: 1000e18}(AVAX_PER_REQUEST, REQUEST_COOLDOWN);
 
         token6.transferOwnership(address(faucet));
         token12.transferOwnership(address(faucet));
@@ -156,7 +156,7 @@ contract FaucetTest is Test {
         assertEq(BOB.balance, 0);
     }
 
-    function testSetRequestCoolDown() external {
+    function testSetRequestCooldown() external {
         uint256 timestamp = block.timestamp;
 
         vm.startPrank(ALICE);
@@ -164,7 +164,7 @@ contract FaucetTest is Test {
         console.log(
             token6.balanceOf(ALICE),
             token6.balanceOf(DEV),
-            block.timestamp + faucet.requestCoolDown(),
+            block.timestamp + faucet.requestCooldown(),
             faucet.lastRequest(ALICE)
         );
 
@@ -177,15 +177,15 @@ contract FaucetTest is Test {
         console.log(
             token6.balanceOf(ALICE),
             token6.balanceOf(DEV),
-            block.timestamp + faucet.requestCoolDown(),
+            block.timestamp + faucet.requestCooldown(),
             faucet.lastRequest(ALICE)
         );
 
-        faucet.setRequestCoolDown(1 hours);
+        faucet.setRequestCooldown(1 hours);
 
         vm.startPrank(ALICE);
         vm.expectRevert(abi.encodeWithSelector(PendingOwnable__NotOwner.selector));
-        faucet.setRequestCoolDown(10 hours);
+        faucet.setRequestCooldown(10 hours);
         vm.stopPrank();
 
         vm.startPrank(ALICE);

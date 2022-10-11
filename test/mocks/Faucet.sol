@@ -25,7 +25,7 @@ contract Faucet is PendingOwnable {
     }
 
     /// @notice The minimum time needed between 2 requests
-    uint256 public requestCoolDown;
+    uint256 public requestCooldown;
 
     /// @notice last time a user has requested tokens
     mapping(address => uint256) public lastRequest;
@@ -36,9 +36,9 @@ contract Faucet is PendingOwnable {
 
     /// @notice Constructor of the faucet.
     /// @param _avaxPerRequest The avax received per request
-    /// @param _requestCoolDown The request cool down
-    constructor(uint96 _avaxPerRequest, uint256 _requestCoolDown) payable {
-        _setRequestCoolDown(_requestCoolDown);
+    /// @param _requestCooldown The request cooldown
+    constructor(uint96 _avaxPerRequest, uint256 _requestCooldown) payable {
+        _setRequestCooldown(_requestCooldown);
         _addFaucetToken(FaucetToken({ERC20: address(0), amountPerRequest: _avaxPerRequest}));
     }
 
@@ -53,7 +53,7 @@ contract Faucet is PendingOwnable {
     /// @notice User needs to call this function in order to receive test tokens and avax
     /// @dev If contract's avax balance is not enough, it won't revert and will only receive the different test tokens
     function request() external {
-        require(block.timestamp >= lastRequest[msg.sender] + requestCoolDown, "Too many request");
+        require(block.timestamp >= lastRequest[msg.sender] + requestCooldown, "Too many request");
         lastRequest[msg.sender] = block.timestamp;
 
         uint256 len = faucetTokens.length;
@@ -98,15 +98,15 @@ contract Faucet is PendingOwnable {
         delete tokenToIndices[_token];
     }
 
-    /// @notice Set the request cool down for every users
-    /// @dev This function needs to be called bu the owner
-    /// @param _requestCoolDown The new cool down
-    function setRequestCoolDown(uint256 _requestCoolDown) external onlyOwner {
-        _setRequestCoolDown(_requestCoolDown);
+    /// @notice Set the request cooldown for every users
+    /// @dev This function needs to be called by the owner
+    /// @param _requestCooldown The new cooldown
+    function setRequestCooldown(uint256 _requestCooldown) external onlyOwner {
+        _setRequestCooldown(_requestCooldown);
     }
 
     /// @notice Set the amount per request of a specific token, designated by its symbol
-    /// @dev This function needs to be called bu the owner
+    /// @dev This function needs to be called by the owner
     /// @param _token The address of the token
     /// @param _amountPerRequest The new amount per request
     function setAmountPerRequest(address _token, uint96 _amountPerRequest) external onlyOwner {
@@ -114,7 +114,7 @@ contract Faucet is PendingOwnable {
     }
 
     /// @notice Mint amount tokens directly to the recipient address, designated by its symbol
-    /// @dev This function needs to be called bu the owner
+    /// @dev This function needs to be called by the owner
     /// @param _token The address of the token
     /// @param _recipient The address of the recipient
     /// @param _amount The amount of token to mint
@@ -129,7 +129,7 @@ contract Faucet is PendingOwnable {
     }
 
     /// @notice Withdraw `amount` AVAX to `to`
-    /// @dev This function needs to be called bu the owner
+    /// @dev This function needs to be called by the owner
     /// @param _to The recipient address
     /// @param _amount The AVAX amount to send
     function withdrawAVAX(address _to, uint256 _amount) external onlyOwner {
@@ -146,13 +146,13 @@ contract Faucet is PendingOwnable {
         tokenToIndices[_token.ERC20] = faucetTokens.length;
     }
 
-    /// @notice Private function to set the request cool down for every users
-    /// @dev The new cool down needs to be greater than 1 hour
-    /// @param _requestCoolDown The new cool down
-    function _setRequestCoolDown(uint256 _requestCoolDown) private {
-        require(_requestCoolDown >= 1 hours, "Unsafe request cool down");
+    /// @notice Private function to set the request cooldown for every users
+    /// @dev The new cooldown needs to be greater than 1 hour
+    /// @param _requestCooldown The new cooldown
+    function _setRequestCooldown(uint256 _requestCooldown) private {
+        require(_requestCooldown >= 1 hours, "Unsafe request cooldown");
 
-        requestCoolDown = _requestCoolDown;
+        requestCooldown = _requestCooldown;
     }
 
     /// @notice Private function to set the amount per request of a specific token, designated by its symbol

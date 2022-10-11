@@ -85,7 +85,7 @@ contract Faucet is PendingOwnable {
         require(index >= 2, "Not a faucet token");
 
         uint256 lastIndex = faucetTokens.length - 1;
-        faucetTokens[index] = faucetTokens[lastIndex];
+        if (--index != lastIndex) faucetTokens[index] = faucetTokens[lastIndex];
 
         delete faucetTokens[lastIndex];
         delete tokenToIndices[_token];

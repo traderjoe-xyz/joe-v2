@@ -65,6 +65,13 @@ contract FaucetTest is Test {
 
         faucet.removeFaucetToken(IERC20(token6));
 
+        IERC20 faucetToken;
+        (faucetToken, ) = faucet.faucetTokens(0);
+        assertEq(address(faucetToken), address(AVAX));
+
+        (faucetToken, ) = faucet.faucetTokens(1);
+        assertEq(address(faucetToken), address(token12));
+
         assertEq(faucet.owner(), DEV);
 
         vm.expectRevert("Not a faucet token");

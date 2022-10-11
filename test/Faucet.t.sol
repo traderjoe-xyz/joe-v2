@@ -12,6 +12,7 @@ contract FaucetTest is Test {
     address internal immutable DEV = address(this);
     address internal constant ALICE = address(bytes20(bytes32(keccak256(bytes("ALICE")))));
     address internal constant BOB = address(bytes20(bytes32(keccak256(bytes("BOB")))));
+    address internal constant OPERATOR = address(bytes20(bytes32(keccak256(bytes("OPERATOR")))));
 
     ERC20MockDecimalsOwnable token6;
     ERC20MockDecimalsOwnable token12;
@@ -94,6 +95,38 @@ contract FaucetTest is Test {
         assertEq(token6.balanceOf(BOB), TOKEN6_PER_REQUEST);
         assertEq(token12.balanceOf(BOB), TOKEN12_PER_REQUEST);
         assertEq(BOB.balance, AVAX_PER_REQUEST);
+    }
+
+    function testRequestFaucetTokensByOperator() external {
+        vm.startPrank(ALICE);
+        vm.expectRevert("Only operator");
+        faucet.request(ALICE);
+        vm.stopPrank();
+
+        faucet.setOperator(OPERATOR);
+
+        vm.startPrank(DEV);
+        vm.expectRevert("Only operator");
+        faucet.request(DEV);
+        vm.stopPrank();
+
+        vm.startPrank(OPERATOR);
+        faucet.request(ALICE);
+        faucet.request(BOB);
+        vm.stopPrank();
+
+        assertEq(token6.balanceOf(ALICE), TOKEN6_PER_REQUEST);
+        assertEq(token12.balanceOf(ALICE), TOKEN12_PER_REQUEST);
+        assertEq(ALICE.balance, AVAX_PER_REQUEST);
+
+        assertEq(token6.balanceOf(BOB), TOKEN6_PER_REQUEST);
+        assertEq(token12.balanceOf(BOB), TOKEN12_PER_REQUEST);
+        assertEq(BOB.balance, AVAX_PER_REQUEST);
+
+        vm.startPrank(BOB);
+        vm.expectRevert("Too many requests");
+        faucet.request();
+        vm.stopPrank();
     }
 
     function testSetRequestAmount() external {
@@ -181,7 +214,7 @@ contract FaucetTest is Test {
         // increase time
         vm.warp(timestamp + 1 hours);
 
-        vm.expectRevert("Too many request");
+        vm.expectRevert("Too many requests");
         faucet.request();
         vm.stopPrank();
         console.log(

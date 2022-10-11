@@ -20,6 +20,9 @@ contract Faucet is PendingOwnable {
         uint96 amountPerRequest;
     }
 
+    /// @notice The address of the operator that can call request for other address
+    address public operator;
+
     /// @notice The minimum time needed between 2 requests
     uint256 public requestCooldown;
 
@@ -29,6 +32,16 @@ contract Faucet is PendingOwnable {
     /// @notice faucet tokens set, custom to be able to use structures
     FaucetToken[] public faucetTokens;
     mapping(IERC20 => uint256) tokenToIndices;
+
+    modifier onlyOperator() {
+        require(msg.sender == operator, "Only operator");
+        _;
+    }
+
+    modifier verifyRequest(address user) {
+        require(block.timestamp >= lastRequest[user] + requestCooldown, "Too many requests");
+        _;
+    }
 
     /// @notice Constructor of the faucet, set the request cooldown and add avax to the faucet
     /// @param _avaxPerRequest The avax received per request
@@ -47,25 +60,21 @@ contract Faucet is PendingOwnable {
     }
 
     /// @notice User needs to call this function in order to receive test tokens and avax
-    /// @dev If contract's avax balance is not enough, it won't revert and will only receive the different test tokens
-    function request() external {
-        require(block.timestamp >= lastRequest[msg.sender] + requestCooldown, "Too many request");
+    /// @dev Can be called only once per `requestCooldown` seconds
+    function request() external verifyRequest(msg.sender) {
         lastRequest[msg.sender] = block.timestamp;
 
-        uint256 len = faucetTokens.length;
+        _request(msg.sender);
+    }
 
-        FaucetToken memory token = faucetTokens[0];
+    /// @notice User needs to call this function in order to receive test tokens and avax
+    /// @dev Can be called only once per `requestCooldown` seconds for every address
+    /// Can only be called by the operator
+    /// @param _to The address that will receive the tokens
+    function request(address _to) external onlyOperator verifyRequest(_to) {
+        lastRequest[_to] = block.timestamp;
 
-        if (token.amountPerRequest > 0 && address(this).balance >= token.amountPerRequest) {
-            _sendAvax(msg.sender, token.amountPerRequest);
-        }
-
-        for (uint256 i = 1; i < len; ++i) {
-            token = faucetTokens[i];
-
-            if (token.amountPerRequest > 0 && token.ERC20.balanceOf(address(this)) >= token.amountPerRequest)
-                token.ERC20.safeTransfer(msg.sender, token.amountPerRequest);
-        }
+        _request(_to);
     }
 
     /// @notice Add a token to the faucet
@@ -118,6 +127,32 @@ contract Faucet is PendingOwnable {
     ) external onlyOwner {
         if (address(_token) == address(0)) _sendAvax(_to, _amount);
         else _token.safeTransfer(_to, _amount);
+    }
+
+    /// @notice Set the address of the operator
+    /// @param _newOperator The address of the new operator
+    function setOperator(address _newOperator) external onlyOwner {
+        operator = _newOperator;
+    }
+
+    /// @notice Private function to send faucet tokens to the user
+    /// @dev Will only send tokens if the faucet has a sufficient balance
+    /// @param _to The address that will receive the tokens
+    function _request(address _to) private {
+        uint256 len = faucetTokens.length;
+
+        FaucetToken memory token = faucetTokens[0];
+
+        if (token.amountPerRequest > 0 && address(this).balance >= token.amountPerRequest) {
+            _sendAvax(_to, token.amountPerRequest);
+        }
+
+        for (uint256 i = 1; i < len; ++i) {
+            token = faucetTokens[i];
+
+            if (token.amountPerRequest > 0 && token.ERC20.balanceOf(address(this)) >= token.amountPerRequest)
+                token.ERC20.safeTransfer(_to, token.amountPerRequest);
+        }
     }
 
     /// @notice Private function to add a token to the faucet

@@ -26,6 +26,8 @@ contract Faucet is PendingOwnable {
     /// @notice The minimum time needed between 2 requests
     uint256 public requestCooldown;
 
+    bool public unlockedRequest;
+
     /// @notice last time a user has requested tokens
     mapping(address => uint256) public lastRequest;
 
@@ -40,6 +42,16 @@ contract Faucet is PendingOwnable {
 
     modifier verifyRequest(address user) {
         require(block.timestamp >= lastRequest[user] + requestCooldown, "Too many requests");
+        _;
+    }
+
+    modifier onlyEOA() {
+        require(tx.origin == msg.sender, "Only EOA");
+        _;
+    }
+
+    modifier isRequestUnlocked() {
+        require(unlockedRequest, "Direct request is locked");
         _;
     }
 
@@ -61,7 +73,7 @@ contract Faucet is PendingOwnable {
 
     /// @notice User needs to call this function in order to receive test tokens and avax
     /// @dev Can be called only once per `requestCooldown` seconds
-    function request() external verifyRequest(msg.sender) {
+    function request() external onlyEOA isRequestUnlocked verifyRequest(msg.sender) {
         lastRequest[msg.sender] = block.timestamp;
 
         _request(msg.sender);
@@ -133,6 +145,12 @@ contract Faucet is PendingOwnable {
     /// @param _newOperator The address of the new operator
     function setOperator(address _newOperator) external onlyOwner {
         operator = _newOperator;
+    }
+
+    /// @notice Set whether the direct request is unlocked or not
+    /// @param _unlockedRequest The address of the new operator
+    function setUnlockedRequest(bool _unlockedRequest) external onlyOwner {
+        unlockedRequest = _unlockedRequest;
     }
 
     /// @notice Private function to send faucet tokens to the user

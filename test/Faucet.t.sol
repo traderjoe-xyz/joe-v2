@@ -16,7 +16,7 @@ contract FaucetTest is Test {
     ERC20MockDecimalsOwnable token6;
     ERC20MockDecimalsOwnable token12;
 
-    address AVAX = address(0);
+    IERC20 AVAX = IERC20(address(0));
 
     uint96 constant TOKEN6_PER_REQUEST = 1_000e6;
     uint96 constant TOKEN12_PER_REQUEST = 1_000e12;
@@ -27,69 +27,48 @@ contract FaucetTest is Test {
         token6 = new ERC20MockDecimalsOwnable("Mock Token 6 decimals", "TOKEN6", 6);
         token12 = new ERC20MockDecimalsOwnable("Mock Token 12 decimals", "TOKEN12", 12);
 
-        faucet = new Faucet{value: 1000e18}(AVAX_PER_REQUEST, REQUEST_COOLDOWN);
+        faucet = new Faucet{value: 10 * AVAX_PER_REQUEST}(AVAX_PER_REQUEST, REQUEST_COOLDOWN);
 
-        token6.transferOwnership(address(faucet));
-        token12.transferOwnership(address(faucet));
+        token6.mint(address(faucet), 10 * TOKEN6_PER_REQUEST);
+        token12.mint(address(faucet), 10 * TOKEN12_PER_REQUEST);
 
-        faucet.addFaucetToken(address(token6), TOKEN6_PER_REQUEST);
-        faucet.addFaucetToken(address(token12), TOKEN12_PER_REQUEST);
+        faucet.addFaucetToken(IERC20(token6), TOKEN6_PER_REQUEST);
+        faucet.addFaucetToken(IERC20(token12), TOKEN12_PER_REQUEST);
 
         // We increase timestamp so current timestamp is not 0
         vm.warp(365 days);
     }
 
     function testAddToken() external {
-        vm.startPrank(address(faucet));
         ERC20MockDecimalsOwnable newToken = new ERC20MockDecimalsOwnable("New Token", "NEW_TOKEN", 18);
-        newToken.transferOwnership(address(faucet));
-        vm.stopPrank();
+        newToken.mint(address(faucet), 1_000e18);
 
         vm.startPrank(ALICE);
         vm.expectRevert(abi.encodeWithSelector(PendingOwnable__NotOwner.selector));
-        faucet.addFaucetToken(address(newToken), 1e18);
+        faucet.addFaucetToken(IERC20(newToken), 1e18);
         vm.stopPrank();
 
-        faucet.addFaucetToken(address(newToken), 1e18);
+        faucet.addFaucetToken(IERC20(newToken), 1e18);
 
         vm.expectRevert("Already a faucet token");
-        faucet.addFaucetToken(address(newToken), 1e18);
-    }
-
-    function testRevertWhenAddingNonOwnableContract() external {
-        vm.expectRevert();
-        faucet.addFaucetToken(address(1), 1e18);
+        faucet.addFaucetToken(IERC20(newToken), 1e18);
     }
 
     function testRemoveToken() external {
         vm.startPrank(ALICE);
         vm.expectRevert(abi.encodeWithSelector(PendingOwnable__NotOwner.selector));
-        faucet.removeFaucetToken(address(1));
+        faucet.removeFaucetToken(IERC20(address(1)));
         vm.stopPrank();
 
         vm.expectRevert("Not a faucet token");
-        faucet.removeFaucetToken(address(0));
+        faucet.removeFaucetToken(AVAX);
 
-        faucet.removeFaucetToken(address(token6));
+        faucet.removeFaucetToken(IERC20(token6));
 
         assertEq(faucet.owner(), DEV);
 
         vm.expectRevert("Not a faucet token");
-        faucet.removeFaucetToken(address(token6));
-    }
-
-    function testMintOnlyOwner() external {
-        vm.expectRevert("Ownable: caller is not the owner");
-        token6.mint(DEV, 1e18);
-
-        vm.startPrank(ALICE);
-        vm.expectRevert("Ownable: caller is not the owner");
-        token6.mint(ALICE, 1e18);
-        vm.stopPrank();
-
-        assertEq(token6.balanceOf(ALICE), 0);
-        faucet.mint(address(token6), ALICE, 1e18);
-        assertEq(token6.balanceOf(ALICE), 1e18);
+        faucet.removeFaucetToken(IERC20(token6));
     }
 
     function testRequestFaucetTokens() external {
@@ -120,8 +99,8 @@ contract FaucetTest is Test {
         faucet.setAmountPerRequest(AVAX, newRequestToken6Amount);
         vm.stopPrank();
 
-        faucet.setAmountPerRequest(address(token6), newRequestToken6Amount);
-        faucet.setAmountPerRequest(address(token12), newRequestToken12Amount);
+        faucet.setAmountPerRequest(IERC20(token6), newRequestToken6Amount);
+        faucet.setAmountPerRequest(IERC20(token12), newRequestToken12Amount);
         faucet.setAmountPerRequest(AVAX, newRequestAvaxAmount);
 
         vm.startPrank(ALICE);
@@ -135,17 +114,17 @@ contract FaucetTest is Test {
 
     function testWithdrawAvax() external {
         assertEq(ALICE.balance, 0);
-        faucet.withdrawAVAX(ALICE, 1e18);
+        faucet.withdrawToken(AVAX, ALICE, 1e18);
         assertEq(ALICE.balance, 1e18);
 
         vm.startPrank(ALICE);
         vm.expectRevert(abi.encodeWithSelector(PendingOwnable__NotOwner.selector));
-        faucet.withdrawAVAX(ALICE, 1e18);
+        faucet.withdrawToken(AVAX, ALICE, 1e18);
         vm.stopPrank();
 
         // Leave 0.99...9 AVAX in the contract
-        faucet.withdrawAVAX(ALICE, address(faucet).balance - (1e18 - 1));
-        assertEq(address(faucet).balance, 1e18 - 1);
+        faucet.withdrawToken(AVAX, ALICE, address(faucet).balance - (AVAX_PER_REQUEST - 1));
+        assertEq(address(faucet).balance, AVAX_PER_REQUEST - 1);
 
         vm.startPrank(BOB);
         faucet.request();
@@ -154,6 +133,30 @@ contract FaucetTest is Test {
         assertEq(token6.balanceOf(BOB), TOKEN6_PER_REQUEST);
         assertEq(token12.balanceOf(BOB), TOKEN12_PER_REQUEST);
         assertEq(BOB.balance, 0);
+    }
+
+    function testWithdrawToken() external {
+        // Tries to withdraw
+        assertEq(token12.balanceOf(ALICE), 0);
+        faucet.withdrawToken(IERC20(token12), ALICE, 2 * TOKEN6_PER_REQUEST);
+        assertEq(token12.balanceOf(ALICE), 2 * TOKEN6_PER_REQUEST);
+
+        vm.startPrank(ALICE);
+        vm.expectRevert(abi.encodeWithSelector(PendingOwnable__NotOwner.selector));
+        faucet.withdrawToken(IERC20(token6), ALICE, 1e18);
+        vm.stopPrank();
+
+        // Leave 0.99...9 TOKEN6 in the contract
+        faucet.withdrawToken(IERC20(token6), ALICE, token6.balanceOf(address(faucet)) - (TOKEN6_PER_REQUEST - 1));
+        assertEq(token6.balanceOf(address(faucet)), TOKEN6_PER_REQUEST - 1);
+
+        vm.startPrank(BOB);
+        faucet.request();
+        vm.stopPrank();
+
+        assertEq(token6.balanceOf(BOB), 0);
+        assertEq(token12.balanceOf(BOB), TOKEN12_PER_REQUEST);
+        assertEq(BOB.balance, AVAX_PER_REQUEST);
     }
 
     function testSetRequestCooldown() external {

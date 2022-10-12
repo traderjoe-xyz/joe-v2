@@ -7,7 +7,7 @@ import "./interfaces/ILBPair.sol";
 /** LBRouter errors */
 
 error LBRouter__SenderIsNotWAVAX();
-error LBRouter__PairNotCreated(IERC20 tokenX, IERC20 tokenY, uint256 binStep);
+error LBRouter__PairNotCreated(address tokenX, address tokenY, uint256 binStep);
 error LBRouter__WrongAmounts(uint256 amount, uint256 reserve);
 error LBRouter__SwapOverflows(uint256 id);
 error LBRouter__BrokenSwapSafetyCheck();
@@ -25,11 +25,11 @@ error LBRouter__DeadlineExceeded(uint256 deadline, uint256 currentTimestamp);
 error LBRouter__AmountSlippageBPTooBig(uint256 amountSlippage);
 error LBRouter__InsufficientAmountOut(uint256 amountOutMin, uint256 amountOut);
 error LBRouter__MaxAmountInExceeded(uint256 amountInMax, uint256 amountIn);
-error LBRouter__InvalidTokenPath(IERC20 wrongToken);
+error LBRouter__InvalidTokenPath(address wrongToken);
 error LBRouter__InvalidVersion(uint256 version);
 error LBRouter__WrongAvaxLiquidityParameters(
-    IERC20 tokenX,
-    IERC20 tokenY,
+    address tokenX,
+    address tokenY,
     uint256 amountX,
     uint256 amountY,
     uint256 msgValue

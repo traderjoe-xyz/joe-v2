@@ -20,6 +20,7 @@ import "./interfaces/ILBRouter.sol";
 /// @notice Main contract to interact with to swap and manage liquidity on Joe V2 exchange.
 contract LBRouter is ILBRouter {
     using TokenHelper for IERC20;
+    using TokenHelper for IWAVAX;
     using FeeHelper for FeeHelper.FeeParameters;
     using Math512Bits for uint256;
     using SwapHelper for ILBPair.Bin;
@@ -973,6 +974,6 @@ contract LBRouter is ILBRouter {
     /// @param _amount The AVAX amount to wrap
     function _wavaxDepositAndTransfer(address _to, uint256 _amount) private {
         wavax.deposit{value: _amount}();
-        wavax.transfer(_to, _amount);
+        wavax.safeTransfer(_to, _amount);
     }
 }

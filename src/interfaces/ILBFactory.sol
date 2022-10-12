@@ -99,8 +99,8 @@ interface ILBFactory is IPendingOwnable {
     function getNumberOfLBPairs() external view returns (uint256);
 
     function getLBPairInformation(
-        IERC20 tokenA,
-        IERC20 tokenB,
+        IERC20 tokenX,
+        IERC20 tokenY,
         uint256 binStep
     ) external view returns (LBPairInformation memory);
 

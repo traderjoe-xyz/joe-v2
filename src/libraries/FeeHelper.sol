@@ -121,11 +121,11 @@ library FeeHelper {
 
     /// @notice Return the fees from an amount
     /// @param _fp The current fee parameter
-    /// @param _amountPlusFee The amount of token sent
+    /// @param _amount The amount of token sent
     /// @return The fee amount
-    function getFeeAmountFrom(FeeParameters memory _fp, uint256 _amountPlusFee) internal pure returns (uint256) {
+    function getFeeAmountReverse(FeeParameters memory _fp, uint256 _amount) internal pure returns (uint256) {
         uint256 _fee = getTotalFee(_fp);
-        return (_amountPlusFee * _fee) / (Constants.PRECISION + _fee);
+        return (_amount * _fee) / (Constants.PRECISION - _fee);
     }
 
     /// @notice Return the fees added when an user adds liquidity and change the ratio in the active bin

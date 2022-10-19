@@ -116,14 +116,13 @@ contract LBRouter is ILBRouter {
             uint256 _price = BinHelper.getPriceFromId(_activeId, _fp.binStep);
             if (_reserve != 0) {
                 _amountOutOfBin = _amountOut > _reserve ? _reserve : _amountOut;
-
                 uint256 _amountInToBin = _swapForY
                     ? _amountOutOfBin.shiftDivRoundUp(Constants.SCALE_OFFSET, _price)
                     : _price.mulShiftRoundUp(_amountOutOfBin, Constants.SCALE_OFFSET);
 
                 // We update the fee, but we don't store the new volatility reference, volatility accumulated and indexRef to not penalize traders
                 _fp.updateVolatilityAccumulated(_activeId);
-                uint256 _fee = _fp.getFeeAmount(_amountInToBin);
+                uint256 _fee = _fp.getFeeAmountReverse(_amountInToBin);
                 _amountInWithFees = _amountInToBin + _fee;
 
                 if (_amountInWithFees + _reserve > type(uint112).max) revert LBRouter__SwapOverflows(_activeId);

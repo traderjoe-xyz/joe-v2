@@ -56,13 +56,13 @@ library SwapHelper {
         }
 
         fp.updateVolatilityAccumulated(activeId);
-        fees = fp.getFeeAmountDistribution(fp.getFeeAmount(_maxAmountInToBin));
+        fees = fp.getFeeAmountDistribution(fp.getFeeAmountReverse(_maxAmountInToBin));
 
         if (_maxAmountInToBin + fees.total <= amountIn) {
             amountInToBin = _maxAmountInToBin;
             amountOutOfBin = _reserve;
         } else {
-            fees = fp.getFeeAmountDistribution(fp.getFeeAmountFrom(amountIn));
+            fees = fp.getFeeAmountDistribution(fp.getFeeAmount(amountIn));
             amountInToBin = amountIn - fees.total;
             amountOutOfBin = swapForY
                 ? _price.mulShiftRoundDown(amountInToBin, Constants.SCALE_OFFSET)

@@ -165,8 +165,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         pair.swap(false, ALICE);
 
-        assertGe(token6D.balanceOf(ALICE), amountXOutForSwap);
-        assertApproxEqRel(token6D.balanceOf(ALICE), amountXOutForSwap, 1e14);
+        assertEq(token6D.balanceOf(ALICE), amountXOutForSwap);
     }
 
     function testSwapXtoYConsecutiveBinFromGetSwapIn() public {
@@ -182,8 +181,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         pair.swap(true, ALICE);
 
-        assertGe(token18D.balanceOf(ALICE), amountYOutForSwap);
-        assertApproxEqRel(token18D.balanceOf(ALICE), amountYOutForSwap, 1e14);
+        assertEq(token18D.balanceOf(ALICE), amountYOutForSwap);
     }
 
     function testSwapYtoXConsecutiveBinFromGetSwapOut() public {
@@ -199,7 +197,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         pair.swap(false, ALICE);
 
-        assertApproxEqAbs(token6D.balanceOf(ALICE), amountXOutForSwap, 1);
+        assertEq(token6D.balanceOf(ALICE), amountXOutForSwap);
     }
 
     function testSwapXtoYConsecutiveBinFromGetSwapOut() public {
@@ -231,8 +229,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         pair.swap(false, ALICE);
 
-        assertGe(token6D.balanceOf(ALICE), amountXOutForSwap);
-        assertApproxEqRel(token6D.balanceOf(ALICE), amountXOutForSwap, 1e14);
+        assertEq(token6D.balanceOf(ALICE), amountXOutForSwap);
     }
 
     function testSwapXtoYDistantBinsFromGetSwapIn() public {
@@ -248,8 +245,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         pair.swap(true, ALICE);
 
-        assertGe(token18D.balanceOf(ALICE), amountYOutForSwap);
-        assertApproxEqRel(token18D.balanceOf(ALICE), amountYOutForSwap, 1e14);
+        assertEq(token18D.balanceOf(ALICE), amountYOutForSwap);
     }
 
     function testSwapYtoXDistantBinsFromGetSwapOut() public {
@@ -265,7 +261,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         pair.swap(false, ALICE);
 
-        assertApproxEqAbs(token6D.balanceOf(ALICE), amountXOutForSwap, 1);
+        assertEq(token6D.balanceOf(ALICE), amountXOutForSwap);
     }
 
     function testSwapXtoYDistantBinsFromGetSwapOut() public {

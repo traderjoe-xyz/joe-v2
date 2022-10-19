@@ -106,7 +106,13 @@ contract Faucet is PendingOwnable {
         require(index >= 2, "Not a faucet token");
 
         uint256 lastIndex = faucetTokens.length - 1;
-        if (--index != lastIndex) faucetTokens[index] = faucetTokens[lastIndex];
+        if (--index != lastIndex) {
+            FaucetToken memory faucetToken = faucetTokens[lastIndex];
+
+            faucetTokens[index] = faucetToken;
+
+            tokenToIndices[faucetToken.ERC20] = index + 1;
+        }
 
         delete faucetTokens[lastIndex];
         delete tokenToIndices[_token];

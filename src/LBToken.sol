@@ -234,7 +234,7 @@ contract LBToken is ILBToken {
         uint256 _accountBalance = _balances[_id][_account];
         if (_accountBalance < _amount) revert LBToken__BurnExceedsBalance(_account, _id, _amount);
 
-        _beforeTokenTransfer(address(0), _account, _id, _amount);
+        _beforeTokenTransfer(_account, address(0), _id, _amount);
 
         unchecked {
             _balances[_id][_account] = _accountBalance - _amount;

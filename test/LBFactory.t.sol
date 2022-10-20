@@ -310,31 +310,6 @@ contract LiquidityBinFactoryTest is TestHelper {
         );
     }
 
-    function testForInvalidBaseFactor() public {
-        createLBPairDefaultFees(token6D, token12D);
-        uint16 invalidBaseFactor = uint16(Constants.BASIS_POINT_MAX + 1);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                LBFactory__BaseFactorOverflows.selector,
-                invalidBaseFactor,
-                Constants.BASIS_POINT_MAX
-            )
-        );
-
-        factory.setFeesParametersOnPair(
-            token6D,
-            token12D,
-            DEFAULT_BIN_STEP,
-            invalidBaseFactor,
-            DEFAULT_FILTER_PERIOD,
-            DEFAULT_DECAY_PERIOD,
-            DEFAULT_REDUCTION_FACTOR,
-            DEFAULT_VARIABLE_FEE_CONTROL,
-            DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATED
-        );
-    }
-
     function testForInvalidProtocolShare() public {
         createLBPairDefaultFees(token6D, token12D);
         uint16 invalidProtocolShare = uint16(factory.MAX_PROTOCOL_SHARE() + 1);

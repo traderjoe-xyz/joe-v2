@@ -550,9 +550,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
         if (_binStep < MIN_BIN_STEP || _binStep > MAX_BIN_STEP)
             revert LBFactory__BinStepRequirementsBreached(MIN_BIN_STEP, _binStep, MAX_BIN_STEP);
 
-        if (_baseFactor > Constants.BASIS_POINT_MAX)
-            revert LBFactory__BaseFactorOverflows(_baseFactor, Constants.BASIS_POINT_MAX);
-
         if (_filterPeriod >= _decayPeriod) revert LBFactory__DecreasingPeriods(_filterPeriod, _decayPeriod);
 
         if (_reductionFactor > Constants.BASIS_POINT_MAX)

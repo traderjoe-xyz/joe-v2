@@ -823,9 +823,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         unchecked {
             super._beforeTokenTransfer(_from, _to, _id, _amount);
 
-            Bin memory _bin = _bins[_id];
-
             if (_from != _to) {
+                Bin memory _bin = _bins[_id];
                 if (_from != address(0) && _from != address(this)) {
                     uint256 _balanceFrom = balanceOf(_from, _id);
 

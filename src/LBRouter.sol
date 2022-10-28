@@ -8,6 +8,7 @@ import "./LBErrors.sol";
 import "./libraries/BinHelper.sol";
 import "./libraries/Constants.sol";
 import "./libraries/FeeHelper.sol";
+import "./libraries/JoeLibrary.sol";
 import "./libraries/Math512Bits.sol";
 import "./libraries/SwapHelper.sol";
 import "./libraries/TokenHelper.sol";
@@ -24,6 +25,7 @@ contract LBRouter is ILBRouter {
     using FeeHelper for FeeHelper.FeeParameters;
     using Math512Bits for uint256;
     using SwapHelper for ILBPair.Bin;
+    using JoeLibrary for uint256;
 
     ILBFactory public immutable override factory;
     IJoeFactory public immutable override oldFactory;
@@ -722,7 +724,7 @@ contract LBRouter is ILBRouter {
 
                 uint256 amountOut_ = amountsIn[i];
                 // Legacy uniswap way of rounding
-                amountsIn[i - 1] = (_reserveIn * amountOut_ * 1_000) / (_reserveOut - amountOut_ * 997) + 1;
+                amountsIn[i - 1] = amountOut_.getAmountIn(_reserveIn, _reserveOut);
             } else {
                 (amountsIn[i - 1], ) = getSwapIn(ILBPair(_pair), amountsIn[i], ILBPair(_pair).tokenX() == _token);
             }
@@ -788,10 +790,10 @@ contract LBRouter is ILBRouter {
                     (uint256 _reserve0, uint256 _reserve1, ) = IJoePair(_pair).getReserves();
 
                     if (_token < _tokenNext) {
-                        amountOut = (_reserve1 * amountOut * 997) / (_reserve0 * 1_000 + amountOut * 997);
+                        amountOut = amountOut.getAmountOut(_reserve0, _reserve1);
                         IJoePair(_pair).swap(0, amountOut, _recipient, "");
                     } else {
-                        amountOut = (_reserve0 * amountOut * 997) / (_reserve1 * 1_000 + amountOut * 997);
+                        amountOut = amountOut.getAmountOut(_reserve1, _reserve0);
                         IJoePair(_pair).swap(amountOut, 0, _recipient, "");
                     }
                 } else {
@@ -887,13 +889,13 @@ contract LBRouter is ILBRouter {
                 if (_binStep == 0) {
                     (uint256 _reserve0, uint256 _reserve1, ) = IJoePair(_pair).getReserves();
                     if (_token < _tokenNext) {
-                        uint256 _balance = _token.balanceOf(_pair);
-                        uint256 _amountOut = (_reserve1 * (_balance - _reserve0) * 997) / (_balance * 1_000);
+                        uint256 _amountIn = _token.balanceOf(_pair) - _reserve0;
+                        uint256 _amountOut = _amountIn.getAmountOut(_reserve0, _reserve1);
 
                         IJoePair(_pair).swap(0, _amountOut, _recipient, "");
                     } else {
-                        uint256 _balance = _token.balanceOf(_pair);
-                        uint256 _amountOut = (_reserve0 * (_balance - _reserve1) * 997) / (_balance * 1_000);
+                        uint256 _amountIn = _token.balanceOf(_pair) - _reserve1;
+                        uint256 _amountOut = _amountIn.getAmountOut(_reserve1, _reserve0);
 
                         IJoePair(_pair).swap(_amountOut, 0, _recipient, "");
                     }

@@ -27,6 +27,7 @@ library FeeHelper {
     /// - indexRef: The index reference
     /// - time: The last time the accumulator was called
     struct FeeParameters {
+        // 144 lowest bits in slot
         uint16 binStep;
         uint16 baseFactor;
         uint16 filterPeriod;
@@ -35,6 +36,7 @@ library FeeHelper {
         uint24 variableFeeControl;
         uint16 protocolShare;
         uint24 maxVolatilityAccumulated;
+        // 112 highest bits in slot
         uint24 volatilityAccumulated;
         uint24 volatilityReference;
         uint24 indexRef;

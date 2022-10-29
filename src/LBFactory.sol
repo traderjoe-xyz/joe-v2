@@ -6,6 +6,7 @@ import "openzeppelin/proxy/Clones.sol";
 import "openzeppelin/utils/structs/EnumerableSet.sol";
 
 import "./LBErrors.sol";
+import "./libraries/BinHelper.sol";
 import "./libraries/Constants.sol";
 import "./libraries/Decoder.sol";
 import "./libraries/PendingOwnable.sol";
@@ -247,6 +248,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
         if (!_quoteAssetWhitelist.contains(address(_tokenY))) revert LBFactory__QuoteAssetNotWhitelisted(_tokenY);
 
         if (_tokenX == _tokenY) revert LBFactory__IdenticalAddresses(_tokenX);
+
+        // safety check, making sure that the price can be calculated
+        BinHelper.getPriceFromId(_activeId, _binStep);
 
         // We sort token for storage efficiency, only one input needs to be stored
         (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);

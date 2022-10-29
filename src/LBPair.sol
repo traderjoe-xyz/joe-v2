@@ -264,6 +264,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         override
         returns (uint256 amountX, uint256 amountY)
     {
+        if (_account == address(this) || _account == address(0)) return (0, 0);
+
         bytes32 _unclaimedData = _unclaimedFees[_account];
 
         amountX = _unclaimedData.decode(type(uint128).max, 0);
@@ -691,13 +693,15 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         nonReentrant
         returns (uint256 amountX, uint256 amountY)
     {
+        if (_account == address(0) || _account == address(this)) revert LBPair__AddressZeroOrThis();
+
+        bytes32 _unclaimedData = _unclaimedFees[_account];
+        delete _unclaimedFees[_account];
+
+        amountX = _unclaimedData.decode(type(uint128).max, 0);
+        amountY = _unclaimedData.decode(type(uint128).max, 128);
+
         unchecked {
-            bytes32 _unclaimedData = _unclaimedFees[_account];
-            delete _unclaimedFees[_account];
-
-            amountX = _unclaimedData.decode(type(uint128).max, 0);
-            amountY = _unclaimedData.decode(type(uint128).max, 128);
-
             for (uint256 i; i < _ids.length; ++i) {
                 uint256 _id = _ids[i];
                 uint256 _balance = balanceOf(_account, _id);
@@ -712,19 +716,19 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                     amountY += _amountY;
                 }
             }
-
-            if (amountX != 0) {
-                _pairInformation.feesX.total -= uint128(amountX);
-            }
-            if (amountY != 0) {
-                _pairInformation.feesY.total -= uint128(amountY);
-            }
-
-            tokenX.safeTransfer(_account, amountX);
-            tokenY.safeTransfer(_account, amountY);
-
-            emit FeesCollected(msg.sender, _account, amountX, amountY);
         }
+
+        if (amountX != 0) {
+            _pairInformation.feesX.total -= uint128(amountX);
+        }
+        if (amountY != 0) {
+            _pairInformation.feesY.total -= uint128(amountY);
+        }
+
+        tokenX.safeTransfer(_account, amountX);
+        tokenY.safeTransfer(_account, amountY);
+
+        emit FeesCollected(msg.sender, _account, amountX, amountY);
     }
 
     /// @notice Collect the protocol fees and send them to the feeRecipient

@@ -484,7 +484,7 @@ contract LBRouter is ILBRouter {
     }
 
     /// @notice Swaps AVAX for exact tokens while performing safety checks
-    /// @dev will refund any excess sent
+    /// @dev Will refund any AVAX amount sent in excess to `msg.sender`
     /// @param _amountOut The amount of tokens to receive
     /// @param _pairBinSteps The bin step of the pairs (0: V1, other values will use V2)
     /// @param _tokenPath The swap path using the binSteps following `_pairBinSteps`
@@ -518,7 +518,7 @@ contract LBRouter is ILBRouter {
 
         if (_amountOutReal < _amountOut) revert LBRouter__InsufficientAmountOut(_amountOut, _amountOutReal);
 
-        if (msg.value > amountsIn[0]) _safeTransferAVAX(_to, msg.value - amountsIn[0]);
+        if (msg.value > amountsIn[0]) _safeTransferAVAX(msg.sender, msg.value - amountsIn[0]);
     }
 
     /// @notice Swaps exact tokens for tokens while performing safety checks supporting for fee on transfer tokens

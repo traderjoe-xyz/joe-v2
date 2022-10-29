@@ -458,6 +458,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     }
 
     /// @notice Performs a low level add, this needs to be called from a contract which performs important safety checks.
+    /// @dev Will refund any tokenX or tokenY amount sent in excess to `_to`
     /// @param _ids The list of ids to add liquidity
     /// @param _distributionX The distribution of tokenX with sum(_distributionX) = 1e18 (100%) or 0 (0%)
     /// @param _distributionY The distribution of tokenY with sum(_distributionY) = 1e18 (100%) or 0 (0%)

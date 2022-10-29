@@ -76,6 +76,7 @@ error LBFactory__ImplementationNotSet();
 
 error LBPair__InsufficientAmounts();
 error LBPair__AddressZero();
+error LBPair__AddressZeroOrThis();
 error LBPair__BrokenSwapSafetyCheck();
 error LBPair__CompositionFactorFlawed(uint256 id);
 error LBPair__InsufficientLiquidityMinted(uint256 id);

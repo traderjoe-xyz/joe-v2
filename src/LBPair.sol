@@ -904,9 +904,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         }
     }
 
-    /// @notice Internal function to set the fee parameters of the pair
+    /// @notice Private function to set the fee parameters of the pair
     /// @param _packedFeeParameters The packed fee parameters
-    function _setFeesParameters(bytes32 _packedFeeParameters) internal {
+    function _setFeesParameters(bytes32 _packedFeeParameters) private {
         bytes32 _feeStorageSlot;
         assembly {
             _feeStorageSlot := sload(_feeParameters.slot)
@@ -945,7 +945,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @return oracleLastTimestamp The timestamp of the creation of the oracle's latest sample
     /// @return oracleId The index of the oracle's latest sample
     function _getOracleParameters()
-        internal
+        private
         view
         returns (
             uint256 oracleSampleLifetime,
@@ -966,12 +966,12 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         oracleId = _slot.decode(type(uint24).max, _OFFSET_ORACLE_ID);
     }
 
-    /// @notice Internal view function to get the reserves and active id
+    /// @notice Private view function to get the reserves and active id
     /// @return reserveX The reserve of asset X
     /// @return reserveY The reserve of asset Y
     /// @return activeId The active id of the pair
     function _getReservesAndId()
-        internal
+        private
         view
         returns (
             uint256 reserveX,
@@ -991,11 +991,11 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         }
     }
 
-    /// @notice Internal view function to get the bin at `id`
+    /// @notice Private view function to get the bin at `id`
     /// @param _id The bin id
     /// @return reserveX The reserve of tokenX of the bin
     /// @return reserveY The reserve of tokenY of the bin
-    function _getBin(uint24 _id) internal view returns (uint256 reserveX, uint256 reserveY) {
+    function _getBin(uint24 _id) private view returns (uint256 reserveX, uint256 reserveY) {
         bytes32 _data;
         uint256 _mask112 = type(uint112).max;
         // low level read of mapping to only load 1 storage slot
@@ -1011,14 +1011,14 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         return (reserveX.safe112(), reserveY.safe112());
     }
 
-    /// @notice Internal view function to get the global fees information, the total fees and those for protocol
+    /// @notice Private view function to get the global fees information, the total fees and those for protocol
     /// @dev The fees for users are `total - protocol`
     /// @return feesXTotal The total fees of asset X
     /// @return feesYTotal The total fees of asset Y
     /// @return feesXProtocol The protocol fees of asset X
     /// @return feesYProtocol The protocol fees of asset Y
     function _getGlobalFees()
-        internal
+        private
         view
         returns (
             uint256 feesXTotal,
@@ -1041,11 +1041,11 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         feesYProtocol = _slotY.decode(type(uint128).max, _OFFSET_PROTOCOL_FEE);
     }
 
-    /// @notice Internal pure function to return the flashloan fee amount
+    /// @notice Private pure function to return the flashloan fee amount
     /// @param _amount The amount to flashloan
     /// @param _fee the fee percentage, in basis point
     /// @return The fee amount
-    function _getFlashLoanFee(uint256 _amount, uint256 _fee) internal pure returns (uint256) {
+    function _getFlashLoanFee(uint256 _amount, uint256 _fee) private pure returns (uint256) {
         return (_amount * _fee) / Constants.PRECISION;
     }
 }

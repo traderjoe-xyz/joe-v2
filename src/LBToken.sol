@@ -184,11 +184,14 @@ contract LBToken is ILBToken {
 
         _beforeTokenTransfer(_from, _to, _id, _amount);
 
+        unchecked {
+            _balances[_id][_from] = _fromBalance - _amount;
+        }
+
         uint256 _toBalance = _balances[_id][_to];
 
         unchecked {
-            _balances[_id][_from] = _fromBalance - _amount;
-            _balances[_id][_to] += _amount;
+            _balances[_id][_to] = _toBalance + _amount;
         }
 
         _remove(_from, _id, _fromBalance, _amount);

@@ -518,7 +518,7 @@ contract LBRouter is ILBRouter {
 
         if (_amountOutReal < _amountOut) revert LBRouter__InsufficientAmountOut(_amountOut, _amountOutReal);
 
-        if (msg.value > amountsIn[0]) _safeTransferAVAX(_to, amountsIn[0] - msg.value);
+        if (msg.value > amountsIn[0]) _safeTransferAVAX(_to, msg.value - amountsIn[0]);
     }
 
     /// @notice Swaps exact tokens for tokens while performing safety checks supporting for fee on transfer tokens

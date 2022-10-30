@@ -38,7 +38,7 @@ library Math128x128 {
         // use mulDiv, by reducing x to 129.127-binary fixed-point number we assert that y will use 128 bits, and we
         // can use the regular multiplication
 
-        if (x == 1) return 0;
+        if (x == 1) return -128;
         if (x == 0) revert Math128x128__LogUnderflow();
 
         x >>= 1;

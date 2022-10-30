@@ -122,7 +122,7 @@ contract LBRouter is ILBRouter {
 
                 // We update the fee, but we don't store the new volatility reference, volatility accumulated and indexRef to not penalize traders
                 _fp.updateVolatilityAccumulated(_activeId);
-                uint256 _fee = _fp.getFeeAmountReverse(_amountInToBin);
+                uint256 _fee = _fp.getFeeAmount(_amountInToBin);
                 _amountInWithFees = _amountInToBin + _fee;
 
                 if (_amountInWithFees + _reserve > type(uint112).max) revert LBRouter__SwapOverflows(_activeId);

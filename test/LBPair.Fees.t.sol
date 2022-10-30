@@ -223,9 +223,9 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
     function testClaimFeesComplex(uint256 amountY, uint256 amountX) public {
         vm.assume(amountY < 10e18);
-        vm.assume(amountY > 0);
+        vm.assume(amountY > 1);
         vm.assume(amountX < 10e18);
-        vm.assume(amountX > 0);
+        vm.assume(amountX > 1);
 
         uint256 amountYInLiquidity = 100e18;
         uint256 totalFeesFromGetSwapX;

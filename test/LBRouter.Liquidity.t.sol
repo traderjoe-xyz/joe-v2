@@ -466,7 +466,7 @@ contract LiquidityBinRouterTest is TestHelper {
             abi.encodeWithSelector(
                 LBRouter__AmountSlippageCaught.selector,
                 98518565614280135938,
-                98515492353722968300,
+                98515492353722968299,
                 100000000000000000000,
                 100000000000000000000
             )

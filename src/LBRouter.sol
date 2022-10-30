@@ -284,12 +284,13 @@ contract LBRouter is ILBRouter {
         uint256 _deadline
     ) external override ensure(_deadline) returns (uint256 amountX, uint256 amountY) {
         ILBPair _LBPair = _getLBPairInformation(_tokenX, _tokenY, _binStep);
-        if (_tokenX != _LBPair.tokenX()) {
-            (_tokenX, _tokenY) = (_tokenY, _tokenX);
-            (_amountXMin, _amountYMin) = (_amountYMin, _amountXMin);
-        }
+        bool _isWrongOrder = _tokenX != _LBPair.tokenX();
+
+        if (_isWrongOrder) (_amountXMin, _amountYMin) = (_amountYMin, _amountXMin);
 
         (amountX, amountY) = _removeLiquidity(_LBPair, _amountXMin, _amountYMin, _ids, _amounts, _to);
+
+        if (_isWrongOrder) (amountX, amountY) = (amountY, amountX);
     }
 
     /// @notice Remove AVAX liquidity while performing safety checks

@@ -1043,10 +1043,11 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     }
 
     /// @notice Private pure function to return the flashloan fee amount
+    /// @dev Rounds up the fee
     /// @param _amount The amount to flashloan
     /// @param _fee the fee percentage, in basis point
     /// @return The fee amount
     function _getFlashLoanFee(uint256 _amount, uint256 _fee) private pure returns (uint256) {
-        return (_amount * _fee) / Constants.PRECISION;
+        return (_amount * _fee + Constants.PRECISION - 1) / Constants.PRECISION;
     }
 }

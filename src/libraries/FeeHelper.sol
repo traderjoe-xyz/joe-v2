@@ -106,35 +106,40 @@ library FeeHelper {
             // decimals(variableFeeControl * (volatilityAccumulated * binStep)**2 / 100) = 4 + (4 + 4) * 2 - 2 = 18
             unchecked {
                 uint256 _prod = uint256(_fp.volatilityAccumulated) * _fp.binStep;
-                variableFee = (_prod * _prod * _fp.variableFeeControl) / 100;
+                variableFee = (_prod * _prod * _fp.variableFeeControl + 99) / 100;
             }
         }
     }
 
-    /// @notice Return the amount of fees added to an amount
+    /// @notice Return the amount of fees from an amount
+    /// @dev Rounds amount up, follows `amount = amountWithFees - getFeeAmountFrom(fp, amountWithFees)`
     /// @param _fp The current fee parameter
-    /// @param _amount The amount of token sent
-    /// @return The fee amount
-    function getFeeAmount(FeeParameters memory _fp, uint256 _amount) internal pure returns (uint256) {
-        return (_amount * getTotalFee(_fp)) / (Constants.PRECISION);
+    /// @param _amountWithFees The amount of token sent
+    /// @return The fee amount from the amount sent
+    function getFeeAmountFrom(FeeParameters memory _fp, uint256 _amountWithFees) internal pure returns (uint256) {
+        return (_amountWithFees * getTotalFee(_fp) + Constants.PRECISION - 1) / (Constants.PRECISION);
     }
 
-    /// @notice Return the fees from an amount
+    /// @notice Return the fees to add to an amount
+    /// @dev Rounds amount up, follows `amountWithFees = amount + getFeeAmount(fp, amount)`
     /// @param _fp The current fee parameter
     /// @param _amount The amount of token sent
-    /// @return The fee amount
-    function getFeeAmountReverse(FeeParameters memory _fp, uint256 _amount) internal pure returns (uint256) {
+    /// @return The fee amount to add to the amount
+    function getFeeAmount(FeeParameters memory _fp, uint256 _amount) internal pure returns (uint256) {
         uint256 _fee = getTotalFee(_fp);
-        return (_amount * _fee) / (Constants.PRECISION - _fee);
+        uint256 _denominator = Constants.PRECISION - _fee;
+        return (_amount * _fee + _denominator - 1) / _denominator;
     }
 
     /// @notice Return the fees added when an user adds liquidity and change the ratio in the active bin
+    /// @dev Rounds amount up
     /// @param _fp The current fee parameter
-    /// @param _amountPlusFee The amount of token sent
+    /// @param _amountWithFees The amount of token sent
     /// @return The fee amount
-    function getFeeAmountForC(FeeParameters memory _fp, uint256 _amountPlusFee) internal pure returns (uint256) {
+    function getFeeAmountForC(FeeParameters memory _fp, uint256 _amountWithFees) internal pure returns (uint256) {
         uint256 _fee = getTotalFee(_fp);
-        return (_amountPlusFee * _fee * (_fee + Constants.PRECISION)) / (Constants.PRECISION * Constants.PRECISION);
+        uint256 _denominator = Constants.PRECISION * Constants.PRECISION;
+        return (_amountWithFees * _fee * (_fee + Constants.PRECISION) + _denominator - 1) / _denominator;
     }
 
     /// @notice Return the fees distribution added to an amount

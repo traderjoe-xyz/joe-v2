@@ -413,6 +413,8 @@ contract LBRouter is ILBRouter {
         address _to,
         uint256 _deadline
     ) external payable override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256 amountOut) {
+        if (_tokenPath[0] != IERC20(wavax)) revert LBRouter__InvalidTokenPath(address(_tokenPath[0]));
+
         address[] memory _pairs = _getPairs(_pairBinSteps, _tokenPath);
 
         _wavaxDepositAndTransfer(_pairs[0], msg.value);

@@ -181,7 +181,9 @@ error JoeLibrary__InsufficientLiquidity();
 
 /** TokenHelper errors */
 
-error TokenHelper__TransferFailed(IERC20 token, address recipient, uint256 amount);
+error TokenHelper__NonContract();
+error TokenHelper__CallFailed();
+error TokenHelper__TransferFailed();
 
 /** LBQuoter errors */
 

@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 
+import "../LBErrors.sol";
+
 /// @title Safe Transfer
 /// @author Trader Joe
 /// @notice Wrappers around ERC20 operations that throw on failure (when the token
@@ -25,11 +27,11 @@ library TokenHelper {
         uint256 amount
     ) internal {
         if (amount != 0) {
-            (bool success, bytes memory result) = address(token).call(
-                abi.encodeWithSelector(token.transferFrom.selector, owner, recipient, amount)
-            );
+            bytes memory data = abi.encodeWithSelector(token.transferFrom.selector, owner, recipient, amount);
 
-            _catchTransferError(success, result);
+            bytes memory returnData = _callAndCatchError(address(token), data);
+
+            if (returnData.length > 0 && !abi.decode(returnData, (bool))) revert TokenHelper__TransferFailed();
         }
     }
 
@@ -43,11 +45,11 @@ library TokenHelper {
         uint256 amount
     ) internal {
         if (amount != 0) {
-            (bool success, bytes memory result) = address(token).call(
-                abi.encodeWithSelector(token.transfer.selector, recipient, amount)
-            );
+            bytes memory data = abi.encodeWithSelector(token.transfer.selector, recipient, amount);
 
-            _catchTransferError(success, result);
+            bytes memory returnData = _callAndCatchError(address(token), data);
+
+            if (returnData.length > 0 && !abi.decode(returnData, (bool))) revert TokenHelper__TransferFailed();
         }
     }
 
@@ -68,15 +70,40 @@ library TokenHelper {
         return token.balanceOf(address(this)) - _internalBalance;
     }
 
-    /// @notice Private view function to catch the error and bubble it up if present
-    /// @param success Whether the transaction succeeded or not
-    /// @param result The result of the transaction
-    function _catchTransferError(bool success, bytes memory result) private pure {
-        // Look for revert reason and bubble it up if present
-        if (!(success && (result.length == 0 || abi.decode(result, (bool))))) {
-            assembly {
-                revert(add(32, result), mload(result))
+    /// @notice Private view function to perform a low level call on `target`
+    /// @dev Revert if the call doesn't succeed
+    /// @param target The address of the account
+    /// @param data The data to execute on `target`
+    /// @return returnData The data returned by the call
+    function _callAndCatchError(address target, bytes memory data) private returns (bytes memory returnData) {
+        (bool success, bytes memory returnData) = target.call(data);
+
+        if (success) {
+            if (returnData.length == 0 && !_isContract(target)) revert TokenHelper__NonContract();
+        } else {
+            if (returnData.length == 0) revert TokenHelper__CallFailed();
+            else {
+                // Look for revert reason and bubble it up if present
+                assembly {
+                    revert(add(32, returnData), mload(returnData))
+                }
             }
         }
+    }
+
+    /// @notice Private view function to return if an address is a contract
+    /// @dev It is unsafe to assume that an address for which this function returns
+    /// false is an externally-owned account (EOA) and not a contract.
+    ///
+    /// Among others, `isContract` will return false for the following
+    /// types of addresses:
+    ///  - an externally-owned account
+    ///  - a contract in construction
+    ///  - an address where a contract will be created
+    ///  - an address where a contract lived, but was destroyed
+    /// @param account The address of the account
+    /// @return Whether the account is a contract (true) or not (false)
+    function _isContract(address account) private view returns (bool) {
+        return account.code.length > 0;
     }
 }

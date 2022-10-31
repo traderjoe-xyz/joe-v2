@@ -62,6 +62,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _feeRecipient The address of the fee recipient
     /// @param _flashLoanFee The value of the fee for flash loan
     constructor(address _feeRecipient, uint256 _flashLoanFee) {
+        if (_flashLoanFee > MAX_FEE) revert LBFactory__FlashLoanFeeAboveMax(_flashLoanFee, MAX_FEE);
+
         _setFeeRecipient(_feeRecipient);
 
         flashLoanFee = _flashLoanFee;
@@ -479,6 +481,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint256 _oldFlashLoanFee = flashLoanFee;
 
         if (_oldFlashLoanFee == _flashLoanFee) revert LBFactory__SameFlashLoanFee(_flashLoanFee);
+        if (_flashLoanFee > MAX_FEE) revert LBFactory__FlashLoanFeeAboveMax(_flashLoanFee, MAX_FEE);
 
         flashLoanFee = _flashLoanFee;
         emit FlashLoanFeeSet(_oldFlashLoanFee, _flashLoanFee);

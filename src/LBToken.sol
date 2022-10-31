@@ -36,6 +36,7 @@ contract LBToken is ILBToken {
 
     modifier checkAddresses(address _from, address _to) {
         if (_from == address(0) || _to == address(0)) revert LBToken__TransferFromOrToAddress0();
+        if (_from == _to) revert LBToken__TransferToSelf();
         _;
     }
 

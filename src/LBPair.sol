@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.10;
 
 /** Imports **/
 
@@ -258,7 +258,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @param _ids The list of ids
     /// @return amountX The amount of tokenX pending
     /// @return amountY The amount of tokenY pending
-    function pendingFees(address _account, uint256[] memory _ids)
+    function pendingFees(address _account, uint256[] calldata _ids)
         external
         view
         override
@@ -469,9 +469,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @return The amount of token Y that was added to the pair
     /// @return liquidityMinted Amount of LBToken minted
     function mint(
-        uint256[] memory _ids,
-        uint256[] memory _distributionX,
-        uint256[] memory _distributionY,
+        uint256[] calldata _ids,
+        uint256[] calldata _distributionX,
+        uint256[] calldata _distributionY,
         address _to
     )
         external
@@ -621,8 +621,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @return amountX The amount of token X sent to `_to`
     /// @return amountY The amount of token Y sent to `_to`
     function burn(
-        uint256[] memory _ids,
-        uint256[] memory _amounts,
+        uint256[] calldata _ids,
+        uint256[] calldata _amounts,
         address _to
     ) external override nonReentrant returns (uint256 amountX, uint256 amountY) {
         if (_ids.length == 0 || _ids.length != _amounts.length) revert LBPair__WrongLengths();
@@ -694,7 +694,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @param _ids The list of bin ids to collect fees in
     /// @return amountX The amount of tokenX claimed
     /// @return amountY The amount of tokenY claimed
-    function collectFees(address _account, uint256[] memory _ids)
+    function collectFees(address _account, uint256[] calldata _ids)
         external
         override
         nonReentrant

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.10;
 
 /// @title Liquidity Book Token Interface
 /// @author Trader Joe
@@ -24,7 +24,7 @@ interface ILBToken {
 
     function balanceOf(address account, uint256 id) external view returns (uint256);
 
-    function balanceOfBatch(address[] memory accounts, uint256[] memory ids)
+    function balanceOfBatch(address[] calldata accounts, uint256[] calldata ids)
         external
         view
         returns (uint256[] memory batchBalances);
@@ -49,7 +49,7 @@ interface ILBToken {
     function safeBatchTransferFrom(
         address from,
         address to,
-        uint256[] memory id,
-        uint256[] memory amount
+        uint256[] calldata id,
+        uint256[] calldata amount
     ) external;
 }

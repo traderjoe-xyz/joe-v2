@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.10;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 
@@ -219,9 +219,9 @@ interface ILBPair {
     ) external;
 
     function mint(
-        uint256[] memory ids,
-        uint256[] memory distributionX,
-        uint256[] memory distributionY,
+        uint256[] calldata ids,
+        uint256[] calldata distributionX,
+        uint256[] calldata distributionY,
         address to
     )
         external
@@ -232,14 +232,14 @@ interface ILBPair {
         );
 
     function burn(
-        uint256[] memory ids,
-        uint256[] memory amounts,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
         address to
     ) external returns (uint256 amountX, uint256 amountY);
 
     function increaseOracleLength(uint16 newSize) external;
 
-    function collectFees(address account, uint256[] memory ids) external returns (uint256 amountX, uint256 amountY);
+    function collectFees(address account, uint256[] calldata ids) external returns (uint256 amountX, uint256 amountY);
 
     function collectProtocolFees() external returns (uint256 amountX, uint256 amountY);
 

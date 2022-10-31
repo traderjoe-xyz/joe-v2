@@ -17,7 +17,7 @@ interface ILBFactory is IPendingOwnable {
     /// - createdByOwner: Whether the pair was created by the owner of the factory
     /// - ignoredForRouting: Whether the pair is ignored for routing or not. An ignored pair will not be explored during routes finding
     struct LBPairInformation {
-        uint24 binStep;
+        uint16 binStep;
         ILBPair LBPair;
         bool createdByOwner;
         bool ignoredForRouting;

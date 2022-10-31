@@ -16,9 +16,7 @@ library BitMath {
         uint8 _bit,
         bool _rightSide
     ) internal pure returns (uint256) {
-        if (_rightSide) {
-            return closestBitRight(_integer, _bit - 1);
-        } else return closestBitLeft(_integer, _bit + 1);
+        return _rightSide ? closestBitRight(_integer, _bit - 1) : closestBitLeft(_integer, _bit + 1);
     }
 
     /// @notice Returns the most (or least) significant bit of `_integer`
@@ -26,9 +24,7 @@ library BitMath {
     /// @param _isMostSignificant Whether we want the most (true) or the least (false) significant bit
     /// @return The index of the most (or least) significant bit
     function significantBit(uint256 _integer, bool _isMostSignificant) internal pure returns (uint8) {
-        if (_isMostSignificant) {
-            return mostSignificantBit(_integer);
-        } else return leastSignificantBit(_integer);
+        return _isMostSignificant ? mostSignificantBit(_integer) : leastSignificantBit(_integer);
     }
 
     /// @notice Returns the index of the closest bit on the right of x that is non null
@@ -41,10 +37,8 @@ library BitMath {
             uint256 _shift = 255 - bit;
             x <<= _shift;
 
-            if (x == 0) return type(uint256).max;
-
             // can't overflow as it's non-zero and we shifted it by `_shift`
-            return mostSignificantBit(x) - _shift;
+            return (x == 0) ? type(uint256).max : mostSignificantBit(x) - _shift;
         }
     }
 
@@ -57,9 +51,7 @@ library BitMath {
         unchecked {
             x >>= bit;
 
-            if (x == 0) return type(uint256).max;
-
-            return leastSignificantBit(x) + bit;
+            return (x == 0) ? type(uint256).max : leastSignificantBit(x) + bit;
         }
     }
 

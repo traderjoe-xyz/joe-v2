@@ -60,6 +60,7 @@ error LBFactory__ReductionFactorOverflows(uint16 reductionFactor, uint256 max);
 error LBFactory__VariableFeeControlOverflows(uint16 variableFeeControl, uint256 max);
 error LBFactory__BaseFeesBelowMin(uint256 baseFees, uint256 minBaseFees);
 error LBFactory__FeesAboveMax(uint256 fees, uint256 maxFees);
+error LBFactory__FlashLoanFeeAboveMax(uint256 fees, uint256 maxFees);
 error LBFactory__BinStepRequirementsBreached(uint256 lowerBound, uint16 binStep, uint256 higherBound);
 error LBFactory__ProtocolShareOverflows(uint16 protocolShare, uint256 max);
 error LBFactory__FunctionIsLockedForUsers(address user);

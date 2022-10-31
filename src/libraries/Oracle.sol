@@ -159,7 +159,7 @@ library Oracle {
         uint256 _sampleTimestamp;
         while (_high >= _low) {
             unchecked {
-                _middle = (_low + _high) / 2;
+                _middle = (_low + _high) >> 1;
                 assembly {
                     _id := addmod(_middle, _index, _activeSize)
                 }

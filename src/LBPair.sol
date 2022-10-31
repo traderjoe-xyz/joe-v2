@@ -319,8 +319,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         if (_amountIn == 0) revert LBPair__InsufficientAmounts();
 
         FeeHelper.FeeParameters memory _fp = _feeParameters;
-        _fp.updateVariableFeeParameters(_pair.activeId);
+
         uint256 _startId = _pair.activeId;
+        _fp.updateVariableFeeParameters(_startId);
 
         uint256 _amountOut;
         // Performs the actual swap, bin per bin

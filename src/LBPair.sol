@@ -545,7 +545,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                             _bin.updateFees(_pair.feesX, _fees, true, _totalSupply);
 
                             emit CompositionFee(msg.sender, _to, _mintInfo.id, _fees.total, 0);
-                        } else if (_mintInfo.amountY > _receivedY) {
+                        }
+                        if (_mintInfo.amountY > _receivedY) {
                             FeeHelper.FeesDistribution memory _fees = _fp.getFeeAmountDistribution(
                                 _fp.getFeeAmountForC(_mintInfo.amountY - _receivedY)
                             );

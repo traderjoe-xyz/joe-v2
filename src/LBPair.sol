@@ -968,7 +968,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         oracleSize = _slot.decode(type(uint16).max, _OFFSET_ORACLE_SIZE);
         oracleActiveSize = _slot.decode(type(uint16).max, _OFFSET_ORACLE_ACTIVE_SIZE);
         oracleLastTimestamp = _slot.decode(type(uint40).max, _OFFSET_ORACLE_LAST_TIMESTAMP);
-        oracleId = _slot.decode(type(uint24).max, _OFFSET_ORACLE_ID);
+        oracleId = _slot.decode(type(uint16).max, _OFFSET_ORACLE_ID);
     }
 
     /// @notice Private view function to get the reserves and active id

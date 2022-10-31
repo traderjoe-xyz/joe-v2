@@ -254,7 +254,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         // safety check, making sure that the price can be calculated
         BinHelper.getPriceFromId(_activeId, _binStep);
 
-        // We sort token for storage efficiency, only one input needs to be stored
+        // We sort token for storage efficiency, only one input needs to be stored because they are sorted
         (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);
         // single check is sufficient
         if (address(_tokenA) == address(0)) revert LBFactory__AddressZero();
@@ -339,7 +339,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _filterPeriod The period where the accumulator value is untouched, prevent spam
     /// @param _decayPeriod The period where the accumulator value is halved
     /// @param _reductionFactor The reduction factor, used to calculate the reduction of the accumulator
-    /// @param _variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable them
+    /// @param _variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable it
     /// @param _protocolShare The share of the fees received by the protocol
     /// @param _maxVolatilityAccumulated The max value of the volatility accumulated
     /// @param _sampleLifetime The lifetime of an oracle's sample
@@ -423,7 +423,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _filterPeriod The period where the accumulator value is untouched, prevent spam
     /// @param _decayPeriod The period where the accumulator value is halved
     /// @param _reductionFactor The reduction factor, used to calculate the reduction of the accumulator
-    /// @param _variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable them
+    /// @param _variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable it
     /// @param _protocolShare The share of the fees received by the protocol
     /// @param _maxVolatilityAccumulated The max value of volatility accumulated
     function setFeesParametersOnPair(
@@ -504,7 +504,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         emit QuoteAssetAdded(_quoteAsset);
     }
 
-    /// @notice Function to remove an asset to the whitelist of quote assets
+    /// @notice Function to remove an asset from the whitelist of quote assets
     /// @param _quoteAsset The quote asset (e.g: AVAX, USDC...)
     function removeQuoteAsset(IERC20 _quoteAsset) external override onlyOwner {
         if (!_quoteAssetWhitelist.remove(address(_quoteAsset))) revert LBFactory__QuoteAssetNotWhitelisted(_quoteAsset);
@@ -534,7 +534,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _filterPeriod The period where the accumulator value is untouched, prevent spam
     /// @param _decayPeriod The period where the accumulator value is halved
     /// @param _reductionFactor The reduction factor, used to calculate the reduction of the accumulator
-    /// @param _variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable them
+    /// @param _variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable it
     /// @param _protocolShare The share of the fees received by the protocol
     /// @param _maxVolatilityAccumulated The max value of volatility accumulated
     function _getPackedFeeParameters(

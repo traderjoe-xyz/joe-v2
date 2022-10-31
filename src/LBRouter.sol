@@ -738,8 +738,8 @@ contract LBRouter is ILBRouter {
     /// @param _ids The list of ids to burn
     /// @param _amounts The list of amounts to burn of each id in `_ids`
     /// @param _to The address of the recipient
-    /// @param amountX The amount of token X sent by the pair
-    /// @param amountY The amount of token Y sent by the pair
+    /// @return amountX The amount of token X sent by the pair
+    /// @return amountY The amount of token Y sent by the pair
     function _removeLiquidity(
         ILBPair _LBPair,
         uint256 _amountXMin,
@@ -810,7 +810,7 @@ contract LBRouter is ILBRouter {
 
     /// @notice Helper function to swap tokens for exact tokens
     /// @param _pairs The array of pairs
-    /// @param _pairBinSteps The versions of each pair (1: DexV1, 2: dexV2)
+    /// @param _pairBinSteps The bin step of the pairs (0: V1, other values will use V2)
     /// @param _tokenPath The swap path using the binSteps following `_pairBinSteps`
     /// @param _amountsIn The list of amounts in
     /// @param _to The address of the recipient

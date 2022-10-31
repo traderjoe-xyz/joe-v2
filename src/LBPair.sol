@@ -298,6 +298,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /** External Functions **/
 
     /// @notice Performs a low level swap, this needs to be called from a contract which performs important safety checks
+    /// and transfer the amount of token  (either tokenX or tokenY, not both at the same time or they might be lost)
     /// @dev Will swap the full amount that this contract received of token X or Y
     /// @param _swapForY whether the token sent was Y (true) or X (false)
     /// @param _to The address of the recipient
@@ -457,7 +458,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         emit FlashLoan(msg.sender, _to, _amountXOut, _amountYOut, _feesX.total, _feesY.total);
     }
 
-    /// @notice Performs a low level add, this needs to be called from a contract which performs important safety checks.
+    /// @notice Performs a low level add, this needs to be called from a contract which performs important safety checks
+    /// and transfer the amounts of tokens (can be tokenX and/or tokenY)
     /// @dev Will refund any tokenX or tokenY amount sent in excess to `_to`
     /// @param _ids The list of ids to add liquidity
     /// @param _distributionX The distribution of tokenX with sum(_distributionX) = 1e18 (100%) or 0 (0%)
@@ -612,7 +614,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     }
 
     /// @notice Performs a low level remove, this needs to be called from a contract which performs important safety checks
-    /// @param _ids The ids the user want to remove its liquidity
+    /// and transfer the amounts of LBTokens to burn (only the ids that are in `_ids` or they might be lost)
+    /// @param _ids The IDs for which the user wants to remove his liquidity
     /// @param _amounts The amount of token to burn
     /// @param _to The address of the recipient
     /// @return amountX The amount of token X sent to `_to`

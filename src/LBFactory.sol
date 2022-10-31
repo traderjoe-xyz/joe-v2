@@ -141,7 +141,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint256 _shift;
 
         // Safety check
-        assert(_binStep == _preset.decode(type(uint16).max, _shift));
+        require(_binStep == _preset.decode(type(uint16).max, _shift));
 
         baseFactor = _preset.decode(type(uint16).max, _shift += 16);
         filterPeriod = _preset.decode(type(uint16).max, _shift += 16);

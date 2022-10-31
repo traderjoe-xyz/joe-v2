@@ -100,7 +100,7 @@ error BinHelper__IntOverflows(uint256 id);
 
 /** FeeDistributionHelper errors */
 
-error FeeDistributionHelper__FlashLoanUnderflow(uint256 expectedBalance, uint256 balance);
+error FeeDistributionHelper__FlashLoanWrongFee(uint256 receivedFee, uint256 expectedFee);
 
 /** Math128x128 errors */
 

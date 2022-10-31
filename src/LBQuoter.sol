@@ -159,9 +159,11 @@ contract LBQuoter {
 
                 if (reserveIn > 0 && reserveOut > quote.amounts[i]) {
                     quote.amounts[i - 1] = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut);
-                    quote.virtualAmountsWithoutSlippage[i - 1] =
-                        (JoeLibrary.quote(quote.virtualAmountsWithoutSlippage[i], reserveOut, reserveIn) * 1000) /
-                        997;
+                    quote.virtualAmountsWithoutSlippage[i - 1] = JoeLibrary.quote(
+                        (quote.virtualAmountsWithoutSlippage[i] * 1000) / 997 + 1,
+                        reserveOut,
+                        reserveIn
+                    );
 
                     quote.fees[i - 1] = 0.003e18; // 0.3%
                 }

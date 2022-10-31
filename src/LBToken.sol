@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.10;
 
 import "openzeppelin/utils/structs/EnumerableSet.sol";
 
@@ -77,7 +77,7 @@ contract LBToken is ILBToken {
     /// @param _accounts The addresses of the owners
     /// @param _ids The token ids
     /// @return batchBalances The balance for each (account, id) pair
-    function balanceOfBatch(address[] memory _accounts, uint256[] memory _ids)
+    function balanceOfBatch(address[] calldata _accounts, uint256[] calldata _ids)
         public
         view
         virtual
@@ -150,8 +150,8 @@ contract LBToken is ILBToken {
     function safeBatchTransferFrom(
         address _from,
         address _to,
-        uint256[] memory _ids,
-        uint256[] memory _amounts
+        uint256[] calldata _ids,
+        uint256[] calldata _amounts
     )
         public
         virtual

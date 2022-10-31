@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.10;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 
@@ -115,7 +115,7 @@ contract LBRouter is ILBRouter {
             }
             uint256 _price = BinHelper.getPriceFromId(_activeId, _fp.binStep);
             if (_reserve != 0) {
-                _amountOutOfBin = _amountOut > _reserve ? _reserve : _amountOut;
+                _amountOutOfBin = _amountOut >= _reserve ? _reserve : _amountOut;
                 uint256 _amountInToBin = _swapForY
                     ? _amountOutOfBin.shiftDivRoundUp(Constants.SCALE_OFFSET, _price)
                     : _price.mulShiftRoundUp(_amountOutOfBin, Constants.SCALE_OFFSET);
@@ -205,7 +205,7 @@ contract LBRouter is ILBRouter {
     /// @param _liquidityParameters The liquidity parameters
     /// @return depositIds Bin ids where the liquidity was actually deposited
     /// @return liquidityMinted Amounts of LBToken minted for each bin
-    function addLiquidity(LiquidityParameters memory _liquidityParameters)
+    function addLiquidity(LiquidityParameters calldata _liquidityParameters)
         external
         override
         returns (uint256[] memory depositIds, uint256[] memory liquidityMinted)
@@ -228,7 +228,7 @@ contract LBRouter is ILBRouter {
     /// @param _liquidityParameters The liquidity parameters
     /// @return depositIds Bin ids where the liquidity was actually deposited
     /// @return liquidityMinted Amounts of LBToken minted for each bin
-    function addLiquidityAVAX(LiquidityParameters memory _liquidityParameters)
+    function addLiquidityAVAX(LiquidityParameters calldata _liquidityParameters)
         external
         payable
         override

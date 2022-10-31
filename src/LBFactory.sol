@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.10;
 
 import "openzeppelin/proxy/Clones.sol";
 import "openzeppelin/utils/structs/EnumerableSet.sol";
@@ -34,10 +34,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     address public override feeRecipient;
 
-    uint256 public override flashLoanFee;
-
     /// @notice Whether the createLBPair function is unlocked and can be called by anyone (true) or only by owner (false)
     bool public override creationUnlocked;
+
+    uint256 public override flashLoanFee;
 
     ILBPair[] public override allLBPairs;
 

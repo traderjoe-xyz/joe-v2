@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.10;
 
 import "./LBErrors.sol";
 import "./libraries/BinHelper.sol";
@@ -51,7 +51,7 @@ contract LBQuoter {
     /// @param _route List of the tokens to go through
     /// @param _amountIn Swap amount in
     /// @return quote The Quote structure containing the necessary element to perform the swap
-    function findBestPathFromAmountIn(address[] memory _route, uint256 _amountIn)
+    function findBestPathFromAmountIn(address[] calldata _route, uint256 _amountIn)
         public
         view
         returns (Quote memory quote)
@@ -131,7 +131,7 @@ contract LBQuoter {
     /// @param _route List of the tokens to go through
     /// @param _amountOut Swap amount out
     /// @return quote The Quote structure containing the necessary element to perform the swap
-    function findBestPathFromAmountOut(address[] memory _route, uint256 _amountOut)
+    function findBestPathFromAmountOut(address[] calldata _route, uint256 _amountOut)
         public
         view
         returns (Quote memory quote)

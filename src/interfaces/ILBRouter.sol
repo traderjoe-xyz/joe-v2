@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.10;
 
 import "./IJoeFactory.sol";
 import "./ILBPair.sol";
@@ -72,11 +72,11 @@ interface ILBRouter {
         uint16 binStep
     ) external returns (ILBPair pair);
 
-    function addLiquidity(LiquidityParameters memory liquidityParameters)
+    function addLiquidity(LiquidityParameters calldata liquidityParameters)
         external
         returns (uint256[] memory depositIds, uint256[] memory liquidityMinted);
 
-    function addLiquidityAVAX(LiquidityParameters memory liquidityParameters)
+    function addLiquidityAVAX(LiquidityParameters calldata liquidityParameters)
         external
         payable
         returns (uint256[] memory depositIds, uint256[] memory liquidityMinted);

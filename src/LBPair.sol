@@ -794,12 +794,15 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         _setFeesParameters(_packedFeeParameters);
     }
 
+    /// @notice Force the decaying of the references for volatility and index
+    /// @dev Only callable by the factory
     function forceDecay() external override onlyFactory {
         unchecked {
             _feeParameters.volatilityReference = uint24(
                 (uint256(_feeParameters.reductionFactor) * _feeParameters.volatilityReference) /
                     Constants.BASIS_POINT_MAX
             );
+            _feeParameters.indexRef = _pairInformation.activeId;
         }
     }
 

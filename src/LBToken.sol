@@ -26,8 +26,8 @@ contract LBToken is ILBToken {
     /// @dev  Mapping from account to set of ids, where user currently have a non-zero balance
     mapping(address => EnumerableSet.UintSet) private _userIds;
 
-    string private constant _name = "Liquidity Book Token";
-    string private constant _symbol = "LBT";
+    string private constant _NAME = "Liquidity Book Token";
+    string private constant _SYMBOL = "LBT";
 
     modifier checkApproval(address _from, address _spender) {
         if (!_isApprovedForAll(_from, _spender)) revert LBToken__SpenderNotApproved(_from, _spender);
@@ -48,13 +48,13 @@ contract LBToken is ILBToken {
     /// @notice Returns the name of the token
     /// @return The name of the token
     function name() public pure virtual override returns (string memory) {
-        return _name;
+        return _NAME;
     }
 
     /// @notice Returns the symbol of the token, usually a shorter version of the name
     /// @return The symbol of the token
     function symbol() public pure virtual override returns (string memory) {
-        return _symbol;
+        return _SYMBOL;
     }
 
     /// @notice Returns the total supply of token of type `id`

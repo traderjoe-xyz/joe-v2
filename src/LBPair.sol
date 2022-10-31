@@ -622,6 +622,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         uint256[] memory _amounts,
         address _to
     ) external override nonReentrant returns (uint256 amountX, uint256 amountY) {
+        if (_ids.length == 0 || _ids.length != _amounts.length) revert LBPair__WrongLengths();
+
         (uint256 _pairReserveX, uint256 _pairReserveY, uint256 _activeId) = _getReservesAndId();
         unchecked {
             for (uint256 i; i < _ids.length; ++i) {

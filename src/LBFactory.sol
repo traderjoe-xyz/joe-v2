@@ -200,7 +200,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
                         LBPairInformation memory _LBPairInformation = _LBPairsInfo[_tokenA][_tokenB][i];
 
                         LBPairsAvailable[_index] = LBPairInformation({
-                            binStep: i.safe24(),
+                            binStep: i.safe16(),
                             LBPair: _LBPairInformation.LBPair,
                             createdByOwner: _LBPairInformation.createdByOwner,
                             ignoredForRouting: _LBPairInformation.ignoredForRouting

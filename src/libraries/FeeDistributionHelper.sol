@@ -31,8 +31,8 @@ library FeeDistributionHelper {
         uint128 _totalFees = _pairFees.total;
         uint256 _amountReceived = _token.received(_reserve, _totalFees);
 
-        if (_fees.total > _amountReceived)
-            revert FeeDistributionHelper__FlashLoanUnderflow(_fees.total, _amountReceived);
+        if (_amountReceived != _fees.total)
+            revert FeeDistributionHelper__FlashLoanWrongFee(_amountReceived, _fees.total);
 
         _fees.total = _amountReceived.safe128();
 

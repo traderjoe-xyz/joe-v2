@@ -37,7 +37,7 @@ library BinHelper {
     /// @param _binStep The bin step
     /// @return The price corresponding to this id, as a 128.128-binary fixed-point number
     function getPriceFromId(uint256 _id, uint256 _binStep) internal pure returns (uint256) {
-        if (_id > uint256(type(uint24).max)) revert BinHelper__IntOverflows(_id);
+        if (_id > uint256(type(uint24).max)) revert BinHelper__IdOverflows(_id);
         unchecked {
             int256 _realId = int256(_id) - REAL_ID_SHIFT;
 

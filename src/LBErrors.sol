@@ -56,7 +56,6 @@ error LBFactory__AddressZero();
 error LBFactory__LBPairAlreadyExists(IERC20 tokenX, IERC20 tokenY, uint256 _binStep);
 error LBFactory__LBPairNotCreated(IERC20 tokenX, IERC20 tokenY, uint256 binStep);
 error LBFactory__DecreasingPeriods(uint16 filterPeriod, uint16 decayPeriod);
-error LBFactory__BaseFactorOverflows(uint16 baseFactor, uint256 max);
 error LBFactory__ReductionFactorOverflows(uint16 reductionFactor, uint256 max);
 error LBFactory__VariableFeeControlOverflows(uint16 variableFeeControl, uint256 max);
 error LBFactory__BaseFeesBelowMin(uint256 baseFees, uint256 minBaseFees);
@@ -97,7 +96,7 @@ error LBPair__NewSizeTooSmall(uint256 newSize, uint256 oracleSize);
 
 error BinHelper__BinStepOverflows(uint256 bp);
 error BinHelper__IdOverflows(int256 id);
-error BinHelper__IntOverflows(uint256 id);
+error BinHelper__IdOverflows(uint256 id);
 
 /** FeeDistributionHelper errors */
 

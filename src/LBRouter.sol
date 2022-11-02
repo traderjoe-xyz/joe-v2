@@ -725,7 +725,6 @@ contract LBRouter is ILBRouter {
                 }
 
                 uint256 amountOut_ = amountsIn[i];
-                // Legacy uniswap way of rounding
                 amountsIn[i - 1] = amountOut_.getAmountIn(_reserveIn, _reserveOut);
             } else {
                 (amountsIn[i - 1], ) = getSwapIn(ILBPair(_pair), amountsIn[i], ILBPair(_pair).tokenX() == _token);

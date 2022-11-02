@@ -46,7 +46,7 @@ contract LBToken is ILBToken {
     }
 
     modifier checkLBTokenSupport(address recipient) {
-        if (_verifyLBTokenSupport(recipient) != 1) revert LBToken__NotSupported();
+        if (!_verifyLBTokenSupport(recipient)) revert LBToken__NotSupported();
         _;
     }
 
@@ -346,18 +346,23 @@ contract LBToken is ILBToken {
     /// @notice Return if the `_target` contract supports LBToken interface
     /// @param _target The address of the contract
     /// @return supported Whether the contract is supported (1) or not (any other value)
-    function _verifyLBTokenSupport(address _target) private returns (uint256 supported) {
+    function _verifyLBTokenSupport(address _target) private returns (bool supported) {
         bytes4 selectorERC165 = IERC165.supportsInterface.selector;
         bytes4 ILBTokenInterfaceId = type(ILBToken).interfaceId;
 
         if (_target.code.length > 0)
             assembly {
-                mstore(0x00, selectorERC165)
-                mstore(0x04, ILBTokenInterfaceId)
+                // get free memory pointer
+                let ptr := mload(0x40)
+                // increase the memory pointer
+                mstore(0x40, add(ptr, 0x24))
 
-                supported := staticcall(30000, _target, 0x00, 0x24, 0x00, 0x20)
-                supported := or(supported, mload(0x00))
+                mstore(ptr, selectorERC165)
+                mstore(add(ptr, 0x04), ILBTokenInterfaceId)
+
+                supported := eq(1, staticcall(30000, _target, ptr, 0x24, ptr, 0x20))
+                supported := eq(supported, mload(ptr))
             }
-        else supported = 1;
+        else supported = true;
     }
 }

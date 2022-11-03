@@ -347,22 +347,14 @@ contract LBToken is ILBToken {
     /// @param _target The address of the contract
     /// @return supported Whether the contract is supported (1) or not (any other value)
     function _verifyLBTokenSupport(address _target) private returns (bool supported) {
-        bytes4 selectorERC165 = IERC165.supportsInterface.selector;
-        bytes4 ILBTokenInterfaceId = type(ILBToken).interfaceId;
+        if (_target.code.length == 0) return true;
 
-        if (_target.code.length > 0)
-            assembly {
-                // get free memory pointer
-                let ptr := mload(0x40)
-                // increase the memory pointer
-                mstore(0x40, add(ptr, 0x24))
-
-                mstore(ptr, selectorERC165)
-                mstore(add(ptr, 0x04), ILBTokenInterfaceId)
-
-                supported := eq(1, staticcall(30000, _target, ptr, 0x24, ptr, 0x20))
-                supported := eq(supported, mload(ptr))
-            }
-        else supported = true;
+        bytes memory encodedParams = abi.encodeWithSelector(
+            IERC165.supportsInterface.selector,
+            type(ILBToken).interfaceId
+        );
+        (bool success, bytes memory result) = _target.staticcall{gas: 30_000}(encodedParams);
+        if (result.length < 32) return false;
+        return success && abi.decode(result, (bool));
     }
 }

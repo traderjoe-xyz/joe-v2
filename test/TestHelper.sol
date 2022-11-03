@@ -20,7 +20,7 @@ import "test/mocks/ERC20MockDecimals.sol";
 import "test/mocks/FlashloanBorrower.sol";
 import "test/mocks/ERC20WithTransferTax.sol";
 
-abstract contract TestHelper is Test {
+abstract contract TestHelper is Test, IERC165 {
     using Math512Bits for uint256;
 
     uint24 internal constant ID_ONE = 2**23;
@@ -63,6 +63,10 @@ abstract contract TestHelper is Test {
     LBPair internal pair;
     LBPair internal pairWavax;
     LBQuoter internal quoter;
+
+    function supportsInterface(bytes4 interfaceId) external view virtual returns (bool) {
+        return interfaceId == type(ILBToken).interfaceId;
+    }
 
     function getPriceFromId(uint24 _id) internal pure returns (uint256 price) {
         price = BinHelper.getPriceFromId(_id, DEFAULT_BIN_STEP);

@@ -83,4 +83,8 @@ contract LiquidityBinTokenTest is TestHelper, LBToken {
         _setApprovalForAll(DEV, ALICE, false);
         assertEq(_isApprovedForAll(DEV, ALICE), false);
     }
+
+    function supportsInterface(bytes4 interfaceId) public view override(TestHelper, LBToken) returns (bool) {
+        return interfaceId == type(ILBToken).interfaceId;
+    }
 }

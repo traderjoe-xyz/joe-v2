@@ -417,21 +417,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
         assertEq(pair.balanceOf(DEV, ID_ONE - 1), amountIn / 3);
 
+        vm.expectRevert(abi.encodeWithSelector(LBToken__NotSupported.selector));
         pair.safeBatchTransferFrom(DEV, address(router), _ids, amounts);
-
-        for (uint256 i; i < 5; i++) {
-            assertEq(pair.balanceOf(address(router), _ids[i]), amounts[i]);
-            assertEq(pair.balanceOf(DEV, _ids[i]), 0);
-        }
-        vm.prank(ALICE);
-        vm.expectRevert(LBRouter__NotFactoryOwner.selector);
-        router.sweepLBToken(pair, DEV, _ids, amounts);
-
-        router.sweepLBToken(pair, DEV, _ids, amounts);
-
-        for (uint256 i; i < 5; i++) {
-            assertEq(pair.balanceOf(DEV, _ids[i]), amounts[i]);
-            assertEq(pair.balanceOf(address(router), _ids[i]), 0);
-        }
     }
 }

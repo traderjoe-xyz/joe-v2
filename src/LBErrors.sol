@@ -95,8 +95,7 @@ error LBPair__NewSizeTooSmall(uint256 newSize, uint256 oracleSize);
 /** BinHelper errors */
 
 error BinHelper__BinStepOverflows(uint256 bp);
-error BinHelper__IdOverflows(int256 id);
-error BinHelper__IdOverflows(uint256 id);
+error BinHelper__IdOverflows();
 
 /** FeeDistributionHelper errors */
 

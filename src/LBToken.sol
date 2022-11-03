@@ -45,6 +45,11 @@ contract LBToken is ILBToken {
         _;
     }
 
+    modifier checkLBTokenSupport(address recipient) {
+        if (!_verifyLBTokenSupport(recipient)) revert LBToken__NotSupported();
+        _;
+    }
+
     /// @notice Returns the name of the token
     /// @return The name of the token
     function name() public pure virtual override returns (string memory) {
@@ -134,7 +139,7 @@ contract LBToken is ILBToken {
         address _to,
         uint256 _id,
         uint256 _amount
-    ) public virtual override checkAddresses(_from, _to) checkApproval(_from, msg.sender) {
+    ) public virtual override checkAddresses(_from, _to) checkApproval(_from, msg.sender) checkLBTokenSupport(_to) {
         address _spender = msg.sender;
 
         _transfer(_from, _to, _id, _amount);
@@ -159,6 +164,7 @@ contract LBToken is ILBToken {
         checkLength(_ids.length, _amounts.length)
         checkAddresses(_from, _to)
         checkApproval(_from, msg.sender)
+        checkLBTokenSupport(_to)
     {
         unchecked {
             for (uint256 i; i < _ids.length; ++i) {
@@ -167,6 +173,14 @@ contract LBToken is ILBToken {
         }
 
         emit TransferBatch(msg.sender, _from, _to, _ids, _amounts);
+    }
+
+    /// @notice Returns whether this contract implements the interface defined by
+    /// `interfaceId` (true) or not (false)
+    /// @param _interfaceId The interface identifier
+    /// @return Whether the interface is supported (true) or not (false)
+    function supportsInterface(bytes4 _interfaceId) public view virtual override returns (bool) {
+        return _interfaceId == type(ILBToken).interfaceId || _interfaceId == type(IERC165).interfaceId;
     }
 
     /// @notice Internal function to transfer `_amount` tokens of type `_id` from `_from` to `_to`
@@ -328,4 +342,19 @@ contract LBToken is ILBToken {
         uint256 id,
         uint256 amount
     ) internal virtual {}
+
+    /// @notice Return if the `_target` contract supports LBToken interface
+    /// @param _target The address of the contract
+    /// @return supported Whether the contract is supported (1) or not (any other value)
+    function _verifyLBTokenSupport(address _target) private returns (bool supported) {
+        if (_target.code.length == 0) return true;
+
+        bytes memory encodedParams = abi.encodeWithSelector(
+            IERC165.supportsInterface.selector,
+            type(ILBToken).interfaceId
+        );
+        (bool success, bytes memory result) = _target.staticcall{gas: 30_000}(encodedParams);
+        if (result.length < 32) return false;
+        return success && abi.decode(result, (bool));
+    }
 }

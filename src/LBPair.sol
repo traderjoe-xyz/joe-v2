@@ -295,6 +295,14 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         }
     }
 
+    /// @notice Returns whether this contract implements the interface defined by
+    /// `interfaceId` (true) or not (false)
+    /// @param _interfaceId The interface identifier
+    /// @return Whether the interface is supported (true) or not (false)
+    function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
+        return _interfaceId == type(ILBPair).interfaceId || super.supportsInterface(_interfaceId);
+    }
+
     /** External Functions **/
 
     /// @notice Performs a low level swap, this needs to be called from a contract which performs important safety checks
@@ -478,6 +486,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         external
         override
         nonReentrant
+        checkLBTokenSupport(_to)
         returns (
             uint256,
             uint256,
@@ -524,12 +533,12 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                     if (_mintInfo.id == _pair.activeId) {
                         uint256 _totalSupply = totalSupply(_mintInfo.id);
 
-                        uint256 _userL = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) +
-                            _mintInfo.amountY;
-
                         uint256 _receivedX;
                         uint256 _receivedY;
                         {
+                            uint256 _userL = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) +
+                                _mintInfo.amountY;
+
                             uint256 _supply = _totalSupply + _userL;
                             _receivedX = (_userL * (uint256(_bin.reserveX) + _mintInfo.amountX)) / _supply;
                             _receivedY = (_userL * (uint256(_bin.reserveY) + _mintInfo.amountY)) / _supply;

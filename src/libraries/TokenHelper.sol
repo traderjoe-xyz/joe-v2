@@ -75,7 +75,7 @@ library TokenHelper {
     /// @param target The address of the account
     /// @param data The data to execute on `target`
     /// @return returnData The data returned by the call
-    function _callAndCatchError(address target, bytes memory data) private returns (bytes memory returnData) {
+    function _callAndCatchError(address target, bytes memory data) private returns (bytes memory) {
         (bool success, bytes memory returnData) = target.call(data);
 
         if (success) {
@@ -89,6 +89,8 @@ library TokenHelper {
                 }
             }
         }
+
+        return returnData;
     }
 
     /// @notice Private view function to return if an address is a contract

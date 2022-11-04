@@ -153,10 +153,10 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         view
         override
         returns (
-            uint256 feesXTotal,
-            uint256 feesYTotal,
-            uint256 feesXProtocol,
-            uint256 feesYProtocol
+            uint128 feesXTotal,
+            uint128 feesYTotal,
+            uint128 feesXProtocol,
+            uint128 feesYProtocol
         )
     {
         return _getGlobalFees();
@@ -753,7 +753,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// Only callable by the fee recipient
     /// @return amountX The amount of tokenX claimed
     /// @return amountY The amount of tokenY claimed
-    function collectProtocolFees() external override nonReentrant returns (uint256 amountX, uint256 amountY) {
+    function collectProtocolFees() external override nonReentrant returns (uint128 amountX, uint128 amountY) {
         unchecked {
             address _feeRecipient = factory.feeRecipient();
 
@@ -761,23 +761,17 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
             // The fees returned can't be greater than uint128, so the assembly blocks are safe
             (
-                uint256 _feesXTotal,
-                uint256 _feesYTotal,
-                uint256 _feesXProtocol,
-                uint256 _feesYProtocol
+                uint128 _feesXTotal,
+                uint128 _feesYTotal,
+                uint128 _feesXProtocol,
+                uint128 _feesYProtocol
             ) = _getGlobalFees();
 
             if (_feesXProtocol > 1) {
                 amountX = _feesXProtocol - 1;
                 _feesXTotal -= amountX;
 
-                // Assembly block that does:
-                // _pairInformation.feesX = FeeHelper.FeesDistribution({total: _feesXTotal, protocol: 1});
-                assembly {
-                    let _slotX := add(_pairInformation.slot, 2)
-
-                    sstore(_slotX, add(shl(_OFFSET_PROTOCOL_FEE, 1), _feesXTotal))
-                }
+                _setFees(_pairInformation.feesX, _feesXTotal, 1);
 
                 tokenX.safeTransfer(_feeRecipient, amountX);
             }
@@ -786,13 +780,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                 amountY = _feesYProtocol - 1;
                 _feesYTotal -= amountY;
 
-                // Assembly block that does:
-                // _pairInformation.feesY = FeeHelper.FeesDistribution({total: _feesYTotal, protocol: 1});
-                assembly {
-                    let _slotY := add(_pairInformation.slot, 3)
-
-                    sstore(_slotY, add(shl(_OFFSET_PROTOCOL_FEE, 1), _feesYTotal))
-                }
+                _setFees(_pairInformation.feesY, _feesYTotal, 1);
 
                 tokenY.safeTransfer(_feeRecipient, amountY);
             }
@@ -1040,10 +1028,10 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         private
         view
         returns (
-            uint256 feesXTotal,
-            uint256 feesYTotal,
-            uint256 feesXProtocol,
-            uint256 feesYProtocol
+            uint128 feesXTotal,
+            uint128 feesYTotal,
+            uint128 feesXProtocol,
+            uint128 feesYProtocol
         )
     {
         bytes32 _slotX;
@@ -1053,11 +1041,11 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             _slotY := sload(add(_pairInformation.slot, 3))
         }
 
-        feesXTotal = _slotX.decode(type(uint128).max, 0);
-        feesYTotal = _slotY.decode(type(uint128).max, 0);
+        feesXTotal = uint128(_slotX.decode(type(uint128).max, 0));
+        feesYTotal = uint128(_slotY.decode(type(uint128).max, 0));
 
-        feesXProtocol = _slotX.decode(type(uint128).max, _OFFSET_PROTOCOL_FEE);
-        feesYProtocol = _slotY.decode(type(uint128).max, _OFFSET_PROTOCOL_FEE);
+        feesXProtocol = uint128(_slotX.decode(type(uint128).max, _OFFSET_PROTOCOL_FEE));
+        feesYProtocol = uint128(_slotY.decode(type(uint128).max, _OFFSET_PROTOCOL_FEE));
     }
 
     /// @notice Private pure function to return the flashloan fee amount
@@ -1067,5 +1055,21 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @return The fee amount
     function _getFlashLoanFee(uint256 _amount, uint256 _fee) private pure returns (uint256) {
         return (_amount * _fee + Constants.PRECISION - 1) / Constants.PRECISION;
+    }
+
+    /// @notice Private function to set the total and protocol fees
+    /// @dev The assembly block does:
+    /// _pairFees = FeeHelper.FeesDistribution({total: _totalFees, protocol: _protocolFees});
+    /// @param _pairFees The storage slot of the fees
+    /// @param _totalFees The new total fees
+    /// @param _protocolFees The new protocol fees
+    function _setFees(
+        FeeHelper.FeesDistribution storage _pairFees,
+        uint128 _totalFees,
+        uint128 _protocolFees
+    ) private {
+        assembly {
+            sstore(_pairFees.slot, and(shl(_OFFSET_PROTOCOL_FEE, _protocolFees), _totalFees))
+        }
     }
 }

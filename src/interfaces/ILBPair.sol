@@ -170,10 +170,10 @@ interface ILBPair {
         external
         view
         returns (
-            uint256 feesXTotal,
-            uint256 feesYTotal,
-            uint256 feesXProtocol,
-            uint256 feesYProtocol
+            uint128 feesXTotal,
+            uint128 feesYTotal,
+            uint128 feesXProtocol,
+            uint128 feesYProtocol
         );
 
     function getOracleParameters()
@@ -241,7 +241,7 @@ interface ILBPair {
 
     function collectFees(address account, uint256[] calldata ids) external returns (uint256 amountX, uint256 amountY);
 
-    function collectProtocolFees() external returns (uint256 amountX, uint256 amountY);
+    function collectProtocolFees() external returns (uint128 amountX, uint128 amountY);
 
     function setFeesParameters(bytes32 packedFeeParameters) external;
 

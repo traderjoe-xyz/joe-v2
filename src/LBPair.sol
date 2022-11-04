@@ -427,7 +427,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @param _receiver the address that will receive the flash loan and execute the call back
     /// @param _token The address of the token
     /// @param _amount The amount of token
-    /// @param _data The call data that will be forwarder to `_receiver` during the callback
+    /// @param _data The call data that will be forwarded to `_receiver` during the callback
     function flashLoan(
         ILBFlashLoanCallback _receiver,
         IERC20 _token,

@@ -293,7 +293,7 @@ contract LBToken is ILBToken {
             mstore(0x00, selectorERC165)
             mstore(0x04, ILBTokenInterfaceId)
 
-            let success := eq(staticcall(30000, _target, 0x00, 0x24, 0x00, 0x20), 1)
+            let success := staticcall(30000, _target, 0x00, 0x24, 0x00, 0x20)
             let size := eq(returndatasize(), 0x20)
             let data := eq(mload(0x00), 1)
 

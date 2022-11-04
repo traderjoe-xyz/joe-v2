@@ -402,7 +402,7 @@ contract LiquidityBinRouterTest is TestHelper {
         (uint256 amountIn2, ) = router.getSwapIn(pair, _amountYIn - 100, true);
     }
 
-    function testSweepLBToken() public {
+    function testSendTokensToContractThatDoesNotSupportLBToken() public {
         uint256 amountIn = 1e18;
 
         pair = createLBPairDefaultFees(token6D, token18D);
@@ -410,12 +410,8 @@ contract LiquidityBinRouterTest is TestHelper {
 
         uint256[] memory amounts = new uint256[](5);
         for (uint256 i; i < 5; i++) {
-            assertEq(pair.userPositionAtIndex(DEV, i), _ids[i]);
             amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
-        assertEq(pair.userPositionNumber(DEV), 5);
-
-        assertEq(pair.balanceOf(DEV, ID_ONE - 1), amountIn / 3);
 
         vm.expectRevert(abi.encodeWithSelector(LBToken__NotSupported.selector));
         pair.safeBatchTransferFrom(DEV, address(router), _ids, amounts);

@@ -434,8 +434,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         uint256 _amount,
         bytes calldata _data
     ) external override nonReentrant {
-        (IERC20 _tokenX, IERC20 _tokenY) = (tokenX, tokenY);
-        if ((_token != tokenX && _token != tokenY)) revert LBPair__FlashLoanTokenNotSupported();
+        IERC20 _tokenX = tokenX;
+        if ((_token != _tokenX && _token != tokenY)) revert LBPair__FlashLoanTokenNotSupported();
 
         uint256 _totalFee = _getFlashLoanFee(_amount);
 

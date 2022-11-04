@@ -23,9 +23,6 @@ contract LBToken is ILBToken {
     /// @dev Mapping from token id to total supplies
     mapping(uint256 => uint256) private _totalSupplies;
 
-    /// @dev  Mapping from account to set of ids, where user currently have a non-zero balance
-    mapping(address => EnumerableSet.UintSet) private _userIds;
-
     string private constant _NAME = "Liquidity Book Token";
     string private constant _SYMBOL = "LBT";
 
@@ -97,21 +94,6 @@ contract LBToken is ILBToken {
                 batchBalances[i] = balanceOf(_accounts[i], _ids[i]);
             }
         }
-    }
-
-    /// @notice Returns the type id at index `_index` where `account` has a non-zero balance
-    /// @param _account The address of the account
-    /// @param _index The position index
-    /// @return The `account` non-zero position at index `_index`
-    function userPositionAtIndex(address _account, uint256 _index) public view virtual override returns (uint256) {
-        return _userIds[_account].at(_index);
-    }
-
-    /// @notice Returns the number of non-zero balances of `account`
-    /// @param _account The address of the account
-    /// @return The number of non-zero balances of `account`
-    function userPositionNumber(address _account) public view virtual override returns (uint256) {
-        return _userIds[_account].length();
     }
 
     /// @notice Returns true if `spender` is approved to transfer `_account`'s tokens
@@ -201,16 +183,8 @@ contract LBToken is ILBToken {
 
         unchecked {
             _balances[_id][_from] = _fromBalance - _amount;
+            _balances[_id][_to] += _amount;
         }
-
-        uint256 _toBalance = _balances[_id][_to];
-
-        unchecked {
-            _balances[_id][_to] = _toBalance + _amount;
-        }
-
-        _remove(_from, _id, _fromBalance, _amount);
-        _add(_to, _id, _toBalance, _amount);
     }
 
     /// @dev Creates `_amount` tokens of type `_id`, and assigns them to `_account`
@@ -228,12 +202,9 @@ contract LBToken is ILBToken {
 
         _totalSupplies[_id] += _amount;
 
-        uint256 _accountBalance = _balances[_id][_account];
         unchecked {
-            _balances[_id][_account] = _accountBalance + _amount;
+            _balances[_id][_account] += _amount;
         }
-
-        _add(_account, _id, _accountBalance, _amount);
 
         emit TransferSingle(msg.sender, address(0), _account, _id, _amount);
     }
@@ -258,8 +229,6 @@ contract LBToken is ILBToken {
             _balances[_id][_account] = _accountBalance - _amount;
             _totalSupplies[_id] -= _amount;
         }
-
-        _remove(_account, _id, _accountBalance, _amount);
 
         emit TransferSingle(msg.sender, _account, address(0), _id, _amount);
     }
@@ -286,38 +255,6 @@ contract LBToken is ILBToken {
     /// @return True if `spender` is approved to transfer `owner`'s tokens
     function _isApprovedForAll(address _owner, address _spender) internal view virtual returns (bool) {
         return _owner == _spender || _spenderApprovals[_owner][_spender];
-    }
-
-    /// @notice Internal function to add an id to an user's set
-    /// @param _account The user's address
-    /// @param _id The id of the token
-    /// @param _accountBalance The user's balance
-    /// @param _amount The amount of tokens
-    function _add(
-        address _account,
-        uint256 _id,
-        uint256 _accountBalance,
-        uint256 _amount
-    ) internal {
-        if (_accountBalance == 0 && _amount != 0) {
-            _userIds[_account].add(_id);
-        }
-    }
-
-    /// @notice Internal function to remove an id from an user's set
-    /// @param _account The user's address
-    /// @param _id The id of the token
-    /// @param _accountBalance The user's balance
-    /// @param _amount The amount of tokens
-    function _remove(
-        address _account,
-        uint256 _id,
-        uint256 _accountBalance,
-        uint256 _amount
-    ) internal {
-        if (_accountBalance == _amount && _amount != 0) {
-            _userIds[_account].remove(_id);
-        }
     }
 
     /// @notice Hook that is called before any token transfer. This includes minting

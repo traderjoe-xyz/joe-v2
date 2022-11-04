@@ -5,11 +5,13 @@ pragma solidity 0.8.10;
 import "openzeppelin/interfaces/IERC20.sol";
 
 import "src/LBPair.sol";
+import "src/interfaces/ILBFlashLoanCallback.sol";
+import "src/libraries/Constants.sol";
 
 error FlashBorrower__UntrustedLender();
 error FlashBorrower__UntrustedLoanInitiator();
 
-contract FlashBorrower {
+contract FlashBorrower is ILBFlashLoanCallback {
     enum Action {
         NORMAL,
         OTHER
@@ -17,48 +19,63 @@ contract FlashBorrower {
 
     event CalldataTransmitted();
 
-    ILBPair private lender;
+    address private immutable _owner;
+
+    ILBPair private immutable _lender;
+
+    IERC20 private immutable _tokenX;
+    IERC20 private immutable _tokenY;
 
     constructor(ILBPair lender_) {
-        lender = lender_;
+        _owner = msg.sender;
+        _lender = lender_;
+
+        (_tokenX, _tokenY) = (lender_.tokenX(), lender_.tokenY());
     }
 
     function LBFlashLoanCallback(
         address sender,
-        uint256 amountX,
-        uint256 amountY,
-        uint256 feeX,
-        uint256 feeY,
+        IERC20 token,
+        uint256 amount,
+        uint256 fee,
         bytes calldata data
-    ) external {
-        if (msg.sender != address(lender)) {
+    ) external override returns (bytes32) {
+        if (msg.sender != address(_lender)) {
             revert FlashBorrower__UntrustedLender();
         }
-        (Action action, uint256 amountXBorrowed, uint256 amountYBorrowed, bool isReentrant) = abi.decode(
-            data,
-            (Action, uint256, uint256, bool)
-        );
+        (Action action, bool isReentrant) = abi.decode(data, (Action, bool));
         if (isReentrant) {
-            lender.flashLoan(address(this), amountXBorrowed, amountYBorrowed, data);
+            _lender.flashLoan(this, token, amount, data);
         }
         if (action == Action.NORMAL) {
             emit CalldataTransmitted();
         }
 
-        IERC20(lender.tokenX()).transfer(address(lender), amountXBorrowed + feeX);
-        IERC20(lender.tokenY()).transfer(address(lender), amountYBorrowed + feeY);
+        token.transfer(address(_lender), amount + fee);
+
+        return Constants.CALLBACK_SUCCESS;
     }
 
     /// @dev Initiate a flash loan
     function flashBorrow(uint256 amountXBorrowed, uint256 amountYBorrowed) public {
-        bytes memory data = abi.encode(Action.NORMAL, amountXBorrowed, amountYBorrowed, false);
+        bytes memory data = abi.encode(Action.NORMAL, false);
 
-        lender.flashLoan(address(this), amountXBorrowed, amountYBorrowed, data);
+        if (amountXBorrowed > 0) {
+            _lender.flashLoan(this, _tokenX, amountXBorrowed, data);
+        }
+        if (amountYBorrowed > 0) {
+            _lender.flashLoan(this, _tokenY, amountYBorrowed, data);
+        }
     }
 
     function flashBorrowWithReentrancy(uint256 amountXBorrowed, uint256 amountYBorrowed) public {
-        bytes memory data = abi.encode(Action.NORMAL, amountXBorrowed, amountYBorrowed, true);
+        bytes memory data = abi.encode(Action.NORMAL, true);
 
-        lender.flashLoan(address(this), amountXBorrowed, amountYBorrowed, data);
+        if (amountXBorrowed > 0) {
+            _lender.flashLoan(this, _tokenX, amountXBorrowed, data);
+        }
+        if (amountYBorrowed > 0) {
+            _lender.flashLoan(this, _tokenY, amountYBorrowed, data);
+        }
     }
 }

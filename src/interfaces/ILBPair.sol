@@ -6,6 +6,7 @@ import "openzeppelin/token/ERC20/IERC20.sol";
 
 import "../libraries/FeeHelper.sol";
 import "./ILBFactory.sol";
+import "./ILBFlashLoanCallback.sol";
 
 /// @title Liquidity Book Pair Interface
 /// @author Trader Joe
@@ -110,11 +111,10 @@ interface ILBPair {
 
     event FlashLoan(
         address indexed sender,
-        address indexed recipient,
-        uint256 amountX,
-        uint256 amountY,
-        uint256 feesX,
-        uint256 feesY
+        ILBFlashLoanCallback indexed receiver,
+        IERC20 token,
+        uint256 amount,
+        uint256 fee
     );
 
     event LiquidityAdded(
@@ -212,10 +212,10 @@ interface ILBPair {
     function swap(bool sentTokenY, address to) external returns (uint256 amountXOut, uint256 amountYOut);
 
     function flashLoan(
-        address to,
-        uint256 amountXOut,
-        uint256 amountYOut,
-        bytes memory data
+        ILBFlashLoanCallback receiver,
+        IERC20 token,
+        uint256 amount,
+        bytes calldata data
     ) external;
 
     function mint(

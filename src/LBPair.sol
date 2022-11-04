@@ -18,7 +18,6 @@ import "./libraries/SafeMath.sol";
 import "./libraries/SwapHelper.sol";
 import "./libraries/TokenHelper.sol";
 import "./libraries/TreeMath.sol";
-import "./interfaces/ILBFlashLoanCallback.sol";
 import "./interfaces/ILBPair.sol";
 
 /// @title Liquidity Book Pair
@@ -425,46 +424,56 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     }
 
     /// @notice Performs a flash loan
-    /// @param _to the address that will execute the external call
-    /// @param _amountXOut The amount of tokenX
-    /// @param _amountYOut The amount of tokenY
-    /// @param _data The bytes data that will be forwarded to _to
+    /// @param _receiver the address that will receive the flash loan and execute the call back
+    /// @param _token The address of the token
+    /// @param _amount The amount of token
+    /// @param _data The call data that will be forwarder to `_receiver` during the callback
     function flashLoan(
-        address _to,
-        uint256 _amountXOut,
-        uint256 _amountYOut,
+        ILBFlashLoanCallback _receiver,
+        IERC20 _token,
+        uint256 _amount,
         bytes calldata _data
     ) external override nonReentrant {
-        FeeHelper.FeeParameters memory _fp = _feeParameters;
+        (IERC20 _tokenX, IERC20 _tokenY) = (tokenX, tokenY);
+        if ((_token != tokenX && _token != tokenY)) revert LBPair__FlashLoanTokenNotSupported();
 
-        uint256 _fee = factory.flashLoanFee();
+        uint256 _totalFee = _getFlashLoanFee(_amount);
 
-        FeeHelper.FeesDistribution memory _feesX = _fp.getFeeAmountDistribution(_getFlashLoanFee(_amountXOut, _fee));
-        FeeHelper.FeesDistribution memory _feesY = _fp.getFeeAmountDistribution(_getFlashLoanFee(_amountYOut, _fee));
+        FeeHelper.FeesDistribution memory _fees = FeeHelper.FeesDistribution({
+            total: _totalFee.safe128(),
+            protocol: uint128((_totalFee * _feeParameters.protocolShare) / Constants.BASIS_POINT_MAX)
+        });
 
-        (uint256 _reserveX, uint256 _reserveY, uint256 _id) = _getReservesAndId();
+        uint256 _balanceBefore = _token.balanceOf(address(this));
 
-        tokenX.safeTransfer(_to, _amountXOut);
-        tokenY.safeTransfer(_to, _amountYOut);
+        _token.safeTransfer(address(_receiver), _amount);
 
-        ILBFlashLoanCallback(_to).LBFlashLoanCallback(
-            msg.sender,
-            _amountXOut,
-            _amountYOut,
-            _feesX.total,
-            _feesY.total,
-            _data
-        );
+        if (
+            _receiver.LBFlashLoanCallback(msg.sender, _token, _amount, _fees.total, _data) != Constants.CALLBACK_SUCCESS
+        ) revert LBPair__FlashLoanCallbackFailed();
 
-        _feesX.flashLoanHelper(_pairInformation.feesX, tokenX, _reserveX);
-        _feesY.flashLoanHelper(_pairInformation.feesY, tokenY, _reserveY);
+        uint256 _balanceAfter = _token.balanceOf(address(this));
 
-        uint256 _totalSupply = totalSupply(_id);
+        if (_balanceAfter != _balanceBefore + _fees.total) revert LBPair__FlashLoanWrongFee();
 
-        _bins[_id].accTokenXPerShare += _feesX.getTokenPerShare(_totalSupply);
-        _bins[_id].accTokenYPerShare += _feesY.getTokenPerShare(_totalSupply);
+        uint256 _activeId = _pairInformation.activeId;
+        uint256 _totalSupply = totalSupply(_activeId);
 
-        emit FlashLoan(msg.sender, _to, _amountXOut, _amountYOut, _feesX.total, _feesY.total);
+        if (_totalFee > 0) {
+            if (_token == _tokenX) {
+                (uint128 _feesXTotal, , uint128 _feesXProtocol, ) = _getGlobalFees();
+
+                _setFees(_pairInformation.feesX, _feesXTotal + _fees.total, _feesXProtocol + _fees.protocol);
+                _bins[_activeId].accTokenXPerShare += _fees.getTokenPerShare(_totalSupply);
+            } else {
+                (, uint128 _feesYTotal, , uint128 _feesYProtocol) = _getGlobalFees();
+
+                _setFees(_pairInformation.feesY, _feesYTotal + _fees.total, _feesYProtocol + _fees.protocol);
+                _bins[_activeId].accTokenYPerShare += _fees.getTokenPerShare(_totalSupply);
+            }
+        }
+
+        emit FlashLoan(msg.sender, _receiver, _token, _amount, _fees.total);
     }
 
     /// @notice Performs a low level add, this needs to be called from a contract which performs important safety checks
@@ -1051,9 +1060,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @notice Private pure function to return the flashloan fee amount
     /// @dev Rounds up the fee
     /// @param _amount The amount to flashloan
-    /// @param _fee the fee percentage, in basis point
     /// @return The fee amount
-    function _getFlashLoanFee(uint256 _amount, uint256 _fee) private pure returns (uint256) {
+    function _getFlashLoanFee(uint256 _amount) private view returns (uint256) {
+        uint256 _fee = factory.flashLoanFee();
         return (_amount * _fee + Constants.PRECISION - 1) / Constants.PRECISION;
     }
 

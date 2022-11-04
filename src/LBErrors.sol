@@ -89,18 +89,16 @@ error LBPair__OnlyFactory();
 error LBPair__DistributionsOverflow();
 error LBPair__OnlyFeeRecipient(address feeRecipient, address sender);
 error LBPair__OracleNotEnoughSample();
-error LBPair__FlashLoanCallbackFailed();
 error LBPair__AlreadyInitialized();
 error LBPair__NewSizeTooSmall(uint256 newSize, uint256 oracleSize);
+error LBPair__FlashLoanCallbackFailed();
+error LBPair__FlashLoanWrongFee();
+error LBPair__FlashLoanTokenNotSupported();
 
 /** BinHelper errors */
 
 error BinHelper__BinStepOverflows(uint256 bp);
 error BinHelper__IdOverflows();
-
-/** FeeDistributionHelper errors */
-
-error FeeDistributionHelper__FlashLoanWrongFee(uint256 receivedFee, uint256 expectedFee);
 
 /** Math128x128 errors */
 

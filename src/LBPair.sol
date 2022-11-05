@@ -299,7 +299,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @param _interfaceId The interface identifier
     /// @return Whether the interface is supported (true) or not (false)
     function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
-        return _interfaceId == type(ILBPair).interfaceId || super.supportsInterface(_interfaceId);
+        return super.supportsInterface(_interfaceId) || _interfaceId == type(ILBPair).interfaceId;
     }
 
     /** External Functions **/

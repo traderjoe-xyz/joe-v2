@@ -139,8 +139,6 @@ interface ILBPair {
         uint256 amountY
     );
 
-    event Burn(address indexed sender, address indexed recipient, uint256 amountX, uint256 amountY);
-
     event FeesCollected(address indexed sender, address indexed recipient, uint256 amountX, uint256 amountY);
 
     event ProtocolFeesCollected(address indexed sender, address indexed recipient, uint256 amountX, uint256 amountY);

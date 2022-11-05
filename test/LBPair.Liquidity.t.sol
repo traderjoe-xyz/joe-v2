@@ -67,9 +67,9 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
 
     function testFuzzingAddLiquidity(uint256 _price) public {
         // Avoids Math__Exp2InputTooBig and very small x amounts
-        vm.assume(_price < 2**239);
+        vm.assume(_price < 2**238);
         // Avoids LBPair__BinReserveOverflows (very big x amounts)
-        vm.assume(_price > 2**17);
+        vm.assume(_price > 2**18);
 
         uint24 startId = getIdFromPrice(_price);
 
@@ -88,29 +88,42 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
 
         pair = createLBPairDefaultFeesFromStartId(token6D, token18D, startId);
 
-        uint256 amountYIn = _price > 2**128 ? 2 * ((1 << 112) - 1) : 2;
+        uint256 amountYIn = _price < type(uint128).max ? 2**18 : type(uint112).max;
+        uint256 amountXIn = (amountYIn << 112) / _price + 3;
 
-        (, , , uint256 amountXIn) = addLiquidity(amountYIn, startId, 3, 0);
+        console.log(amountXIn, amountYIn);
 
-        console2.log("startId", startId);
+        token6D.mint(address(pair), amountXIn);
+        token18D.mint(address(pair), amountYIn);
 
-        (uint256 currentBinReserveX, uint256 currentBinReserveY) = pair.getBin(startId);
-        (uint256 binYReserve0, uint256 binYReserve1) = pair.getBin(startId - 1);
-        (uint256 binXReserve0, uint256 binXReserve1) = pair.getBin(startId + 1);
+        uint256[] memory ids = new uint256[](3);
+        uint256[] memory distribX = new uint256[](3);
+        uint256[] memory distribY = new uint256[](3);
 
-        console2.log("bin0", currentBinReserveX, currentBinReserveY);
-        console2.log("binY", binYReserve0, binYReserve1);
-        console2.log("binX", binXReserve0, binXReserve1);
+        ids[0] = startId - 1;
+        ids[1] = startId;
+        ids[2] = startId + 1;
 
-        assertApproxEqRel(currentBinReserveX, amountXIn / 2, 1e3, "currentBinReserveX");
-        assertApproxEqRel(currentBinReserveY, amountYIn / 2, 1e3, "currentBinReserveY");
+        distribY[0] = Constants.PRECISION / 2;
+        distribX[1] = Constants.PRECISION / 2;
 
-        assertEq(binYReserve0, 0, "binYReserve0");
-        assertApproxEqRel(binYReserve1, amountYIn / 2, 1e3, "binYReserve1");
+        distribY[1] = Constants.PRECISION / 2;
+        distribX[2] = Constants.PRECISION / 2;
 
-        assertEq(binXReserve1, 0, "binXReserve0");
-        assertApproxEqRel(binXReserve0, amountXIn / 2, 1e3, "binXReserve1");
-        assertEq(binXReserve1, 0, "binXReserve0");
+        pair.mint(ids, distribX, distribY, DEV);
+
+        (uint256 binXReserve0, uint256 binYReserve0) = pair.getBin(uint24(ids[0]));
+        (uint256 binXReserve1, uint256 binYReserve1) = pair.getBin(uint24(ids[1]));
+        (uint256 binXReserve2, uint256 binYReserve2) = pair.getBin(uint24(ids[2]));
+
+        assertEq(binXReserve0, 0, "binXReserve0");
+        assertApproxEqRel(binYReserve0, amountYIn / 2, 1e3, "binYReserve0");
+
+        assertApproxEqRel(binXReserve1, amountXIn / 2, 1e3, "currentBinReserveX");
+        assertApproxEqRel(binYReserve1, amountYIn / 2, 1e3, "currentBinReserveY");
+
+        assertEq(binYReserve2, 0, "binYReserve2");
+        assertApproxEqRel(binXReserve2, amountXIn / 2, 1e3, "binXReserve2");
     }
 
     function testBurnLiquidity() public {

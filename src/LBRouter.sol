@@ -642,7 +642,7 @@ contract LBRouter is ILBRouter {
     /// @param _LBPair LBPair where liquidity is deposited
     /// @return depositIds Bin ids where the liquidity was actually deposited
     /// @return liquidityMinted Amounts of LBToken minted for each bin
-    function _addLiquidity(LiquidityParameters memory _liq, ILBPair _LBPair)
+    function _addLiquidity(LiquidityParameters calldata _liq, ILBPair _LBPair)
         private
         ensure(_liq.deadline)
         returns (uint256[] memory depositIds, uint256[] memory liquidityMinted)

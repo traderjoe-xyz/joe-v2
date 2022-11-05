@@ -368,8 +368,6 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             }
         }
 
-        if (_amountOut == 0) revert LBPair__BrokenSwapSafetyCheck(); // Safety check
-
         // We use oracleSize so it can start filling empty slot that were added recently
         uint256 _updatedOracleId = _oracle.update(
             _pair.oracleSize,

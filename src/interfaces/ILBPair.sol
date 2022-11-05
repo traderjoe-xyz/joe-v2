@@ -99,14 +99,12 @@ interface ILBPair {
     event Swap(
         address indexed sender,
         address indexed recipient,
-        uint24 indexed id,
-        uint256 amountXIn,
-        uint256 amountYIn,
-        uint256 amountXOut,
-        uint256 amountYOut,
+        uint256 indexed id,
+        bool swapForY,
+        uint256 amountIn,
+        uint256 amountOut,
         uint256 volatilityAccumulated,
-        uint256 feesX,
-        uint256 feesY
+        uint256 fees
     );
 
     event FlashLoan(

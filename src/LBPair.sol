@@ -349,33 +349,16 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
                 _bins[_pair.activeId] = _bin;
 
-                if (_swapForY) {
-                    emit Swap(
-                        msg.sender,
-                        _to,
-                        _pair.activeId,
-                        _amountInToBin,
-                        0,
-                        0,
-                        _amountOutOfBin,
-                        _fp.volatilityAccumulated,
-                        _fees.total,
-                        0
-                    );
-                } else {
-                    emit Swap(
-                        msg.sender,
-                        _to,
-                        _pair.activeId,
-                        0,
-                        _amountInToBin,
-                        _amountOutOfBin,
-                        0,
-                        _fp.volatilityAccumulated,
-                        0,
-                        _fees.total
-                    );
-                }
+                // Avoids stack too deep error
+                _emitSwap(
+                    _to,
+                    _pair.activeId,
+                    _swapForY,
+                    _amountInToBin,
+                    _amountOutOfBin,
+                    _fp.volatilityAccumulated,
+                    _fees.total
+                );
             }
 
             if (_amountIn != 0) {
@@ -1070,5 +1053,26 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         assembly {
             sstore(_pairFees.slot, and(shl(_OFFSET_PROTOCOL_FEE, _protocolFees), _totalFees))
         }
+    }
+
+    function _emitSwap(
+        address _to,
+        uint24 _activeId,
+        bool _swapForY,
+        uint256 _amountInToBin,
+        uint256 _amountOutOfBin,
+        uint256 _volatilityAccumulated,
+        uint256 _fees
+    ) private {
+        emit Swap(
+            msg.sender,
+            _to,
+            _activeId,
+            _swapForY,
+            _amountInToBin,
+            _amountOutOfBin,
+            _volatilityAccumulated,
+            _fees
+        );
     }
 }

@@ -115,17 +115,6 @@ interface ILBPair {
         uint256 fee
     );
 
-    event LiquidityAdded(
-        address indexed sender,
-        address indexed recipient,
-        uint256 indexed id,
-        uint256 minted,
-        uint256 amountX,
-        uint256 amountY,
-        uint256 distributionX,
-        uint256 distributionY
-    );
-
     event CompositionFee(
         address indexed sender,
         address indexed recipient,
@@ -134,14 +123,23 @@ interface ILBPair {
         uint256 feesY
     );
 
-    event LiquidityRemoved(
+    event DepositedToBin(
         address indexed sender,
         address indexed recipient,
         uint256 indexed id,
-        uint256 burned,
         uint256 amountX,
         uint256 amountY
     );
+
+    event WithdrawnFromBin(
+        address indexed sender,
+        address indexed recipient,
+        uint256 indexed id,
+        uint256 amountX,
+        uint256 amountY
+    );
+
+    event Burn(address indexed sender, address indexed recipient, uint256 amountX, uint256 amountY);
 
     event FeesCollected(address indexed sender, address indexed recipient, uint256 amountX, uint256 amountY);
 

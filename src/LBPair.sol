@@ -492,121 +492,120 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
         MintInfo memory _mintInfo;
 
-        _mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total).safe128();
-        _mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total).safe128();
+        _mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total).safe112();
+        _mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total).safe112();
 
         liquidityMinted = new uint256[](_ids.length);
 
-        unchecked {
-            for (uint256 i; i < _ids.length; ++i) {
-                _mintInfo.id = _ids[i].safe24();
-                Bin memory _bin = _bins[_mintInfo.id];
+        for (uint256 i; i < _ids.length; ) {
+            _mintInfo.id = _ids[i].safe24();
+            Bin memory _bin = _bins[_mintInfo.id];
 
-                if (_bin.reserveX == 0 && _bin.reserveY == 0) _tree.addToTree(_mintInfo.id);
+            if (_bin.reserveX == 0 && _bin.reserveY == 0) _tree.addToTree(_mintInfo.id);
 
-                _mintInfo.distributionX = _distributionX[i];
-                _mintInfo.distributionY = _distributionY[i];
+            _mintInfo.totalDistributionX += _distributionX[i];
+            _mintInfo.totalDistributionY += _distributionY[i];
 
-                if (
-                    _mintInfo.distributionX > Constants.PRECISION ||
-                    _mintInfo.distributionY > Constants.PRECISION ||
-                    (_mintInfo.totalDistributionX += _mintInfo.distributionX) > Constants.PRECISION ||
-                    (_mintInfo.totalDistributionY += _mintInfo.distributionY) > Constants.PRECISION
-                ) revert LBPair__DistributionsOverflow();
+            // Can't overflow as amounts are uint112 and total distributions will be checked to be smaller or equal than 1e18
+            unchecked {
+                _mintInfo.amountX = (_mintInfo.amountXIn * _distributionX[i]) / Constants.PRECISION;
+                _mintInfo.amountY = (_mintInfo.amountYIn * _distributionY[i]) / Constants.PRECISION;
+            }
 
-                // Can't overflow as amounts are uint128 and distributions are smaller or equal to 1e18
-                _mintInfo.amountX = (_mintInfo.amountXIn * _mintInfo.distributionX) / Constants.PRECISION;
-                _mintInfo.amountY = (_mintInfo.amountYIn * _mintInfo.distributionY) / Constants.PRECISION;
+            uint256 _price = BinHelper.getPriceFromId(_mintInfo.id, _fp.binStep);
+            if (_mintInfo.id >= _pair.activeId) {
+                if (_mintInfo.id == _pair.activeId) {
+                    uint256 _totalSupply = totalSupply(_mintInfo.id);
 
-                uint256 _price = BinHelper.getPriceFromId(_mintInfo.id, _fp.binStep);
-                if (_mintInfo.id >= _pair.activeId) {
-                    if (_mintInfo.id == _pair.activeId) {
-                        uint256 _totalSupply = totalSupply(_mintInfo.id);
+                    uint256 _receivedX;
+                    uint256 _receivedY;
 
-                        uint256 _receivedX;
-                        uint256 _receivedY;
-                        {
-                            uint256 _userL = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) +
-                                _mintInfo.amountY;
+                    {
+                        uint256 _userL = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) +
+                            _mintInfo.amountY;
 
-                            uint256 _supply = _totalSupply + _userL;
-                            _receivedX = (_userL * (uint256(_bin.reserveX) + _mintInfo.amountX)) / _supply;
-                            _receivedY = (_userL * (uint256(_bin.reserveY) + _mintInfo.amountY)) / _supply;
+                        uint256 _supply = _totalSupply + _userL;
+
+                        _receivedX = _userL.mulDivRoundDown(uint256(_bin.reserveX) + _mintInfo.amountX, _supply);
+                        _receivedY = _userL.mulDivRoundDown(uint256(_bin.reserveY) + _mintInfo.amountY, _supply);
+                    }
+
+                    _fp.updateVariableFeeParameters(_mintInfo.id);
+
+                    FeeHelper.FeesDistribution memory _fees;
+                    if (_mintInfo.amountX > _receivedX) {
+                        unchecked {
+                            _fees = _fp.getFeeAmountDistribution(_fp.getFeeAmountForC(_mintInfo.amountX - _receivedX));
                         }
 
-                        _fp.updateVariableFeeParameters(_mintInfo.id);
+                        _mintInfo.amountX -= _fees.total;
+                        _mintInfo.activeFeeX += _fees.total;
 
-                        if (_mintInfo.amountX > _receivedX) {
-                            FeeHelper.FeesDistribution memory _fees = _fp.getFeeAmountDistribution(
-                                _fp.getFeeAmountForC(_mintInfo.amountX - _receivedX)
-                            );
-
-                            _mintInfo.amountX -= _fees.total;
-                            _mintInfo.activeFeeX += _fees.total;
-
-                            _bin.updateFees(_pair.feesX, _fees, true, _totalSupply);
-
-                            emit CompositionFee(msg.sender, _to, _mintInfo.id, _fees.total, 0);
+                        _bin.updateFees(_pair.feesX, _fees, true, _totalSupply);
+                    }
+                    if (_mintInfo.amountY > _receivedY) {
+                        unchecked {
+                            _fees = _fp.getFeeAmountDistribution(_fp.getFeeAmountForC(_mintInfo.amountY - _receivedY));
                         }
-                        if (_mintInfo.amountY > _receivedY) {
-                            FeeHelper.FeesDistribution memory _fees = _fp.getFeeAmountDistribution(
-                                _fp.getFeeAmountForC(_mintInfo.amountY - _receivedY)
-                            );
 
-                            _mintInfo.amountY -= _fees.total;
-                            _mintInfo.activeFeeY += _fees.total;
+                        _mintInfo.amountY -= _fees.total;
+                        _mintInfo.activeFeeY += _fees.total;
 
-                            _bin.updateFees(_pair.feesY, _fees, false, _totalSupply);
+                        _bin.updateFees(_pair.feesY, _fees, false, _totalSupply);
+                    }
 
-                            emit CompositionFee(msg.sender, _to, _mintInfo.id, 0, _fees.total);
-                        }
-                    } else if (_mintInfo.amountY != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
-                } else if (_mintInfo.amountX != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
+                    if (_mintInfo.activeFeeX > 0 || _mintInfo.activeFeeY > 0)
+                        emit CompositionFee(msg.sender, _to, _mintInfo.id, _mintInfo.activeFeeX, _mintInfo.activeFeeY);
+                } else if (_mintInfo.amountY != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
+            } else if (_mintInfo.amountX != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
 
-                uint256 _liquidity = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) +
-                    _mintInfo.amountY;
+            uint256 _liquidity = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) +
+                _mintInfo.amountY;
 
-                if (_liquidity == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
+            if (_liquidity == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
 
-                liquidityMinted[i] = _liquidity;
+            liquidityMinted[i] = _liquidity;
 
-                // The addition can't overflow as the amounts are checked to be uint128 and the reserves are uint112
-                _bin.reserveX = (_mintInfo.amountX + _bin.reserveX).safe112();
-                _bin.reserveY = (_mintInfo.amountY + _bin.reserveY).safe112();
+            // Cast can't overflow as amounts are smaller than amountsIn as totalDistribution will be checked to be smaller than 1e18
+            _bin.reserveX += uint112(_mintInfo.amountX);
+            _bin.reserveY += uint112(_mintInfo.amountY);
 
-                // The addition or the cast can't overflow as it would have reverted during the L568 and L569 if amounts were greater than uint112
+            // The addition or the cast can't overflow as it would have reverted during the previous 2 lines if
+            // amounts were greater than uint112
+            unchecked {
                 _pair.reserveX += uint112(_mintInfo.amountX);
                 _pair.reserveY += uint112(_mintInfo.amountY);
 
                 _mintInfo.amountXAddedToPair += _mintInfo.amountX;
                 _mintInfo.amountYAddedToPair += _mintInfo.amountY;
-
-                _bins[_mintInfo.id] = _bin;
-                _mint(_to, _mintInfo.id, _liquidity);
-
-                emit LiquidityAdded(
-                    msg.sender,
-                    _to,
-                    _mintInfo.id,
-                    _liquidity,
-                    _mintInfo.amountX,
-                    _mintInfo.amountY,
-                    _mintInfo.distributionX,
-                    _mintInfo.distributionY
-                );
             }
 
-            _pairInformation = _pair;
+            _bins[_mintInfo.id] = _bin;
+            _mint(_to, _mintInfo.id, _liquidity);
 
-            uint256 _amountAddedPlusFee = _mintInfo.amountXAddedToPair + _mintInfo.activeFeeX;
+            emit DepositedToBin(msg.sender, _to, _mintInfo.id, _mintInfo.amountX, _mintInfo.amountY);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        // assert that the distributions don't exceed 100%
+        if (_mintInfo.totalDistributionX > Constants.PRECISION || _mintInfo.totalDistributionY > Constants.PRECISION)
+            revert LBPair__DistributionsOverflow();
+
+        _pairInformation = _pair;
+
+        unchecked {
+            uint256 _amountXAddedPlusFee = _mintInfo.amountXAddedToPair + _mintInfo.activeFeeX;
             // If user sent too much tokens, We send them back the excess
-            if (_mintInfo.amountXIn > _amountAddedPlusFee) {
-                tokenX.safeTransfer(_to, _mintInfo.amountXIn - _amountAddedPlusFee);
+            if (_mintInfo.amountXIn > _amountXAddedPlusFee) {
+                tokenX.safeTransfer(_to, _mintInfo.amountXIn - _amountXAddedPlusFee);
             }
 
-            _amountAddedPlusFee = _mintInfo.amountYAddedToPair + _mintInfo.activeFeeY;
-            if (_mintInfo.amountYIn > _amountAddedPlusFee) {
-                tokenY.safeTransfer(_to, _mintInfo.amountYIn - _amountAddedPlusFee);
+            uint256 _amountYAddedPlusFee = _mintInfo.amountYAddedToPair + _mintInfo.activeFeeY;
+            if (_mintInfo.amountYIn > _amountYAddedPlusFee) {
+                tokenY.safeTransfer(_to, _mintInfo.amountYIn - _amountYAddedPlusFee);
             }
         }
 
@@ -671,7 +670,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
                 _burn(address(this), _id, _amountToBurn);
 
-                emit LiquidityRemoved(msg.sender, _to, _id, _amountToBurn, _amountX, _amountY);
+                emit WithdrawnFromBin(msg.sender, _to, _id, _amountX, _amountY);
             }
         }
 

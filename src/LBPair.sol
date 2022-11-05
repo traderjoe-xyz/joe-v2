@@ -283,7 +283,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                 if (_balance != 0) {
                     Bin memory _bin = _bins[_id];
 
-                    (uint256 _amountX, uint256 _amountY) = _getPendingFees(_bin, _account, _id, _balance);
+                    (uint128 _amountX, uint128 _amountY) = _getPendingFees(_bin, _account, _id, _balance);
 
                     amountX += _amountX;
                     amountY += _amountY;
@@ -727,20 +727,22 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         amountX = _unclaimedData.decode(type(uint128).max, 0);
         amountY = _unclaimedData.decode(type(uint128).max, 128);
 
-        unchecked {
-            for (uint256 i; i < _ids.length; ++i) {
-                uint256 _id = _ids[i];
-                uint256 _balance = balanceOf(_account, _id);
+        for (uint256 i; i < _ids.length; ) {
+            uint256 _id = _ids[i];
+            uint256 _balance = balanceOf(_account, _id);
 
-                if (_balance != 0) {
-                    Bin memory _bin = _bins[_id];
+            if (_balance != 0) {
+                Bin memory _bin = _bins[_id];
 
-                    (uint256 _amountX, uint256 _amountY) = _getPendingFees(_bin, _account, _id, _balance);
-                    _updateUserDebts(_bin, _account, _id, _balance);
+                (uint256 _amountX, uint256 _amountY) = _getPendingFees(_bin, _account, _id, _balance);
+                _updateUserDebts(_bin, _account, _id, _balance);
 
-                    amountX += _amountX;
-                    amountY += _amountY;
-                }
+                amountX += _amountX;
+                amountY += _amountY;
+            }
+
+            unchecked {
+                ++i;
             }
         }
 
@@ -763,39 +765,32 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @return amountX The amount of tokenX claimed
     /// @return amountY The amount of tokenY claimed
     function collectProtocolFees() external override nonReentrant returns (uint128 amountX, uint128 amountY) {
-        unchecked {
-            address _feeRecipient = factory.feeRecipient();
+        address _feeRecipient = factory.feeRecipient();
 
-            if (msg.sender != _feeRecipient) revert LBPair__OnlyFeeRecipient(_feeRecipient, msg.sender);
+        if (msg.sender != _feeRecipient) revert LBPair__OnlyFeeRecipient(_feeRecipient, msg.sender);
 
-            // The fees returned can't be greater than uint128, so the assembly blocks are safe
-            (
-                uint128 _feesXTotal,
-                uint128 _feesYTotal,
-                uint128 _feesXProtocol,
-                uint128 _feesYProtocol
-            ) = _getGlobalFees();
+        // The fees returned can't be greater than uint128, so the assembly blocks are safe
+        (uint128 _feesXTotal, uint128 _feesYTotal, uint128 _feesXProtocol, uint128 _feesYProtocol) = _getGlobalFees();
 
-            if (_feesXProtocol > 1) {
-                amountX = _feesXProtocol - 1;
-                _feesXTotal -= amountX;
+        if (_feesXProtocol > 1) {
+            amountX = _feesXProtocol - 1;
+            _feesXTotal -= amountX;
 
-                _setFees(_pairInformation.feesX, _feesXTotal, 1);
+            _setFees(_pairInformation.feesX, _feesXTotal, 1);
 
-                tokenX.safeTransfer(_feeRecipient, amountX);
-            }
-
-            if (_feesYProtocol > 1) {
-                amountY = _feesYProtocol - 1;
-                _feesYTotal -= amountY;
-
-                _setFees(_pairInformation.feesY, _feesYTotal, 1);
-
-                tokenY.safeTransfer(_feeRecipient, amountY);
-            }
-
-            emit ProtocolFeesCollected(msg.sender, _feeRecipient, amountX, amountY);
+            tokenX.safeTransfer(_feeRecipient, amountX);
         }
+
+        if (_feesYProtocol > 1) {
+            amountY = _feesYProtocol - 1;
+            _feesYTotal -= amountY;
+
+            _setFees(_pairInformation.feesY, _feesYTotal, 1);
+
+            tokenY.safeTransfer(_feeRecipient, amountY);
+        }
+
+        emit ProtocolFeesCollected(msg.sender, _feeRecipient, amountX, amountY);
     }
 
     /// @notice Set the fees parameters
@@ -810,13 +805,10 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @notice Force the decaying of the references for volatility and index
     /// @dev Only callable by the factory
     function forceDecay() external override onlyFactory {
-        unchecked {
-            _feeParameters.volatilityReference = uint24(
-                (uint256(_feeParameters.reductionFactor) * _feeParameters.volatilityReference) /
-                    Constants.BASIS_POINT_MAX
-            );
-            _feeParameters.indexRef = _pairInformation.activeId;
-        }
+        _feeParameters.volatilityReference = uint24(
+            (uint256(_feeParameters.reductionFactor) * _feeParameters.volatilityReference) / Constants.BASIS_POINT_MAX
+        );
+        _feeParameters.indexRef = _pairInformation.activeId;
     }
 
     /** Internal Functions **/
@@ -832,22 +824,20 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         uint256 _id,
         uint256 _amount
     ) internal override(LBToken) {
-        unchecked {
-            super._beforeTokenTransfer(_from, _to, _id, _amount);
+        super._beforeTokenTransfer(_from, _to, _id, _amount);
 
-            if (_from != _to) {
-                Bin memory _bin = _bins[_id];
-                if (_from != address(0) && _from != address(this)) {
-                    uint256 _balanceFrom = balanceOf(_from, _id);
+        if (_from != _to) {
+            Bin memory _bin = _bins[_id];
+            if (_from != address(0) && _from != address(this)) {
+                uint256 _balanceFrom = balanceOf(_from, _id);
 
-                    _cacheFees(_bin, _from, _id, _balanceFrom, _balanceFrom - _amount);
-                }
+                _cacheFees(_bin, _from, _id, _balanceFrom, _balanceFrom - _amount);
+            }
 
-                if (_to != address(0) && _to != address(this)) {
-                    uint256 _balanceTo = balanceOf(_to, _id);
+            if (_to != address(0) && _to != address(this)) {
+                uint256 _balanceTo = balanceOf(_to, _id);
 
-                    _cacheFees(_bin, _to, _id, _balanceTo, _balanceTo + _amount);
-                }
+                _cacheFees(_bin, _to, _id, _balanceTo, _balanceTo + _amount);
             }
         }
     }
@@ -866,11 +856,11 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         address _account,
         uint256 _id,
         uint256 _balance
-    ) private view returns (uint256 amountX, uint256 amountY) {
+    ) private view returns (uint128 amountX, uint128 amountY) {
         Debts memory _debts = _accruedDebts[_account][_id];
 
-        amountX = _bin.accTokenXPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET) - _debts.debtX;
-        amountY = _bin.accTokenYPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET) - _debts.debtY;
+        amountX = (_bin.accTokenXPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET) - _debts.debtX).safe128();
+        amountY = (_bin.accTokenYPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET) - _debts.debtY).safe128();
     }
 
     /// @notice Update fees of a given user
@@ -904,20 +894,18 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         uint256 _previousBalance,
         uint256 _newBalance
     ) private {
-        unchecked {
-            bytes32 _unclaimedData = _unclaimedFees[_user];
+        bytes32 _unclaimedData = _unclaimedFees[_user];
 
-            uint256 amountX = _unclaimedData.decode(type(uint128).max, 0);
-            uint256 amountY = _unclaimedData.decode(type(uint128).max, 128);
+        uint128 amountX = uint128(_unclaimedData.decode(type(uint128).max, 0));
+        uint128 amountY = uint128(_unclaimedData.decode(type(uint128).max, 128));
 
-            (uint256 _amountX, uint256 _amountY) = _getPendingFees(_bin, _user, _id, _previousBalance);
-            _updateUserDebts(_bin, _user, _id, _newBalance);
+        (uint128 _amountX, uint128 _amountY) = _getPendingFees(_bin, _user, _id, _previousBalance);
+        _updateUserDebts(_bin, _user, _id, _newBalance);
 
-            (amountX += _amountX).safe128();
-            (amountY += _amountY).safe128();
+        amountX += _amountX;
+        amountY += _amountY;
 
-            _unclaimedFees[_user] = bytes32((amountY << 128) | amountX);
-        }
+        _unclaimedFees[_user] = bytes32(uint256((uint256(amountY) << 128) | amountX));
     }
 
     /// @notice Private function to set the fee parameters of the pair
@@ -945,9 +933,11 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
         _pairInformation.oracleSize = _newSize;
 
-        unchecked {
-            for (uint256 _id = _oracleSize; _id < _newSize; ++_id) {
-                _oracle.initialize(_id);
+        for (uint256 _id = _oracleSize; _id < _newSize; ) {
+            _oracle.initialize(_id);
+
+            unchecked {
+                ++_id;
             }
         }
 

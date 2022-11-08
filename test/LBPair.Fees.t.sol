@@ -60,10 +60,10 @@ contract LiquidityBinPairFeesTest is TestHelper {
         assertEq(feeY, 0);
 
         (feeX, feeY) = pair.pendingFees(address(0), orderedIds);
-        assertEq(feeX, feeY);
+        assertEq(feeY, 0);
         assertEq(feeX, 0);
         (feeX, feeY) = pair.pendingFees(address(pair), orderedIds);
-        assertEq(feeX, feeY);
+        assertEq(feeY, 0);
         assertEq(feeX, 0);
 
         pair.collectFees(DEV, orderedIds);
@@ -106,11 +106,11 @@ contract LiquidityBinPairFeesTest is TestHelper {
         assertEq(feeX, 0);
 
         (feeX, feeY) = pair.pendingFees(address(0), orderedIds);
-        assertEq(feeX, feeY);
+        assertEq(feeY, 0);
         assertEq(feeX, 0);
 
         (feeX, feeY) = pair.pendingFees(address(pair), orderedIds);
-        assertEq(feeX, feeY);
+        assertEq(feeY, 0);
         assertEq(feeX, 0);
 
         pair.collectFees(DEV, orderedIds);
@@ -320,10 +320,10 @@ contract LiquidityBinPairFeesTest is TestHelper {
         (uint256 feeX, uint256 feeY) = pair.pendingFees(DEV, orderedIds);
         assertGt(feeY, 0);
         (feeX, feeY) = pair.pendingFees(address(0), orderedIds);
-        assertEq(feeX, feeY);
+        assertEq(feeY, 0);
         assertEq(feeX, 0);
         (feeX, feeY) = pair.pendingFees(address(pair), orderedIds);
-        assertEq(feeX, feeY);
+        assertEq(feeY, 0);
         assertEq(feeX, 0);
 
         vm.expectRevert(LBPair__AddressZeroOrThis.selector);

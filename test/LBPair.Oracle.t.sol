@@ -241,4 +241,14 @@ contract LiquidityBinPairOracleTest is TestHelper {
         assertLt(cumulativeVolatilityAccumulated, cumulativeVolatilityAccumulatedAfter);
         assertEq(cumulativeBinCrossed, cumulativeBinCrossedAfter);
     }
+
+    function testTheSameOracleSizeReverts() public {
+        (, uint256 currentOracleSize, , , , , ) = pair.getOracleParameters();
+        vm.expectRevert(abi.encodeWithSelector(LBPair__NewSizeTooSmall.selector, currentOracleSize, currentOracleSize));
+        pair.increaseOracleLength(uint16(currentOracleSize));
+        pair.increaseOracleLength(uint16(currentOracleSize + 22));
+        (, currentOracleSize, , , , , ) = pair.getOracleParameters();
+        vm.expectRevert(abi.encodeWithSelector(LBPair__NewSizeTooSmall.selector, currentOracleSize, currentOracleSize));
+        pair.increaseOracleLength(uint16(currentOracleSize));
+    }
 }

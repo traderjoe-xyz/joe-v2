@@ -358,12 +358,15 @@ contract LiquidityBinFactoryTest is TestHelper {
         );
     }
 
-    function testForDoubleIgnored() public {
+    function testForSetLBPairIgnoredReverts() public {
         createLBPairDefaultFees(token6D, token18D);
 
         factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, true);
         vm.expectRevert(LBFactory__LBPairIgnoredIsAlreadyInTheSameState.selector);
         factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, true);
+
+        vm.expectRevert(LBFactory__AddressZero.selector);
+        factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP + 1, true);
     }
 
     function testForSettingFlashloanFee() public {
@@ -371,6 +374,9 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setFlashLoanFee(flashFee);
         assertEq(factory.flashLoanFee(), flashFee);
         vm.expectRevert(abi.encodeWithSelector(LBFactory__SameFlashLoanFee.selector, flashFee));
+        factory.setFlashLoanFee(flashFee);
+        flashFee = 0.1e18 + 1;
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__FlashLoanFeeAboveMax.selector, flashFee, 0.1e18));
         factory.setFlashLoanFee(flashFee);
     }
 

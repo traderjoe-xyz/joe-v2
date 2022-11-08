@@ -133,9 +133,9 @@ contract LiquidityBinPairTest is TestHelper {
         vm.startPrank(address(factory));
 
         vm.expectRevert(LBPair__AddressZero.selector);
-        _LBPairImplementation.initialize(token12D, token18D, _activeId, _sampleLifetime, _packedFeeParameters);
+        _LBPairImplementation.initialize(address(0), token18D, _activeId, _sampleLifetime, _packedFeeParameters);
         vm.expectRevert(LBPair__AddressZero.selector);
-        _LBPairImplementation.initialize(token18D, token12D, _activeId, _sampleLifetime, _packedFeeParameters);
+        _LBPairImplementation.initialize(token18D, address(0), _activeId, _sampleLifetime, _packedFeeParameters);
 
         _LBPairImplementation.initialize(token18D, token6D, _activeId, _sampleLifetime, _packedFeeParameters);
         vm.expectRevert(LBPair__AlreadyInitialized.selector);

@@ -416,4 +416,42 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(LBToken__NotSupported.selector));
         pair.safeBatchTransferFrom(DEV, address(router), _ids, amounts);
     }
+
+    function testWrongTokenWAVAXSwaps() public {
+        IERC20[] memory IERCArray = new IERC20[](2);
+        IERCArray[0] = token6D;
+        IERCArray[1] = token18D;
+        uint256[] memory pairBinStepsArray = new uint256[](1);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InvalidTokenPath.selector, address(IERCArray[1])));
+        router.swapExactTokensForAVAX(1, 1, pairBinStepsArray, IERCArray, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InvalidTokenPath.selector, address(IERCArray[0])));
+        router.swapExactAVAXForTokens(1, pairBinStepsArray, IERCArray, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InvalidTokenPath.selector, address(IERCArray[1])));
+        router.swapTokensForExactAVAX(1, 1, pairBinStepsArray, IERCArray, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InvalidTokenPath.selector, address(IERCArray[0])));
+        router.swapAVAXForExactTokens(1, pairBinStepsArray, IERCArray, DEV, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InvalidTokenPath.selector, address(IERCArray[1])));
+        router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+            1,
+            1,
+            pairBinStepsArray,
+            IERCArray,
+            DEV,
+            block.timestamp
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(LBRouter__InvalidTokenPath.selector, address(IERCArray[0])));
+        router.swapExactAVAXForTokensSupportingFeeOnTransferTokens(
+            1,
+            pairBinStepsArray,
+            IERCArray,
+            DEV,
+            block.timestamp
+        );
+    }
 }

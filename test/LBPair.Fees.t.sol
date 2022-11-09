@@ -58,6 +58,14 @@ contract LiquidityBinPairFeesTest is TestHelper {
         balanceBefore = token18D.balanceOf(DEV);
         (feeX, feeY) = pair.pendingFees(DEV, orderedIds);
         assertEq(feeY, 0);
+
+        (feeX, feeY) = pair.pendingFees(address(0), orderedIds);
+        assertEq(feeY, 0);
+        assertEq(feeX, 0);
+        (feeX, feeY) = pair.pendingFees(address(pair), orderedIds);
+        assertEq(feeY, 0);
+        assertEq(feeX, 0);
+
         pair.collectFees(DEV, orderedIds);
         assertEq(token18D.balanceOf(DEV), balanceBefore);
     }
@@ -96,6 +104,15 @@ contract LiquidityBinPairFeesTest is TestHelper {
         balanceBefore = token6D.balanceOf(DEV);
         (feeX, feeY) = pair.pendingFees(DEV, orderedIds);
         assertEq(feeX, 0);
+
+        (feeX, feeY) = pair.pendingFees(address(0), orderedIds);
+        assertEq(feeY, 0);
+        assertEq(feeX, 0);
+
+        (feeX, feeY) = pair.pendingFees(address(pair), orderedIds);
+        assertEq(feeY, 0);
+        assertEq(feeX, 0);
+
         pair.collectFees(DEV, orderedIds);
         assertEq(token6D.balanceOf(DEV), balanceBefore);
     }
@@ -272,5 +289,48 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         (feesXTotal, , feesXProtocol, ) = pair.getGlobalFees();
         assertEq(feesXTotal, totalFeesFromGetSwapX);
+    }
+
+    function testFeesForPairOrZeroAddress() public {
+        uint256 amountYInLiquidity = 100e18;
+        uint256 amountXOutForSwap = 1e18;
+        uint256 amountYOutForSwap = 1e18;
+        uint24 startId = ID_ONE;
+
+        addLiquidity(amountYInLiquidity, startId, 5, 0);
+
+        (uint256 amountYInForSwap, ) = router.getSwapIn(pair, amountXOutForSwap, false);
+
+        // setup non-zero Y fees
+        token18D.mint(address(pair), amountYInForSwap);
+        vm.prank(ALICE);
+        pair.swap(false, DEV);
+
+        // setup non-zero X fees
+        (uint256 amountXInForSwap, ) = router.getSwapIn(pair, amountYOutForSwap, true);
+        token6D.mint(address(pair), amountXInForSwap);
+        vm.prank(ALICE);
+        pair.swap(true, DEV);
+
+        uint256[] memory orderedIds = new uint256[](5);
+        for (uint256 i; i < 5; i++) {
+            orderedIds[i] = startId - 2 + i;
+        }
+
+        (uint256 feeX, uint256 feeY) = pair.pendingFees(DEV, orderedIds);
+        assertGt(feeY, 0);
+        (feeX, feeY) = pair.pendingFees(address(0), orderedIds);
+        assertEq(feeY, 0);
+        assertEq(feeX, 0);
+        (feeX, feeY) = pair.pendingFees(address(pair), orderedIds);
+        assertEq(feeY, 0);
+        assertEq(feeX, 0);
+
+        vm.expectRevert(LBPair__AddressZeroOrThis.selector);
+        pair.collectFees(address(pair), orderedIds);
+        vm.expectRevert(LBPair__AddressZeroOrThis.selector);
+        pair.collectFees(address(0), orderedIds);
+
+        pair.collectFees(DEV, orderedIds);
     }
 }

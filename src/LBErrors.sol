@@ -89,7 +89,7 @@ error LBPair__DistributionsOverflow();
 error LBPair__OnlyFeeRecipient(address feeRecipient, address sender);
 error LBPair__OracleNotEnoughSample();
 error LBPair__AlreadyInitialized();
-error LBPair__OracleLengthTooSmall(uint256 newSize, uint256 oracleSize);
+error LBPair__OracleNewSizeTooSmall(uint256 newSize, uint256 oracleSize);
 error LBPair__FlashLoanCallbackFailed();
 error LBPair__FlashLoanInvalidBalance();
 error LBPair__FlashLoanInvalidToken();

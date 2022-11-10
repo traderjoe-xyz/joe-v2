@@ -143,7 +143,7 @@ interface ILBPair {
 
     event ProtocolFeesCollected(address indexed sender, address indexed recipient, uint256 amountX, uint256 amountY);
 
-    event OracleLengthIncreased(uint256 previousSize, uint256 newSize);
+    event OracleSizeIncreased(uint256 previousSize, uint256 newSize);
 
     function tokenX() external view returns (IERC20);
 

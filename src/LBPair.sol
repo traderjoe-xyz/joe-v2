@@ -330,8 +330,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// The variable fee is updated throughout the swap, it increases with the number of bins crossed.
     /// @param _swapForY Whether you've swapping token X for token Y (true) or token Y for token X (false)
     /// @param _to The address to send the tokens to
-    /// @return _amountXOut The amount of token X sent to `_to`
-    /// @return _amountYOut The amount of token Y sent to `_to`
+    /// @return amountXOut The amount of token X sent to `_to`
+    /// @return amountYOut The amount of token Y sent to `_to`
     function swap(bool _swapForY, address _to)
         external
         override
@@ -499,7 +499,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @param _to The address that will receive the LB tokens and the excess amount of tokens.
     /// @return The amount of token X added to the pair
     /// @return The amount of token Y added to the pair
-    /// @return The amounts of LB tokens minted for each bin
+    /// @return liquidityMinted The amounts of LB tokens minted for each bin
     function mint(
         uint256[] calldata _ids,
         uint256[] calldata _distributionX,
@@ -957,18 +957,18 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         }
     }
 
-    /// @notice Increases the length of the oracle to the given `_newLength` by adding empty samples to the end of the oracle.
+    /// @notice Increases the length of the oracle to the given `_newSize` by adding empty samples to the end of the oracle.
     /// The samples are however initialized to reduce the gas cost of the updates during a swap.
     /// @param _newSize The new size of the oracle. Needs to be bigger than current one
-    function _increaseOracle(uint16 _newLength) private {
+    function _increaseOracle(uint16 _newSize) private {
         uint256 _oracleSize = _pairInformation.oracleSize;
 
-        if (_oracleSize >= _newLength) revert LBPair__OracleLengthTooSmall(_newLength, _oracleSize);
+        if (_oracleSize >= _newSize) revert LBPair__OracleNewSizeTooSmall(_newSize, _oracleSize);
 
-        _pairInformation.oracleSize = _newLength;
+        _pairInformation.oracleSize = _newSize;
 
         // Iterate over the uninitialized oracle samples and initialize them
-        for (uint256 _id = _oracleSize; _id < _newLength; ) {
+        for (uint256 _id = _oracleSize; _id < _newSize; ) {
             _oracle.initialize(_id);
 
             unchecked {
@@ -976,7 +976,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             }
         }
 
-        emit OracleLengthIncreased(_newLength);
+        emit OracleSizeIncreased(_oracleSize, _newSize);
     }
 
     /// @notice Return the oracle's parameters

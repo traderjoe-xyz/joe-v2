@@ -89,10 +89,10 @@ error LBPair__DistributionsOverflow();
 error LBPair__OnlyFeeRecipient(address feeRecipient, address sender);
 error LBPair__OracleNotEnoughSample();
 error LBPair__AlreadyInitialized();
-error LBPair__NewSizeTooSmall(uint256 newSize, uint256 oracleSize);
+error LBPair__OracleNewSizeTooSmall(uint256 newSize, uint256 oracleSize);
 error LBPair__FlashLoanCallbackFailed();
-error LBPair__FlashLoanWrongFee();
-error LBPair__FlashLoanTokenNotSupported();
+error LBPair__FlashLoanInvalidBalance();
+error LBPair__FlashLoanInvalidToken();
 
 /** BinHelper errors */
 

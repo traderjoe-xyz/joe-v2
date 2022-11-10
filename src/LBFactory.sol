@@ -45,8 +45,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// in the reverse order in the actual pair. Always query one of the 2 tokens of the pair to assert the order of the 2 tokens
     mapping(IERC20 => mapping(IERC20 => mapping(uint256 => LBPairInformation))) private _LBPairsInfo;
 
-    // Whether a preset was set or not, if the bit at `index` is 1, it means that the binStep `index` was set
-    // The max binStep set is 247. We use this method instead of an array to keep it ordered and to reduce gas
+    /// @dev Whether a preset was set or not, if the bit at `index` is 1, it means that the binStep `index` was set
+    /// The max binStep set is 247. We use this method instead of an array to keep it ordered and to reduce gas
     bytes32 private _availablePresets;
 
     // The parameters presets
@@ -54,8 +54,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     EnumerableSet.AddressSet private _quoteAssetWhitelist;
 
-    // Whether a LBPair was created with a bin step, if the bit at `index` is 1, it means that the LBPair with binStep `index` exists
-    // The max binStep set is 247. We use this method instead of an array to keep it ordered and to reduce gas
+    /// @dev Whether a LBPair was created with a bin step, if the bit at `index` is 1, it means that the LBPair with binStep `index` exists
+    /// The max binStep set is 247. We use this method instead of an array to keep it ordered and to reduce gas
     mapping(IERC20 => mapping(IERC20 => bytes32)) private _availableLBPairBinSteps;
 
     /// @notice Constructor

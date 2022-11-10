@@ -22,7 +22,7 @@ import "./interfaces/ILBPair.sol";
 
 /// @title Liquidity Book Pair
 /// @author Trader Joe
-/// @notice The implementation of Liquidity Book Pair that also acts as the receipt token for liquidity positions
+/// @notice This contract is the implementation of Liquidity Book Pair that also acts as the receipt token for liquidity positions
 contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /** Libraries **/
 
@@ -39,6 +39,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
     /** Modifiers **/
 
+    /// @notice Checks if the caller is the factory
     modifier onlyFactory() {
         if (msg.sender != address(factory)) revert LBPair__OnlyFactory();
         _;
@@ -46,28 +47,43 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
     /** Public immutable variables **/
 
+    /// @notice The factory contract that created this pair
     ILBFactory public immutable override factory;
 
     /** Public variables **/
 
+    /// @notice The token that is used as the base currency for the pair
     IERC20 public override tokenX;
+
+    /// @notice The token that is used as the quote currency for the pair
     IERC20 public override tokenY;
 
     /** Private variables **/
 
+    /// @dev The pair information that is used to track reserves, active ids,
+    /// fees and oracle parameters
     PairInformation private _pairInformation;
+
+    /// @dev The fee parameters that are used to calculate fees
     FeeHelper.FeeParameters private _feeParameters;
+
     /// @dev The reserves of tokens for every bin. This is the amount
     /// of tokenY if `id < _pairInformation.activeId`; of tokenX if `id > _pairInformation.activeId`
     /// and a mix of both if `id == _pairInformation.activeId`
     mapping(uint256 => Bin) private _bins;
+
     /// @dev Tree to find bins with non zero liquidity
+
+    /// @dev The tree that is used to find the first bin with non zero liquidity
     mapping(uint256 => uint256)[3] private _tree;
-    /// @dev Mapping from account to user's unclaimed fees. The first 128 bits are tokenX and the last are for tokenY
+
+    /// @dev The mapping from account to user's unclaimed fees. The first 128 bits are tokenX and the last are for tokenY
     mapping(address => bytes32) private _unclaimedFees;
-    /// @dev Mapping from account to id to user's accruedDebt.
+
+    /// @dev The mapping from account to id to user's accruedDebt
     mapping(address => mapping(uint256 => Debts)) private _accruedDebts;
-    /// @dev Oracle array
+
+    /// @dev The oracle samples that are used to calculate the time weighted average data
     bytes32[65_535] private _oracle;
 
     /** OffSets */
@@ -92,7 +108,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     }
 
     /// @notice Initialize the parameters of the LBPair
-    /// @dev The different parameters needs to be validated very cautiously.
+    /// @dev The different parameters needs to be validated very cautiously
     /// It is highly recommended to never call this function directly, use the factory
     /// as it validates the different parameters
     /// @param _tokenX The address of the tokenX. Can't be address 0
@@ -141,12 +157,11 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         return _getReservesAndId();
     }
 
-    /// @notice View function to get the global fees information, the total fees and those for protocol
-    /// @dev The fees for users are `total - protocol`
-    /// @return feesXTotal The total fees of asset X
-    /// @return feesYTotal The total fees of asset Y
-    /// @return feesXProtocol The protocol fees of asset X
-    /// @return feesYProtocol The protocol fees of asset Y
+    /// @notice View function to get the total fees and the protocol fees of each tokens
+    /// @return feesXTotal The total fees of tokenX
+    /// @return feesYTotal The total fees of tokenY
+    /// @return feesXProtocol The protocol fees of tokenX
+    /// @return feesYProtocol The protocol fees of tokenY
     function getGlobalFees()
         external
         view
@@ -271,6 +286,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         amountY = _unclaimedData.decode(type(uint128).max, 128);
 
         uint256 _lastId;
+        // Iterate over the ids to get the pending fees of the user for each bin
         unchecked {
             for (uint256 i; i < _ids.length; ++i) {
                 uint256 _id = _ids[i];
@@ -304,11 +320,16 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
     /** External Functions **/
 
-    /// @notice Performs a low level swap, this needs to be called from a contract which performs important safety checks
-    /// and transfer the amount of token  (either tokenX or tokenY, not both at the same time or they might be lost)
-    /// @dev Will swap the full amount that this contract received of token X or Y
-    /// @param _swapForY whether the token sent was Y (true) or X (false)
-    /// @param _to The address of the recipient
+    /// @notice Swap tokens iterating over the bins until the entire amount is swapped.
+    /// Will swap token X for token Y if `_swapForY` is true, and token Y for token X if `_swapForY` is false.
+    /// This function will not transfer the tokens from the caller, it is expected that the tokens have already been
+    /// transferred to this contract through another contract.
+    /// That is why this function shouldn't be called directly, but through one of the swap functions of the router
+    /// that will also perform safety checks.
+    ///
+    /// The variable fee is updated throughout the swap, it increases with the number of bins crossed.
+    /// @param _swapForY Whether you've swapping token X for token Y (true) or token Y for token X (false)
+    /// @param _to The address to send the tokens to
     /// @return amountXOut The amount of token X sent to `_to`
     /// @return amountYOut The amount of token Y sent to `_to`
     function swap(bool _swapForY, address _to)
@@ -331,9 +352,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         _fp.updateVariableFeeParameters(_startId);
 
         uint256 _amountOut;
-        // Performs the actual swap, bin per bin
-        // It uses the findFirstBin function to make sure the bin we're currently looking at
-        // has liquidity in it.
+        /// Performs the actual swap, iterating over the bins until the entire amount is swapped.
+        /// It uses the tree to find the next bin to have a non zero reserve of the token we're swapping for.
+        /// It will also update the variable fee parameters.
         while (true) {
             Bin memory _bin = _bins[_pair.activeId];
             if ((!_swapForY && _bin.reserveX != 0) || (_swapForY && _bin.reserveY != 0)) {
@@ -361,6 +382,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                 );
             }
 
+            /// If the amount in is not 0, it means that we haven't swapped the entire amount yet.
+            /// We need to find the next bin to swap for.
             if (_amountIn != 0) {
                 _pair.activeId = _tree.findFirstBin(_pair.activeId, _swapForY);
             } else {
@@ -368,7 +391,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             }
         }
 
-        // We use oracleSize so it can start filling empty slot that were added recently
+        // Update the oracle and return the updated oracle id. It uses the oracle size to start filling the new slots.
         uint256 _updatedOracleId = _oracle.update(
             _pair.oracleSize,
             _pair.oracleSampleLifetime,
@@ -379,19 +402,20 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             _startId.absSub(_pair.activeId)
         );
 
-        // We update the oracleId and lastTimestamp if the sample write on another slot
+        // Update the oracleId and lastTimestamp if the sample write on another slot
         if (_updatedOracleId != _pair.oracleId || _pair.oracleLastTimestamp == 0) {
             // Can't overflow as the updatedOracleId < oracleSize
             _pair.oracleId = uint16(_updatedOracleId);
             _pair.oracleLastTimestamp = block.timestamp.safe40();
 
-            // We increase the activeSize if the updated sample is written in a new slot
+            // Increase the activeSize if the updated sample is written in a new slot
             // Can't overflow as _updatedOracleId < maxSize = 2**16-1
             unchecked {
                 if (_updatedOracleId == _pair.oracleActiveSize) ++_pair.oracleActiveSize;
             }
         }
 
+        /// Update the fee parameters and the pair information
         _feeParameters = _fp;
         _pairInformation = _pair;
 
@@ -404,11 +428,13 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         }
     }
 
-    /// @notice Performs a flash loan
-    /// @param _receiver the address that will receive the flash loan and execute the call back
-    /// @param _token The address of the token
-    /// @param _amount The amount of token
-    /// @param _data The call data that will be forwarded to `_receiver` during the callback
+    /// @notice Perform a flashloan on one of the tokens of the pair. The flashloan will call the `_receiver` contract
+    /// to perform the desired operations. The `_receiver` contract is expected to transfer the `amount + fee` of the
+    /// token to this contract.
+    /// @param _receiver The contract that will receive the flashloan and execute the callback
+    /// @param _token The address of the token to flashloan
+    /// @param _amount The amount of token to flashloan
+    /// @param _data The call data that will be forwarded to the `_receiver` contract during the callback
     function flashLoan(
         ILBFlashLoanCallback _receiver,
         IERC20 _token,
@@ -416,7 +442,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         bytes calldata _data
     ) external override nonReentrant {
         IERC20 _tokenX = tokenX;
-        if ((_token != _tokenX && _token != tokenY)) revert LBPair__FlashLoanTokenNotSupported();
+        if ((_token != _tokenX && _token != tokenY)) revert LBPair__FlashLoanInvalidToken();
 
         uint256 _totalFee = _getFlashLoanFee(_amount);
 
@@ -435,7 +461,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
         uint256 _balanceAfter = _token.balanceOf(address(this));
 
-        if (_balanceAfter != _balanceBefore + _fees.total) revert LBPair__FlashLoanWrongFee();
+        if (_balanceAfter != _balanceBefore + _fees.total) revert LBPair__FlashLoanInvalidBalance();
 
         uint256 _activeId = _pairInformation.activeId;
         uint256 _totalSupply = totalSupply(_activeId);
@@ -457,16 +483,23 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         emit FlashLoan(msg.sender, _receiver, _token, _amount, _fees.total);
     }
 
-    /// @notice Performs a low level add, this needs to be called from a contract which performs important safety checks
-    /// and transfer the amounts of tokens (can be tokenX and/or tokenY)
-    /// @dev Will refund any tokenX or tokenY amount sent in excess to `_to`
-    /// @param _ids The list of ids to add liquidity
-    /// @param _distributionX The distribution of tokenX with sum(_distributionX) = 1e18 (100%) or 0 (0%)
-    /// @param _distributionY The distribution of tokenY with sum(_distributionY) = 1e18 (100%) or 0 (0%)
-    /// @param _to The address of the recipient
-    /// @return The amount of token X that was added to the pair
-    /// @return The amount of token Y that was added to the pair
-    /// @return liquidityMinted Amount of LBToken minted
+    /// @notice Mint new LB tokens for each bins where the user adds liquidity. If the `to` address is a contract, it will
+    /// call the `supportsInterface` function to check if it supports the `ILBToken` interface. If it doesn't, it will
+    /// revert.
+    /// This function will not transfer the tokens from the caller, it is expected that the tokens have already been
+    /// transferred to this contract through another contract.
+    /// That is why this function shouldn't be called directly, but through one of the add liquidity functions of the
+    /// router that will also perform safety checks.
+    /// @dev Any excess amount of token will be sent to the `to` address. The lengths of the arrays must be the same.
+    /// @param _ids The ids of the bins where the liquidity will be added. It will mint LB tokens for each of these bins.
+    /// @param _distributionX The percentage of token X to add to each bin. The sum of all the values must not exceed 100%,
+    /// that is 1e18.
+    /// @param _distributionY The percentage of token Y to add to each bin. The sum of all the values must not exceed 100%,
+    /// that is 1e18.
+    /// @param _to The address that will receive the LB tokens and the excess amount of tokens.
+    /// @return The amount of token X added to the pair
+    /// @return The amount of token Y added to the pair
+    /// @return liquidityMinted The amounts of LB tokens minted for each bin
     function mint(
         uint256[] calldata _ids,
         uint256[] calldata _distributionX,
@@ -497,6 +530,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
         liquidityMinted = new uint256[](_ids.length);
 
+        // Iterate over the ids to calculate the amount of LB tokens to mint for each bin
         for (uint256 i; i < _ids.length; ) {
             _mintInfo.id = _ids[i].safe24();
             Bin memory _bin = _bins[_mintInfo.id];
@@ -514,6 +548,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
             uint256 _price = BinHelper.getPriceFromId(_mintInfo.id, _fp.binStep);
             if (_mintInfo.id >= _pair.activeId) {
+                // The active bin is the only bin that can have a non-zero reserve of the two tokens. When adding liquidity
+                // with a different ratio than the active bin, the user would actually perform a swap without paying any
+                // fees. This is why we calculate the fees for the active bin here.
                 if (_mintInfo.id == _pair.activeId) {
                     uint256 _totalSupply = totalSupply(_mintInfo.id);
 
@@ -526,6 +563,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
                         uint256 _supply = _totalSupply + _userL;
 
+                        // Calculate the amounts received by the user if he were to burn its liquidity directly after adding
+                        // it. These amounts will be used to calculate the fees.
                         _receivedX = _userL.mulDivRoundDown(uint256(_bin.reserveX) + _mintInfo.amountX, _supply);
                         _receivedY = _userL.mulDivRoundDown(uint256(_bin.reserveY) + _mintInfo.amountY, _supply);
                     }
@@ -533,6 +572,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                     _fp.updateVariableFeeParameters(_mintInfo.id);
 
                     FeeHelper.FeesDistribution memory _fees;
+
+                    // Checks if the amount of tokens received after burning its liquidity is greater than the amount of
+                    // tokens sent by the user. If it is, we add a composition fee of the difference between the two amounts.
                     if (_mintInfo.amountX > _receivedX) {
                         unchecked {
                             _fees = _fp.getFeeAmountDistribution(_fp.getFeeAmountForC(_mintInfo.amountX - _receivedX));
@@ -559,6 +601,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                 } else if (_mintInfo.amountY != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
             } else if (_mintInfo.amountX != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
 
+            // Calculate the amount of LB tokens to mint for this bin
             uint256 _liquidity = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) +
                 _mintInfo.amountY;
 
@@ -581,6 +624,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             }
 
             _bins[_mintInfo.id] = _bin;
+
             _mint(_to, _mintInfo.id, _liquidity);
 
             emit DepositedToBin(msg.sender, _to, _mintInfo.id, _mintInfo.amountX, _mintInfo.amountY);
@@ -590,15 +634,15 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             }
         }
 
-        // assert that the distributions don't exceed 100%
+        // Assert that the distributions don't exceed 100%
         if (_mintInfo.totalDistributionX > Constants.PRECISION || _mintInfo.totalDistributionY > Constants.PRECISION)
             revert LBPair__DistributionsOverflow();
 
         _pairInformation = _pair;
 
+        // Send back the excess of tokens to `_to`
         unchecked {
             uint256 _amountXAddedPlusFee = _mintInfo.amountXAddedToPair + _mintInfo.activeFeeX;
-            // If user sent too much tokens, We send them back the excess
             if (_mintInfo.amountXIn > _amountXAddedPlusFee) {
                 tokenX.safeTransfer(_to, _mintInfo.amountXIn - _amountXAddedPlusFee);
             }
@@ -612,11 +656,15 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         return (_mintInfo.amountXAddedToPair, _mintInfo.amountYAddedToPair, liquidityMinted);
     }
 
-    /// @notice Performs a low level remove, this needs to be called from a contract which performs important safety checks
-    /// and transfer the amounts of LBTokens to burn (only the ids that are in `_ids` or they might be lost)
-    /// @param _ids The IDs for which the user wants to remove his liquidity
-    /// @param _amounts The amount of token to burn
-    /// @param _to The address of the recipient
+    /// @notice Burns LB tokens and sends the corresponding amounts of tokens to `_to`. The amount of tokens sent is
+    /// determined by the ratio of the amount of LB tokens burned to the total supply of LB tokens in the bin.
+    /// This function will not transfer the LB Tokens from the caller, it is expected that the tokens have already been
+    /// transferred to this contract through another contract.
+    /// That is why this function shouldn't be called directly, but through one of the remove liquidity functions of the router
+    /// that will also perform safety checks.
+    /// @param _ids The ids of the bins from which to remove liquidity
+    /// @param _amounts The amounts of LB tokens to burn
+    /// @param _to The address that will receive the tokens
     /// @return amountX The amount of token X sent to `_to`
     /// @return amountY The amount of token Y sent to `_to`
     function burn(
@@ -627,6 +675,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         if (_ids.length == 0 || _ids.length != _amounts.length) revert LBPair__WrongLengths();
 
         (uint256 _pairReserveX, uint256 _pairReserveY, uint256 _activeId) = _getReservesAndId();
+
+        // Iterate over the ids to burn the LB tokens
         unchecked {
             for (uint256 i; i < _ids.length; ++i) {
                 uint24 _id = _ids[i].safe24();
@@ -682,17 +732,18 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         tokenY.safeTransfer(_to, amountY);
     }
 
-    /// @notice Increase the length of the oracle
-    /// @param _newSize The new size of the oracle. Needs to be bigger than current one
-    function increaseOracleLength(uint16 _newSize) external override {
-        _increaseOracle(_newSize);
+    /// @notice Increases the length of the oracle to the given `_newLength` by adding empty samples to the end of the oracle.
+    /// The samples are however initialized to reduce the gas cost of the updates during a swap.
+    /// @param _newLength The new length of the oracle
+    function increaseOracleLength(uint16 _newLength) external override {
+        _increaseOracle(_newLength);
     }
 
-    /// @notice Collect fees of an user
+    /// @notice Collect the fees accumulated by a user.
     /// @param _account The address of the user
-    /// @param _ids The list of bin ids to collect fees in
-    /// @return amountX The amount of tokenX claimed
-    /// @return amountY The amount of tokenY claimed
+    /// @param _ids The ids of the bins for which to collect the fees
+    /// @return amountX The amount of token X collected and sent to `_account`
+    /// @return amountY The amount of token Y collected and sent to `_account`
     function collectFees(address _account, uint256[] calldata _ids)
         external
         override
@@ -707,6 +758,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         amountX = _unclaimedData.decode(type(uint128).max, 0);
         amountY = _unclaimedData.decode(type(uint128).max, 128);
 
+        // Iterate over the ids to collect the fees
         for (uint256 i; i < _ids.length; ) {
             uint256 _id = _ids[i];
             uint256 _balance = balanceOf(_account, _id);
@@ -739,19 +791,18 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         emit FeesCollected(msg.sender, _account, amountX, amountY);
     }
 
-    /// @notice Collect the protocol fees and send them to the feeRecipient
-    /// @dev The balances are not zeroed to save gas by not resetting the storage slot
-    /// Only callable by the fee recipient
-    /// @return amountX The amount of tokenX claimed
-    /// @return amountY The amount of tokenY claimed
+    /// @notice Collect the protocol fees and send them to the fee recipient.
+    /// @dev The protocol fees are not set to zero to save gas by not resetting the storage slot.
+    /// @return amountX The amount of token X collected and sent to the fee recipient
+    /// @return amountY The amount of token Y collected and sent to the fee recipient
     function collectProtocolFees() external override nonReentrant returns (uint128 amountX, uint128 amountY) {
         address _feeRecipient = factory.feeRecipient();
 
         if (msg.sender != _feeRecipient) revert LBPair__OnlyFeeRecipient(_feeRecipient, msg.sender);
 
-        // The fees returned can't be greater than uint128, so the assembly blocks are safe
         (uint128 _feesXTotal, uint128 _feesYTotal, uint128 _feesXProtocol, uint128 _feesYProtocol) = _getGlobalFees();
 
+        // The protocol fees are not set to 0 to reduce the gas cost during a swap
         if (_feesXProtocol > 1) {
             amountX = _feesXProtocol - 1;
             _feesXTotal -= amountX;
@@ -793,11 +844,12 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
     /** Internal Functions **/
 
-    /// @notice Collect and update fees before any token transfer, mint or burn
-    /// @param _from The address of the owner of the token
-    /// @param _to The address of the recipient of the  token
-    /// @param _id The id of the token
-    /// @param _amount The amount of token of type `id`
+    /// @notice Cache the accrued fees for a user before any transfer, mint or burn of LB tokens.
+    /// The tokens are not transferred to reduce the gas cost and to avoid reentrancy.
+    /// @param _from The address of the sender of the tokens
+    /// @param _to The address of the receiver of the tokens
+    /// @param _id The id of the bin
+    /// @param _amount The amount of LB tokens transferred
     function _beforeTokenTransfer(
         address _from,
         address _to,
@@ -825,12 +877,12 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /** Private Functions **/
 
     /// @notice View function to get the pending fees of an account on a given bin
-    /// @param _bin  The bin where the user is collecting fees
+    /// @param _bin The bin data where the user is collecting fees
     /// @param _account The address of the user
     /// @param _id The id where the user is collecting fees
     /// @param _balance The previous balance of the user
-    /// @return amountX The amount of tokenX pending for the account
-    /// @return amountY The amount of tokenY pending for the account
+    /// @return amountX The amount of token X not collected yet by `_account`
+    /// @return amountY The amount of token Y not collected yet by `_account`
     function _getPendingFees(
         Bin memory _bin,
         address _account,
@@ -843,8 +895,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         amountY = (_bin.accTokenYPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET) - _debts.debtY).safe128();
     }
 
-    /// @notice Update fees of a given user
-    /// @param _bin The bin where the user has collected fees
+    /// @notice Update the user debts of a user on a given bin
+    /// @param _bin The bin data where the user has collected fees
     /// @param _account The address of the user
     /// @param _id The id where the user has collected fees
     /// @param _balance The new balance of the user
@@ -861,10 +913,10 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         _accruedDebts[_account][_id].debtY = _debtY;
     }
 
-    /// @notice Update the unclaimed fees of a given user before a transfer
-    /// @param _bin The bin where the user has collected fees
+    /// @notice Cache the accrued fees for a user.
+    /// @param _bin The bin data where the user is receiving LB tokens
     /// @param _user The address of the user
-    /// @param _id The id where the user has collected fees
+    /// @param _id The id where the user is receiving LB tokens
     /// @param _previousBalance The previous balance of the user
     /// @param _newBalance The new balance of the user
     function _cacheFees(
@@ -888,7 +940,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         _unclaimedFees[_user] = bytes32(uint256((uint256(amountY) << 128) | amountX));
     }
 
-    /// @notice Private function to set the fee parameters of the pair
+    /// @notice Set the fee parameters of the pair.
+    /// @dev Only the first 112 bits can be set, as the last 144 bits are reserved for the variables parameters
     /// @param _packedFeeParameters The packed fee parameters
     function _setFeesParameters(bytes32 _packedFeeParameters) private {
         bytes32 _feeStorageSlot;
@@ -904,15 +957,17 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         }
     }
 
-    /// @notice Private function to increase the oracle's number of sample
+    /// @notice Increases the length of the oracle to the given `_newSize` by adding empty samples to the end of the oracle.
+    /// The samples are however initialized to reduce the gas cost of the updates during a swap.
     /// @param _newSize The new size of the oracle. Needs to be bigger than current one
     function _increaseOracle(uint16 _newSize) private {
         uint256 _oracleSize = _pairInformation.oracleSize;
 
-        if (_oracleSize >= _newSize) revert LBPair__NewSizeTooSmall(_newSize, _oracleSize);
+        if (_oracleSize >= _newSize) revert LBPair__OracleNewSizeTooSmall(_newSize, _oracleSize);
 
         _pairInformation.oracleSize = _newSize;
 
+        // Iterate over the uninitialized oracle samples and initialize them
         for (uint256 _id = _oracleSize; _id < _newSize; ) {
             _oracle.initialize(_id);
 
@@ -924,7 +979,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         emit OracleSizeIncreased(_oracleSize, _newSize);
     }
 
-    /// @notice Private view function to return the oracle's parameters
+    /// @notice Return the oracle's parameters
     /// @return oracleSampleLifetime The lifetime of a sample, it accumulates information for up to this timestamp
     /// @return oracleSize The size of the oracle (last ids can be empty)
     /// @return oracleActiveSize The active size of the oracle (no empty data)
@@ -952,9 +1007,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         oracleId = _slot.decode(type(uint16).max, _OFFSET_ORACLE_ID);
     }
 
-    /// @notice Private view function to get the reserves and active id
-    /// @return reserveX The reserve of asset X
-    /// @return reserveY The reserve of asset Y
+    /// @notice Return the reserves and the active id of the pair
+    /// @return reserveX The reserve of token X
+    /// @return reserveY The reserve of token Y
     /// @return activeId The active id of the pair
     function _getReservesAndId()
         private
@@ -977,10 +1032,10 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         }
     }
 
-    /// @notice Private view function to get the bin at `id`
-    /// @param _id The bin id
-    /// @return reserveX The reserve of tokenX of the bin
-    /// @return reserveY The reserve of tokenY of the bin
+    /// @notice Return the reserves of the bin at index `_id`
+    /// @param _id The id of the bin
+    /// @return reserveX The reserve of token X in the bin
+    /// @return reserveY The reserve of token Y in the bin
     function _getBin(uint24 _id) private view returns (uint256 reserveX, uint256 reserveY) {
         bytes32 _data;
         uint256 _mask112 = type(uint112).max;
@@ -997,12 +1052,12 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         return (reserveX.safe112(), reserveY.safe112());
     }
 
-    /// @notice Private view function to get the global fees information, the total fees and those for protocol
-    /// @dev The fees for users are `total - protocol`
-    /// @return feesXTotal The total fees of asset X
-    /// @return feesYTotal The total fees of asset Y
-    /// @return feesXProtocol The protocol fees of asset X
-    /// @return feesYProtocol The protocol fees of asset Y
+    /// @notice Return the total fees and the protocol fees of the pair
+    /// @dev The fees for users can be computed by subtracting the protocol fees from the total fees
+    /// @return feesXTotal The total fees of token X
+    /// @return feesYTotal The total fees of token Y
+    /// @return feesXProtocol The protocol fees of token X
+    /// @return feesYProtocol The protocol fees of token Y
     function _getGlobalFees()
         private
         view
@@ -1027,16 +1082,16 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         feesYProtocol = uint128(_slotY.decode(type(uint128).max, _OFFSET_PROTOCOL_FEE));
     }
 
-    /// @notice Private pure function to return the flashloan fee amount
-    /// @dev Rounds up the fee
-    /// @param _amount The amount to flashloan
-    /// @return The fee amount
+    /// @notice Return the fee added to a flashloan
+    /// @dev Rounds up the amount of fees
+    /// @param _amount The amount of the flashloan
+    /// @return The fee added to the flashloan
     function _getFlashLoanFee(uint256 _amount) private view returns (uint256) {
         uint256 _fee = factory.flashLoanFee();
         return (_amount * _fee + Constants.PRECISION - 1) / Constants.PRECISION;
     }
 
-    /// @notice Private function to set the total and protocol fees
+    /// @notice Set the total and protocol fees
     /// @dev The assembly block does:
     /// _pairFees = FeeHelper.FeesDistribution({total: _totalFees, protocol: _protocolFees});
     /// @param _pairFees The storage slot of the fees
@@ -1052,6 +1107,17 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         }
     }
 
+    /// @notice Emit the Swap event and avoid stack too deep error
+    /// if `swapForY` is:
+    /// - true: tokenIn is tokenX, and tokenOut is tokenY
+    /// - false: tokenIn is tokenY, and tokenOut is tokenX
+    /// @param _to The address of the recipient of the swap
+    /// @param _swapForY Whether the `amountInToBin` is tokenX (true) or tokenY (false),
+    /// and if `amountOutOfBin` is tokenY (true) or tokenX (false)
+    /// @param _amountInToBin The amount of tokenIn sent by the user
+    /// @param _amountOutOfBin The amount of tokenOut received by the user
+    /// @param _volatilityAccumulated The volatility accumulated number
+    /// @param _fees The amount of fees, always denominated in tokenIn
     function _emitSwap(
         address _to,
         uint24 _activeId,

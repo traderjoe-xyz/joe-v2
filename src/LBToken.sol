@@ -154,7 +154,10 @@ contract LBToken is ILBToken {
     /// @param _interfaceId The interface identifier
     /// @return Whether the interface is supported (true) or not (false)
     function supportsInterface(bytes4 _interfaceId) public view virtual override returns (bool) {
-        return _interfaceId == type(IERC1155).interfaceId || _interfaceId == type(IERC165).interfaceId;
+        return
+            _interfaceId == type(ILBToken).interfaceId ||
+            _interfaceId == type(IERC1155).interfaceId ||
+            _interfaceId == type(IERC165).interfaceId;
     }
 
     /// @notice Internal function to transfer `_amount` tokens of type `_id` from `_from` to `_to`

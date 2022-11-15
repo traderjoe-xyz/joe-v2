@@ -451,7 +451,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             protocol: uint128((_totalFee * _feeParameters.protocolShare) / Constants.BASIS_POINT_MAX)
         });
 
-        uint256 _balanceBefore = _token.balanceOf(address(this));
+        uint256 _balanceBefore = _token.balanceOfThis();
 
         _token.safeTransfer(address(_receiver), _amount);
 
@@ -459,24 +459,26 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             _receiver.LBFlashLoanCallback(msg.sender, _token, _amount, _fees.total, _data) != Constants.CALLBACK_SUCCESS
         ) revert LBPair__FlashLoanCallbackFailed();
 
-        uint256 _balanceAfter = _token.balanceOf(address(this));
+        uint256 _balanceAfter = _token.balanceOfThis();
 
         if (_balanceAfter != _balanceBefore + _fees.total) revert LBPair__FlashLoanInvalidBalance();
 
-        uint256 _activeId = _pairInformation.activeId;
-        uint256 _totalSupply = totalSupply(_activeId);
-
         if (_totalFee > 0) {
+            uint256 _activeId = _pairInformation.activeId;
+            uint256 _tokenPerShare = _fees.getTokenPerShare(totalSupply(_activeId));
+
+            (
+                uint128 _feesXTotal,
+                uint128 _feesYTotal,
+                uint128 _feesXProtocol,
+                uint128 _feesYProtocol
+            ) = _getGlobalFees();
             if (_token == _tokenX) {
-                (uint128 _feesXTotal, , uint128 _feesXProtocol, ) = _getGlobalFees();
-
                 _setFees(_pairInformation.feesX, _feesXTotal + _fees.total, _feesXProtocol + _fees.protocol);
-                _bins[_activeId].accTokenXPerShare += _fees.getTokenPerShare(_totalSupply);
+                _bins[_activeId].accTokenXPerShare += _tokenPerShare;
             } else {
-                (, uint128 _feesYTotal, , uint128 _feesYProtocol) = _getGlobalFees();
-
                 _setFees(_pairInformation.feesY, _feesYTotal + _fees.total, _feesYProtocol + _fees.protocol);
-                _bins[_activeId].accTokenYPerShare += _fees.getTokenPerShare(_totalSupply);
+                _bins[_activeId].accTokenYPerShare += _tokenPerShare;
             }
         }
 

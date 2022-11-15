@@ -19,8 +19,8 @@ contract LBToken is ILBToken {
     /// @dev Mapping from token id to total supplies
     mapping(uint256 => uint256) private _totalSupplies;
 
-    string private constant _NAME = "Liquidity Book Token";
-    string private constant _SYMBOL = "LBT";
+    string private constant _URI =
+        "ipfs://bafybeiboyyjiu4ghy5z6xunk7i2x4fnerrwyhsu5ug3sojl6xsxflopfem/LiquidityBookToken";
 
     modifier checkApproval(address _from, address _spender) {
         if (!_isApprovedForAll(_from, _spender)) revert LBToken__SpenderNotApproved(_from, _spender);
@@ -28,8 +28,7 @@ contract LBToken is ILBToken {
     }
 
     modifier checkAddresses(address _from, address _to) {
-        if (_from == address(0) || _to == address(0)) revert LBToken__TransferFromOrToAddress0();
-        if (_from == _to) revert LBToken__TransferToSelf();
+        if (_from == address(0) || _to == address(0) || _from == _to) revert LBToken__InvalidTransfer();
         _;
     }
 
@@ -43,16 +42,10 @@ contract LBToken is ILBToken {
         _;
     }
 
-    /// @notice Returns the name of the token
-    /// @return The name of the token
-    function name() public pure virtual override returns (string memory) {
-        return _NAME;
-    }
-
-    /// @notice Returns the symbol of the token, usually a shorter version of the name
-    /// @return The symbol of the token
-    function symbol() public pure virtual override returns (string memory) {
-        return _SYMBOL;
+    /// @notice Returns the uri of the token
+    /// @return The uri of the token
+    function uri(uint256) external pure override returns (string memory) {
+        return _URI;
     }
 
     /// @notice Returns the total supply of token of type `id`
@@ -160,6 +153,7 @@ contract LBToken is ILBToken {
     function supportsInterface(bytes4 _interfaceId) public view virtual override returns (bool) {
         return
             _interfaceId == type(IERC1155).interfaceId ||
+            _interfaceId == type(IERC1155MetadataURI).interfaceId ||
             _interfaceId == type(ILBToken).interfaceId ||
             _interfaceId == type(IERC165).interfaceId;
     }

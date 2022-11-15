@@ -132,11 +132,11 @@ contract LiquidityBinTokenTest is TestHelper {
         pair.safeBatchTransferFrom(DEV, BOB, _ids, amounts, "");
 
         vm.prank(address(0));
-        vm.expectRevert(LBToken__TransferFromOrToAddress0.selector);
+        vm.expectRevert(LBToken__InvalidTransfer.selector);
         pair.safeBatchTransferFrom(address(0), BOB, _ids, amounts, "");
 
         vm.prank(DEV);
-        vm.expectRevert(LBToken__TransferFromOrToAddress0.selector);
+        vm.expectRevert(LBToken__InvalidTransfer.selector);
         pair.safeBatchTransferFrom(DEV, address(0), _ids, amounts, "");
 
         amounts[0] += 1;
@@ -164,11 +164,11 @@ contract LiquidityBinTokenTest is TestHelper {
         pair.safeTransferFrom(DEV, BOB, _ids[0], amounts[0], "");
 
         vm.prank(address(0));
-        vm.expectRevert(LBToken__TransferFromOrToAddress0.selector);
+        vm.expectRevert(LBToken__InvalidTransfer.selector);
         pair.safeTransferFrom(address(0), BOB, _ids[0], amounts[0], "");
 
         vm.prank(DEV);
-        vm.expectRevert(LBToken__TransferFromOrToAddress0.selector);
+        vm.expectRevert(LBToken__InvalidTransfer.selector);
         pair.safeTransferFrom(DEV, address(0), _ids[0], amounts[0], "");
 
         amounts[0] += 1;
@@ -204,11 +204,6 @@ contract LiquidityBinTokenTest is TestHelper {
     function testSelfApprovalReverts() public {
         vm.expectRevert(abi.encodeWithSelector(LBToken__SelfApproval.selector, DEV));
         pair.setApprovalForAll(DEV, true);
-    }
-
-    function testPrivateViewFunctions() public {
-        assertEq(pair.name(), "Liquidity Book Token");
-        assertEq(pair.symbol(), "LBT");
     }
 
     function testBalanceOfBatch() public {

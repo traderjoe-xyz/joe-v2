@@ -67,7 +67,14 @@ library TokenHelper {
         unchecked {
             _internalBalance = reserve + fees;
         }
-        return token.balanceOf(address(this)) - _internalBalance;
+        return balanceOfThis(token) - _internalBalance;
+    }
+
+    /// @dev Return the balance of this contract for the given token
+    /// @param token The token to get the balance of
+    /// @return The balance of this contract for the given token
+    function balanceOfThis(IERC20 token) internal view returns (uint256) {
+        return token.balanceOf(address(this));
     }
 
     /// @notice Private view function to perform a low level call on `target`

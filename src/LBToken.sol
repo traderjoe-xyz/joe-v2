@@ -2,18 +2,14 @@
 
 pragma solidity 0.8.10;
 
-import "openzeppelin/utils/structs/EnumerableSet.sol";
-
-import "./LBErrors.sol";
 import "./interfaces/ILBToken.sol";
+import "./LBErrors.sol";
 
 /// @title Liquidity Book Token
 /// @author Trader Joe
 /// @notice The LBToken is an implementation of a multi-token.
 /// It allows to create multi-ERC20 represented by their ids
 contract LBToken is ILBToken {
-    using EnumerableSet for EnumerableSet.UintSet;
-
     /// @dev Mapping from token id to account balances
     mapping(uint256 => mapping(address => uint256)) private _balances;
 
@@ -23,8 +19,8 @@ contract LBToken is ILBToken {
     /// @dev Mapping from token id to total supplies
     mapping(uint256 => uint256) private _totalSupplies;
 
-    string private constant _NAME = "Liquidity Book Token";
-    string private constant _SYMBOL = "LBT";
+    string private constant _URI =
+        "ipfs://bafybeiboyyjiu4ghy5z6xunk7i2x4fnerrwyhsu5ug3sojl6xsxflopfem/LiquidityBookToken";
 
     modifier checkApproval(address _from, address _spender) {
         if (!_isApprovedForAll(_from, _spender)) revert LBToken__SpenderNotApproved(_from, _spender);
@@ -32,8 +28,7 @@ contract LBToken is ILBToken {
     }
 
     modifier checkAddresses(address _from, address _to) {
-        if (_from == address(0) || _to == address(0)) revert LBToken__TransferFromOrToAddress0();
-        if (_from == _to) revert LBToken__TransferToSelf();
+        if (_from == address(0) || _to == address(0) || _from == _to) revert LBToken__InvalidTransfer();
         _;
     }
 
@@ -42,21 +37,15 @@ contract LBToken is ILBToken {
         _;
     }
 
-    modifier checkLBTokenSupport(address recipient) {
-        if (!_verifyLBTokenSupport(recipient)) revert LBToken__NotSupported();
+    modifier checkERC1155Support(address recipient) {
+        if (!_verifyLBTokenSupport(recipient)) revert LBToken__ERC1155NotSupported();
         _;
     }
 
-    /// @notice Returns the name of the token
-    /// @return The name of the token
-    function name() public pure virtual override returns (string memory) {
-        return _NAME;
-    }
-
-    /// @notice Returns the symbol of the token, usually a shorter version of the name
-    /// @return The symbol of the token
-    function symbol() public pure virtual override returns (string memory) {
-        return _SYMBOL;
+    /// @notice Returns the uri of the token
+    /// @return The uri of the token
+    function uri(uint256) public view override returns (string memory) {
+        return _URI;
     }
 
     /// @notice Returns the total supply of token of type `id`
@@ -111,7 +100,10 @@ contract LBToken is ILBToken {
         _setApprovalForAll(msg.sender, _spender, _approved);
     }
 
-    /// @notice Transfers `_amount` token of type `_id` from `_from` to `_to`
+    /// @notice Transfers `_amount` token of type `_id` from `_from` to `_to`. If the `to` address is a contract, it will
+    /// @dev The bytes calldata are not used, as this token shouldn't allow any reentrancy for safety reasons.
+    /// If the `to` address is a contract, it will call the `supportsInterface` function to check if it supports
+    /// the `IERC1155` interface. If it doesn't, it will revert
     /// @param _from The address of the owner of the token
     /// @param _to The address of the recipient
     /// @param _id The token id
@@ -120,16 +112,18 @@ contract LBToken is ILBToken {
         address _from,
         address _to,
         uint256 _id,
-        uint256 _amount
-    ) public virtual override checkAddresses(_from, _to) checkApproval(_from, msg.sender) checkLBTokenSupport(_to) {
-        address _spender = msg.sender;
-
+        uint256 _amount,
+        bytes calldata
+    ) public virtual override checkAddresses(_from, _to) checkApproval(_from, msg.sender) checkERC1155Support(_to) {
         _transfer(_from, _to, _id, _amount);
 
-        emit TransferSingle(_spender, _from, _to, _id, _amount);
+        emit TransferSingle(msg.sender, _from, _to, _id, _amount);
     }
 
     /// @notice Batch transfers `_amount` tokens of type `_id` from `_from` to `_to`
+    /// @dev The bytes calldata are not used, as this token shouldn't allow any reentrancy for safety reasons.
+    /// If the `to` address is a contract, it will call the `supportsInterface` function to check if it supports
+    /// the `IERC1155` interface. If it doesn't, it will revert
     /// @param _from The address of the owner of the tokens
     /// @param _to The address of the recipient
     /// @param _ids The list of token ids
@@ -138,7 +132,8 @@ contract LBToken is ILBToken {
         address _from,
         address _to,
         uint256[] calldata _ids,
-        uint256[] calldata _amounts
+        uint256[] calldata _amounts,
+        bytes calldata
     )
         public
         virtual
@@ -146,15 +141,9 @@ contract LBToken is ILBToken {
         checkLength(_ids.length, _amounts.length)
         checkAddresses(_from, _to)
         checkApproval(_from, msg.sender)
-        checkLBTokenSupport(_to)
+        checkERC1155Support(_to)
     {
-        unchecked {
-            for (uint256 i; i < _ids.length; ++i) {
-                _transfer(_from, _to, _ids[i], _amounts[i]);
-            }
-        }
-
-        emit TransferBatch(msg.sender, _from, _to, _ids, _amounts);
+        _safeBatchTransferFrom(_from, _to, _ids, _amounts);
     }
 
     /// @notice Returns whether this contract implements the interface defined by
@@ -162,7 +151,11 @@ contract LBToken is ILBToken {
     /// @param _interfaceId The interface identifier
     /// @return Whether the interface is supported (true) or not (false)
     function supportsInterface(bytes4 _interfaceId) public view virtual override returns (bool) {
-        return _interfaceId == type(ILBToken).interfaceId || _interfaceId == type(IERC165).interfaceId;
+        return
+            _interfaceId == type(IERC1155).interfaceId ||
+            _interfaceId == type(IERC1155MetadataURI).interfaceId ||
+            _interfaceId == type(ILBToken).interfaceId ||
+            _interfaceId == type(IERC165).interfaceId;
     }
 
     /// @notice Internal function to transfer `_amount` tokens of type `_id` from `_from` to `_to`
@@ -185,6 +178,26 @@ contract LBToken is ILBToken {
             _balances[_id][_from] = _fromBalance - _amount;
             _balances[_id][_to] += _amount;
         }
+    }
+
+    /// @notice Internal function to batch transfer `_amounts` tokens of type `_ids` from `_from` to `_to`
+    /// @param _from The address of the owner of the tokens
+    /// @param _to The address of the recipient
+    /// @param _ids The list of token ids
+    /// @param _amounts The list of amounts to send
+    function _safeBatchTransferFrom(
+        address _from,
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _amounts
+    ) internal virtual {
+        unchecked {
+            for (uint256 i; i < _ids.length; ++i) {
+                _transfer(_from, _to, _ids[i], _amounts[i]);
+            }
+        }
+
+        emit TransferBatch(msg.sender, _from, _to, _ids, _amounts);
     }
 
     /// @dev Creates `_amount` tokens of type `_id`, and assigns them to `_account`
@@ -280,18 +293,18 @@ contract LBToken is ILBToken {
         uint256 amount
     ) internal virtual {}
 
-    /// @notice Return if the `_target` contract supports LBToken interface
+    /// @notice Return if the `_target` contract supports ERC1155 interface
     /// @param _target The address of the contract
     /// @return supported Whether the contract is supported (1) or not (any other value)
     function _verifyLBTokenSupport(address _target) private view returns (bool supported) {
         if (_target.code.length == 0) return true;
 
         bytes4 selectorERC165 = IERC165.supportsInterface.selector;
-        bytes4 ILBTokenInterfaceId = type(ILBToken).interfaceId;
+        bytes4 IERC1155InterfaceId = type(IERC1155).interfaceId;
 
         assembly {
             mstore(0x00, selectorERC165)
-            mstore(0x04, ILBTokenInterfaceId)
+            mstore(0x04, IERC1155InterfaceId)
 
             let success := staticcall(30000, _target, 0x00, 0x24, 0x00, 0x20)
             let size := eq(returndatasize(), 0x20)

@@ -119,11 +119,9 @@ contract LBToken is ILBToken {
         uint256 _amount,
         bytes calldata data
     ) public virtual override checkAddresses(_from, _to) checkApproval(_from, msg.sender) checkLBTokenSupport(_to) {
-        address _spender = msg.sender;
-
         _transfer(_from, _to, _id, _amount);
 
-        emit TransferSingle(_spender, _from, _to, _id, _amount);
+        emit TransferSingle(msg.sender, _from, _to, _id, _amount);
     }
 
     /// @notice Batch transfers `_amount` tokens of type `_id` from `_from` to `_to`
@@ -146,13 +144,7 @@ contract LBToken is ILBToken {
         checkApproval(_from, msg.sender)
         checkLBTokenSupport(_to)
     {
-        unchecked {
-            for (uint256 i; i < _ids.length; ++i) {
-                _transfer(_from, _to, _ids[i], _amounts[i]);
-            }
-        }
-
-        emit TransferBatch(msg.sender, _from, _to, _ids, _amounts);
+        _safeBatchTransferFrom(_from, _to, _ids, _amounts);
     }
 
     /// @notice Returns whether this contract implements the interface defined by
@@ -183,6 +175,26 @@ contract LBToken is ILBToken {
             _balances[_id][_from] = _fromBalance - _amount;
             _balances[_id][_to] += _amount;
         }
+    }
+
+    /// @notice Internal function to batch transfer `_amounts` tokens of type `_ids` from `_from` to `_to`
+    /// @param _from The address of the owner of the tokens
+    /// @param _to The address of the recipient
+    /// @param _ids The list of token ids
+    /// @param _amounts The list of amounts to send
+    function _safeBatchTransferFrom(
+        address _from,
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _amounts
+    ) internal virtual {
+        unchecked {
+            for (uint256 i; i < _ids.length; ++i) {
+                _transfer(_from, _to, _ids[i], _amounts[i]);
+            }
+        }
+
+        emit TransferBatch(msg.sender, _from, _to, _ids, _amounts);
     }
 
     /// @dev Creates `_amount` tokens of type `_id`, and assigns them to `_account`

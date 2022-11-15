@@ -100,7 +100,7 @@ contract LBToken is ILBToken {
         _setApprovalForAll(msg.sender, _spender, _approved);
     }
 
-    /// @notice Transfers `_amount` token of type `_id` from `_from` to `_to`. If the `to` address is a contract, it will
+    /// @notice Transfers `_amount` token of type `_id` from `_from` to `_to`.
     /// @dev The bytes calldata are not used, as this token shouldn't allow any reentrancy for safety reasons.
     /// If the `to` address is a contract, it will call the `supportsInterface` function to check if it supports
     /// the `IERC1155` interface. If it doesn't, it will revert

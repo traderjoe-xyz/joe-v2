@@ -402,21 +402,6 @@ contract LiquidityBinRouterTest is TestHelper {
         (uint256 amountIn2, ) = router.getSwapIn(pair, _amountYIn - 100, true);
     }
 
-    function testSendTokensToContractThatDoesNotSupportLBToken() public {
-        uint256 amountIn = 1e18;
-
-        pair = createLBPairDefaultFees(token6D, token18D);
-        (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, 5, 0);
-
-        uint256[] memory amounts = new uint256[](5);
-        for (uint256 i; i < 5; i++) {
-            amounts[i] = pair.balanceOf(DEV, _ids[i]);
-        }
-
-        vm.expectRevert(abi.encodeWithSelector(LBToken__NotSupported.selector));
-        pair.safeBatchTransferFrom(DEV, address(router), _ids, amounts);
-    }
-
     function testWrongTokenWAVAXSwaps() public {
         IERC20[] memory IERCArray = new IERC20[](2);
         IERCArray[0] = token6D;
@@ -453,5 +438,36 @@ contract LiquidityBinRouterTest is TestHelper {
             DEV,
             block.timestamp
         );
+    }
+
+    function testSweepLBToken() public {
+        uint256 amountIn = 1e18;
+
+        pair = createLBPairDefaultFees(token6D, token18D);
+        (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, 5, 0);
+
+        uint256[] memory amounts = new uint256[](5);
+        for (uint256 i; i < 5; i++) {
+            amounts[i] = pair.balanceOf(DEV, _ids[i]);
+        }
+
+        assertEq(pair.balanceOf(DEV, ID_ONE - 1), amountIn / 3);
+
+        pair.safeBatchTransferFrom(DEV, address(router), _ids, amounts);
+
+        for (uint256 i; i < 5; i++) {
+            assertEq(pair.balanceOf(address(router), _ids[i]), amounts[i]);
+            assertEq(pair.balanceOf(DEV, _ids[i]), 0);
+        }
+        vm.prank(ALICE);
+        vm.expectRevert(LBRouter__NotFactoryOwner.selector);
+        router.sweepLBToken(pair, DEV, _ids, amounts);
+
+        router.sweepLBToken(pair, DEV, _ids, amounts);
+
+        for (uint256 i; i < 5; i++) {
+            assertEq(pair.balanceOf(DEV, _ids[i]), amounts[i]);
+            assertEq(pair.balanceOf(address(router), _ids[i]), 0);
+        }
     }
 }

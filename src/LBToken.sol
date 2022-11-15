@@ -42,11 +42,6 @@ contract LBToken is ILBToken {
         _;
     }
 
-    modifier checkLBTokenSupport(address recipient) {
-        if (!_verifyLBTokenSupport(recipient)) revert LBToken__NotSupported();
-        _;
-    }
-
     /// @notice Returns the name of the token
     /// @return The name of the token
     function name() public pure virtual override returns (string memory) {
@@ -121,7 +116,7 @@ contract LBToken is ILBToken {
         address _to,
         uint256 _id,
         uint256 _amount
-    ) public virtual override checkAddresses(_from, _to) checkApproval(_from, msg.sender) checkLBTokenSupport(_to) {
+    ) public virtual override checkAddresses(_from, _to) checkApproval(_from, msg.sender) {
         address _spender = msg.sender;
 
         _transfer(_from, _to, _id, _amount);
@@ -146,7 +141,6 @@ contract LBToken is ILBToken {
         checkLength(_ids.length, _amounts.length)
         checkAddresses(_from, _to)
         checkApproval(_from, msg.sender)
-        checkLBTokenSupport(_to)
     {
         unchecked {
             for (uint256 i; i < _ids.length; ++i) {
@@ -279,25 +273,4 @@ contract LBToken is ILBToken {
         uint256 id,
         uint256 amount
     ) internal virtual {}
-
-    /// @notice Return if the `_target` contract supports LBToken interface
-    /// @param _target The address of the contract
-    /// @return supported Whether the contract is supported (1) or not (any other value)
-    function _verifyLBTokenSupport(address _target) private view returns (bool supported) {
-        if (_target.code.length == 0) return true;
-
-        bytes4 selectorERC165 = IERC165.supportsInterface.selector;
-        bytes4 ILBTokenInterfaceId = type(ILBToken).interfaceId;
-
-        assembly {
-            mstore(0x00, selectorERC165)
-            mstore(0x04, ILBTokenInterfaceId)
-
-            let success := staticcall(30000, _target, 0x00, 0x24, 0x00, 0x20)
-            let size := eq(returndatasize(), 0x20)
-            let data := eq(mload(0x00), 1)
-
-            supported := and(and(success, size), data)
-        }
-    }
 }

@@ -46,7 +46,6 @@ error LBToken__LengthMismatch(uint256 accountsLength, uint256 idsLength);
 error LBToken__SelfApproval(address owner);
 error LBToken__TransferExceedsBalance(address from, uint256 id, uint256 amount);
 error LBToken__TransferToSelf();
-error LBToken__NotSupported();
 
 /** LBFactory errors */
 

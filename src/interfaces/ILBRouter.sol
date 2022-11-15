@@ -187,4 +187,11 @@ interface ILBRouter {
         address to,
         uint256 amount
     ) external;
+
+    function sweepLBToken(
+        ILBToken _lbToken,
+        address _to,
+        uint256[] calldata _ids,
+        uint256[] calldata _amounts
+    ) external;
 }

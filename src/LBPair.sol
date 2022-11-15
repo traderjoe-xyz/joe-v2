@@ -483,9 +483,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         emit FlashLoan(msg.sender, _receiver, _token, _amount, _fees.total);
     }
 
-    /// @notice Mint new LB tokens for each bins where the user adds liquidity. If the `to` address is a contract, it will
-    /// call the `supportsInterface` function to check if it supports the `ILBToken` interface. If it doesn't, it will
-    /// revert.
+    /// @notice Mint new LB tokens for each bins where the user adds liquidity.
     /// This function will not transfer the tokens from the caller, it is expected that the tokens have already been
     /// transferred to this contract through another contract.
     /// That is why this function shouldn't be called directly, but through one of the add liquidity functions of the
@@ -509,7 +507,6 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         external
         override
         nonReentrant
-        checkLBTokenSupport(_to)
         returns (
             uint256,
             uint256,

@@ -509,7 +509,6 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         external
         override
         nonReentrant
-        checkLBTokenSupport(_to)
         returns (
             uint256,
             uint256,

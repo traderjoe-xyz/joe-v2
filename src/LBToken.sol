@@ -159,8 +159,8 @@ contract LBToken is ILBToken {
     /// @return Whether the interface is supported (true) or not (false)
     function supportsInterface(bytes4 _interfaceId) public view virtual override returns (bool) {
         return
-            _interfaceId == type(ILBToken).interfaceId ||
             _interfaceId == type(IERC1155).interfaceId ||
+            _interfaceId == type(ILBToken).interfaceId ||
             _interfaceId == type(IERC165).interfaceId;
     }
 
@@ -299,7 +299,7 @@ contract LBToken is ILBToken {
         uint256 amount
     ) internal virtual {}
 
-    /// @notice Return if the `_target` contract supports LBToken interface
+    /// @notice Return if the `_target` contract supports ERC1155 interface
     /// @param _target The address of the contract
     /// @return supported Whether the contract is supported (1) or not (any other value)
     function _verifyLBTokenSupport(address _target) private view returns (bool supported) {

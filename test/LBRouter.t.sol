@@ -402,21 +402,6 @@ contract LiquidityBinRouterTest is TestHelper {
         (uint256 amountIn2, ) = router.getSwapIn(pair, _amountYIn - 100, true);
     }
 
-    function testSendTokensToContractThatDoesNotSupportLBToken() public {
-        uint256 amountIn = 1e18;
-
-        pair = createLBPairDefaultFees(token6D, token18D);
-        (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, 5, 0);
-
-        uint256[] memory amounts = new uint256[](5);
-        for (uint256 i; i < 5; i++) {
-            amounts[i] = pair.balanceOf(DEV, _ids[i]);
-        }
-
-        vm.expectRevert(abi.encodeWithSelector(LBToken__NotSupported.selector));
-        pair.safeBatchTransferFrom(DEV, address(router), _ids, amounts);
-    }
-
     function testWrongTokenWAVAXSwaps() public {
         IERC20[] memory IERCArray = new IERC20[](2);
         IERCArray[0] = token6D;

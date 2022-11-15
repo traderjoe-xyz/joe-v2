@@ -39,7 +39,7 @@ contract LBToken is ILBToken {
     }
 
     modifier checkLBTokenSupport(address recipient) {
-        if (!_verifyLBTokenSupport(recipient)) revert LBToken__NotSupported();
+        if (!_verifyLBTokenSupport(recipient)) revert LBToken__ERC1155NotSupported();
         _;
     }
 

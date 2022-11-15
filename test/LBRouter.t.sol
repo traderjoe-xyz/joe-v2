@@ -413,7 +413,7 @@ contract LiquidityBinRouterTest is TestHelper {
             amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
 
-        vm.expectRevert(abi.encodeWithSelector(LBToken__NotSupported.selector));
+        vm.expectRevert(abi.encodeWithSelector(LBToken__ERC1155NotSupported.selector));
         pair.safeBatchTransferFrom(DEV, address(router), _ids, amounts, "");
     }
 

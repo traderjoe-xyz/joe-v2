@@ -44,7 +44,7 @@ contract LBToken is ILBToken {
 
     /// @notice Returns the uri of the token
     /// @return The uri of the token
-    function uri(uint256) external pure override returns (string memory) {
+    function uri(uint256) external view override returns (string memory) {
         return _URI;
     }
 

@@ -637,6 +637,21 @@ contract LBRouter is ILBRouter {
         }
     }
 
+    /// @notice Unstuck LBTokens that are sent to this contract by mistake
+    /// @dev Only callable by the factory owner
+    /// @param _lbToken The address of the LBToken
+    /// @param _to The address of the user to send back the tokens
+    /// @param _ids The list of token ids
+    /// @param _amounts The list of amounts to send
+    function sweepLBToken(
+        ILBToken _lbToken,
+        address _to,
+        uint256[] calldata _ids,
+        uint256[] calldata _amounts
+    ) external override onlyFactoryOwner {
+        _lbToken.safeBatchTransferFrom(address(this), _to, _ids, _amounts);
+    }
+
     /// @notice Helper function to add liquidity
     /// @param _liq The liquidity parameter
     /// @param _LBPair LBPair where liquidity is deposited

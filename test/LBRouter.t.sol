@@ -414,7 +414,7 @@ contract LiquidityBinRouterTest is TestHelper {
         }
 
         vm.expectRevert(abi.encodeWithSelector(LBToken__NotSupported.selector));
-        pair.safeBatchTransferFrom(DEV, address(router), _ids, amounts);
+        pair.safeBatchTransferFrom(DEV, address(router), _ids, amounts, "");
     }
 
     function testWrongTokenWAVAXSwaps() public {

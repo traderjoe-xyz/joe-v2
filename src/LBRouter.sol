@@ -13,7 +13,6 @@ import "./libraries/Math512Bits.sol";
 import "./libraries/SwapHelper.sol";
 import "./libraries/TokenHelper.sol";
 import "./interfaces/IJoePair.sol";
-import "./interfaces/ILBToken.sol";
 import "./interfaces/ILBRouter.sol";
 
 /// @title Liquidity Book Router
@@ -734,7 +733,7 @@ contract LBRouter is ILBRouter {
         uint256[] memory _amounts,
         address _to
     ) private returns (uint256 amountX, uint256 amountY) {
-        ILBToken(address(_LBPair)).safeBatchTransferFrom(msg.sender, address(_LBPair), _ids, _amounts);
+        _LBPair.safeBatchTransferFrom(msg.sender, address(_LBPair), _ids, _amounts, "");
         (amountX, amountY) = _LBPair.burn(_ids, _amounts, _to);
         if (amountX < _amountXMin || amountY < _amountYMin)
             revert LBRouter__AmountSlippageCaught(_amountXMin, amountX, _amountYMin, amountY);

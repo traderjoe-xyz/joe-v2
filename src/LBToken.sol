@@ -2,18 +2,14 @@
 
 pragma solidity 0.8.10;
 
-import "openzeppelin/utils/structs/EnumerableSet.sol";
-
-import "./LBErrors.sol";
 import "./interfaces/ILBToken.sol";
+import "./LBErrors.sol";
 
 /// @title Liquidity Book Token
 /// @author Trader Joe
 /// @notice The LBToken is an implementation of a multi-token.
 /// It allows to create multi-ERC20 represented by their ids
 contract LBToken is ILBToken {
-    using EnumerableSet for EnumerableSet.UintSet;
-
     /// @dev Mapping from token id to account balances
     mapping(uint256 => mapping(address => uint256)) private _balances;
 
@@ -49,13 +45,13 @@ contract LBToken is ILBToken {
 
     /// @notice Returns the name of the token
     /// @return The name of the token
-    function name() public pure virtual override returns (string memory) {
+    function name() public view virtual override returns (string memory) {
         return _NAME;
     }
 
     /// @notice Returns the symbol of the token, usually a shorter version of the name
     /// @return The symbol of the token
-    function symbol() public pure virtual override returns (string memory) {
+    function symbol() public view virtual override returns (string memory) {
         return _SYMBOL;
     }
 
@@ -120,7 +116,8 @@ contract LBToken is ILBToken {
         address _from,
         address _to,
         uint256 _id,
-        uint256 _amount
+        uint256 _amount,
+        bytes calldata data
     ) public virtual override checkAddresses(_from, _to) checkApproval(_from, msg.sender) checkLBTokenSupport(_to) {
         address _spender = msg.sender;
 
@@ -138,7 +135,8 @@ contract LBToken is ILBToken {
         address _from,
         address _to,
         uint256[] calldata _ids,
-        uint256[] calldata _amounts
+        uint256[] calldata _amounts,
+        bytes calldata data
     )
         public
         virtual
@@ -162,7 +160,7 @@ contract LBToken is ILBToken {
     /// @param _interfaceId The interface identifier
     /// @return Whether the interface is supported (true) or not (false)
     function supportsInterface(bytes4 _interfaceId) public view virtual override returns (bool) {
-        return _interfaceId == type(ILBToken).interfaceId || _interfaceId == type(IERC165).interfaceId;
+        return _interfaceId == type(IERC1155).interfaceId || _interfaceId == type(IERC165).interfaceId;
     }
 
     /// @notice Internal function to transfer `_amount` tokens of type `_id` from `_from` to `_to`
@@ -287,11 +285,11 @@ contract LBToken is ILBToken {
         if (_target.code.length == 0) return true;
 
         bytes4 selectorERC165 = IERC165.supportsInterface.selector;
-        bytes4 ILBTokenInterfaceId = type(ILBToken).interfaceId;
+        bytes4 IERC1155InterfaceId = type(IERC1155).interfaceId;
 
         assembly {
             mstore(0x00, selectorERC165)
-            mstore(0x04, ILBTokenInterfaceId)
+            mstore(0x04, IERC1155InterfaceId)
 
             let success := staticcall(30000, _target, 0x00, 0x24, 0x00, 0x20)
             let size := eq(returndatasize(), 0x20)

@@ -314,8 +314,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// `interfaceId` (true) or not (false)
     /// @param _interfaceId The interface identifier
     /// @return Whether the interface is supported (true) or not (false)
-    function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
-        return super.supportsInterface(_interfaceId) || _interfaceId == type(ILBPair).interfaceId;
+    function supportsInterface(bytes4 _interfaceId) public view override(LBToken, IERC165) returns (bool) {
+        return LBToken.supportsInterface(_interfaceId) || _interfaceId == type(ILBPair).interfaceId;
     }
 
     /** External Functions **/
@@ -484,7 +484,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     }
 
     /// @notice Mint new LB tokens for each bins where the user adds liquidity. If the `to` address is a contract, it will
-    /// call the `supportsInterface` function to check if it supports the `ILBToken` interface. If it doesn't, it will
+    /// call the `supportsInterface` function to check if it supports the `IERC1155` interface. If it doesn't, it will
     /// revert.
     /// This function will not transfer the tokens from the caller, it is expected that the tokens have already been
     /// transferred to this contract through another contract.

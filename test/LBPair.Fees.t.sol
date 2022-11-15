@@ -133,7 +133,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
             amounts[i] = pair.balanceOf(DEV, _ids[i]);
         }
 
-        pair.safeBatchTransferFrom(DEV, BOB, _ids, amounts);
+        pair.safeBatchTransferFrom(DEV, BOB, _ids, amounts, "");
 
         token18D.mint(address(pair), amountYForSwap);
         pair.swap(false, ALICE);

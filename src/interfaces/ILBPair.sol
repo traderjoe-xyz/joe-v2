@@ -5,13 +5,14 @@ pragma solidity 0.8.10;
 import "openzeppelin/token/ERC20/IERC20.sol";
 
 import "../libraries/FeeHelper.sol";
+import "./ILBToken.sol";
 import "./ILBFactory.sol";
 import "./ILBFlashLoanCallback.sol";
 
 /// @title Liquidity Book Pair Interface
 /// @author Trader Joe
 /// @notice Required interface of LBPair contract
-interface ILBPair {
+interface ILBPair is ILBToken {
     /// @dev Structure to store the reserves of bins:
     /// - reserveX: The current reserve of tokenX of the bin
     /// - reserveY: The current reserve of tokenY of the bin

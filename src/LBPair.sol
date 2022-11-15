@@ -953,7 +953,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         uint256 _newFeeParameters = _packedFeeParameters.decode(type(uint144).max, 0);
 
         assembly {
-            sstore(_feeParameters.slot, or(_newFeeParameters, shl(144, _varParameters)))
+            sstore(_feeParameters.slot, or(_newFeeParameters, shl(_OFFSET_VARIABLE_FEE_PARAMETERS, _varParameters)))
         }
     }
 

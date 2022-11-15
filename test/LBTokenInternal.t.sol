@@ -85,6 +85,6 @@ contract LiquidityBinTokenTest is TestHelper, LBToken {
     }
 
     function supportsInterface(bytes4 interfaceId) public view override(TestHelper, LBToken) returns (bool) {
-        return interfaceId == type(IERC1155).interfaceId;
+        return interfaceId == type(ILBToken).interfaceId;
     }
 }

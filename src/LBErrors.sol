@@ -38,14 +38,15 @@ error LBRouter__WrongAvaxLiquidityParameters(
 /** LBToken errors */
 
 error LBToken__SpenderNotApproved(address owner, address spender);
+error LBToken__TransferFromOrToAddress0();
 error LBToken__MintToAddress0();
 error LBToken__BurnFromAddress0();
 error LBToken__BurnExceedsBalance(address from, uint256 id, uint256 amount);
 error LBToken__LengthMismatch(uint256 accountsLength, uint256 idsLength);
 error LBToken__SelfApproval(address owner);
 error LBToken__TransferExceedsBalance(address from, uint256 id, uint256 amount);
-error LBToken__InvalidTransfer();
-error LBToken__ERC1155NotSupported();
+error LBToken__TransferToSelf();
+error LBToken__NotSupported();
 
 /** LBFactory errors */
 

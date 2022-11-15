@@ -152,7 +152,7 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         }
 
         vm.startPrank(BOB);
-        pair.safeBatchTransferFrom(BOB, address(pair), _ids, amounts, "");
+        pair.safeBatchTransferFrom(BOB, address(pair), _ids, amounts);
         pair.burn(_ids, amounts, BOB);
         pair.collectFees(BOB, _ids); // the excess token were sent to fees, so they need to be claimed
         vm.stopPrank();

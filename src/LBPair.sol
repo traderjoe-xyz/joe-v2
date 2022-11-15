@@ -314,8 +314,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// `interfaceId` (true) or not (false)
     /// @param _interfaceId The interface identifier
     /// @return Whether the interface is supported (true) or not (false)
-    function supportsInterface(bytes4 _interfaceId) public view override(LBToken, IERC165) returns (bool) {
-        return LBToken.supportsInterface(_interfaceId) || _interfaceId == type(ILBPair).interfaceId;
+    function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
+        return super.supportsInterface(_interfaceId) || _interfaceId == type(ILBPair).interfaceId;
     }
 
     /** External Functions **/
@@ -451,7 +451,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             protocol: uint128((_totalFee * _feeParameters.protocolShare) / Constants.BASIS_POINT_MAX)
         });
 
-        uint256 _balanceBefore = _token.balanceOfThis();
+        uint256 _balanceBefore = _token.balanceOf(address(this));
 
         _token.safeTransfer(address(_receiver), _amount);
 
@@ -459,26 +459,24 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
             _receiver.LBFlashLoanCallback(msg.sender, _token, _amount, _fees.total, _data) != Constants.CALLBACK_SUCCESS
         ) revert LBPair__FlashLoanCallbackFailed();
 
-        uint256 _balanceAfter = _token.balanceOfThis();
+        uint256 _balanceAfter = _token.balanceOf(address(this));
 
         if (_balanceAfter != _balanceBefore + _fees.total) revert LBPair__FlashLoanInvalidBalance();
 
-        if (_totalFee > 0) {
-            uint256 _activeId = _pairInformation.activeId;
-            uint256 _tokenPerShare = _fees.getTokenPerShare(totalSupply(_activeId));
+        uint256 _activeId = _pairInformation.activeId;
+        uint256 _totalSupply = totalSupply(_activeId);
 
-            (
-                uint128 _feesXTotal,
-                uint128 _feesYTotal,
-                uint128 _feesXProtocol,
-                uint128 _feesYProtocol
-            ) = _getGlobalFees();
+        if (_totalFee > 0) {
             if (_token == _tokenX) {
+                (uint128 _feesXTotal, , uint128 _feesXProtocol, ) = _getGlobalFees();
+
                 _setFees(_pairInformation.feesX, _feesXTotal + _fees.total, _feesXProtocol + _fees.protocol);
-                _bins[_activeId].accTokenXPerShare += _tokenPerShare;
+                _bins[_activeId].accTokenXPerShare += _fees.getTokenPerShare(_totalSupply);
             } else {
+                (, uint128 _feesYTotal, , uint128 _feesYProtocol) = _getGlobalFees();
+
                 _setFees(_pairInformation.feesY, _feesYTotal + _fees.total, _feesYProtocol + _fees.protocol);
-                _bins[_activeId].accTokenYPerShare += _tokenPerShare;
+                _bins[_activeId].accTokenYPerShare += _fees.getTokenPerShare(_totalSupply);
             }
         }
 
@@ -486,7 +484,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     }
 
     /// @notice Mint new LB tokens for each bins where the user adds liquidity. If the `to` address is a contract, it will
-    /// call the `supportsInterface` function to check if it supports the `IERC1155` interface. If it doesn't, it will
+    /// call the `supportsInterface` function to check if it supports the `ILBToken` interface. If it doesn't, it will
     /// revert.
     /// This function will not transfer the tokens from the caller, it is expected that the tokens have already been
     /// transferred to this contract through another contract.
@@ -511,7 +509,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         external
         override
         nonReentrant
-        checkERC1155Support(_to)
+        checkLBTokenSupport(_to)
         returns (
             uint256,
             uint256,
@@ -554,64 +552,52 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                 // with a different ratio than the active bin, the user would actually perform a swap without paying any
                 // fees. This is why we calculate the fees for the active bin here.
                 if (_mintInfo.id == _pair.activeId) {
-                    if (_bin.reserveX != 0 || _bin.reserveY != 0) {
-                        uint256 _totalSupply = totalSupply(_mintInfo.id);
+                    uint256 _totalSupply = totalSupply(_mintInfo.id);
 
-                        uint256 _receivedX;
-                        uint256 _receivedY;
+                    uint256 _receivedX;
+                    uint256 _receivedY;
 
-                        {
-                            uint256 _userL = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) +
-                                _mintInfo.amountY;
+                    {
+                        uint256 _userL = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) +
+                            _mintInfo.amountY;
 
-                            uint256 _supply = _totalSupply + _userL;
+                        uint256 _supply = _totalSupply + _userL;
 
-                            // Calculate the amounts received by the user if he were to burn its liquidity directly after adding
-                            // it. These amounts will be used to calculate the fees.
-                            _receivedX = _userL.mulDivRoundDown(uint256(_bin.reserveX) + _mintInfo.amountX, _supply);
-                            _receivedY = _userL.mulDivRoundDown(uint256(_bin.reserveY) + _mintInfo.amountY, _supply);
-                        }
-
-                        _fp.updateVariableFeeParameters(_mintInfo.id);
-
-                        FeeHelper.FeesDistribution memory _fees;
-
-                        // Checks if the amount of tokens received after burning its liquidity is greater than the amount of
-                        // tokens sent by the user. If it is, we add a composition fee of the difference between the two amounts.
-                        if (_mintInfo.amountX > _receivedX) {
-                            unchecked {
-                                _fees = _fp.getFeeAmountDistribution(
-                                    _fp.getFeeAmountForC(_mintInfo.amountX - _receivedX)
-                                );
-                            }
-
-                            _mintInfo.amountX -= _fees.total;
-                            _mintInfo.activeFeeX += _fees.total;
-
-                            _bin.updateFees(_pair.feesX, _fees, true, _totalSupply);
-                        }
-                        if (_mintInfo.amountY > _receivedY) {
-                            unchecked {
-                                _fees = _fp.getFeeAmountDistribution(
-                                    _fp.getFeeAmountForC(_mintInfo.amountY - _receivedY)
-                                );
-                            }
-
-                            _mintInfo.amountY -= _fees.total;
-                            _mintInfo.activeFeeY += _fees.total;
-
-                            _bin.updateFees(_pair.feesY, _fees, false, _totalSupply);
-                        }
-
-                        if (_mintInfo.activeFeeX > 0 || _mintInfo.activeFeeY > 0)
-                            emit CompositionFee(
-                                msg.sender,
-                                _to,
-                                _mintInfo.id,
-                                _mintInfo.activeFeeX,
-                                _mintInfo.activeFeeY
-                            );
+                        // Calculate the amounts received by the user if he were to burn its liquidity directly after adding
+                        // it. These amounts will be used to calculate the fees.
+                        _receivedX = _userL.mulDivRoundDown(uint256(_bin.reserveX) + _mintInfo.amountX, _supply);
+                        _receivedY = _userL.mulDivRoundDown(uint256(_bin.reserveY) + _mintInfo.amountY, _supply);
                     }
+
+                    _fp.updateVariableFeeParameters(_mintInfo.id);
+
+                    FeeHelper.FeesDistribution memory _fees;
+
+                    // Checks if the amount of tokens received after burning its liquidity is greater than the amount of
+                    // tokens sent by the user. If it is, we add a composition fee of the difference between the two amounts.
+                    if (_mintInfo.amountX > _receivedX) {
+                        unchecked {
+                            _fees = _fp.getFeeAmountDistribution(_fp.getFeeAmountForC(_mintInfo.amountX - _receivedX));
+                        }
+
+                        _mintInfo.amountX -= _fees.total;
+                        _mintInfo.activeFeeX += _fees.total;
+
+                        _bin.updateFees(_pair.feesX, _fees, true, _totalSupply);
+                    }
+                    if (_mintInfo.amountY > _receivedY) {
+                        unchecked {
+                            _fees = _fp.getFeeAmountDistribution(_fp.getFeeAmountForC(_mintInfo.amountY - _receivedY));
+                        }
+
+                        _mintInfo.amountY -= _fees.total;
+                        _mintInfo.activeFeeY += _fees.total;
+
+                        _bin.updateFees(_pair.feesY, _fees, false, _totalSupply);
+                    }
+
+                    if (_mintInfo.activeFeeX > 0 || _mintInfo.activeFeeY > 0)
+                        emit CompositionFee(msg.sender, _to, _mintInfo.id, _mintInfo.activeFeeX, _mintInfo.activeFeeY);
                 } else if (_mintInfo.amountY != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
             } else if (_mintInfo.amountX != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
 
@@ -967,7 +953,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         uint256 _newFeeParameters = _packedFeeParameters.decode(type(uint144).max, 0);
 
         assembly {
-            sstore(_feeParameters.slot, or(_newFeeParameters, shl(_OFFSET_VARIABLE_FEE_PARAMETERS, _varParameters)))
+            sstore(_feeParameters.slot, or(_newFeeParameters, shl(144, _varParameters)))
         }
     }
 

@@ -4,6 +4,7 @@ pragma solidity 0.8.10;
 
 import "./IJoeFactory.sol";
 import "./ILBPair.sol";
+import "./ILBToken.sol";
 import "./IWAVAX.sol";
 
 /// @title Liquidity Book Router Interface

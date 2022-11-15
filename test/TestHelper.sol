@@ -65,7 +65,7 @@ abstract contract TestHelper is Test, IERC165 {
     LBQuoter internal quoter;
 
     function supportsInterface(bytes4 interfaceId) external view virtual returns (bool) {
-        return interfaceId == type(IERC1155).interfaceId;
+        return interfaceId == type(ILBToken).interfaceId;
     }
 
     function getPriceFromId(uint24 _id) internal pure returns (uint256 price) {

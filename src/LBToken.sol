@@ -108,6 +108,7 @@ contract LBToken is ILBToken {
     }
 
     /// @notice Transfers `_amount` token of type `_id` from `_from` to `_to`
+    /// @dev The bytes calldata are not used, as this token shouldn't allow any reentrancy for safety reasons
     /// @param _from The address of the owner of the token
     /// @param _to The address of the recipient
     /// @param _id The token id
@@ -117,7 +118,7 @@ contract LBToken is ILBToken {
         address _to,
         uint256 _id,
         uint256 _amount,
-        bytes calldata data
+        bytes calldata
     ) public virtual override checkAddresses(_from, _to) checkApproval(_from, msg.sender) checkLBTokenSupport(_to) {
         _transfer(_from, _to, _id, _amount);
 
@@ -125,6 +126,7 @@ contract LBToken is ILBToken {
     }
 
     /// @notice Batch transfers `_amount` tokens of type `_id` from `_from` to `_to`
+    /// @dev The bytes calldata are not used, as this token shouldn't allow any reentrancy for safety reasons
     /// @param _from The address of the owner of the tokens
     /// @param _to The address of the recipient
     /// @param _ids The list of token ids
@@ -134,7 +136,7 @@ contract LBToken is ILBToken {
         address _to,
         uint256[] calldata _ids,
         uint256[] calldata _amounts,
-        bytes calldata data
+        bytes calldata
     )
         public
         virtual

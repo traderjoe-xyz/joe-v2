@@ -81,11 +81,8 @@ contract LBQuoter {
 
                 if (reserveIn > 0 && reserveOut > 0) {
                     quote.amounts[i + 1] = JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut);
-                    quote.virtualAmountsWithoutSlippage[i + 1] = JoeLibrary.quote(
-                        (quote.virtualAmountsWithoutSlippage[i] * 997) / 1000,
-                        reserveIn,
-                        reserveOut
-                    );
+                    quote.virtualAmountsWithoutSlippage[i + 1] =
+                        JoeLibrary.quote(quote.virtualAmountsWithoutSlippage[i] * 997, reserveIn * 1000, reserveOut);
                     quote.fees[i] = 0.003e18; // 0.3%
                 }
             }
@@ -159,11 +156,8 @@ contract LBQuoter {
 
                 if (reserveIn > 0 && reserveOut > quote.amounts[i]) {
                     quote.amounts[i - 1] = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut);
-                    quote.virtualAmountsWithoutSlippage[i - 1] = JoeLibrary.quote(
-                        (quote.virtualAmountsWithoutSlippage[i] * 1000) / 997 + 1,
-                        reserveOut,
-                        reserveIn
-                    );
+                    quote.virtualAmountsWithoutSlippage[i - 1] =
+                        JoeLibrary.quote(quote.virtualAmountsWithoutSlippage[i] * 1000, reserveOut * 997, reserveIn) + 1;
 
                     quote.fees[i - 1] = 0.003e18; // 0.3%
                 }

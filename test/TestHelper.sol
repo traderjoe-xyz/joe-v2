@@ -36,7 +36,7 @@ abstract contract TestHelper is Test, IERC165 {
     uint16 internal constant DEFAULT_REDUCTION_FACTOR = 5000;
     uint24 internal constant DEFAULT_VARIABLE_FEE_CONTROL = 5000;
 
-    address payable internal constant DEV = payable(0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84);
+    address payable internal immutable DEV = payable(address(this));
     address payable internal constant ALICE = payable(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
     address payable internal constant BOB = payable(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
 

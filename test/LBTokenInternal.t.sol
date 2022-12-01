@@ -25,13 +25,12 @@ contract LiquidityBinTokenTest is TestHelper, LBToken {
     }
 
     function testInternalMint(uint256 mintAmount) public {
-        address foundrySender = 0x00a329c0648769A73afAc7F9381E08FB43dBEA72;
         uint256 binNumber = 2**23;
         uint256 totalSupplyBefore = totalSupply(binNumber);
         uint256 balanceBefore = balanceOf(ALICE, binNumber);
         vm.expectEmit(true, true, true, true);
         // The event we expect
-        emit TransferSingle(foundrySender, address(0), ALICE, binNumber, mintAmount);
+        emit TransferSingle(msg.sender, address(0), ALICE, binNumber, mintAmount);
         _mint(ALICE, binNumber, mintAmount);
 
         assertEq(balanceOf(ALICE, binNumber), balanceBefore + mintAmount);
@@ -55,7 +54,6 @@ contract LiquidityBinTokenTest is TestHelper, LBToken {
     function testInternalBurn(uint256 mintAmount, uint256 burnAmount) public {
         vm.assume(mintAmount > 0 && burnAmount > 0);
         vm.assume(mintAmount >= burnAmount);
-        address foundrySender = 0x00a329c0648769A73afAc7F9381E08FB43dBEA72;
         uint256 binNumber = 2**23;
 
         _mint(ALICE, binNumber, mintAmount);
@@ -65,7 +63,7 @@ contract LiquidityBinTokenTest is TestHelper, LBToken {
 
         vm.expectEmit(true, true, true, true);
         // The event we expect
-        emit TransferSingle(foundrySender, ALICE, address(0), binNumber, burnAmount);
+        emit TransferSingle(msg.sender, ALICE, address(0), binNumber, burnAmount);
         _burn(ALICE, binNumber, burnAmount);
 
         assertEq(balanceOf(ALICE, binNumber), balanceBefore - burnAmount);

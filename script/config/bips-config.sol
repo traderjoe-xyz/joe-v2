@@ -76,16 +76,27 @@ library BipsConfig {
             preset.protocolShare = 0;
             preset.maxVolatilityAccumulated = 350_000;
             preset.sampleLifetime = 120;
+        } else if (_bp == 25) {
+            preset.binStep = 25;
+            preset.baseFactor = 10_000;
+            preset.filterPeriod = 30;
+            preset.decayPeriod = 600;
+            preset.reductionFactor = 5_000;
+            preset.variableFeeControl = 15_000;
+            preset.protocolShare = 0;
+            preset.maxVolatilityAccumulated = 350_000;
+            preset.sampleLifetime = 120;
         }
     }
 
     function getPresetList() internal pure returns (uint256[] memory presetList) {
-        presetList = new uint256[](6);
+        presetList = new uint256[](7);
         presetList[0] = 1;
         presetList[1] = 2;
         presetList[2] = 5;
         presetList[3] = 10;
         presetList[4] = 15;
         presetList[5] = 20;
+        presetList[6] = 25;
     }
 }

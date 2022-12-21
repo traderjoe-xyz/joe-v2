@@ -77,7 +77,7 @@ library BipsConfig {
             preset.maxVolatilityAccumulated = 350_000;
             preset.sampleLifetime = 120;
         } else if (_bp == 25) {
-            preset.binStep = 20;
+            preset.binStep = 25;
             preset.baseFactor = 10_000;
             preset.filterPeriod = 30;
             preset.decayPeriod = 600;

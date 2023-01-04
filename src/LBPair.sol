@@ -1112,7 +1112,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         uint128 _protocolFees
     ) private {
         assembly {
-            sstore(_pairFees.slot, and(shl(_OFFSET_PROTOCOL_FEE, _protocolFees), _totalFees))
+            sstore(_pairFees.slot, or(shl(_OFFSET_PROTOCOL_FEE, _protocolFees), _totalFees))
         }
     }
 

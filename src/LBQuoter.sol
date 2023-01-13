@@ -28,6 +28,7 @@ contract LBQuoter {
         address[] route;
         address[] pairs;
         uint256[] binSteps;
+        uint256[] revisions;
         uint256[] amounts;
         uint256[] virtualAmountsWithoutSlippage;
         uint256[] fees;
@@ -37,11 +38,7 @@ contract LBQuoter {
     /// @param _routerV2 Dex V2 router address
     /// @param _factoryV1 Dex V1 factory address
     /// @param _factoryV2 Dex V2 factory address
-    constructor(
-        address _routerV2,
-        address _factoryV1,
-        address _factoryV2
-    ) {
+    constructor(address _routerV2, address _factoryV1, address _factoryV2) {
         routerV2 = _routerV2;
         factoryV1 = _factoryV1;
         factoryV2 = _factoryV2;
@@ -51,11 +48,10 @@ contract LBQuoter {
     /// @param _route List of the tokens to go through
     /// @param _amountIn Swap amount in
     /// @return quote The Quote structure containing the necessary element to perform the swap
-    function findBestPathFromAmountIn(address[] calldata _route, uint256 _amountIn)
-        public
-        view
-        returns (Quote memory quote)
-    {
+    function findBestPathFromAmountIn(
+        address[] calldata _route,
+        uint256 _amountIn
+    ) public view returns (Quote memory quote) {
         if (_route.length < 2) {
             revert LBQuoter_InvalidLength();
         }
@@ -65,6 +61,7 @@ contract LBQuoter {
         uint256 swapLength = _route.length - 1;
         quote.pairs = new address[](swapLength);
         quote.binSteps = new uint256[](swapLength);
+        quote.revisions = new uint256[](swapLength);
         quote.fees = new uint256[](swapLength);
         quote.amounts = new uint256[](_route.length);
         quote.virtualAmountsWithoutSlippage = new uint256[](_route.length);
@@ -81,8 +78,11 @@ contract LBQuoter {
 
                 if (reserveIn > 0 && reserveOut > 0) {
                     quote.amounts[i + 1] = JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut);
-                    quote.virtualAmountsWithoutSlippage[i + 1] =
-                        JoeLibrary.quote(quote.virtualAmountsWithoutSlippage[i] * 997, reserveIn * 1000, reserveOut);
+                    quote.virtualAmountsWithoutSlippage[i + 1] = JoeLibrary.quote(
+                        quote.virtualAmountsWithoutSlippage[i] * 997,
+                        reserveIn * 1000,
+                        reserveOut
+                    );
                     quote.fees[i] = 0.003e18; // 0.3%
                 }
             }
@@ -105,6 +105,7 @@ contract LBQuoter {
                                 quote.amounts[i + 1] = swapAmountOut;
                                 quote.pairs[i] = address(LBPairsAvailable[j].LBPair);
                                 quote.binSteps[i] = LBPairsAvailable[j].binStep;
+                                quote.revisions[i] = LBPairsAvailable[j].revisionIndex;
 
                                 // Getting current price
                                 (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
@@ -128,11 +129,10 @@ contract LBQuoter {
     /// @param _route List of the tokens to go through
     /// @param _amountOut Swap amount out
     /// @return quote The Quote structure containing the necessary element to perform the swap
-    function findBestPathFromAmountOut(address[] calldata _route, uint256 _amountOut)
-        public
-        view
-        returns (Quote memory quote)
-    {
+    function findBestPathFromAmountOut(
+        address[] calldata _route,
+        uint256 _amountOut
+    ) public view returns (Quote memory quote) {
         if (_route.length < 2) {
             revert LBQuoter_InvalidLength();
         }
@@ -141,6 +141,7 @@ contract LBQuoter {
         uint256 swapLength = _route.length - 1;
         quote.pairs = new address[](swapLength);
         quote.binSteps = new uint256[](swapLength);
+        quote.revisions = new uint256[](swapLength);
         quote.fees = new uint256[](swapLength);
         quote.amounts = new uint256[](_route.length);
         quote.virtualAmountsWithoutSlippage = new uint256[](_route.length);
@@ -157,7 +158,8 @@ contract LBQuoter {
                 if (reserveIn > 0 && reserveOut > quote.amounts[i]) {
                     quote.amounts[i - 1] = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut);
                     quote.virtualAmountsWithoutSlippage[i - 1] =
-                        JoeLibrary.quote(quote.virtualAmountsWithoutSlippage[i] * 1000, reserveOut * 997, reserveIn) + 1;
+                        JoeLibrary.quote(quote.virtualAmountsWithoutSlippage[i] * 1000, reserveOut * 997, reserveIn) +
+                        1;
 
                     quote.fees[i - 1] = 0.003e18; // 0.3%
                 }
@@ -182,6 +184,7 @@ contract LBQuoter {
                                 quote.amounts[i - 1] = swapAmountIn;
                                 quote.pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
                                 quote.binSteps[i - 1] = LBPairsAvailable[j].binStep;
+                                quote.revisions[i - 1] = LBPairsAvailable[j].revisionIndex;
 
                                 // Getting current price
                                 (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();

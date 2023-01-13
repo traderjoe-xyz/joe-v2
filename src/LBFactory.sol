@@ -2,8 +2,6 @@
 
 pragma solidity 0.8.10;
 
-import "forge-std/console.sol";
-
 import "openzeppelin/proxy/Clones.sol";
 import "openzeppelin/utils/structs/EnumerableSet.sol";
 
@@ -227,7 +225,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
                         for (uint256 j = 0; j < revisionNumber; ++j) {
                             LBPairInformation memory _LBPairInformation = _LBPairsInfos[_tokenA][_tokenB][i][j];
 
-                            LBPairsAvailable[_index] = LBPairInformation({
+                            LBPairsAvailable[_index++] = LBPairInformation({
                                 binStep: i.safe16(),
                                 LBPair: _LBPairInformation.LBPair,
                                 createdByOwner: _LBPairInformation.createdByOwner,
@@ -237,7 +235,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
                             });
                         }
 
-                        if (++_index == totalPairs) break;
+                        if (_index == totalPairs) break;
                     }
                 }
             }
@@ -381,14 +379,16 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
             _LBPair.initialize(_tokenX, _tokenY, uint24(activeId), uint16(oracleSampleLifetime), _preset);
 
-            _LBPairsInfos[_tokenA][_tokenB][_binStep][0] = LBPairInformation({
-                binStep: _binStep,
-                LBPair: _LBPair,
-                createdByOwner: true,
-                ignoredForRouting: false,
-                revisionIndex: uint16(currentVersionNumber),
-                implementation: LBPairImplementation
-            });
+            _LBPairsInfos[_tokenA][_tokenB][_binStep].push(
+                LBPairInformation({
+                    binStep: _binStep,
+                    LBPair: _LBPair,
+                    createdByOwner: true,
+                    ignoredForRouting: false,
+                    revisionIndex: uint16(currentVersionNumber),
+                    implementation: LBPairImplementation
+                })
+            );
         }
 
         allLBPairs.push(_LBPair);
@@ -706,6 +706,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint256 _revision
     ) private view returns (LBPairInformation memory) {
         (_tokenA, _tokenB) = _sortTokens(_tokenA, _tokenB);
+
         if (_LBPairsInfos[_tokenA][_tokenB][_binStep].length == 0) {
             revert LBFactory__LBPairNotCreated(_tokenA, _tokenB, _binStep);
         }

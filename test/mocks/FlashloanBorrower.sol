@@ -2,11 +2,11 @@
 
 pragma solidity 0.8.10;
 
-import "openzeppelin/interfaces/IERC20.sol";
+import {IERC20} from "openzeppelin/interfaces/IERC20.sol";
 
-import "src/LBPair.sol";
-import "src/interfaces/ILBFlashLoanCallback.sol";
-import "src/libraries/Constants.sol";
+import {ILBPair} from "src/LBPair.sol";
+import {ILBFlashLoanCallback} from "src/interfaces/ILBFlashLoanCallback.sol";
+import {Constants} from "src/libraries/Constants.sol";
 
 error FlashBorrower__UntrustedLender();
 error FlashBorrower__UntrustedLoanInitiator();
@@ -33,13 +33,11 @@ contract FlashBorrower is ILBFlashLoanCallback {
         (_tokenX, _tokenY) = (lender_.tokenX(), lender_.tokenY());
     }
 
-    function LBFlashLoanCallback(
-        address sender,
-        IERC20 token,
-        uint256 amount,
-        uint256 fee,
-        bytes calldata data
-    ) external override returns (bytes32) {
+    function LBFlashLoanCallback(address, IERC20 token, uint256 amount, uint256 fee, bytes calldata data)
+        external
+        override
+        returns (bytes32)
+    {
         if (msg.sender != address(_lender)) {
             revert FlashBorrower__UntrustedLender();
         }

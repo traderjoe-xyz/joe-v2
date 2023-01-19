@@ -6,8 +6,8 @@ import "./TestHelper.sol";
 
 contract LiquidityBinRouterTest is TestHelper {
     function setUp() public {
-        token6D = new ERC20MockDecimals(6);
-        token18D = new ERC20MockDecimals(18);
+        token6D = new ERC20Mock(6);
+        token18D = new ERC20Mock(18);
         wavax = new WAVAX();
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
@@ -55,27 +55,12 @@ contract LiquidityBinRouterTest is TestHelper {
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
         router.removeLiquidity(
-            token6D,
-            token18D,
-            DEFAULT_BIN_STEP,
-            1,
-            1,
-            defaultUintArray,
-            defaultUintArray,
-            DEV,
-            wrongDeadline
+            token6D, token18D, DEFAULT_BIN_STEP, 1, 1, defaultUintArray, defaultUintArray, DEV, wrongDeadline
         );
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
         router.removeLiquidityAVAX(
-            token6D,
-            DEFAULT_BIN_STEP,
-            1,
-            1,
-            defaultUintArray,
-            defaultUintArray,
-            DEV,
-            wrongDeadline
+            token6D, DEFAULT_BIN_STEP, 1, 1, defaultUintArray, defaultUintArray, DEV, wrongDeadline
         );
         vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
         router.swapExactTokensForTokens(1, 1, defaultUintArray, defaultIERCArray, DEV, wrongDeadline);
@@ -97,31 +82,17 @@ contract LiquidityBinRouterTest is TestHelper {
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
         router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            1,
-            1,
-            defaultUintArray,
-            defaultIERCArray,
-            DEV,
-            wrongDeadline
+            1, 1, defaultUintArray, defaultIERCArray, DEV, wrongDeadline
         );
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
         router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
-            1,
-            1,
-            defaultUintArray,
-            defaultIERCArray,
-            DEV,
-            wrongDeadline
+            1, 1, defaultUintArray, defaultIERCArray, DEV, wrongDeadline
         );
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__DeadlineExceeded.selector, wrongDeadline, block.timestamp));
         router.swapExactAVAXForTokensSupportingFeeOnTransferTokens(
-            1,
-            defaultUintArray,
-            defaultIERCArray,
-            DEV,
-            wrongDeadline
+            1, defaultUintArray, defaultIERCArray, DEV, wrongDeadline
         );
 
         //TODO _addLiquidity private
@@ -170,58 +141,30 @@ contract LiquidityBinRouterTest is TestHelper {
 
         vm.expectRevert(LBRouter__LengthsMismatch.selector);
         router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            1,
-            1,
-            pairBinStepsZeroLength,
-            defaultIERCArray,
-            DEV,
-            block.timestamp
+            1, 1, pairBinStepsZeroLength, defaultIERCArray, DEV, block.timestamp
         );
         vm.expectRevert(LBRouter__LengthsMismatch.selector);
         router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            1,
-            1,
-            mismatchedpairBinSteps,
-            mismatchedIERCArray,
-            DEV,
-            block.timestamp
+            1, 1, mismatchedpairBinSteps, mismatchedIERCArray, DEV, block.timestamp
         );
 
         vm.expectRevert(LBRouter__LengthsMismatch.selector);
         router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
-            1,
-            1,
-            pairBinStepsZeroLength,
-            defaultIERCArray,
-            DEV,
-            block.timestamp
+            1, 1, pairBinStepsZeroLength, defaultIERCArray, DEV, block.timestamp
         );
         vm.expectRevert(LBRouter__LengthsMismatch.selector);
         router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
-            1,
-            1,
-            mismatchedpairBinSteps,
-            mismatchedIERCArray,
-            DEV,
-            block.timestamp
+            1, 1, mismatchedpairBinSteps, mismatchedIERCArray, DEV, block.timestamp
         );
 
         vm.expectRevert(LBRouter__LengthsMismatch.selector);
         router.swapExactAVAXForTokensSupportingFeeOnTransferTokens(
-            1,
-            pairBinStepsZeroLength,
-            defaultIERCArray,
-            DEV,
-            block.timestamp
+            1, pairBinStepsZeroLength, defaultIERCArray, DEV, block.timestamp
         );
 
         vm.expectRevert(LBRouter__LengthsMismatch.selector);
         router.swapExactAVAXForTokensSupportingFeeOnTransferTokens(
-            1,
-            mismatchedpairBinSteps,
-            mismatchedIERCArray,
-            DEV,
-            block.timestamp
+            1, mismatchedpairBinSteps, mismatchedIERCArray, DEV, block.timestamp
         );
     }
 
@@ -239,12 +182,8 @@ contract LiquidityBinRouterTest is TestHelper {
         router.createLBPair(token6D, token18D, ID_ONE, DEFAULT_BIN_STEP);
         router.createLBPair(token6D, wavax, ID_ONE, DEFAULT_BIN_STEP);
 
-        (_deltaIds, _distributionX, _distributionY, amountXIn) = spreadLiquidityForRouter(
-            _amountYIn,
-            ID_ONE,
-            _numberBins,
-            _gap
-        );
+        (_deltaIds, _distributionX, _distributionY, amountXIn) =
+            spreadLiquidityForRouter(_amountYIn, ID_ONE, _numberBins, _gap);
 
         token6D.mint(DEV, amountXIn);
         token6D.approve(address(router), amountXIn);
@@ -308,15 +247,8 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 amountXIn;
         int256[] memory _deltaIds;
         pair = createLBPairDefaultFees(token6D, token18D);
-        (_deltaIds, , , amountXIn) = addLiquidityFromRouter(
-            token6D,
-            token18D,
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap,
-            DEFAULT_BIN_STEP
-        );
+        (_deltaIds,,, amountXIn) =
+            addLiquidityFromRouter(token6D, token18D, _amountYIn, _startId, _numberBins, _gap, DEFAULT_BIN_STEP);
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__WrongAmounts.selector, 0, _amountYIn));
         router.getSwapIn(pair, 0, true);
@@ -352,7 +284,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint24 _gap = 2;
         uint256 amountXIn;
         pair = createLBPairDefaultFees(token6D, token18D);
-        (, , , amountXIn) = addLiquidity(_amountYIn, _startId, _numberBins, _gap);
+        (,,, amountXIn) = addLiquidity(_amountYIn, _startId, _numberBins, _gap);
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__SwapOverflows.selector, _startId));
         router.getSwapIn(pair, _amountYIn, true);
@@ -396,10 +328,10 @@ contract LiquidityBinRouterTest is TestHelper {
         uint24 _gap = 2;
         uint256 amountXIn;
         pair = createLBPairDefaultFees(token6D, token18D);
-        (, , , amountXIn) = addLiquidity(_amountYIn, _startId, _numberBins, _gap);
+        (,,, amountXIn) = addLiquidity(_amountYIn, _startId, _numberBins, _gap);
         //getSwapIn goes through all bins with liquidity
-        (uint256 amountIn, ) = router.getSwapIn(pair, amountXIn - 100, false);
-        (uint256 amountIn2, ) = router.getSwapIn(pair, _amountYIn - 100, true);
+        (uint256 amountIn,) = router.getSwapIn(pair, amountXIn - 100, false);
+        (uint256 amountIn2,) = router.getSwapIn(pair, _amountYIn - 100, true);
     }
 
     function testWrongTokenWAVAXSwaps() public {
@@ -422,21 +354,12 @@ contract LiquidityBinRouterTest is TestHelper {
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__InvalidTokenPath.selector, address(IERCArray[1])));
         router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
-            1,
-            1,
-            pairBinStepsArray,
-            IERCArray,
-            DEV,
-            block.timestamp
+            1, 1, pairBinStepsArray, IERCArray, DEV, block.timestamp
         );
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__InvalidTokenPath.selector, address(IERCArray[0])));
         router.swapExactAVAXForTokensSupportingFeeOnTransferTokens(
-            1,
-            pairBinStepsArray,
-            IERCArray,
-            DEV,
-            block.timestamp
+            1, pairBinStepsArray, IERCArray, DEV, block.timestamp
         );
     }
 
@@ -444,7 +367,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 amountIn = 1e18;
 
         pair = createLBPairDefaultFees(token6D, token18D);
-        (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, 5, 0);
+        (uint256[] memory _ids,,,) = addLiquidity(amountIn, ID_ONE, 5, 0);
 
         uint256[] memory amounts = new uint256[](5);
         for (uint256 i; i < 5; i++) {

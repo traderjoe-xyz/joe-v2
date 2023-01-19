@@ -17,9 +17,9 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function setUp() public {
-        token6D = new ERC20MockDecimals(6);
-        token12D = new ERC20MockDecimals(12);
-        token18D = new ERC20MockDecimals(18);
+        token6D = new ERC20Mock(6);
+        token12D = new ERC20Mock(12);
+        token18D = new ERC20Mock(18);
         wavax = new WAVAX();
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
@@ -315,9 +315,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         uint16 invalidProtocolShare = uint16(factory.MAX_PROTOCOL_SHARE() + 1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                LBFactory__ProtocolShareOverflows.selector,
-                invalidProtocolShare,
-                factory.MAX_PROTOCOL_SHARE()
+                LBFactory__ProtocolShareOverflows.selector, invalidProtocolShare, factory.MAX_PROTOCOL_SHARE()
             )
         );
 
@@ -339,9 +337,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         uint16 invalidReductionFactor = uint16(Constants.BASIS_POINT_MAX + 1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                LBFactory__ReductionFactorOverflows.selector,
-                invalidReductionFactor,
-                Constants.BASIS_POINT_MAX
+                LBFactory__ReductionFactorOverflows.selector, invalidReductionFactor, Constants.BASIS_POINT_MAX
             )
         );
 
@@ -396,9 +392,10 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         //copy of part of factory._getPackedFeeParameters function
         uint256 _baseFee = (uint256(baseFactorIncreased) * DEFAULT_BIN_STEP) * 1e10;
-        uint256 _maxVariableFee = (DEFAULT_VARIABLE_FEE_CONTROL *
-            (uint256(DEFAULT_MAX_VOLATILITY_ACCUMULATED) * DEFAULT_BIN_STEP) *
-            (uint256(DEFAULT_MAX_VOLATILITY_ACCUMULATED) * DEFAULT_BIN_STEP)) / 100;
+        uint256 _maxVariableFee = (
+            DEFAULT_VARIABLE_FEE_CONTROL * (uint256(DEFAULT_MAX_VOLATILITY_ACCUMULATED) * DEFAULT_BIN_STEP)
+                * (uint256(DEFAULT_MAX_VOLATILITY_ACCUMULATED) * DEFAULT_BIN_STEP)
+        ) / 100;
 
         uint256 fee = _baseFee + _maxVariableFee;
         vm.expectRevert(abi.encodeWithSelector(LBFactory__FeesAboveMax.selector, fee, factory.MAX_FEE()));
@@ -421,9 +418,10 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         //copy of part of factory._getPackedFeeParameters function
         uint256 _baseFee = (uint256(DEFAULT_BASE_FACTOR) * DEFAULT_BIN_STEP) * 1e10;
-        uint256 _maxVariableFee = (DEFAULT_VARIABLE_FEE_CONTROL *
-            (uint256(volatilityAccumulated) * DEFAULT_BIN_STEP) *
-            (uint256(volatilityAccumulated) * DEFAULT_BIN_STEP)) / 100;
+        uint256 _maxVariableFee = (
+            DEFAULT_VARIABLE_FEE_CONTROL * (uint256(volatilityAccumulated) * DEFAULT_BIN_STEP)
+                * (uint256(volatilityAccumulated) * DEFAULT_BIN_STEP)
+        ) / 100;
         uint256 fee = _baseFee + _maxVariableFee;
 
         vm.expectRevert(abi.encodeWithSelector(LBFactory__FeesAboveMax.selector, fee, factory.MAX_FEE()));
@@ -459,7 +457,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(LBFactory__QuoteAssetAlreadyWhitelisted.selector, token12D));
         factory.addQuoteAsset(token12D);
 
-        token24D = new ERC20MockDecimals(24);
+        token24D = new ERC20Mock(24);
         vm.expectRevert(abi.encodeWithSelector(LBFactory__QuoteAssetNotWhitelisted.selector, token24D));
         factory.removeQuoteAsset(token24D);
 

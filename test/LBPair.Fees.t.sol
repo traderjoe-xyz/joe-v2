@@ -9,8 +9,8 @@ contract LiquidityBinPairFeesTest is TestHelper {
     using Math512Bits for uint256;
 
     function setUp() public {
-        token6D = new ERC20MockDecimals(6);
-        token18D = new ERC20MockDecimals(18);
+        token6D = new ERC20Mock(6);
+        token18D = new ERC20Mock(18);
 
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
@@ -36,7 +36,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         vm.prank(ALICE);
         pair.swap(false, DEV);
 
-        (, uint256 feesYTotal, , uint256 feesYProtocol) = pair.getGlobalFees();
+        (, uint256 feesYTotal,, uint256 feesYProtocol) = pair.getGlobalFees();
         assertEq(feesYTotal, feesFromGetSwapIn);
 
         uint256 accumulatedYFees = feesYTotal - feesYProtocol;
@@ -83,7 +83,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         vm.prank(ALICE);
         pair.swap(true, DEV);
 
-        (uint256 feesXTotal, , uint256 feesXProtocol, ) = pair.getGlobalFees();
+        (uint256 feesXTotal,, uint256 feesXProtocol,) = pair.getGlobalFees();
         assertEq(feesXTotal, feesFromGetSwapIn);
         uint256 accumulatedXFees = feesXTotal - feesXProtocol;
 
@@ -122,7 +122,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         uint256 amountYForSwap = 1e6;
         uint24 startId = ID_ONE;
 
-        (uint256[] memory _ids, , , ) = addLiquidity(amountYInLiquidity, startId, 5, 0);
+        (uint256[] memory _ids,,,) = addLiquidity(amountYInLiquidity, startId, 5, 0);
 
         token18D.mint(address(pair), amountYForSwap);
 
@@ -144,7 +144,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         assertGt(feesForDevY, 0, "DEV should have fees on token Y");
         assertGt(feesForBobY, 0, "BOB should also have fees on token Y");
 
-        (, uint256 feesYTotal, , uint256 feesYProtocol) = pair.getGlobalFees();
+        (, uint256 feesYTotal,, uint256 feesYProtocol) = pair.getGlobalFees();
 
         uint256 accumulatedYFees = feesYTotal - feesYProtocol;
 
@@ -153,17 +153,13 @@ contract LiquidityBinPairFeesTest is TestHelper {
         uint256 balanceBefore = token18D.balanceOf(DEV);
         pair.collectFees(DEV, _ids);
         assertEq(
-            feesForDevY,
-            token18D.balanceOf(DEV) - balanceBefore,
-            "DEV gets the expected amount when withdrawing fees"
+            feesForDevY, token18D.balanceOf(DEV) - balanceBefore, "DEV gets the expected amount when withdrawing fees"
         );
 
         balanceBefore = token18D.balanceOf(BOB);
         pair.collectFees(BOB, _ids);
         assertEq(
-            feesForBobY,
-            token18D.balanceOf(BOB) - balanceBefore,
-            "BOB gets the expected amount when withdrawing fees"
+            feesForBobY, token18D.balanceOf(BOB) - balanceBefore, "BOB gets the expected amount when withdrawing fees"
         );
     }
 
@@ -290,22 +286,22 @@ contract LiquidityBinPairFeesTest is TestHelper {
         FeeHelper.FeeParameters memory _feeParameters = pair.feeParameters();
         addLiquidity(amountYInLiquidity, startId, 51, 5);
 
-        (uint256 amountYInForSwap, ) = router.getSwapIn(pair, amountYInLiquidity / 4, true);
+        (uint256 amountYInForSwap,) = router.getSwapIn(pair, amountYInLiquidity / 4, true);
         token6D.mint(address(pair), amountYInForSwap);
         vm.prank(ALICE);
         pair.swap(true, ALICE);
 
         vm.warp(block.timestamp + 90);
 
-        (amountYInForSwap, ) = router.getSwapIn(pair, amountYInLiquidity / 4, true);
+        (amountYInForSwap,) = router.getSwapIn(pair, amountYInLiquidity / 4, true);
         token6D.mint(address(pair), amountYInForSwap);
         vm.prank(ALICE);
         pair.swap(true, ALICE);
 
         _feeParameters = pair.feeParameters();
         uint256 referenceBeforeForceDecay = _feeParameters.volatilityReference;
-        uint256 referenceAfterForceDecayExpected = (uint256(_feeParameters.reductionFactor) *
-            referenceBeforeForceDecay) / Constants.BASIS_POINT_MAX;
+        uint256 referenceAfterForceDecayExpected =
+            (uint256(_feeParameters.reductionFactor) * referenceBeforeForceDecay) / Constants.BASIS_POINT_MAX;
 
         factory.forceDecay(pair);
 
@@ -333,7 +329,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         token6D.mint(address(pair), amountXInForSwap);
         vm.prank(ALICE);
         pair.swap(true, DEV);
-        (uint256 feesXTotal, , uint256 feesXProtocol, ) = pair.getGlobalFees();
+        (uint256 feesXTotal,, uint256 feesXProtocol,) = pair.getGlobalFees();
         assertEq(feesXTotal, totalFeesFromGetSwapX);
 
         //swap Y -> X and accrue Y fees
@@ -343,7 +339,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         vm.prank(ALICE);
         pair.swap(false, DEV);
 
-        (, uint256 feesYTotal, , uint256 feesYProtocol) = pair.getGlobalFees();
+        (, uint256 feesYTotal,, uint256 feesYProtocol) = pair.getGlobalFees();
         assertEq(feesYTotal, totalFeesFromGetSwapY);
 
         //swap Y -> X and accrue Y fees
@@ -353,7 +349,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         vm.prank(ALICE);
         pair.swap(false, DEV);
 
-        (, feesYTotal, , feesYProtocol) = pair.getGlobalFees();
+        (, feesYTotal,, feesYProtocol) = pair.getGlobalFees();
         assertEq(feesYTotal, totalFeesFromGetSwapY);
 
         //swap X -> Y and accrue X fees
@@ -363,7 +359,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         vm.prank(ALICE);
         pair.swap(true, DEV);
 
-        (feesXTotal, , feesXProtocol, ) = pair.getGlobalFees();
+        (feesXTotal,, feesXProtocol,) = pair.getGlobalFees();
         assertEq(feesXTotal, totalFeesFromGetSwapX);
     }
 
@@ -375,7 +371,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
 
         addLiquidity(amountYInLiquidity, startId, 5, 0);
 
-        (uint256 amountYInForSwap, ) = router.getSwapIn(pair, amountXOutForSwap, false);
+        (uint256 amountYInForSwap,) = router.getSwapIn(pair, amountXOutForSwap, false);
 
         // setup non-zero Y fees
         token18D.mint(address(pair), amountYInForSwap);
@@ -383,7 +379,7 @@ contract LiquidityBinPairFeesTest is TestHelper {
         pair.swap(false, DEV);
 
         // setup non-zero X fees
-        (uint256 amountXInForSwap, ) = router.getSwapIn(pair, amountYOutForSwap, true);
+        (uint256 amountXInForSwap,) = router.getSwapIn(pair, amountYOutForSwap, true);
         token6D.mint(address(pair), amountXInForSwap);
         vm.prank(ALICE);
         pair.swap(true, DEV);

@@ -8,16 +8,16 @@ contract LiquidityBinQuoterTest is TestHelper {
     using Math512Bits for uint256;
 
     IJoeFactory private factoryV1;
-    ERC20MockDecimals private testWavax;
+    ERC20Mock private testWavax;
 
     uint256 private defaultBaseFee = DEFAULT_BIN_STEP * uint256(DEFAULT_BASE_FACTOR) * 1e10;
 
     function setUp() public {
         vm.createSelectFork(vm.rpcUrl("avalanche"), 19_358_000);
 
-        usdc = new ERC20MockDecimals(6);
-        usdt = new ERC20MockDecimals(6);
-        testWavax = new ERC20MockDecimals(18);
+        usdc = new ERC20Mock(6);
+        usdt = new ERC20Mock(6);
+        testWavax = new ERC20Mock(18);
 
         factoryV1 = IJoeFactory(JOE_V1_FACTORY_ADDRESS);
         factory = new LBFactory(DEV, 8e14);
@@ -122,11 +122,8 @@ contract LiquidityBinQuoterTest is TestHelper {
 
         // Fees are expressed in the In token
         // To get the theorical amountIn without slippage but with the fees, the calculation is amountIn = amountOut / price / (1 - fees)
-        uint256 quoteAmountInWithFees = JoeLibrary.quote(
-            (amountOut * 1e18) / (1e18 - quote.fees[0]),
-            20_000e6,
-            1_000e18
-        );
+        uint256 quoteAmountInWithFees =
+            JoeLibrary.quote((amountOut * 1e18) / (1e18 - quote.fees[0]), 20_000e6, 1_000e18);
         assertApproxEqAbs(quote.virtualAmountsWithoutSlippage[0], quoteAmountInWithFees, 1e12);
     }
 

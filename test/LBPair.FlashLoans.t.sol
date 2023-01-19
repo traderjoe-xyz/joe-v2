@@ -10,8 +10,8 @@ contract LiquidityBinPairFlashLoansTest is TestHelper {
     event CalldataTransmitted();
 
     function setUp() public {
-        token6D = new ERC20MockDecimals(6);
-        token18D = new ERC20MockDecimals(18);
+        token6D = new ERC20Mock(6);
+        token18D = new ERC20Mock(18);
 
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
@@ -27,7 +27,7 @@ contract LiquidityBinPairFlashLoansTest is TestHelper {
     }
 
     function testFlashloan() public {
-        (uint256[] memory _ids, , , ) = addLiquidity(100e18, ID_ONE, 9, 5);
+        (uint256[] memory _ids,,,) = addLiquidity(100e18, ID_ONE, 9, 5);
         uint256 amountXBorrowed = 10e18;
         uint256 amountYBorrowed = 10e18;
 

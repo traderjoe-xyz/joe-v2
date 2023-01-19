@@ -10,8 +10,8 @@ contract LiquidityBinFactoryTestM is TestHelper {
     LBPair internal pair2;
 
     function setUp() public {
-        token6D = new ERC20MockDecimals(6);
-        token18D = new ERC20MockDecimals(18);
+        token6D = new ERC20Mock(6);
+        token18D = new ERC20Mock(18);
 
         factory = new LBFactory(DEV, 8e14);
         addAllAssetsToQuoteWhitelist(factory);
@@ -151,10 +151,8 @@ contract LiquidityBinFactoryTestM is TestHelper {
         factory.removePreset(75);
         factory.removePreset(98);
 
-        ILBFactory.LBPairInformation[] memory LBPairBinStepsAfterPresetRemoval = factory.getAllLBPairs(
-            token6D,
-            token18D
-        );
+        ILBFactory.LBPairInformation[] memory LBPairBinStepsAfterPresetRemoval =
+            factory.getAllLBPairs(token6D, token18D);
         assertEq(LBPairBinStepsAfterPresetRemoval.length, 3);
         assertEq(LBPairBinStepsAfterPresetRemoval[0].binStep, DEFAULT_BIN_STEP);
         assertEq(LBPairBinStepsAfterPresetRemoval[1].binStep, 75);
@@ -171,10 +169,8 @@ contract LiquidityBinFactoryTestM is TestHelper {
 
         factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, false);
 
-        ILBFactory.LBPairInformation[] memory LBPairBinStepsAfterRemovalOfIgnored = factory.getAllLBPairs(
-            token6D,
-            token18D
-        );
+        ILBFactory.LBPairInformation[] memory LBPairBinStepsAfterRemovalOfIgnored =
+            factory.getAllLBPairs(token6D, token18D);
         assertEq(LBPairBinStepsAfterRemovalOfIgnored.length, 3);
         assertEq(LBPairBinStepsAfterRemovalOfIgnored[0].ignoredForRouting, false);
         assertEq(LBPairBinStepsAfterRemovalOfIgnored[1].ignoredForRouting, false);

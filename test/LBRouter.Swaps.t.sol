@@ -13,13 +13,13 @@ contract LiquidityBinRouterTest is TestHelper {
     LBPair internal taxTokenPair;
 
     function setUp() public {
-        token6D = new ERC20MockDecimals(6);
-        token10D = new ERC20MockDecimals(10);
-        token12D = new ERC20MockDecimals(12);
-        token18D = new ERC20MockDecimals(18);
-        token24D = new ERC20MockDecimals(24);
+        token6D = new ERC20Mock(6);
+        token10D = new ERC20Mock(10);
+        token12D = new ERC20Mock(12);
+        token18D = new ERC20Mock(18);
+        token24D = new ERC20Mock(24);
 
-        taxToken = new ERC20WithTransferTax();
+        taxToken = new ERC20TransferTaxMock();
 
         wavax = new WAVAX();
 
@@ -43,21 +43,15 @@ contract LiquidityBinRouterTest is TestHelper {
         pair3 = createLBPairDefaultFees(token18D, token24D);
         addLiquidityFromRouter(token18D, token24D, 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
         taxTokenPair1 = createLBPairDefaultFees(token6D, taxToken);
-        addLiquidityFromRouter(token6D, ERC20MockDecimals(address(taxToken)), 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
+        addLiquidityFromRouter(token6D, ERC20Mock(address(taxToken)), 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
 
         taxTokenPair = createLBPairDefaultFees(taxToken, wavax);
         addLiquidityFromRouter(
-            ERC20MockDecimals(address(taxToken)),
-            ERC20MockDecimals(address(wavax)),
-            100e18,
-            ID_ONE,
-            9,
-            2,
-            DEFAULT_BIN_STEP
+            ERC20Mock(address(taxToken)), ERC20Mock(address(wavax)), 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP
         );
 
         pairWavax = createLBPairDefaultFees(token6D, wavax);
-        addLiquidityFromRouter(token6D, ERC20MockDecimals(address(wavax)), 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
+        addLiquidityFromRouter(token6D, ERC20Mock(address(wavax)), 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
     }
 
     function testSwapExactTokensForTokensSinglePair() public {
@@ -73,7 +67,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = DEFAULT_BIN_STEP;
 
-        (uint256 amountOut, ) = router.getSwapOut(pair, amountIn, true);
+        (uint256 amountOut,) = router.getSwapOut(pair, amountIn, true);
         vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 1, amountOut));
         router.swapExactTokensForTokens(amountIn, amountOut + 1, pairVersions, tokenList, DEV, block.timestamp);
 
@@ -96,7 +90,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = DEFAULT_BIN_STEP;
 
-        (uint256 amountOut, ) = router.getSwapOut(pair, amountIn, true);
+        (uint256 amountOut,) = router.getSwapOut(pair, amountIn, true);
 
         uint256 devBalanceBefore = ALICE.balance;
         vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 1, amountOut));
@@ -117,7 +111,7 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = DEFAULT_BIN_STEP;
 
-        (uint256 amountOut, ) = router.getSwapOut(pairWavax, amountIn, false);
+        (uint256 amountOut,) = router.getSwapOut(pairWavax, amountIn, false);
 
         vm.deal(DEV, amountIn);
         vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 1, amountOut));
@@ -131,7 +125,7 @@ contract LiquidityBinRouterTest is TestHelper {
     function testSwapTokensForExactTokensSinglePair() public {
         uint256 amountOut = 1e18;
 
-        (uint256 amountIn, ) = router.getSwapIn(pair, amountOut, true);
+        (uint256 amountIn,) = router.getSwapIn(pair, amountOut, true);
         token6D.mint(DEV, amountIn);
 
         token6D.approve(address(router), amountIn);
@@ -152,7 +146,7 @@ contract LiquidityBinRouterTest is TestHelper {
     function testSwapTokensForExactAVAXSinglePair() public {
         uint256 amountOut = 1e18;
 
-        (uint256 amountIn, ) = router.getSwapIn(pairWavax, amountOut, true);
+        (uint256 amountIn,) = router.getSwapIn(pairWavax, amountOut, true);
         token6D.mint(ALICE, amountIn);
 
         vm.startPrank(ALICE);
@@ -178,7 +172,7 @@ contract LiquidityBinRouterTest is TestHelper {
     function testSwapAVAXForExactTokensSinglePair() public {
         uint256 amountOut = 1e18;
 
-        (uint256 amountIn, ) = router.getSwapIn(pairWavax, amountOut, false);
+        (uint256 amountIn,) = router.getSwapIn(pairWavax, amountOut, false);
 
         IERC20[] memory tokenList = new IERC20[](2);
         tokenList[0] = wavax;
@@ -208,24 +202,14 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = DEFAULT_BIN_STEP;
 
-        (uint256 amountOut, ) = router.getSwapOut(taxTokenPair, amountIn, true);
+        (uint256 amountOut,) = router.getSwapOut(taxTokenPair, amountIn, true);
         amountOut = amountOut / 2;
         vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 1, amountOut));
         router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            amountIn,
-            amountOut + 1,
-            pairVersions,
-            tokenList,
-            DEV,
-            block.timestamp
+            amountIn, amountOut + 1, pairVersions, tokenList, DEV, block.timestamp
         );
         router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            amountIn,
-            0,
-            pairVersions,
-            tokenList,
-            DEV,
-            block.timestamp
+            amountIn, 0, pairVersions, tokenList, DEV, block.timestamp
         );
 
         // 50% tax to take into account
@@ -237,26 +221,16 @@ contract LiquidityBinRouterTest is TestHelper {
         tokenList[0] = wavax;
         tokenList[1] = taxToken;
 
-        (amountOut, ) = router.getSwapOut(taxTokenPair, amountIn, true);
+        (amountOut,) = router.getSwapOut(taxTokenPair, amountIn, true);
         amountOut = amountOut / 2;
         uint256 balanceBefore = taxToken.balanceOf(DEV);
         vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 1, amountOut));
         router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            amountIn,
-            amountOut + 1,
-            pairVersions,
-            tokenList,
-            DEV,
-            block.timestamp
+            amountIn, amountOut + 1, pairVersions, tokenList, DEV, block.timestamp
         );
 
         router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            amountIn,
-            amountOut,
-            pairVersions,
-            tokenList,
-            DEV,
-            block.timestamp
+            amountIn, amountOut, pairVersions, tokenList, DEV, block.timestamp
         );
 
         assertApproxEqAbs(taxToken.balanceOf(DEV) - balanceBefore, amountOut, 10);
@@ -276,25 +250,15 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = DEFAULT_BIN_STEP;
 
-        (uint256 amountOut, ) = router.getSwapOut(taxTokenPair, amountIn, true);
+        (uint256 amountOut,) = router.getSwapOut(taxTokenPair, amountIn, true);
         amountOut = amountOut / 2;
         uint256 devBalanceBefore = ALICE.balance;
         vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 1, amountOut));
         router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
-            amountIn,
-            amountOut + 1,
-            pairVersions,
-            tokenList,
-            ALICE,
-            block.timestamp
+            amountIn, amountOut + 1, pairVersions, tokenList, ALICE, block.timestamp
         );
         router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
-            amountIn,
-            amountOut,
-            pairVersions,
-            tokenList,
-            ALICE,
-            block.timestamp
+            amountIn, amountOut, pairVersions, tokenList, ALICE, block.timestamp
         );
         vm.stopPrank();
 
@@ -310,23 +274,15 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256[] memory pairVersions = new uint256[](1);
         pairVersions[0] = DEFAULT_BIN_STEP;
 
-        (uint256 amountOut, ) = router.getSwapOut(taxTokenPair, amountIn, true);
+        (uint256 amountOut,) = router.getSwapOut(taxTokenPair, amountIn, true);
         amountOut = amountOut / 2;
         vm.deal(DEV, amountIn);
         vm.expectRevert(abi.encodeWithSelector(LBRouter__InsufficientAmountOut.selector, amountOut + 1, amountOut));
         router.swapExactAVAXForTokensSupportingFeeOnTransferTokens{value: amountIn}(
-            amountOut + 1,
-            pairVersions,
-            tokenList,
-            DEV,
-            block.timestamp
+            amountOut + 1, pairVersions, tokenList, DEV, block.timestamp
         );
         router.swapExactAVAXForTokensSupportingFeeOnTransferTokens{value: amountIn}(
-            amountOut,
-            pairVersions,
-            tokenList,
-            DEV,
-            block.timestamp
+            amountOut, pairVersions, tokenList, DEV, block.timestamp
         );
 
         assertApproxEqAbs(taxToken.balanceOf(DEV), amountOut, 10);
@@ -441,14 +397,8 @@ contract LiquidityBinRouterTest is TestHelper {
         token6D.approve(address(router), amountIn);
         taxToken.approve(address(router), amountIn);
         uint256 aliceBalanceBefore = ALICE.balance;
-        uint256 amountOutNotSupporting = router.swapExactTokensForAVAX(
-            amountIn,
-            0,
-            pairVersions,
-            tokenList,
-            ALICE,
-            block.timestamp
-        );
+        uint256 amountOutNotSupporting =
+            router.swapExactTokensForAVAX(amountIn, 0, pairVersions, tokenList, ALICE, block.timestamp);
         vm.stopPrank();
 
         vm.startPrank(BOB);
@@ -456,12 +406,7 @@ contract LiquidityBinRouterTest is TestHelper {
         taxToken.approve(address(router), amountIn);
         uint256 bobBalanceBefore = BOB.balance;
         uint256 amountOutSupporting = router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
-            amountIn,
-            0,
-            pairVersions,
-            tokenList,
-            BOB,
-            block.timestamp
+            amountIn, 0, pairVersions, tokenList, BOB, block.timestamp
         );
         vm.stopPrank();
 
@@ -500,22 +445,12 @@ contract LiquidityBinRouterTest is TestHelper {
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
         router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            amountIn2,
-            0,
-            pairVersions,
-            tokenList,
-            DEV,
-            block.timestamp
+            amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp
         );
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
         router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
-            amountIn2,
-            0,
-            pairVersions,
-            tokenList,
-            DEV,
-            block.timestamp
+            amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp
         );
 
         tokenListAvaxIn = new IERC20[](3);
@@ -531,11 +466,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token6D, token18D, pairVersions[1]));
         router.swapExactAVAXForTokensSupportingFeeOnTransferTokens{value: amountIn2}(
-            0,
-            pairVersions,
-            tokenListAvaxIn,
-            DEV,
-            block.timestamp
+            0, pairVersions, tokenListAvaxIn, DEV, block.timestamp
         );
     }
 
@@ -551,16 +482,16 @@ contract LiquidityBinRouterForkTest is TestHelper {
 
     function setUp() public {
         vm.createSelectFork(vm.rpcUrl("avalanche"), 19_358_000);
-        token6D = new ERC20MockDecimals(6);
-        token10D = new ERC20MockDecimals(10);
-        token12D = new ERC20MockDecimals(12);
-        token18D = new ERC20MockDecimals(18);
-        token24D = new ERC20MockDecimals(24);
+        token6D = new ERC20Mock(6);
+        token10D = new ERC20Mock(10);
+        token12D = new ERC20Mock(12);
+        token18D = new ERC20Mock(18);
+        token24D = new ERC20Mock(24);
 
-        taxToken = new ERC20WithTransferTax();
+        taxToken = new ERC20TransferTaxMock();
 
         wavax = WAVAX(WAVAX_AVALANCHE_ADDRESS);
-        usdc = ERC20MockDecimals(USDC_AVALANCHE_ADDRESS);
+        usdc = ERC20Mock(USDC_AVALANCHE_ADDRESS);
 
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
@@ -584,17 +515,11 @@ contract LiquidityBinRouterForkTest is TestHelper {
 
         taxTokenPair = createLBPairDefaultFees(taxToken, wavax);
         addLiquidityFromRouter(
-            ERC20MockDecimals(address(taxToken)),
-            ERC20MockDecimals(address(wavax)),
-            100e18,
-            ID_ONE,
-            9,
-            2,
-            DEFAULT_BIN_STEP
+            ERC20Mock(address(taxToken)), ERC20Mock(address(wavax)), 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP
         );
 
         pairWavax = createLBPairDefaultFees(token6D, wavax);
-        addLiquidityFromRouter(token6D, ERC20MockDecimals(address(wavax)), 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
+        addLiquidityFromRouter(token6D, ERC20Mock(address(wavax)), 100e18, ID_ONE, 9, 2, DEFAULT_BIN_STEP);
     }
 
     function testSwapExactTokensForTokensMultiplePairsWithV1() public {
@@ -726,23 +651,13 @@ contract LiquidityBinRouterForkTest is TestHelper {
         vm.expectRevert("Joe: K");
         router.swapExactTokensForTokens(amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp);
         router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            amountIn2,
-            0,
-            pairVersions,
-            tokenList,
-            DEV,
-            block.timestamp
+            amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp
         );
         vm.deal(DEV, amountIn2);
         vm.expectRevert("Joe: K");
         router.swapExactTokensForAVAX(amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp);
         router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
-            amountIn2,
-            0,
-            pairVersions,
-            tokenList,
-            DEV,
-            block.timestamp
+            amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp
         );
 
         tokenList[0] = wavax;
@@ -753,11 +668,7 @@ contract LiquidityBinRouterForkTest is TestHelper {
         vm.expectRevert("Joe: K");
         router.swapExactAVAXForTokens{value: amountIn2}(0, pairVersions, tokenList, DEV, block.timestamp);
         router.swapExactAVAXForTokensSupportingFeeOnTransferTokens{value: amountIn2}(
-            0,
-            pairVersions,
-            tokenList,
-            DEV,
-            block.timestamp
+            0, pairVersions, tokenList, DEV, block.timestamp
         );
     }
 
@@ -792,22 +703,12 @@ contract LiquidityBinRouterForkTest is TestHelper {
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
         router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            amountIn2,
-            0,
-            pairVersions,
-            tokenList,
-            DEV,
-            block.timestamp
+            amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp
         );
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token18D, wavax, pairVersions[1]));
         router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
-            amountIn2,
-            0,
-            pairVersions,
-            tokenList,
-            DEV,
-            block.timestamp
+            amountIn2, 0, pairVersions, tokenList, DEV, block.timestamp
         );
 
         tokenListAvaxIn = new IERC20[](3);
@@ -823,11 +724,7 @@ contract LiquidityBinRouterForkTest is TestHelper {
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__PairNotCreated.selector, token6D, token18D, pairVersions[1]));
         router.swapExactAVAXForTokensSupportingFeeOnTransferTokens{value: amountIn2}(
-            0,
-            pairVersions,
-            tokenListAvaxIn,
-            DEV,
-            block.timestamp
+            0, pairVersions, tokenListAvaxIn, DEV, block.timestamp
         );
     }
 

@@ -3,8 +3,9 @@
 pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
-import "test/mocks/ERC20MockDecimalsOwnable.sol";
+import "test/mocks/ERC20.sol";
 import "test/mocks/Faucet.sol";
+import "src/LBErrors.sol";
 
 contract FaucetTest is Test {
     Faucet private faucet;
@@ -14,8 +15,8 @@ contract FaucetTest is Test {
     address internal constant BOB = address(bytes20(bytes32(keccak256(bytes("BOB")))));
     address internal constant OPERATOR = address(bytes20(bytes32(keccak256(bytes("OPERATOR")))));
 
-    ERC20MockDecimalsOwnable token6;
-    ERC20MockDecimalsOwnable token12;
+    ERC20Mock token6;
+    ERC20Mock token12;
 
     IERC20 AVAX = IERC20(address(0));
 
@@ -25,8 +26,8 @@ contract FaucetTest is Test {
     uint256 constant REQUEST_COOLDOWN = 24 hours;
 
     function setUp() public {
-        token6 = new ERC20MockDecimalsOwnable("Mock Token 6 decimals", "TOKEN6", 6);
-        token12 = new ERC20MockDecimalsOwnable("Mock Token 12 decimals", "TOKEN12", 12);
+        token6 = new ERC20Mock( 6);
+        token12 = new ERC20Mock( 12);
 
         faucet = new Faucet{value: 10 * AVAX_PER_REQUEST}(AVAX_PER_REQUEST, REQUEST_COOLDOWN);
 
@@ -70,7 +71,7 @@ contract FaucetTest is Test {
     }
 
     function testAddToken() external {
-        ERC20MockDecimalsOwnable newToken = new ERC20MockDecimalsOwnable("New Token", "NEW_TOKEN", 18);
+        ERC20Mock newToken = new ERC20Mock(18);
         newToken.mint(address(faucet), 1_000e18);
 
         vm.startPrank(ALICE, ALICE);
@@ -96,10 +97,10 @@ contract FaucetTest is Test {
         faucet.removeFaucetToken(IERC20(token6));
 
         IERC20 faucetToken;
-        (faucetToken, ) = faucet.faucetTokens(0);
+        (faucetToken,) = faucet.faucetTokens(0);
         assertEq(address(faucetToken), address(AVAX));
 
-        (faucetToken, ) = faucet.faucetTokens(1);
+        (faucetToken,) = faucet.faucetTokens(1);
         assertEq(address(faucetToken), address(token12));
 
         assertEq(faucet.owner(), DEV);

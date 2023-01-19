@@ -16,14 +16,14 @@ import "src/libraries/Math512Bits.sol";
 import "src/libraries/Constants.sol";
 
 import "test/mocks/WAVAX.sol";
-import "test/mocks/ERC20MockDecimals.sol";
+import "test/mocks/ERC20.sol";
 import "test/mocks/FlashloanBorrower.sol";
-import "test/mocks/ERC20WithTransferTax.sol";
+import "test/mocks/ERC20TransferTax.sol";
 
 abstract contract TestHelper is Test, IERC165 {
     using Math512Bits for uint256;
 
-    uint24 internal constant ID_ONE = 2**23;
+    uint24 internal constant ID_ONE = 2 ** 23;
     uint256 internal constant BASIS_POINT_MAX = 10_000;
 
     uint24 internal constant DEFAULT_MAX_VOLATILITY_ACCUMULATED = 1_777_638;
@@ -46,16 +46,16 @@ abstract contract TestHelper is Test, IERC165 {
     address internal constant USDC_AVALANCHE_ADDRESS = 0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E;
 
     WAVAX internal wavax;
-    ERC20MockDecimals internal usdc;
-    ERC20MockDecimals internal usdt;
+    ERC20Mock internal usdc;
+    ERC20Mock internal usdt;
 
-    ERC20MockDecimals internal token6D;
-    ERC20MockDecimals internal token10D;
-    ERC20MockDecimals internal token12D;
-    ERC20MockDecimals internal token18D;
-    ERC20MockDecimals internal token24D;
+    ERC20Mock internal token6D;
+    ERC20Mock internal token10D;
+    ERC20Mock internal token12D;
+    ERC20Mock internal token18D;
+    ERC20Mock internal token24D;
 
-    ERC20WithTransferTax internal taxToken;
+    ERC20TransferTaxMock internal taxToken;
 
     LBFactory internal factory;
     LBRouter internal router;
@@ -94,11 +94,10 @@ abstract contract TestHelper is Test, IERC165 {
         );
     }
 
-    function createLBPairDefaultFeesFromStartId(
-        IERC20 _tokenX,
-        IERC20 _tokenY,
-        uint24 _startId
-    ) internal returns (LBPair newPair) {
+    function createLBPairDefaultFeesFromStartId(IERC20 _tokenX, IERC20 _tokenY, uint24 _startId)
+        internal
+        returns (LBPair newPair)
+    {
         newPair = createLBPairDefaultFeesFromStartIdAndBinStep(_tokenX, _tokenY, _startId, DEFAULT_BIN_STEP);
     }
 
@@ -111,12 +110,7 @@ abstract contract TestHelper is Test, IERC165 {
         newPair = LBPair(address(factory.createLBPair(_tokenX, _tokenY, _startId, _binStep)));
     }
 
-    function addLiquidity(
-        uint256 _amountYIn,
-        uint24 _startId,
-        uint24 _numberBins,
-        uint24 _gap
-    )
+    function addLiquidity(uint256 _amountYIn, uint24 _startId, uint24 _numberBins, uint24 _gap)
         internal
         returns (
             uint256[] memory _ids,
@@ -133,12 +127,7 @@ abstract contract TestHelper is Test, IERC165 {
         pair.mint(_ids, _distributionX, _distributionY, DEV);
     }
 
-    function spreadLiquidity(
-        uint256 _amountYIn,
-        uint24 _startId,
-        uint24 _numberBins,
-        uint24 _gap
-    )
+    function spreadLiquidity(uint256 _amountYIn, uint24 _startId, uint24 _numberBins, uint24 _gap)
         internal
         pure
         returns (
@@ -168,16 +157,15 @@ abstract contract TestHelper is Test, IERC165 {
             }
             if (i >= spread) {
                 _distributionX[i] = binDistribution;
-                amountXIn += binLiquidity > 0
-                    ? (binLiquidity * Constants.SCALE - 1) / getPriceFromId(uint24(_ids[i])) + 1
-                    : 0;
+                amountXIn +=
+                    binLiquidity > 0 ? (binLiquidity * Constants.SCALE - 1) / getPriceFromId(uint24(_ids[i])) + 1 : 0;
             }
         }
     }
 
     function addLiquidityFromRouter(
-        ERC20MockDecimals _tokenX,
-        ERC20MockDecimals _tokenY,
+        ERC20Mock _tokenX,
+        ERC20Mock _tokenY,
         uint256 _amountYIn,
         uint24 _startId,
         uint24 _numberBins,
@@ -192,12 +180,8 @@ abstract contract TestHelper is Test, IERC165 {
             uint256 amountXIn
         )
     {
-        (_deltaIds, _distributionX, _distributionY, amountXIn) = spreadLiquidityForRouter(
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap
-        );
+        (_deltaIds, _distributionX, _distributionY, amountXIn) =
+            spreadLiquidityForRouter(_amountYIn, _startId, _numberBins, _gap);
 
         ILBRouter.LiquidityParameters memory _liquidityParameters = ILBRouter.LiquidityParameters(
             _tokenX,
@@ -235,12 +219,7 @@ abstract contract TestHelper is Test, IERC165 {
         }
     }
 
-    function spreadLiquidityForRouter(
-        uint256 _amountYIn,
-        uint24 _startId,
-        uint24 _numberBins,
-        uint24 _gap
-    )
+    function spreadLiquidityForRouter(uint256 _amountYIn, uint24 _startId, uint24 _numberBins, uint24 _gap)
         internal
         pure
         returns (
@@ -271,15 +250,14 @@ abstract contract TestHelper is Test, IERC165 {
             if (i >= spread) {
                 _distributionX[i] = binDistribution;
                 amountXIn +=
-                    (binLiquidity * Constants.SCALE) /
-                    getPriceFromId(uint24(int24(_startId) + int24(_deltaIds[i])));
+                    (binLiquidity * Constants.SCALE) / getPriceFromId(uint24(int24(_startId) + int24(_deltaIds[i])));
             }
         }
     }
 
     function prepareLiquidityParameters(
-        ERC20MockDecimals _tokenX,
-        ERC20MockDecimals _tokenY,
+        ERC20Mock _tokenX,
+        ERC20Mock _tokenY,
         uint256 _amountYIn,
         uint24 _startId,
         uint24 _numberBins,
@@ -290,12 +268,8 @@ abstract contract TestHelper is Test, IERC165 {
         uint256[] memory _distributionX;
         uint256[] memory _distributionY;
         uint256 amountXIn;
-        (_deltaIds, _distributionX, _distributionY, amountXIn) = spreadLiquidityForRouter(
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap
-        );
+        (_deltaIds, _distributionX, _distributionY, amountXIn) =
+            spreadLiquidityForRouter(_amountYIn, _startId, _numberBins, _gap);
 
         _tokenX.mint(DEV, amountXIn);
         _tokenX.approve(address(router), amountXIn);
@@ -307,23 +281,22 @@ abstract contract TestHelper is Test, IERC165 {
             _tokenY.mint(DEV, _amountYIn);
         }
 
-        return
-            ILBRouter.LiquidityParameters(
-                _tokenX,
-                _tokenY,
-                _binStep,
-                amountXIn,
-                _amountYIn,
-                0, //possible slippage = max
-                0, //possible slippage = max
-                ID_ONE,
-                ID_ONE, //possible slippage = max
-                _deltaIds,
-                _distributionX,
-                _distributionY,
-                DEV,
-                block.timestamp
-            );
+        return ILBRouter.LiquidityParameters(
+            _tokenX,
+            _tokenY,
+            _binStep,
+            amountXIn,
+            _amountYIn,
+            0, //possible slippage = max
+            0, //possible slippage = max
+            ID_ONE,
+            ID_ONE, //possible slippage = max
+            _deltaIds,
+            _distributionX,
+            _distributionY,
+            DEV,
+            block.timestamp
+        );
     }
 
     function addAllAssetsToQuoteWhitelist(LBFactory _factory) internal {

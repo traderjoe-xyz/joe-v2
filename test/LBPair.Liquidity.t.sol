@@ -6,8 +6,8 @@ import "./TestHelper.sol";
 
 contract LiquidityBinPairLiquidityTest is TestHelper {
     function setUp() public {
-        token6D = new ERC20MockDecimals(6);
-        token18D = new ERC20MockDecimals(18);
+        token6D = new ERC20Mock(6);
+        token18D = new ERC20Mock(18);
 
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
@@ -67,9 +67,9 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
 
     function testFuzzingAddLiquidity(uint256 _price) public {
         // Avoids Math__Exp2InputTooBig and very small x amounts
-        vm.assume(_price < 2**238);
+        vm.assume(_price < 2 ** 238);
         // Avoids LBPair__BinReserveOverflows (very big x amounts)
-        vm.assume(_price > 2**18);
+        vm.assume(_price > 2 ** 18);
 
         uint24 startId = getIdFromPrice(_price);
 
@@ -79,8 +79,10 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
         // Assert that price is at most `binStep`% away from the calculated price
         assertEq(
             (
-                (((_price * (Constants.BASIS_POINT_MAX - DEFAULT_BIN_STEP)) / 10_000) <= _calculatedPrice &&
-                    _calculatedPrice <= (_price * (Constants.BASIS_POINT_MAX + DEFAULT_BIN_STEP)) / 10_000)
+                (
+                    ((_price * (Constants.BASIS_POINT_MAX - DEFAULT_BIN_STEP)) / 10_000) <= _calculatedPrice
+                        && _calculatedPrice <= (_price * (Constants.BASIS_POINT_MAX + DEFAULT_BIN_STEP)) / 10_000
+                )
             ),
             true,
             "Wrong log2"
@@ -88,7 +90,7 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
 
         pair = createLBPairDefaultFeesFromStartId(token6D, token18D, startId);
 
-        uint256 amountYIn = _price < type(uint128).max ? 2**18 : type(uint112).max;
+        uint256 amountYIn = _price < type(uint128).max ? 2 ** 18 : type(uint112).max;
         uint256 amountXIn = (amountYIn << 112) / _price + 3;
 
         console.log(amountXIn, amountYIn);
@@ -129,12 +131,8 @@ contract LiquidityBinPairLiquidityTest is TestHelper {
     function testBurnLiquidity() public {
         pair = createLBPairDefaultFees(token6D, token18D);
         uint256 amount1In = 3e12;
-        (
-            uint256[] memory _ids,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
-            uint256 amount0In
-        ) = spreadLiquidity(amount1In * 2, ID_ONE, 5, 0);
+        (uint256[] memory _ids, uint256[] memory _distributionX, uint256[] memory _distributionY, uint256 amount0In) =
+            spreadLiquidity(amount1In * 2, ID_ONE, 5, 0);
 
         token6D.mint(address(pair), amount0In);
         token18D.mint(address(pair), amount1In);

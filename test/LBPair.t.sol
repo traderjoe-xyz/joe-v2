@@ -7,8 +7,8 @@ contract LiquidityBinPairTest is TestHelper {
     ILBPair _LBPairImplementation;
 
     function setUp() public {
-        token6D = new ERC20MockDecimals(6);
-        token18D = new ERC20MockDecimals(18);
+        token6D = new ERC20Mock(6);
+        token18D = new ERC20Mock(18);
 
         factory = new LBFactory(DEV, 8e14);
         _LBPairImplementation = new LBPair(factory);

@@ -8,8 +8,8 @@ contract LiquidityBinRouterTest is TestHelper {
     event AVAXreceived();
 
     function setUp() public {
-        token6D = new ERC20MockDecimals(6);
-        token18D = new ERC20MockDecimals(18);
+        token6D = new ERC20Mock(6);
+        token18D = new ERC20Mock(18);
         wavax = new WAVAX();
         uint16 binStep = 100;
         factory = new LBFactory(DEV, 8e14);
@@ -82,7 +82,7 @@ contract LiquidityBinRouterTest is TestHelper {
         token6D.approve(address(router), amountXIn);
 
         uint256 feesXTotal;
-        (feesXTotal, , , ) = pair.getGlobalFees();
+        (feesXTotal,,,) = pair.getGlobalFees();
         assertEq(feesXTotal, 0);
 
         _liquidityParameters = ILBRouter.LiquidityParameters(
@@ -117,7 +117,7 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.prank(ALICE);
         router.removeLiquidity(token6D, token18D, binStep, 0, 0, ids, amounts, ALICE, block.timestamp);
 
-        (feesXTotal, , , ) = pair.getGlobalFees();
+        (feesXTotal,,,) = pair.getGlobalFees();
         assertGt(feesXTotal, amountXIn / 199);
 
         //remove BOB's liquidity to ALICE account
@@ -184,7 +184,7 @@ contract LiquidityBinRouterTest is TestHelper {
         token18D.approve(address(router), amountYIn);
 
         uint256 feesYTotal;
-        (, feesYTotal, , ) = pair.getGlobalFees();
+        (, feesYTotal,,) = pair.getGlobalFees();
         assertEq(feesYTotal, 0);
 
         _liquidityParameters = ILBRouter.LiquidityParameters(
@@ -231,7 +231,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
         uint256 ALICE6DbalanceAfterSecondRemove = token18D.balanceOf(ALICE);
 
-        (, feesYTotal, , ) = pair.getGlobalFees();
+        (, feesYTotal,,) = pair.getGlobalFees();
         assertGt(feesYTotal, amountYIn / 199);
         assertEq(ALICE6DbalanceAfterSecondRemove + feesYTotal, amountYIn);
     }

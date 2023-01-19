@@ -2,8 +2,8 @@
 
 pragma solidity 0.8.10;
 
-import "../../src/libraries/PendingOwnable.sol";
-import "../../src/libraries/TokenHelper.sol";
+import {PendingOwnable} from "src/libraries/PendingOwnable.sol";
+import {TokenHelper, IERC20} from "src/libraries/TokenHelper.sol";
 
 /// @title Faucet contract
 /// @author Trader Joe
@@ -138,11 +138,7 @@ contract Faucet is PendingOwnable {
     /// @param _token The address of the token to withdraw
     /// @param _to The recipient address
     /// @param _amount The token amount to send
-    function withdrawToken(
-        IERC20 _token,
-        address _to,
-        uint256 _amount
-    ) external onlyOwner {
+    function withdrawToken(IERC20 _token, address _to, uint256 _amount) external onlyOwner {
         if (address(_token) == address(0)) _sendAvax(_to, _amount);
         else _token.safeTransfer(_to, _amount);
     }
@@ -174,8 +170,9 @@ contract Faucet is PendingOwnable {
         for (uint256 i = 1; i < len; ++i) {
             token = faucetTokens[i];
 
-            if (token.amountPerRequest > 0 && token.ERC20.balanceOf(address(this)) >= token.amountPerRequest)
+            if (token.amountPerRequest > 0 && token.ERC20.balanceOf(address(this)) >= token.amountPerRequest) {
                 token.ERC20.safeTransfer(_to, token.amountPerRequest);
+            }
         }
     }
 
@@ -213,7 +210,7 @@ contract Faucet is PendingOwnable {
     /// @param _to The recipient address
     /// @param _amount The AVAX amount to send
     function _sendAvax(address _to, uint256 _amount) private {
-        (bool success, ) = _to.call{value: _amount}("");
+        (bool success,) = _to.call{value: _amount}("");
         require(success, "AVAX transfer failed");
     }
 }

@@ -2,13 +2,13 @@
 
 pragma solidity 0.8.10;
 
-import "./TestHelper.sol";
+import "./helpers/TestHelper.sol";
 import "src/libraries/Oracle.sol";
 
-contract LiquidityBinPairOracleTest is TestHelper {
-    function setUp() public {
-        token6D = new ERC20Mock(6);
-        token18D = new ERC20Mock(18);
+contract TODO_LiquidityBinPairOracleTest is TestHelper {
+    function setUp() public override {
+        usdc = new ERC20Mock(6);
+        weth = new ERC20Mock(18);
 
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
@@ -18,7 +18,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
 
         router = new LBRouter(ILBFactory(DEV), IJoeFactory(DEV), IWAVAX(DEV));
 
-        pair = createLBPairDefaultFees(token6D, token18D);
+        pair = createLBPairDefaultFees(usdc, weth);
     }
 
     function testVerifyOracleInitialParams() public {
@@ -75,7 +75,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
 
     function testOracleSampleFromEdgeCases() public {
         uint256 tokenAmount = 100e18;
-        token18D.mint(address(pair), tokenAmount);
+        weth.mint(address(pair), tokenAmount);
 
         uint256[] memory _ids = new uint256[](1);
         _ids[0] = ID_ONE;
@@ -85,7 +85,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
 
         pair.mint(_ids, new uint256[](1), _liquidities, DEV);
 
-        token6D.mint(address(pair), 5e18);
+        usdc.mint(address(pair), 5e18);
 
         vm.expectRevert(Oracle__NotInitialized.selector);
         pair.getOracleSampleFrom(0);
@@ -100,7 +100,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
 
     function testOracleSampleFromWith2Samples() public {
         uint256 tokenAmount = 100e18;
-        token18D.mint(address(pair), tokenAmount);
+        weth.mint(address(pair), tokenAmount);
 
         uint256[] memory _ids = new uint256[](1);
         _ids[0] = ID_ONE;
@@ -110,13 +110,13 @@ contract LiquidityBinPairOracleTest is TestHelper {
 
         pair.mint(_ids, new uint256[](1), _liquidities, DEV);
 
-        token6D.mint(address(pair), 5e18);
+        usdc.mint(address(pair), 5e18);
 
         pair.swap(true, DEV);
 
         vm.warp(block.timestamp + 250);
 
-        token6D.mint(address(pair), 5e18);
+        usdc.mint(address(pair), 5e18);
 
         pair.swap(true, DEV);
 
@@ -135,8 +135,8 @@ contract LiquidityBinPairOracleTest is TestHelper {
         (uint256[] memory _ids, uint256[] memory _distributionX, uint256[] memory _distributionY, uint256 amount0In) =
             spreadLiquidity(amount1In * 2, ID_ONE, 99, 100);
 
-        token6D.mint(address(pair), amount0In);
-        token18D.mint(address(pair), amount1In);
+        usdc.mint(address(pair), amount0In);
+        weth.mint(address(pair), amount1In);
 
         pair.mint(_ids, _distributionX, _distributionY, DEV);
         pair.increaseOracleLength(100);
@@ -144,7 +144,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
         uint256 startTimestamp;
 
         for (uint256 i; i < 200; ++i) {
-            token6D.mint(address(pair), 1e18);
+            usdc.mint(address(pair), 1e18);
 
             vm.warp(1500 + 100 * i);
             pair.swap(true, DEV);
@@ -172,8 +172,8 @@ contract LiquidityBinPairOracleTest is TestHelper {
         (uint256[] memory _ids, uint256[] memory _distributionX, uint256[] memory _distributionY, uint256 amount0In) =
             spreadLiquidity(amount1In * 2, ID_ONE, 99, 100);
 
-        token6D.mint(address(pair), amount0In);
-        token18D.mint(address(pair), amount1In);
+        usdc.mint(address(pair), amount0In);
+        weth.mint(address(pair), amount1In);
 
         pair.mint(_ids, _distributionX, _distributionY, DEV);
 
@@ -181,7 +181,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
 
         uint16 newSize = 2;
         for (uint256 i; i < 50; ++i) {
-            token6D.mint(address(pair), 1e18);
+            usdc.mint(address(pair), 1e18);
 
             newSize += 2;
             pair.increaseOracleLength(newSize);
@@ -215,7 +215,7 @@ contract LiquidityBinPairOracleTest is TestHelper {
         addLiquidity(amountYInLiquidity, startId, 51, 5);
 
         (uint256 amountYInForSwap,) = router.getSwapIn(pair, amountYInLiquidity / 4, true);
-        token6D.mint(address(pair), amountYInForSwap);
+        usdc.mint(address(pair), amountYInForSwap);
         vm.prank(ALICE);
         pair.swap(true, ALICE);
 

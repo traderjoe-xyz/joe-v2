@@ -2,13 +2,13 @@
 
 pragma solidity 0.8.10;
 
-import "./TestHelper.sol";
+import "./helpers/TestHelper.sol";
 import "../src/LBToken.sol";
 
-contract LiquidityBinTokenTest is TestHelper, LBToken {
-    function setUp() public {
-        token6D = new ERC20Mock(6);
-        token18D = new ERC20Mock(18);
+contract TODO_LiquidityBinTokenTest is TestHelper, LBToken {
+    function setUp() public override {
+        usdc = new ERC20Mock(6);
+        weth = new ERC20Mock(18);
 
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
@@ -16,7 +16,7 @@ contract LiquidityBinTokenTest is TestHelper, LBToken {
         addAllAssetsToQuoteWhitelist(factory);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
 
-        pair = createLBPairDefaultFees(token6D, token18D);
+        pair = createLBPairDefaultFees(usdc, weth);
     }
 
     function testInternalMintTo0AddressReverts() public {

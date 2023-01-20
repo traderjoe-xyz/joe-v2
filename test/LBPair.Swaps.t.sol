@@ -2,12 +2,12 @@
 
 pragma solidity 0.8.10;
 
-import "./TestHelper.sol";
+import "./helpers/TestHelper.sol";
 
-contract LiquidityBinPairSwapsTest is TestHelper {
-    function setUp() public {
-        token6D = new ERC20Mock(6);
-        token18D = new ERC20Mock(18);
+contract TODO_LiquidityBinPairSwapsTest is TestHelper {
+    function setUp() public override {
+        usdc = new ERC20Mock(6);
+        weth = new ERC20Mock(18);
 
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
@@ -16,7 +16,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         addAllAssetsToQuoteWhitelist(factory);
         router = new LBRouter(ILBFactory(DEV), IJoeFactory(DEV), IWAVAX(DEV));
 
-        pair = createLBPairDefaultFees(token6D, token18D);
+        pair = createLBPairDefaultFees(usdc, weth);
     }
 
     function testSwapInsufficientAmountReverts() public {
@@ -28,7 +28,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
     function testSwapXtoYSingleBinFromGetSwapOut() public {
         uint256 tokenAmount = 100e18;
-        token18D.mint(address(pair), tokenAmount);
+        weth.mint(address(pair), tokenAmount);
 
         uint256[] memory _ids = new uint256[](1);
         _ids[0] = ID_ONE;
@@ -42,12 +42,12 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 amountYOut,) = router.getSwapOut(pair, amountXIn, true);
 
-        token6D.mint(address(pair), amountXIn);
+        usdc.mint(address(pair), amountXIn);
 
         pair.swap(true, DEV);
 
-        assertEq(token6D.balanceOf(DEV), 0);
-        assertEq(token18D.balanceOf(DEV), amountYOut);
+        assertEq(usdc.balanceOf(DEV), 0);
+        assertEq(weth.balanceOf(DEV), amountYOut);
 
         (uint256 binReserveX, uint256 binReserveY) = pair.getBin(ID_ONE);
 
@@ -59,7 +59,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
     function testSwapYtoXSingleBinFromGetSwapOut() public {
         uint256 tokenAmount = 100e18;
-        token6D.mint(address(pair), tokenAmount);
+        usdc.mint(address(pair), tokenAmount);
 
         uint256[] memory _ids = new uint256[](1);
         _ids[0] = ID_ONE;
@@ -75,12 +75,12 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 amountXOut,) = router.getSwapOut(pair, amountYIn, false);
 
-        token18D.mint(address(pair), amountYIn);
+        weth.mint(address(pair), amountYIn);
 
         pair.swap(false, DEV);
 
-        assertEq(token6D.balanceOf(DEV), amountXOut);
-        assertEq(token18D.balanceOf(DEV), 0);
+        assertEq(usdc.balanceOf(DEV), amountXOut);
+        assertEq(weth.balanceOf(DEV), 0);
 
         (uint256 binReserveX, uint256 binReserveY) = pair.getBin(uint24(_ids[0]));
 
@@ -92,7 +92,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
     function testSwapXtoYSingleBinFromGetSwapIn() public {
         uint256 tokenAmount = 100e18;
-        token18D.mint(address(pair), tokenAmount);
+        weth.mint(address(pair), tokenAmount);
 
         uint256[] memory _ids = new uint256[](1);
         _ids[0] = ID_ONE;
@@ -106,12 +106,12 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 amountXIn,) = router.getSwapIn(pair, amountYOut, true);
 
-        token6D.mint(address(pair), amountXIn);
+        usdc.mint(address(pair), amountXIn);
 
         pair.swap(true, DEV);
 
-        assertEq(token6D.balanceOf(DEV), 0);
-        assertEq(token18D.balanceOf(DEV), amountYOut);
+        assertEq(usdc.balanceOf(DEV), 0);
+        assertEq(weth.balanceOf(DEV), amountYOut);
 
         (uint256 binReserveX, uint256 binReserveY) = pair.getBin(ID_ONE);
 
@@ -123,7 +123,7 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
     function testSwapYtoXSingleBinFromGetSwapIn() public {
         uint256 tokenAmount = 100e18;
-        token6D.mint(address(pair), tokenAmount);
+        usdc.mint(address(pair), tokenAmount);
 
         uint256[] memory _ids = new uint256[](1);
         _ids[0] = ID_ONE + 1;
@@ -137,12 +137,12 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 amountYIn,) = router.getSwapIn(pair, amountXOut, false);
 
-        token18D.mint(address(pair), amountYIn);
+        weth.mint(address(pair), amountYIn);
 
         pair.swap(false, DEV);
 
-        assertEq(token6D.balanceOf(DEV), amountXOut);
-        assertEq(token18D.balanceOf(DEV), 0);
+        assertEq(usdc.balanceOf(DEV), amountXOut);
+        assertEq(weth.balanceOf(DEV), 0);
 
         (uint256 binReserveX, uint256 binReserveY) = pair.getBin(uint24(_ids[0]));
 
@@ -161,11 +161,11 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 amountYInForSwap,) = router.getSwapIn(pair, amountXOutForSwap, false);
 
-        token18D.mint(address(pair), amountYInForSwap);
+        weth.mint(address(pair), amountYInForSwap);
 
         pair.swap(false, ALICE);
 
-        assertEq(token6D.balanceOf(ALICE), amountXOutForSwap);
+        assertEq(usdc.balanceOf(ALICE), amountXOutForSwap);
     }
 
     function testSwapXtoYConsecutiveBinFromGetSwapIn() public {
@@ -177,11 +177,11 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 amountXInForSwap,) = router.getSwapIn(pair, amountYOutForSwap, true);
 
-        token6D.mint(address(pair), amountXInForSwap);
+        usdc.mint(address(pair), amountXInForSwap);
 
         pair.swap(true, ALICE);
 
-        assertEq(token18D.balanceOf(ALICE), amountYOutForSwap);
+        assertEq(weth.balanceOf(ALICE), amountYOutForSwap);
     }
 
     function testSwapYtoXConsecutiveBinFromGetSwapOut() public {
@@ -193,11 +193,11 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 amountXOutForSwap,) = router.getSwapOut(pair, amountYInForSwap, false);
 
-        token18D.mint(address(pair), amountYInForSwap);
+        weth.mint(address(pair), amountYInForSwap);
 
         pair.swap(false, ALICE);
 
-        assertEq(token6D.balanceOf(ALICE), amountXOutForSwap);
+        assertEq(usdc.balanceOf(ALICE), amountXOutForSwap);
     }
 
     function testSwapXtoYConsecutiveBinFromGetSwapOut() public {
@@ -209,11 +209,11 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 amountYOutForSwap,) = router.getSwapOut(pair, amountXInForSwap, true);
 
-        token6D.mint(address(pair), amountXInForSwap);
+        usdc.mint(address(pair), amountXInForSwap);
 
         pair.swap(true, ALICE);
 
-        assertEq(token18D.balanceOf(ALICE), amountYOutForSwap);
+        assertEq(weth.balanceOf(ALICE), amountYOutForSwap);
     }
 
     function testSwapYtoXDistantBinsFromGetSwapIn() public {
@@ -225,11 +225,11 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 amountYInForSwap,) = router.getSwapIn(pair, amountXOutForSwap, false);
 
-        token18D.mint(address(pair), amountYInForSwap);
+        weth.mint(address(pair), amountYInForSwap);
 
         pair.swap(false, ALICE);
 
-        assertEq(token6D.balanceOf(ALICE), amountXOutForSwap);
+        assertEq(usdc.balanceOf(ALICE), amountXOutForSwap);
     }
 
     function testSwapXtoYDistantBinsFromGetSwapIn() public {
@@ -241,11 +241,11 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 amountXInForSwap,) = router.getSwapIn(pair, amountYOutForSwap, true);
 
-        token6D.mint(address(pair), amountXInForSwap);
+        usdc.mint(address(pair), amountXInForSwap);
 
         pair.swap(true, ALICE);
 
-        assertEq(token18D.balanceOf(ALICE), amountYOutForSwap);
+        assertEq(weth.balanceOf(ALICE), amountYOutForSwap);
     }
 
     function testSwapYtoXDistantBinsFromGetSwapOut() public {
@@ -257,11 +257,11 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 amountXOutForSwap,) = router.getSwapOut(pair, amountYInForSwap, false);
 
-        token18D.mint(address(pair), amountYInForSwap);
+        weth.mint(address(pair), amountYInForSwap);
 
         pair.swap(false, ALICE);
 
-        assertEq(token6D.balanceOf(ALICE), amountXOutForSwap);
+        assertEq(usdc.balanceOf(ALICE), amountXOutForSwap);
     }
 
     function testSwapXtoYDistantBinsFromGetSwapOut() public {
@@ -273,11 +273,11 @@ contract LiquidityBinPairSwapsTest is TestHelper {
 
         (uint256 amountYOutForSwap,) = router.getSwapOut(pair, amountXInForSwap, true);
 
-        token6D.mint(address(pair), amountXInForSwap);
+        usdc.mint(address(pair), amountXInForSwap);
 
         pair.swap(true, ALICE);
 
-        assertEq(token18D.balanceOf(ALICE), amountYOutForSwap);
+        assertEq(weth.balanceOf(ALICE), amountYOutForSwap);
     }
 
     function testInvalidTokenPathReverts() public {
@@ -285,8 +285,8 @@ contract LiquidityBinPairSwapsTest is TestHelper {
         uint256 _amountOutMinAVAX = 10e18;
         uint256[] memory _pairBinSteps = new uint256[](1);
         IERC20[] memory _tokenPath = new IERC20[](2);
-        _tokenPath[0] = token6D;
-        _tokenPath[1] = token18D;
+        _tokenPath[0] = usdc;
+        _tokenPath[1] = weth;
 
         vm.expectRevert(abi.encodeWithSelector(LBRouter__InvalidTokenPath.selector, _tokenPath[1]));
         router.swapExactTokensForAVAX(_amountIn, _amountOutMinAVAX, _pairBinSteps, _tokenPath, DEV, block.timestamp);

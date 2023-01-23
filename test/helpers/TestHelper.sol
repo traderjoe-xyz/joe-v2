@@ -31,9 +31,9 @@ abstract contract TestHelper is Test, IERC165 {
     uint16 internal constant DEFAULT_BASE_FACTOR = 1000;
     uint16 internal constant DEFAULT_FILTER_PERIOD = 30;
     uint16 internal constant DEFAULT_DECAY_PERIOD = 600;
-    uint16 internal constant DEFAULT_REDUCTION_FACTOR = 500;
-    uint24 internal constant DEFAULT_VARIABLE_FEE_CONTROL = 4000;
-    uint16 internal constant DEFAULT_PROTOCOL_SHARE = 100;
+    uint16 internal constant DEFAULT_REDUCTION_FACTOR = 5_000;
+    uint24 internal constant DEFAULT_VARIABLE_FEE_CONTROL = 40_000;
+    uint16 internal constant DEFAULT_PROTOCOL_SHARE = 1_000;
     uint24 internal constant DEFAULT_MAX_VOLATILITY_ACCUMULATED = 350_000;
     uint16 internal constant DEFAULT_SAMPLE_LIFETIME = 120;
 
@@ -97,6 +97,11 @@ abstract contract TestHelper is Test, IERC165 {
 
         // Create router
         router = new LBRouter(factory, IJoeFactory(address(0)), IWAVAX(address(0)));
+
+        // Label deployed contracts
+        vm.label(address(factory), "factory");
+        vm.label(address(router), "router");
+        vm.label(address(_LBPairImplementation), "LBPairImplementation");
     }
 
     function supportsInterface(bytes4 interfaceId) external view virtual returns (bool) {

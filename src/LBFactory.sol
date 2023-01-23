@@ -43,7 +43,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /// @dev Mapping from a (tokenA, tokenB, binStep) to a LBPair. The tokens are ordered to save gas, but they can be
     /// in the reverse order in the actual pair. Always query one of the 2 tokens of the pair to assert the order of the 2 tokens
-    mapping(IERC20 => mapping(IERC20 => mapping(uint256 => LBPairInformation))) private _LBPairsInfo;
+    mapping(IERC20 => mapping(IERC20 => mapping(uint256 => LBPairInformation[]))) private _LBPairsInfos;
 
     /// @dev Whether a preset was set or not, if the bit at `index` is 1, it means that the binStep `index` was set
     /// The max binStep set is 247. We use this method instead of an array to keep it ordered and to reduce gas
@@ -57,6 +57,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @dev Whether a LBPair was created with a bin step, if the bit at `index` is 1, it means that the LBPair with binStep `index` exists
     /// The max binStep set is 247. We use this method instead of an array to keep it ordered and to reduce gas
     mapping(IERC20 => mapping(IERC20 => bytes32)) private _availableLBPairBinSteps;
+
+    uint256 private constant _REVISION_START_INDEX = 1;
 
     /// @notice Constructor
     /// @param _feeRecipient The address of the fee recipient
@@ -96,19 +98,34 @@ contract LBFactory is PendingOwnable, ILBFactory {
         return _quoteAssetWhitelist.contains(address(_token));
     }
 
+    /// @notice View function to return the number of revisions of a LBPair
+    /// @param _tokenA The address of the first token of the pair. The order doesn't matter
+    /// @param _tokenB The address of the second token of the pair
+    /// @param _binStep The bin step of the LBPair
+    /// @return The number of revisions
+    function getNumberOfRevisions(IERC20 _tokenA, IERC20 _tokenB, uint256 _binStep)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        (_tokenA, _tokenB) = _sortTokens(_tokenA, _tokenB);
+
+        return _LBPairsInfos[_tokenA][_tokenB][_binStep].length;
+    }
+
     /// @notice Returns the LBPairInformation if it exists,
     /// if not, then the address 0 is returned. The order doesn't matter
     /// @param _tokenA The address of the first token of the pair
     /// @param _tokenB The address of the second token of the pair
     /// @param _binStep The bin step of the LBPair
     /// @return The LBPairInformation
-    function getLBPairInformation(IERC20 _tokenA, IERC20 _tokenB, uint256 _binStep)
+    function getLBPairInformation(IERC20 _tokenA, IERC20 _tokenB, uint256 _binStep, uint256 _revision)
         external
         view
-        override
         returns (LBPairInformation memory)
     {
-        return _getLBPairInformation(_tokenA, _tokenB, _binStep);
+        return _getLBPairInformation(_tokenA, _tokenB, _binStep, _revision);
     }
 
     /// @notice View function to return the different parameters of the preset
@@ -190,23 +207,42 @@ contract LBFactory is PendingOwnable, ILBFactory {
             (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);
 
             bytes32 _avLBPairBinSteps = _availableLBPairBinSteps[_tokenA][_tokenB];
-            uint256 _nbAvailable = _avLBPairBinSteps.decode(type(uint8).max, 248);
+            uint256 _nbExistingBinSteps = _avLBPairBinSteps.decode(type(uint8).max, 248);
 
-            if (_nbAvailable > 0) {
-                LBPairsAvailable = new LBPairInformation[](_nbAvailable);
+            uint256 totalPairs;
 
+            if (_nbExistingBinSteps > 0) {
                 uint256 _index;
+                // Loops a first time to know how many pairs are available
                 for (uint256 i = MIN_BIN_STEP; i <= MAX_BIN_STEP; ++i) {
                     if (_avLBPairBinSteps.decode(1, i) == 1) {
-                        LBPairInformation memory _LBPairInformation = _LBPairsInfo[_tokenA][_tokenB][i];
+                        totalPairs += _LBPairsInfos[_tokenA][_tokenB][i].length;
 
-                        LBPairsAvailable[_index] = LBPairInformation({
-                            binStep: i.safe16(),
-                            LBPair: _LBPairInformation.LBPair,
-                            createdByOwner: _LBPairInformation.createdByOwner,
-                            ignoredForRouting: _LBPairInformation.ignoredForRouting
-                        });
-                        if (++_index == _nbAvailable) break;
+                        if (++_index == _nbExistingBinSteps) break;
+                    }
+                }
+
+                LBPairsAvailable = new LBPairInformation[](totalPairs);
+
+                _index = 0;
+                // Loops a second time to fill the array
+                for (uint256 i = MIN_BIN_STEP; i <= MAX_BIN_STEP; ++i) {
+                    if (_avLBPairBinSteps.decode(1, i) == 1) {
+                        uint256 revisionNumber = _LBPairsInfos[_tokenA][_tokenB][i].length;
+                        for (uint256 j = 0; j < revisionNumber; ++j) {
+                            LBPairInformation memory _LBPairInformation = _LBPairsInfos[_tokenA][_tokenB][i][j];
+
+                            LBPairsAvailable[_index++] = LBPairInformation({
+                                binStep: i.safe16(),
+                                LBPair: _LBPairInformation.LBPair,
+                                createdByOwner: _LBPairInformation.createdByOwner,
+                                ignoredForRouting: _LBPairInformation.ignoredForRouting,
+                                revisionIndex: _LBPairInformation.revisionIndex,
+                                implementation: _LBPairInformation.implementation
+                            });
+                        }
+
+                        if (_index == totalPairs) break;
                     }
                 }
             }
@@ -260,7 +296,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);
         // single check is sufficient
         if (address(_tokenA) == address(0)) revert LBFactory__AddressZero();
-        if (address(_LBPairsInfo[_tokenA][_tokenB][_binStep].LBPair) != address(0)) {
+        if (_LBPairsInfos[_tokenA][_tokenB][_binStep].length != 0) {
             revert LBFactory__LBPairAlreadyExists(_tokenX, _tokenY, _binStep);
         }
 
@@ -271,17 +307,21 @@ contract LBFactory is PendingOwnable, ILBFactory {
         // We remove the bits that are not part of the feeParameters
         _preset &= bytes32(uint256(type(uint144).max));
 
-        bytes32 _salt = keccak256(abi.encode(_tokenA, _tokenB, _binStep));
+        bytes32 _salt = keccak256(abi.encode(_tokenA, _tokenB, _binStep, _REVISION_START_INDEX));
         _LBPair = ILBPair(Clones.cloneDeterministic(_LBPairImplementation, _salt));
 
         _LBPair.initialize(_tokenX, _tokenY, _activeId, uint16(_sampleLifetime), _preset);
 
-        _LBPairsInfo[_tokenA][_tokenB][_binStep] = LBPairInformation({
-            binStep: _binStep,
-            LBPair: _LBPair,
-            createdByOwner: msg.sender == _owner,
-            ignoredForRouting: false
-        });
+        _LBPairsInfos[_tokenA][_tokenB][_binStep].push(
+            LBPairInformation({
+                binStep: _binStep,
+                LBPair: _LBPair,
+                createdByOwner: msg.sender == _owner,
+                ignoredForRouting: false,
+                revisionIndex: uint16(_REVISION_START_INDEX),
+                implementation: LBPairImplementation
+            })
+        );
 
         allLBPairs.push(_LBPair);
 
@@ -297,7 +337,78 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _availableLBPairBinSteps[_tokenA][_tokenB] = _avLBPairBinSteps;
         }
 
-        emit LBPairCreated(_tokenX, _tokenY, _binStep, _LBPair, allLBPairs.length - 1);
+        emit LBPairCreated(_tokenX, _tokenY, _binStep, _LBPair, allLBPairs.length - _REVISION_START_INDEX);
+
+        emit FeeParametersSet(
+            msg.sender,
+            _LBPair,
+            _binStep,
+            _preset.decode(type(uint16).max, 16),
+            _preset.decode(type(uint16).max, 32),
+            _preset.decode(type(uint16).max, 48),
+            _preset.decode(type(uint16).max, 64),
+            _preset.decode(type(uint24).max, 80),
+            _preset.decode(type(uint16).max, 104),
+            _preset.decode(type(uint24).max, 120)
+            );
+    }
+
+    /// @notice Function to create a new revision of a pair
+    /// Restricted to the owner
+    /// @param _tokenX The first token of the pair
+    /// @param _tokenY The second token of the pair
+    /// @param _binStep The binStep of the pair
+    /// @return _LBPair The new LBPair
+    function createLBPairRevision(IERC20 _tokenX, IERC20 _tokenY, uint16 _binStep)
+        external
+        override
+        onlyOwner
+        returns (ILBPair _LBPair)
+    {
+        (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);
+
+        uint256 currentVersionNumber = _LBPairsInfos[_tokenA][_tokenB][_binStep].length;
+        if (currentVersionNumber == 0) revert LBFactory__LBPairDoesNotExists(_tokenX, _tokenY, _binStep);
+
+        // Get latest version
+        LBPairInformation memory _LBPairInformation =
+            _LBPairsInfos[_tokenA][_tokenB][_binStep][currentVersionNumber - _REVISION_START_INDEX];
+
+        if (_LBPairInformation.implementation == LBPairImplementation) {
+            revert LBFactory__SameImplementation(LBPairImplementation);
+        }
+
+        ILBPair _oldLBPair = _LBPairInformation.LBPair;
+
+        FeeHelper.FeeParameters memory _feeParameters = _oldLBPair.feeParameters();
+
+        bytes32 _preset = _presets[_feeParameters.binStep];
+
+        bytes32 _salt = keccak256(abi.encode(_tokenA, _tokenB, _binStep, ++currentVersionNumber));
+        _LBPair = ILBPair(Clones.cloneDeterministic(LBPairImplementation, _salt));
+
+        {
+            (uint256 oracleSampleLifetime,,,,,,) = _oldLBPair.getOracleParameters();
+
+            (,, uint256 activeId) = _oldLBPair.getReservesAndId();
+
+            _LBPair.initialize(_tokenX, _tokenY, uint24(activeId), uint16(oracleSampleLifetime), _preset);
+
+            _LBPairsInfos[_tokenA][_tokenB][_binStep].push(
+                LBPairInformation({
+                    binStep: _binStep,
+                    LBPair: _LBPair,
+                    createdByOwner: true,
+                    ignoredForRouting: false,
+                    revisionIndex: uint16(currentVersionNumber),
+                    implementation: LBPairImplementation
+                })
+            );
+        }
+
+        allLBPairs.push(_LBPair);
+
+        emit LBPairCreated(_tokenX, _tokenY, _binStep, _LBPair, allLBPairs.length - _REVISION_START_INDEX);
 
         emit FeeParametersSet(
             msg.sender,
@@ -317,20 +428,26 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _tokenX The address of the first token of the pair
     /// @param _tokenY The address of the second token of the pair
     /// @param _binStep The bin step in basis point of the pair
+    /// @param _revision The revision of the pair
     /// @param _ignored Whether to ignore (true) or not (false) the pair for routing
-    function setLBPairIgnored(IERC20 _tokenX, IERC20 _tokenY, uint256 _binStep, bool _ignored)
+    function setLBPairIgnored(IERC20 _tokenX, IERC20 _tokenY, uint256 _binStep, uint256 _revision, bool _ignored)
         external
         override
         onlyOwner
     {
         (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);
 
-        LBPairInformation memory _LBPairInformation = _LBPairsInfo[_tokenA][_tokenB][_binStep];
-        if (address(_LBPairInformation.LBPair) == address(0)) revert LBFactory__AddressZero();
+        uint256 revisionAmount = _LBPairsInfos[_tokenA][_tokenB][_binStep].length;
+        if (revisionAmount == 0 || _revision > revisionAmount) {
+            revert LBFactory__AddressZero();
+        }
+
+        LBPairInformation memory _LBPairInformation =
+            _LBPairsInfos[_tokenA][_tokenB][_binStep][_revision - _REVISION_START_INDEX];
 
         if (_LBPairInformation.ignoredForRouting == _ignored) revert LBFactory__LBPairIgnoredIsAlreadyInTheSameState();
 
-        _LBPairsInfo[_tokenA][_tokenB][_binStep].ignoredForRouting = _ignored;
+        _LBPairsInfos[_tokenA][_tokenB][_binStep][_revision - _REVISION_START_INDEX].ignoredForRouting = _ignored;
 
         emit LBPairIgnoredStateChanged(_LBPairInformation.LBPair, _ignored);
     }
@@ -420,6 +537,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _tokenX The address of the first token
     /// @param _tokenY The address of the second token
     /// @param _binStep The bin step in basis point, used to calculate log(1 + binStep)
+    /// @param _revision The revision of the LBPair
     /// @param _baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
     /// @param _filterPeriod The period where the accumulator value is untouched, prevent spam
     /// @param _decayPeriod The period where the accumulator value is halved
@@ -431,6 +549,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         IERC20 _tokenX,
         IERC20 _tokenY,
         uint16 _binStep,
+        uint256 _revision,
         uint16 _baseFactor,
         uint16 _filterPeriod,
         uint16 _decayPeriod,
@@ -439,7 +558,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 _protocolShare,
         uint24 _maxVolatilityAccumulated
     ) external override onlyOwner {
-        ILBPair _LBPair = _getLBPairInformation(_tokenX, _tokenY, _binStep).LBPair;
+        ILBPair _LBPair = _getLBPairInformation(_tokenX, _tokenY, _binStep, _revision).LBPair;
 
         if (address(_LBPair) == address(0)) revert LBFactory__LBPairNotCreated(_tokenX, _tokenY, _binStep);
 
@@ -598,14 +717,20 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param _tokenA The address of the first token of the pair
     /// @param _tokenB The address of the second token of the pair
     /// @param _binStep The bin step of the LBPair
+    /// @param _revision The revision of the LBPair
     /// @return The LBPairInformation
-    function _getLBPairInformation(IERC20 _tokenA, IERC20 _tokenB, uint256 _binStep)
+    function _getLBPairInformation(IERC20 _tokenA, IERC20 _tokenB, uint256 _binStep, uint256 _revision)
         private
         view
         returns (LBPairInformation memory)
     {
         (_tokenA, _tokenB) = _sortTokens(_tokenA, _tokenB);
-        return _LBPairsInfo[_tokenA][_tokenB][_binStep];
+
+        if (_LBPairsInfos[_tokenA][_tokenB][_binStep].length == 0) {
+            revert LBFactory__LBPairNotCreated(_tokenA, _tokenB, _binStep);
+        }
+
+        return _LBPairsInfos[_tokenA][_tokenB][_binStep][_revision - _REVISION_START_INDEX];
     }
 
     /// @notice Private view function to sort 2 tokens in ascending order

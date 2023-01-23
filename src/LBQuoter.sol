@@ -28,6 +28,7 @@ contract LBQuoter {
         address[] route;
         address[] pairs;
         uint256[] binSteps;
+        uint256[] revisions;
         uint256[] amounts;
         uint256[] virtualAmountsWithoutSlippage;
         uint256[] fees;
@@ -61,6 +62,7 @@ contract LBQuoter {
         uint256 swapLength = _route.length - 1;
         quote.pairs = new address[](swapLength);
         quote.binSteps = new uint256[](swapLength);
+        quote.revisions = new uint256[](swapLength);
         quote.fees = new uint256[](swapLength);
         quote.amounts = new uint256[](_route.length);
         quote.virtualAmountsWithoutSlippage = new uint256[](_route.length);
@@ -98,6 +100,7 @@ contract LBQuoter {
                                 quote.amounts[i + 1] = swapAmountOut;
                                 quote.pairs[i] = address(LBPairsAvailable[j].LBPair);
                                 quote.binSteps[i] = LBPairsAvailable[j].binStep;
+                                quote.revisions[i] = LBPairsAvailable[j].revisionIndex;
 
                                 // Getting current price
                                 (,, uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
@@ -131,6 +134,7 @@ contract LBQuoter {
         uint256 swapLength = _route.length - 1;
         quote.pairs = new address[](swapLength);
         quote.binSteps = new uint256[](swapLength);
+        quote.revisions = new uint256[](swapLength);
         quote.fees = new uint256[](swapLength);
         quote.amounts = new uint256[](_route.length);
         quote.virtualAmountsWithoutSlippage = new uint256[](_route.length);
@@ -168,6 +172,7 @@ contract LBQuoter {
                                 quote.amounts[i - 1] = swapAmountIn;
                                 quote.pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
                                 quote.binSteps[i - 1] = LBPairsAvailable[j].binStep;
+                                quote.revisions[i - 1] = LBPairsAvailable[j].revisionIndex;
 
                                 // Getting current price
                                 (,, uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();

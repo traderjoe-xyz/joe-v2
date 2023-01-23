@@ -89,11 +89,11 @@ abstract contract TestHelper is Test, IERC165 {
 
         // Create factory
         factory = new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
-        ILBPair _LBPairImplementation = new LBPair(factory);
+        ILBPair LBPairImplementation = new LBPair(factory);
 
         // Setup factory
-        factory.setLBPairImplementation(address(_LBPairImplementation));
-        addAllAssetsToQuoteWhitelist(factory);
+        factory.setLBPairImplementation(address(LBPairImplementation));
+        addAllAssetsToQuoteWhitelist();
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
 
         // Create router
@@ -102,28 +102,28 @@ abstract contract TestHelper is Test, IERC165 {
         // Label deployed contracts
         vm.label(address(factory), "factory");
         vm.label(address(router), "router");
-        vm.label(address(_LBPairImplementation), "LBPairImplementation");
+        vm.label(address(LBPairImplementation), "LBPairImplementation");
     }
 
     function supportsInterface(bytes4 interfaceId) external view virtual returns (bool) {
         return interfaceId == type(ILBToken).interfaceId;
     }
 
-    function getPriceFromId(uint24 _id) internal pure returns (uint256 price) {
-        price = BinHelper.getPriceFromId(_id, DEFAULT_BIN_STEP);
+    function getPriceFromId(uint24 id) internal pure returns (uint256 price) {
+        price = BinHelper.getPriceFromId(id, DEFAULT_BIN_STEP);
     }
 
-    function getIdFromPrice(uint256 _price) internal pure returns (uint24 id) {
-        id = BinHelper.getIdFromPrice(_price, DEFAULT_BIN_STEP);
+    function getIdFromPrice(uint256 price) internal pure returns (uint24 id) {
+        id = BinHelper.getIdFromPrice(price, DEFAULT_BIN_STEP);
     }
 
-    function createLBPair(IERC20 _tokenX, IERC20 _tokenY) internal returns (LBPair newPair) {
-        newPair = createLBPairFromStartId(_tokenX, _tokenY, ID_ONE);
+    function createLBPair(IERC20 tokenX, IERC20 tokenY) internal returns (LBPair newPair) {
+        newPair = createLBPairFromStartId(tokenX, tokenY, ID_ONE);
     }
 
-    function setDefaultFactoryPresets(uint16 _binStep) internal {
+    function setDefaultFactoryPresets(uint16 binStep) internal {
         factory.setPreset(
-            _binStep,
+            binStep,
             DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,
             DEFAULT_DECAY_PERIOD,
@@ -135,154 +135,146 @@ abstract contract TestHelper is Test, IERC165 {
         );
     }
 
-    function createLBPairFromStartId(IERC20 _tokenX, IERC20 _tokenY, uint24 _startId)
+    function createLBPairFromStartId(IERC20 tokenX, IERC20 tokenY, uint24 startId) internal returns (LBPair newPair) {
+        newPair = createLBPairFromStartIdAndBinStep(tokenX, tokenY, startId, DEFAULT_BIN_STEP);
+    }
+
+    function createLBPairFromStartIdAndBinStep(IERC20 tokenX, IERC20 tokenY, uint24 startId, uint16 binStep)
         internal
         returns (LBPair newPair)
     {
-        newPair = createLBPairFromStartIdAndBinStep(_tokenX, _tokenY, _startId, DEFAULT_BIN_STEP);
+        newPair = LBPair(address(factory.createLBPair(tokenX, tokenY, startId, binStep)));
     }
 
-    function createLBPairFromStartIdAndBinStep(IERC20 _tokenX, IERC20 _tokenY, uint24 _startId, uint16 _binStep)
-        internal
-        returns (LBPair newPair)
-    {
-        newPair = LBPair(address(factory.createLBPair(_tokenX, _tokenY, _startId, _binStep)));
-    }
-
-    function convertRelativeIdsToAbsolute(int256[] memory _relativeIds, uint24 _startId)
+    function convertRelativeIdsToAbsolute(int256[] memory relativeIds, uint24 startId)
         internal
         pure
         returns (uint256[] memory absoluteIds)
     {
-        absoluteIds = new uint256[](_relativeIds.length);
-        for (uint256 i = 0; i < _relativeIds.length; i++) {
-            int256 id = int256(uint256(_startId)) + _relativeIds[i];
+        absoluteIds = new uint256[](relativeIds.length);
+        for (uint256 i = 0; i < relativeIds.length; i++) {
+            int256 id = int256(uint256(startId)) + relativeIds[i];
             require(id >= 0, "Id conversion: id must be positive");
             absoluteIds[i] = uint256(id);
         }
     }
 
-    function convertAbsoluteIdsToRelative(uint256[] memory _absoluteIds, uint24 _startId)
+    function convertAbsoluteIdsToRelative(uint256[] memory absoluteIds, uint24 startId)
         internal
         pure
         returns (int256[] memory relativeIds)
     {
-        relativeIds = new int256[](_absoluteIds.length);
-        for (uint256 i = 0; i < _absoluteIds.length; i++) {
-            relativeIds[i] = int256(_absoluteIds[i]) - int256(uint256(_startId));
+        relativeIds = new int256[](absoluteIds.length);
+        for (uint256 i = 0; i < absoluteIds.length; i++) {
+            relativeIds[i] = int256(absoluteIds[i]) - int256(uint256(startId));
         }
     }
 
     function addLiquidityAndReturnAbsoluteIds(
-        ERC20Mock _tokenX,
-        ERC20Mock _tokenY,
-        uint256 _amountYIn,
-        uint24 _startId,
-        uint24 _numberBins,
-        uint24 _gap
+        ERC20Mock tokenX,
+        ERC20Mock tokenY,
+        uint256 amountYIn,
+        uint24 startId,
+        uint24 numberBins,
+        uint24 gap
     )
         internal
         returns (
-            uint256[] memory _ids,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
+            uint256[] memory ids,
+            uint256[] memory distributionX,
+            uint256[] memory distributionY,
             uint256 amountXIn
         )
     {
-        (_ids, _distributionX, _distributionY, amountXIn) =
-            addLiquidity(_tokenX, _tokenY, _amountYIn, _startId, _numberBins, _gap);
+        (ids, distributionX, distributionY, amountXIn) =
+            addLiquidity(tokenX, tokenY, amountYIn, startId, numberBins, gap);
     }
 
     function addLiquidityAndReturnRelativeIds(
-        ERC20Mock _tokenX,
-        ERC20Mock _tokenY,
-        uint256 _amountYIn,
-        uint24 _startId,
-        uint24 _numberBins,
-        uint24 _gap
+        ERC20Mock tokenX,
+        ERC20Mock tokenY,
+        uint256 amountYIn,
+        uint24 startId,
+        uint24 numberBins,
+        uint24 gap
     )
         internal
-        returns (
-            int256[] memory _ids,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
-            uint256 amountXIn
-        )
+        returns (int256[] memory ids, uint256[] memory distributionX, uint256[] memory distributionY, uint256 amountXIn)
     {
         uint256[] memory absoluteIds;
-        (absoluteIds, _distributionX, _distributionY, amountXIn) =
-            addLiquidity(_tokenX, _tokenY, _amountYIn, _startId, _numberBins, _gap);
-        _ids = convertAbsoluteIdsToRelative(absoluteIds, _startId);
+        (absoluteIds, distributionX, distributionY, amountXIn) =
+            addLiquidity(tokenX, tokenY, amountYIn, startId, numberBins, gap);
+        ids = convertAbsoluteIdsToRelative(absoluteIds, startId);
     }
 
     function addLiquidity(
-        ERC20Mock _tokenX,
-        ERC20Mock _tokenY,
-        uint256 _amountYIn,
-        uint24 _startId,
-        uint24 _numberBins,
-        uint24 _gap
+        ERC20Mock tokenX,
+        ERC20Mock tokenY,
+        uint256 amountYIn,
+        uint24 startId,
+        uint24 numberBins,
+        uint24 gap
     )
         internal
         returns (
-            uint256[] memory _ids,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
+            uint256[] memory ids,
+            uint256[] memory distributionX,
+            uint256[] memory distributionY,
             uint256 amountXIn
         )
     {
-        (_ids, _distributionX, _distributionY, amountXIn) = spreadLiquidity(_amountYIn, _startId, _numberBins, _gap);
+        (ids, distributionX, distributionY, amountXIn) = spreadLiquidity(amountYIn, startId, numberBins, gap);
 
-        _tokenX.mint(address(pair), amountXIn);
-        _tokenY.mint(address(pair), _amountYIn);
+        tokenX.mint(address(pair), amountXIn);
+        tokenY.mint(address(pair), amountYIn);
 
-        pair.mint(_ids, _distributionX, _distributionY, DEV);
+        pair.mint(ids, distributionX, distributionY, DEV);
     }
 
-    function spreadLiquidity(uint256 _amountYIn, uint24 _startId, uint24 _numberBins, uint24 _gap)
+    function spreadLiquidity(uint256 amountYIn, uint24 startId, uint24 numberBins, uint24 gap)
         internal
         pure
         returns (
-            uint256[] memory _ids,
-            uint256[] memory _distributionX,
-            uint256[] memory _distributionY,
+            uint256[] memory ids,
+            uint256[] memory distributionX,
+            uint256[] memory distributionY,
             uint256 amountXIn
         )
     {
-        if (_numberBins % 2 == 0) {
+        if (numberBins % 2 == 0) {
             revert("Pls put an uneven number of bins");
         }
 
-        uint24 spread = _numberBins / 2;
-        _ids = new uint256[](_numberBins);
+        uint24 spread = numberBins / 2;
+        ids = new uint256[](numberBins);
 
-        _distributionX = new uint256[](_numberBins);
-        _distributionY = new uint256[](_numberBins);
+        distributionX = new uint256[](numberBins);
+        distributionY = new uint256[](numberBins);
         uint256 binDistribution = Constants.PRECISION / (spread + 1);
-        uint256 binLiquidity = _amountYIn / (spread + 1);
+        uint256 binLiquidity = amountYIn / (spread + 1);
 
-        for (uint256 i; i < _numberBins; i++) {
-            _ids[i] = _startId - spread * (1 + _gap) + i * (1 + _gap);
+        for (uint256 i; i < numberBins; i++) {
+            ids[i] = startId - spread * (1 + gap) + i * (1 + gap);
 
             if (i <= spread) {
-                _distributionY[i] = binDistribution;
+                distributionY[i] = binDistribution;
             }
             if (i >= spread) {
-                _distributionX[i] = binDistribution;
+                distributionX[i] = binDistribution;
                 amountXIn +=
-                    binLiquidity > 0 ? (binLiquidity * Constants.SCALE - 1) / getPriceFromId(uint24(_ids[i])) + 1 : 0;
+                    binLiquidity > 0 ? (binLiquidity * Constants.SCALE - 1) / getPriceFromId(uint24(ids[i])) + 1 : 0;
             }
         }
     }
 
-    function addAllAssetsToQuoteWhitelist(LBFactory _factory) internal {
-        if (address(wavax) != address(0)) _factory.addQuoteAsset(wavax);
-        if (address(usdc) != address(0)) _factory.addQuoteAsset(usdc);
-        if (address(usdt) != address(0)) _factory.addQuoteAsset(usdt);
-        if (address(wbtc) != address(0)) _factory.addQuoteAsset(wbtc);
-        if (address(weth) != address(0)) _factory.addQuoteAsset(weth);
-        if (address(link) != address(0)) _factory.addQuoteAsset(link);
-        if (address(bnb) != address(0)) _factory.addQuoteAsset(bnb);
-        if (address(taxToken) != address(0)) _factory.addQuoteAsset(taxToken);
+    function addAllAssetsToQuoteWhitelist() internal {
+        if (address(wavax) != address(0)) factory.addQuoteAsset(wavax);
+        if (address(usdc) != address(0)) factory.addQuoteAsset(usdc);
+        if (address(usdt) != address(0)) factory.addQuoteAsset(usdt);
+        if (address(wbtc) != address(0)) factory.addQuoteAsset(wbtc);
+        if (address(weth) != address(0)) factory.addQuoteAsset(weth);
+        if (address(link) != address(0)) factory.addQuoteAsset(link);
+        if (address(bnb) != address(0)) factory.addQuoteAsset(bnb);
+        if (address(taxToken) != address(0)) factory.addQuoteAsset(taxToken);
     }
 }

@@ -2,14 +2,14 @@
 
 pragma solidity 0.8.10;
 
-import "./TestHelper.sol";
+import "test/helpers/TestHelper.sol";
 
 contract LiquidityBinRouterTest is TestHelper {
     event AVAXreceived();
 
-    function setUp() public {
-        token6D = new ERC20MockDecimals(6);
-        token18D = new ERC20MockDecimals(18);
+    function setUp() public override {
+        usdc = new ERC20Mock(6);
+        weth = new ERC20Mock(18);
         wavax = new WAVAX();
         uint16 binStep = 100;
         factory = new LBFactory(DEV, 8e14);
@@ -28,9 +28,9 @@ contract LiquidityBinRouterTest is TestHelper {
             DEFAULT_SAMPLE_LIFETIME
         );
 
-        router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(address(wavax)));
+        router = new LBRouter(factory, IJoeFactory(address(0)), IWAVAX(address(wavax)));
 
-        pair = LBPair(address(factory.createLBPair(token6D, token18D, ID_ONE, 100)));
+        pair = LBPair(address(factory.createLBPair(usdc, weth, ID_ONE, 100)));
     }
 
     function testFeeOnActiveBin() public {
@@ -49,13 +49,13 @@ contract LiquidityBinRouterTest is TestHelper {
         _distributionY[0] = Constants.PRECISION;
 
         vm.prank(BOB);
-        token18D.approve(address(router), _amountYIn);
+        weth.approve(address(router), _amountYIn);
 
-        token18D.mint(BOB, _amountYIn);
+        weth.mint(BOB, _amountYIn);
 
         ILBRouter.LiquidityParameters memory _liquidityParameters = ILBRouter.LiquidityParameters(
-            token6D,
-            token18D,
+            usdc,
+            weth,
             binStep,
             0,
             _amountYIn,
@@ -77,17 +77,17 @@ contract LiquidityBinRouterTest is TestHelper {
         _distributionX[0] = Constants.PRECISION;
         _distributionY[0] = 0;
 
-        token6D.mint(ALICE, amountXIn);
+        usdc.mint(ALICE, amountXIn);
         vm.prank(ALICE);
-        token6D.approve(address(router), amountXIn);
+        usdc.approve(address(router), amountXIn);
 
         uint256 feesXTotal;
-        (feesXTotal, , , ) = pair.getGlobalFees();
+        (feesXTotal,,,) = pair.getGlobalFees();
         assertEq(feesXTotal, 0);
 
         _liquidityParameters = ILBRouter.LiquidityParameters(
-            token6D,
-            token18D,
+            usdc,
+            weth,
             binStep,
             amountXIn,
             0,
@@ -115,9 +115,9 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.prank(ALICE);
         pair.setApprovalForAll(address(router), true);
         vm.prank(ALICE);
-        router.removeLiquidity(token6D, token18D, binStep, 0, 0, ids, amounts, ALICE, block.timestamp);
+        router.removeLiquidity(usdc, weth, binStep, 0, 0, ids, amounts, ALICE, block.timestamp);
 
-        (feesXTotal, , , ) = pair.getGlobalFees();
+        (feesXTotal,,,) = pair.getGlobalFees();
         assertGt(feesXTotal, amountXIn / 199);
 
         //remove BOB's liquidity to ALICE account
@@ -128,9 +128,9 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.prank(BOB);
         pair.setApprovalForAll(address(router), true);
         vm.prank(BOB);
-        router.removeLiquidity(token6D, token18D, binStep, 0, 0, ids, amounts, ALICE, block.timestamp);
+        router.removeLiquidity(usdc, weth, binStep, 0, 0, ids, amounts, ALICE, block.timestamp);
 
-        uint256 ALICE6DbalanceAfterSecondRemove = token6D.balanceOf(ALICE);
+        uint256 ALICE6DbalanceAfterSecondRemove = usdc.balanceOf(ALICE);
 
         assertEq(ALICE6DbalanceAfterSecondRemove + feesXTotal, amountXIn);
     }
@@ -151,13 +151,13 @@ contract LiquidityBinRouterTest is TestHelper {
         _distributionY[0] = 0;
 
         vm.prank(BOB);
-        token6D.approve(address(router), _amountXIn);
+        usdc.approve(address(router), _amountXIn);
 
-        token6D.mint(BOB, _amountXIn);
+        usdc.mint(BOB, _amountXIn);
 
         ILBRouter.LiquidityParameters memory _liquidityParameters = ILBRouter.LiquidityParameters(
-            token6D,
-            token18D,
+            usdc,
+            weth,
             binStep,
             _amountXIn,
             0,
@@ -179,17 +179,17 @@ contract LiquidityBinRouterTest is TestHelper {
         _distributionX[0] = 0;
         _distributionY[0] = Constants.PRECISION;
 
-        token18D.mint(ALICE, amountYIn);
+        weth.mint(ALICE, amountYIn);
         vm.prank(ALICE);
-        token18D.approve(address(router), amountYIn);
+        weth.approve(address(router), amountYIn);
 
         uint256 feesYTotal;
-        (, feesYTotal, , ) = pair.getGlobalFees();
+        (, feesYTotal,,) = pair.getGlobalFees();
         assertEq(feesYTotal, 0);
 
         _liquidityParameters = ILBRouter.LiquidityParameters(
-            token6D,
-            token18D,
+            usdc,
+            weth,
             binStep,
             0,
             amountYIn,
@@ -217,7 +217,7 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.prank(ALICE);
         pair.setApprovalForAll(address(router), true);
         vm.prank(ALICE);
-        router.removeLiquidity(token6D, token18D, binStep, 0, 0, ids, amounts, ALICE, block.timestamp);
+        router.removeLiquidity(usdc, weth, binStep, 0, 0, ids, amounts, ALICE, block.timestamp);
 
         //remove BOB's liquidity to ALICE account
         for (uint256 i; i < _numberBins; i++) {
@@ -227,11 +227,11 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.prank(BOB);
         pair.setApprovalForAll(address(router), true);
         vm.prank(BOB);
-        router.removeLiquidity(token6D, token18D, binStep, 0, 0, ids, amounts, ALICE, block.timestamp);
+        router.removeLiquidity(usdc, weth, binStep, 0, 0, ids, amounts, ALICE, block.timestamp);
 
-        uint256 ALICE6DbalanceAfterSecondRemove = token18D.balanceOf(ALICE);
+        uint256 ALICE6DbalanceAfterSecondRemove = weth.balanceOf(ALICE);
 
-        (, feesYTotal, , ) = pair.getGlobalFees();
+        (, feesYTotal,,) = pair.getGlobalFees();
         assertGt(feesYTotal, amountYIn / 199);
         assertEq(ALICE6DbalanceAfterSecondRemove + feesYTotal, amountYIn);
     }

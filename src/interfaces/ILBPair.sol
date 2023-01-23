@@ -108,35 +108,19 @@ interface ILBPair {
     );
 
     event FlashLoan(
-        address indexed sender,
-        ILBFlashLoanCallback indexed receiver,
-        IERC20 token,
-        uint256 amount,
-        uint256 fee
+        address indexed sender, ILBFlashLoanCallback indexed receiver, IERC20 token, uint256 amount, uint256 fee
     );
 
     event CompositionFee(
-        address indexed sender,
-        address indexed recipient,
-        uint256 indexed id,
-        uint256 feesX,
-        uint256 feesY
+        address indexed sender, address indexed recipient, uint256 indexed id, uint256 feesX, uint256 feesY
     );
 
     event DepositedToBin(
-        address indexed sender,
-        address indexed recipient,
-        uint256 indexed id,
-        uint256 amountX,
-        uint256 amountY
+        address indexed sender, address indexed recipient, uint256 indexed id, uint256 amountX, uint256 amountY
     );
 
     event WithdrawnFromBin(
-        address indexed sender,
-        address indexed recipient,
-        uint256 indexed id,
-        uint256 amountX,
-        uint256 amountY
+        address indexed sender, address indexed recipient, uint256 indexed id, uint256 amountX, uint256 amountY
     );
 
     event FeesCollected(address indexed sender, address indexed recipient, uint256 amountX, uint256 amountY);
@@ -151,24 +135,12 @@ interface ILBPair {
 
     function factory() external view returns (ILBFactory);
 
-    function getReservesAndId()
-        external
-        view
-        returns (
-            uint256 reserveX,
-            uint256 reserveY,
-            uint256 activeId
-        );
+    function getReservesAndId() external view returns (uint256 reserveX, uint256 reserveY, uint256 activeId);
 
     function getGlobalFees()
         external
         view
-        returns (
-            uint128 feesXTotal,
-            uint128 feesYTotal,
-            uint128 feesXProtocol,
-            uint128 feesYProtocol
-        );
+        returns (uint128 feesXTotal, uint128 feesYTotal, uint128 feesXProtocol, uint128 feesYProtocol);
 
     function getOracleParameters()
         external
@@ -186,11 +158,7 @@ interface ILBPair {
     function getOracleSampleFrom(uint256 timeDelta)
         external
         view
-        returns (
-            uint256 cumulativeId,
-            uint256 cumulativeAccumulator,
-            uint256 cumulativeBinCrossed
-        );
+        returns (uint256 cumulativeId, uint256 cumulativeAccumulator, uint256 cumulativeBinCrossed);
 
     function feeParameters() external view returns (FeeHelper.FeeParameters memory);
 
@@ -205,31 +173,18 @@ interface ILBPair {
 
     function swap(bool sentTokenY, address to) external returns (uint256 amountXOut, uint256 amountYOut);
 
-    function flashLoan(
-        ILBFlashLoanCallback receiver,
-        IERC20 token,
-        uint256 amount,
-        bytes calldata data
-    ) external;
+    function flashLoan(ILBFlashLoanCallback receiver, IERC20 token, uint256 amount, bytes calldata data) external;
 
     function mint(
         uint256[] calldata ids,
         uint256[] calldata distributionX,
         uint256[] calldata distributionY,
         address to
-    )
-        external
-        returns (
-            uint256 amountXAddedToPair,
-            uint256 amountYAddedToPair,
-            uint256[] memory liquidityMinted
-        );
+    ) external returns (uint256 amountXAddedToPair, uint256 amountYAddedToPair, uint256[] memory liquidityMinted);
 
-    function burn(
-        uint256[] calldata ids,
-        uint256[] calldata amounts,
-        address to
-    ) external returns (uint256 amountX, uint256 amountY);
+    function burn(uint256[] calldata ids, uint256[] calldata amounts, address to)
+        external
+        returns (uint256 amountX, uint256 amountY);
 
     function increaseOracleLength(uint16 newSize) external;
 

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.10;
 
-import "./TestHelper.sol";
+import "test/helpers/TestHelper.sol";
 
 contract LiquidityBinPairTest is TestHelper {
     ILBPair _LBPairImplementation;
 
-    function setUp() public {
-        token6D = new ERC20MockDecimals(6);
-        token18D = new ERC20MockDecimals(18);
+    function setUp() public override {
+        usdc = new ERC20Mock(6);
+        weth = new ERC20Mock(18);
 
         factory = new LBFactory(DEV, 8e14);
         _LBPairImplementation = new LBPair(factory);
@@ -17,7 +17,7 @@ contract LiquidityBinPairTest is TestHelper {
         addAllAssetsToQuoteWhitelist(factory);
         router = new LBRouter(ILBFactory(DEV), IJoeFactory(DEV), IWAVAX(DEV));
 
-        pair = createLBPairDefaultFees(token6D, token18D);
+        pair = createLBPairDefaultFees(usdc, weth);
     }
 
     function testPendingFeesNotIncreasingReverts() public {
@@ -69,8 +69,8 @@ contract LiquidityBinPairTest is TestHelper {
 
     function testDistributionOverflowReverts() public {
         uint256 amount = 10e18;
-        token6D.mint(address(pair), amount);
-        token18D.mint(address(pair), amount);
+        usdc.mint(address(pair), amount);
+        weth.mint(address(pair), amount);
         uint256[] memory _ids;
         uint256[] memory _distributionX;
         uint256[] memory _distributionY;
@@ -139,12 +139,12 @@ contract LiquidityBinPairTest is TestHelper {
         vm.startPrank(address(factory));
 
         vm.expectRevert(LBPair__AddressZero.selector);
-        _LBPairImplementation.initialize(IERC20(address(0)), token18D, _activeId, _sampleLifetime, _packedFeeParameters);
+        _LBPairImplementation.initialize(IERC20(address(0)), weth, _activeId, _sampleLifetime, _packedFeeParameters);
         vm.expectRevert(LBPair__AddressZero.selector);
-        _LBPairImplementation.initialize(token18D, IERC20(address(0)), _activeId, _sampleLifetime, _packedFeeParameters);
+        _LBPairImplementation.initialize(weth, IERC20(address(0)), _activeId, _sampleLifetime, _packedFeeParameters);
 
-        _LBPairImplementation.initialize(token18D, token6D, _activeId, _sampleLifetime, _packedFeeParameters);
+        _LBPairImplementation.initialize(weth, usdc, _activeId, _sampleLifetime, _packedFeeParameters);
         vm.expectRevert(LBPair__AlreadyInitialized.selector);
-        _LBPairImplementation.initialize(token18D, token6D, _activeId, _sampleLifetime, _packedFeeParameters);
+        _LBPairImplementation.initialize(weth, usdc, _activeId, _sampleLifetime, _packedFeeParameters);
     }
 }

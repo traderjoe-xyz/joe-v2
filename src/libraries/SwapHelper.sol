@@ -34,15 +34,7 @@ library SwapHelper {
         uint256 activeId,
         bool swapForY,
         uint256 amountIn
-    )
-        internal
-        pure
-        returns (
-            uint256 amountInToBin,
-            uint256 amountOutOfBin,
-            FeeHelper.FeesDistribution memory fees
-        )
-    {
+    ) internal pure returns (uint256 amountInToBin, uint256 amountOutOfBin, FeeHelper.FeesDistribution memory fees) {
         uint256 _price = BinHelper.getPriceFromId(activeId, fp.binStep);
 
         uint256 _reserve;

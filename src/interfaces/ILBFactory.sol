@@ -24,11 +24,7 @@ interface ILBFactory is IPendingOwnable {
     }
 
     event LBPairCreated(
-        IERC20 indexed tokenX,
-        IERC20 indexed tokenY,
-        uint256 indexed binStep,
-        ILBPair LBPair,
-        uint256 pid
+        IERC20 indexed tokenX, IERC20 indexed tokenY, uint256 indexed binStep, ILBPair LBPair, uint256 pid
     );
 
     event FeeRecipientSet(address oldRecipient, address newRecipient);
@@ -98,11 +94,10 @@ interface ILBFactory is IPendingOwnable {
 
     function getNumberOfLBPairs() external view returns (uint256);
 
-    function getLBPairInformation(
-        IERC20 tokenX,
-        IERC20 tokenY,
-        uint256 binStep
-    ) external view returns (LBPairInformation memory);
+    function getLBPairInformation(IERC20 tokenX, IERC20 tokenY, uint256 binStep)
+        external
+        view
+        returns (LBPairInformation memory);
 
     function getPreset(uint16 binStep)
         external
@@ -127,19 +122,11 @@ interface ILBFactory is IPendingOwnable {
 
     function setLBPairImplementation(address LBPairImplementation) external;
 
-    function createLBPair(
-        IERC20 tokenX,
-        IERC20 tokenY,
-        uint24 activeId,
-        uint16 binStep
-    ) external returns (ILBPair pair);
+    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
+        external
+        returns (ILBPair pair);
 
-    function setLBPairIgnored(
-        IERC20 tokenX,
-        IERC20 tokenY,
-        uint256 binStep,
-        bool ignored
-    ) external;
+    function setLBPairIgnored(IERC20 tokenX, IERC20 tokenY, uint256 binStep, bool ignored) external;
 
     function setPreset(
         uint16 binStep,

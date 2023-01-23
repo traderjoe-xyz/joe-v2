@@ -14,12 +14,8 @@ library Buffer {
         assembly {
             if gt(n, 0) {
                 switch x
-                case 0 {
-                    result := sub(n, 1)
-                }
-                default {
-                    result := mod(sub(x, 1), n)
-                }
+                case 0 { result := sub(n, 1) }
+                default { result := mod(sub(x, 1), n) }
             }
         }
     }

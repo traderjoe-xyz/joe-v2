@@ -12,11 +12,7 @@ library Encoder {
     /// @param _mask The mask
     /// @param _offset The offset
     /// @return sample The encoded bytes32 sample
-    function encode(
-        uint256 _value,
-        uint256 _mask,
-        uint256 _offset
-    ) internal pure returns (bytes32 sample) {
+    function encode(uint256 _value, uint256 _mask, uint256 _offset) internal pure returns (bytes32 sample) {
         assembly {
             sample := shl(_offset, and(_value, _mask))
         }

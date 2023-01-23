@@ -71,17 +71,14 @@ library Oracle {
                     uint256 _totalWeight = _weightPrev + _weightNext; // _next.timestamp() - _sample.timestamp()
 
                     cumulativeId =
-                        (_sample.cumulativeId() * _weightPrev + _next.cumulativeId() * _weightNext) /
-                        _totalWeight;
-                    cumulativeVolatilityAccumulated =
-                        (_sample.cumulativeVolatilityAccumulated() *
-                            _weightPrev +
-                            _next.cumulativeVolatilityAccumulated() *
-                            _weightNext) /
-                        _totalWeight;
-                    cumulativeBinCrossed =
-                        (_sample.cumulativeBinCrossed() * _weightPrev + _next.cumulativeBinCrossed() * _weightNext) /
-                        _totalWeight;
+                        (_sample.cumulativeId() * _weightPrev + _next.cumulativeId() * _weightNext) / _totalWeight;
+                    cumulativeVolatilityAccumulated = (
+                        _sample.cumulativeVolatilityAccumulated() * _weightPrev
+                            + _next.cumulativeVolatilityAccumulated() * _weightNext
+                    ) / _totalWeight;
+                    cumulativeBinCrossed = (
+                        _sample.cumulativeBinCrossed() * _weightPrev + _next.cumulativeBinCrossed() * _weightNext
+                    ) / _totalWeight;
                     return (_lookUpTimestamp, cumulativeId, cumulativeVolatilityAccumulated, cumulativeBinCrossed);
                 }
             }
@@ -119,7 +116,9 @@ library Oracle {
             assembly {
                 updatedIndex := addmod(_lastIndex, 1, _size)
             }
-        } else updatedIndex = _lastIndex;
+        } else {
+            updatedIndex = _lastIndex;
+        }
 
         _oracle[updatedIndex] = _updatedPackedSample;
     }
@@ -179,6 +178,8 @@ library Oracle {
                 _id := addmod(_id, 1, _activeSize)
             }
             (prev, next) = (_sample, _oracle[_id]);
-        } else (prev, next) = (_oracle[_id.before(_activeSize)], _sample);
+        } else {
+            (prev, next) = (_oracle[_id.before(_activeSize)], _sample);
+        }
     }
 }

@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.10;
 
-import "./TestHelper.sol";
+import "test/helpers/TestHelper.sol";
 
 contract LiquidityBinFactoryTest is TestHelper {
     event QuoteAssetRemoved(IERC20 indexed _quoteAsset);
@@ -16,10 +16,10 @@ contract LiquidityBinFactoryTest is TestHelper {
         bool ignoredForRouting;
     }
 
-    function setUp() public {
-        token6D = new ERC20MockDecimals(6);
-        token12D = new ERC20MockDecimals(12);
-        token18D = new ERC20MockDecimals(18);
+    function setUp() public override {
+        usdc = new ERC20Mock(6);
+        wbtc = new ERC20Mock(12);
+        weth = new ERC20Mock(18);
         wavax = new WAVAX();
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
@@ -41,7 +41,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         LBFactory anotherFactory = new LBFactory(DEV, 7e14);
         vm.expectRevert(LBFactory__ImplementationNotSet.selector);
-        anotherFactory.createLBPair(token6D, token18D, ID_ONE, DEFAULT_BIN_STEP);
+        anotherFactory.createLBPair(usdc, weth, ID_ONE, DEFAULT_BIN_STEP);
 
         ILBPair _LBPairImplementationAnotherFactory = new LBPair(anotherFactory);
         vm.expectRevert(
@@ -56,12 +56,12 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testgetAllLBPairs() public {
-        assertEq(factory.getAllLBPairs(token6D, token18D).length, 0);
-        ILBPair pair25 = createLBPairDefaultFees(token6D, token18D);
-        assertEq(factory.getAllLBPairs(token6D, token18D).length, 1);
+        assertEq(factory.getAllLBPairs(usdc, weth).length, 0);
+        ILBPair pair25 = createLBPairDefaultFees(usdc, weth);
+        assertEq(factory.getAllLBPairs(usdc, weth).length, 1);
         setDefaultFactoryPresets(1);
-        ILBPair pair1 = factory.createLBPair(token6D, token18D, ID_ONE, 1);
-        assertEq(factory.getAllLBPairs(token6D, token18D).length, 2);
+        ILBPair pair1 = factory.createLBPair(usdc, weth, ID_ONE, 1);
+        assertEq(factory.getAllLBPairs(usdc, weth).length, 2);
 
         factory.setPreset(
             50,
@@ -74,13 +74,13 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_MAX_VOLATILITY_ACCUMULATED,
             DEFAULT_SAMPLE_LIFETIME
         );
-        router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(WAVAX_AVALANCHE_ADDRESS));
+        router = new LBRouter(factory, IJoeFactory(address(0)), IWAVAX(address(0)));
         factory.setFactoryLockedState(false);
-        ILBPair pair50 = router.createLBPair(token6D, token18D, ID_ONE, 50);
-        factory.setLBPairIgnored(token6D, token18D, 50, true);
-        assertEq(factory.getAllLBPairs(token6D, token18D).length, 3);
+        ILBPair pair50 = router.createLBPair(usdc, weth, ID_ONE, 50);
+        factory.setLBPairIgnored(usdc, weth, 50, true);
+        assertEq(factory.getAllLBPairs(usdc, weth).length, 3);
 
-        ILBFactory.LBPairInformation[] memory LBPairsAvailable = factory.getAllLBPairs(token6D, token18D);
+        ILBFactory.LBPairInformation[] memory LBPairsAvailable = factory.getAllLBPairs(usdc, weth);
 
         assertEq(LBPairsAvailable[0].binStep, 1);
         assertEq(address(LBPairsAvailable[0].LBPair), address(pair1));
@@ -99,14 +99,14 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testCreateLBPair() public {
-        ILBPair pair = createLBPairDefaultFees(token6D, token12D);
+        ILBPair pair = createLBPairDefaultFees(usdc, wbtc);
 
         assertEq(factory.getNumberOfLBPairs(), 1);
-        assertEq(address(factory.getLBPairInformation(token6D, token12D, DEFAULT_BIN_STEP).LBPair), address(pair));
+        assertEq(address(factory.getLBPairInformation(usdc, wbtc, DEFAULT_BIN_STEP).LBPair), address(pair));
 
         assertEq(address(pair.factory()), address(factory));
-        assertEq(address(pair.tokenX()), address(token6D));
-        assertEq(address(pair.tokenY()), address(token12D));
+        assertEq(address(pair.tokenX()), address(usdc));
+        assertEq(address(pair.tokenY()), address(wbtc));
 
         FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();
         assertEq(feeParameters.volatilityAccumulated, 0);
@@ -141,16 +141,16 @@ contract LiquidityBinFactoryTest is TestHelper {
     function testFactoryLockedReverts() public {
         vm.prank(ALICE);
         vm.expectRevert(abi.encodeWithSelector(LBFactory__FunctionIsLockedForUsers.selector, ALICE));
-        createLBPairDefaultFees(token6D, token12D);
+        createLBPairDefaultFees(usdc, wbtc);
     }
 
     function testCreatePairWhenFactoryIsUnlocked() public {
         factory.setFactoryLockedState(false);
 
         vm.prank(ALICE);
-        createLBPairDefaultFees(token6D, token12D);
+        createLBPairDefaultFees(usdc, wbtc);
 
-        ILBFactory.LBPairInformation[] memory LBPairBinSteps = factory.getAllLBPairs(token6D, token12D);
+        ILBFactory.LBPairInformation[] memory LBPairBinSteps = factory.getAllLBPairs(usdc, wbtc);
         assertEq(LBPairBinSteps.length, 1);
         assertEq(LBPairBinSteps[0].binStep, DEFAULT_BIN_STEP);
         assertEq(LBPairBinSteps[0].ignoredForRouting, false);
@@ -158,25 +158,23 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testForIdenticalAddressesReverts() public {
-        vm.expectRevert(abi.encodeWithSelector(LBFactory__IdenticalAddresses.selector, token6D));
-        factory.createLBPair(token6D, token6D, ID_ONE, DEFAULT_BIN_STEP);
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__IdenticalAddresses.selector, usdc));
+        factory.createLBPair(usdc, usdc, ID_ONE, DEFAULT_BIN_STEP);
     }
 
     function testForZeroAddressPairReverts() public {
         factory.addQuoteAsset(IERC20(address(0)));
         vm.expectRevert(LBFactory__AddressZero.selector);
-        factory.createLBPair(token6D, IERC20(address(0)), ID_ONE, DEFAULT_BIN_STEP);
+        factory.createLBPair(usdc, IERC20(address(0)), ID_ONE, DEFAULT_BIN_STEP);
 
         vm.expectRevert(LBFactory__AddressZero.selector);
-        factory.createLBPair(IERC20(address(0)), token6D, ID_ONE, DEFAULT_BIN_STEP);
+        factory.createLBPair(IERC20(address(0)), usdc, ID_ONE, DEFAULT_BIN_STEP);
     }
 
     function testIfPairAlreadyExistsReverts() public {
-        createLBPairDefaultFees(token6D, token12D);
-        vm.expectRevert(
-            abi.encodeWithSelector(LBFactory__LBPairAlreadyExists.selector, token6D, token12D, DEFAULT_BIN_STEP)
-        );
-        createLBPairDefaultFees(token6D, token12D);
+        createLBPairDefaultFees(usdc, wbtc);
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__LBPairAlreadyExists.selector, usdc, wbtc, DEFAULT_BIN_STEP));
+        createLBPairDefaultFees(usdc, wbtc);
     }
 
     function testForInvalidBinStepOverflowReverts() public {
@@ -227,11 +225,11 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testSetFeesParametersOnPair() public {
-        ILBPair pair = createLBPairDefaultFees(token6D, token12D);
+        ILBPair pair = createLBPairDefaultFees(usdc, wbtc);
 
         factory.setFeesParametersOnPair(
-            token6D,
-            token12D,
+            usdc,
+            wbtc,
             DEFAULT_BIN_STEP,
             DEFAULT_BASE_FACTOR - 1,
             DEFAULT_FILTER_PERIOD - 1,
@@ -256,12 +254,12 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testSetFeesParametersOnPairReverts() public {
-        createLBPairDefaultFees(token6D, token12D);
+        createLBPairDefaultFees(usdc, wbtc);
         vm.prank(ALICE);
         vm.expectRevert(PendingOwnable__NotOwner.selector);
         factory.setFeesParametersOnPair(
-            token6D,
-            token12D,
+            usdc,
+            wbtc,
             DEFAULT_BIN_STEP,
             DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,
@@ -271,12 +269,10 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_PROTOCOL_SHARE,
             DEFAULT_MAX_VOLATILITY_ACCUMULATED
         );
-        vm.expectRevert(
-            abi.encodeWithSelector(LBFactory__LBPairNotCreated.selector, token6D, token18D, DEFAULT_BIN_STEP)
-        );
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__LBPairNotCreated.selector, usdc, weth, DEFAULT_BIN_STEP));
         factory.setFeesParametersOnPair(
-            token6D,
-            token18D,
+            usdc,
+            weth,
             DEFAULT_BIN_STEP,
             DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,
@@ -289,7 +285,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testForInvalidFilterPeriod() public {
-        createLBPairDefaultFees(token6D, token12D);
+        createLBPairDefaultFees(usdc, wbtc);
 
         uint16 invalidFilterPeriod = DEFAULT_DECAY_PERIOD;
         vm.expectRevert(
@@ -297,8 +293,8 @@ contract LiquidityBinFactoryTest is TestHelper {
         );
 
         factory.setFeesParametersOnPair(
-            token6D,
-            token12D,
+            usdc,
+            wbtc,
             DEFAULT_BIN_STEP,
             DEFAULT_BASE_FACTOR,
             invalidFilterPeriod,
@@ -311,19 +307,17 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testForInvalidProtocolShare() public {
-        createLBPairDefaultFees(token6D, token12D);
+        createLBPairDefaultFees(usdc, wbtc);
         uint16 invalidProtocolShare = uint16(factory.MAX_PROTOCOL_SHARE() + 1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                LBFactory__ProtocolShareOverflows.selector,
-                invalidProtocolShare,
-                factory.MAX_PROTOCOL_SHARE()
+                LBFactory__ProtocolShareOverflows.selector, invalidProtocolShare, factory.MAX_PROTOCOL_SHARE()
             )
         );
 
         factory.setFeesParametersOnPair(
-            token6D,
-            token12D,
+            usdc,
+            wbtc,
             DEFAULT_BIN_STEP,
             DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,
@@ -339,9 +333,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         uint16 invalidReductionFactor = uint16(Constants.BASIS_POINT_MAX + 1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                LBFactory__ReductionFactorOverflows.selector,
-                invalidReductionFactor,
-                Constants.BASIS_POINT_MAX
+                LBFactory__ReductionFactorOverflows.selector, invalidReductionFactor, Constants.BASIS_POINT_MAX
             )
         );
 
@@ -359,14 +351,14 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testForSetLBPairIgnoredReverts() public {
-        createLBPairDefaultFees(token6D, token18D);
+        createLBPairDefaultFees(usdc, weth);
 
-        factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, true);
+        factory.setLBPairIgnored(usdc, weth, DEFAULT_BIN_STEP, true);
         vm.expectRevert(LBFactory__LBPairIgnoredIsAlreadyInTheSameState.selector);
-        factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, true);
+        factory.setLBPairIgnored(usdc, weth, DEFAULT_BIN_STEP, true);
 
         vm.expectRevert(LBFactory__AddressZero.selector);
-        factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP + 1, true);
+        factory.setLBPairIgnored(usdc, weth, DEFAULT_BIN_STEP + 1, true);
     }
 
     function testForSettingFlashloanFee() public {
@@ -396,9 +388,10 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         //copy of part of factory._getPackedFeeParameters function
         uint256 _baseFee = (uint256(baseFactorIncreased) * DEFAULT_BIN_STEP) * 1e10;
-        uint256 _maxVariableFee = (DEFAULT_VARIABLE_FEE_CONTROL *
-            (uint256(DEFAULT_MAX_VOLATILITY_ACCUMULATED) * DEFAULT_BIN_STEP) *
-            (uint256(DEFAULT_MAX_VOLATILITY_ACCUMULATED) * DEFAULT_BIN_STEP)) / 100;
+        uint256 _maxVariableFee = (
+            DEFAULT_VARIABLE_FEE_CONTROL * (uint256(DEFAULT_MAX_VOLATILITY_ACCUMULATED) * DEFAULT_BIN_STEP)
+                * (uint256(DEFAULT_MAX_VOLATILITY_ACCUMULATED) * DEFAULT_BIN_STEP)
+        ) / 100;
 
         uint256 fee = _baseFee + _maxVariableFee;
         vm.expectRevert(abi.encodeWithSelector(LBFactory__FeesAboveMax.selector, fee, factory.MAX_FEE()));
@@ -421,9 +414,10 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         //copy of part of factory._getPackedFeeParameters function
         uint256 _baseFee = (uint256(DEFAULT_BASE_FACTOR) * DEFAULT_BIN_STEP) * 1e10;
-        uint256 _maxVariableFee = (DEFAULT_VARIABLE_FEE_CONTROL *
-            (uint256(volatilityAccumulated) * DEFAULT_BIN_STEP) *
-            (uint256(volatilityAccumulated) * DEFAULT_BIN_STEP)) / 100;
+        uint256 _maxVariableFee = (
+            DEFAULT_VARIABLE_FEE_CONTROL * (uint256(volatilityAccumulated) * DEFAULT_BIN_STEP)
+                * (uint256(volatilityAccumulated) * DEFAULT_BIN_STEP)
+        ) / 100;
         uint256 fee = _baseFee + _maxVariableFee;
 
         vm.expectRevert(abi.encodeWithSelector(LBFactory__FeesAboveMax.selector, fee, factory.MAX_FEE()));
@@ -442,40 +436,40 @@ contract LiquidityBinFactoryTest is TestHelper {
 
     function testInvalidBinStepWhileCreatingLBPair() public {
         vm.expectRevert(abi.encodeWithSelector(LBFactory__BinStepHasNoPreset.selector, DEFAULT_BIN_STEP + 1));
-        createLBPairDefaultFeesFromStartIdAndBinStep(token6D, token12D, ID_ONE, DEFAULT_BIN_STEP + 1);
+        createLBPairDefaultFeesFromStartIdAndBinStep(usdc, wbtc, ID_ONE, DEFAULT_BIN_STEP + 1);
     }
 
     function testQuoteAssets() public {
         assertEq(factory.getNumberOfQuoteAssets(), 4);
         assertEq(address(factory.getQuoteAsset(0)), address(wavax));
-        assertEq(address(factory.getQuoteAsset(1)), address(token6D));
-        assertEq(address(factory.getQuoteAsset(2)), address(token12D));
-        assertEq(address(factory.getQuoteAsset(3)), address(token18D));
+        assertEq(address(factory.getQuoteAsset(1)), address(usdc));
+        assertEq(address(factory.getQuoteAsset(2)), address(wbtc));
+        assertEq(address(factory.getQuoteAsset(3)), address(weth));
         assertEq(factory.isQuoteAsset(wavax), true);
-        assertEq(factory.isQuoteAsset(token6D), true);
-        assertEq(factory.isQuoteAsset(token12D), true);
-        assertEq(factory.isQuoteAsset(token18D), true);
+        assertEq(factory.isQuoteAsset(usdc), true);
+        assertEq(factory.isQuoteAsset(wbtc), true);
+        assertEq(factory.isQuoteAsset(weth), true);
 
-        vm.expectRevert(abi.encodeWithSelector(LBFactory__QuoteAssetAlreadyWhitelisted.selector, token12D));
-        factory.addQuoteAsset(token12D);
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__QuoteAssetAlreadyWhitelisted.selector, wbtc));
+        factory.addQuoteAsset(wbtc);
 
-        token24D = new ERC20MockDecimals(24);
-        vm.expectRevert(abi.encodeWithSelector(LBFactory__QuoteAssetNotWhitelisted.selector, token24D));
-        factory.removeQuoteAsset(token24D);
+        wbtc = new ERC20Mock(24);
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__QuoteAssetNotWhitelisted.selector, wbtc));
+        factory.removeQuoteAsset(wbtc);
 
-        assertEq(factory.isQuoteAsset(token24D), false);
-        vm.expectRevert(abi.encodeWithSelector(LBFactory__QuoteAssetNotWhitelisted.selector, token24D));
-        factory.createLBPair(token6D, token24D, ID_ONE, DEFAULT_BIN_STEP);
-
-        vm.expectEmit(true, true, true, true);
-        emit QuoteAssetAdded(token24D);
-        factory.addQuoteAsset(token24D);
-        assertEq(factory.isQuoteAsset(token24D), true);
-        assertEq(address(factory.getQuoteAsset(4)), address(token24D));
+        assertEq(factory.isQuoteAsset(wbtc), false);
+        vm.expectRevert(abi.encodeWithSelector(LBFactory__QuoteAssetNotWhitelisted.selector, wbtc));
+        factory.createLBPair(usdc, wbtc, ID_ONE, DEFAULT_BIN_STEP);
 
         vm.expectEmit(true, true, true, true);
-        emit QuoteAssetRemoved(token24D);
-        factory.removeQuoteAsset(token24D);
-        assertEq(factory.isQuoteAsset(token24D), false);
+        emit QuoteAssetAdded(wbtc);
+        factory.addQuoteAsset(wbtc);
+        assertEq(factory.isQuoteAsset(wbtc), true);
+        assertEq(address(factory.getQuoteAsset(4)), address(wbtc));
+
+        vm.expectEmit(true, true, true, true);
+        emit QuoteAssetRemoved(wbtc);
+        factory.removeQuoteAsset(wbtc);
+        assertEq(factory.isQuoteAsset(wbtc), false);
     }
 }

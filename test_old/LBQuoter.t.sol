@@ -2,24 +2,28 @@
 
 pragma solidity 0.8.10;
 
-import "./TestHelper.sol";
+import "../helpers/TestHelper.sol";
+import {Addresses} from "./Addresses.sol";
 
-contract LiquidityBinQuoterTest is TestHelper {
+contract _LiquidityBinQuoterTest is TestHelper {
     using Math512Bits for uint256;
 
     IJoeFactory private factoryV1;
-    ERC20MockDecimals private testWavax;
+    ERC20Mock private testWavax;
+    IJoeRouter02 internal routerV1;
 
     uint256 private defaultBaseFee = DEFAULT_BIN_STEP * uint256(DEFAULT_BASE_FACTOR) * 1e10;
 
-    function setUp() public {
+    function setUp() public override {
         vm.createSelectFork(vm.rpcUrl("avalanche"), 19_358_000);
 
-        usdc = new ERC20MockDecimals(6);
-        usdt = new ERC20MockDecimals(6);
-        testWavax = new ERC20MockDecimals(18);
+        usdc = new ERC20Mock(6);
+        usdt = new ERC20Mock(6);
+        testWavax = new ERC20Mock(18);
 
-        factoryV1 = IJoeFactory(JOE_V1_FACTORY_ADDRESS);
+        routerV1 = IJoeRouter02(Addresses.JOE_V1_ROUTER_ADDRESS);
+
+        factoryV1 = IJoeFactory(Addresses.JOE_V1_FACTORY_ADDRESS);
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
         factory.setLBPairImplementation(address(_LBPairImplementation));
@@ -27,8 +31,9 @@ contract LiquidityBinQuoterTest is TestHelper {
         factory.addQuoteAsset(testWavax);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
 
-        router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(WAVAX_AVALANCHE_ADDRESS));
-        quoter = new LBQuoter(address(router), JOE_V1_FACTORY_ADDRESS, address(factory));
+        router =
+        new LBRouter(factory, IJoeFactory(Addresses.JOE_V1_FACTORY_ADDRESS), IWAVAX(Addresses.WAVAX_AVALANCHE_ADDRESS));
+        quoter = new LBQuoter(address(router), Addresses.JOE_V1_FACTORY_ADDRESS, address(factory));
 
         // Minting and giving approval
         testWavax.mint(DEV, 1_000_000e18);
@@ -47,7 +52,7 @@ contract LiquidityBinQuoterTest is TestHelper {
 
     function testConstructor() public {
         assertEq(address(quoter.routerV2()), address(router));
-        assertEq(address(quoter.factoryV1()), JOE_V1_FACTORY_ADDRESS);
+        assertEq(address(quoter.factoryV1()), Addresses.JOE_V1_FACTORY_ADDRESS);
         assertEq(address(quoter.factoryV2()), address(factory));
     }
 
@@ -122,11 +127,8 @@ contract LiquidityBinQuoterTest is TestHelper {
 
         // Fees are expressed in the In token
         // To get the theorical amountIn without slippage but with the fees, the calculation is amountIn = amountOut / price / (1 - fees)
-        uint256 quoteAmountInWithFees = JoeLibrary.quote(
-            (amountOut * 1e18) / (1e18 - quote.fees[0]),
-            20_000e6,
-            1_000e18
-        );
+        uint256 quoteAmountInWithFees =
+            JoeLibrary.quote((amountOut * 1e18) / (1e18 - quote.fees[0]), 20_000e6, 1_000e18);
         assertApproxEqAbs(quote.virtualAmountsWithoutSlippage[0], quoteAmountInWithFees, 1e12);
     }
 

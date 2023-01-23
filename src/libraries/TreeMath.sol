@@ -18,11 +18,11 @@ library TreeMath {
     /// @param _rightSide Whether we're searching in the right side of the tree (true) or the left side (false)
     /// for the closest non zero bit on the right or the left
     /// @return The closest non zero bit on the right (or left) side of the tree
-    function findFirstBin(
-        mapping(uint256 => uint256)[3] storage _tree,
-        uint24 _binId,
-        bool _rightSide
-    ) internal view returns (uint24) {
+    function findFirstBin(mapping(uint256 => uint256)[3] storage _tree, uint24 _binId, bool _rightSide)
+        internal
+        view
+        returns (uint24)
+    {
         unchecked {
             uint256 current;
             uint256 bit;

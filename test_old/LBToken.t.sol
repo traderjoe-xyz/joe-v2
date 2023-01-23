@@ -2,21 +2,17 @@
 
 pragma solidity 0.8.10;
 
-import "./TestHelper.sol";
+import "test/helpers/TestHelper.sol";
 
 contract LiquidityBinTokenTest is TestHelper {
     event TransferBatch(
-        address indexed sender,
-        address indexed from,
-        address indexed to,
-        uint256[] ids,
-        uint256[] amounts
+        address indexed sender, address indexed from, address indexed to, uint256[] ids, uint256[] amounts
     );
     event TransferSingle(address indexed sender, address indexed from, address indexed to, uint256 id, uint256 amount);
 
-    function setUp() public {
-        token6D = new ERC20MockDecimals(6);
-        token18D = new ERC20MockDecimals(18);
+    function setUp() public override {
+        usdc = new ERC20Mock(6);
+        weth = new ERC20Mock(18);
 
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
@@ -24,13 +20,13 @@ contract LiquidityBinTokenTest is TestHelper {
         addAllAssetsToQuoteWhitelist(factory);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
 
-        pair = createLBPairDefaultFees(token6D, token18D);
+        pair = createLBPairDefaultFees(usdc, weth);
     }
 
     function testSafeBatchTransferFrom() public {
         uint256 amountIn = 1e18;
 
-        (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, 5, 0);
+        (uint256[] memory _ids,,,) = addLiquidity(amountIn, ID_ONE, 5, 0);
 
         uint256[] memory amounts = new uint256[](5);
         for (uint256 i; i < 5; i++) {
@@ -61,7 +57,7 @@ contract LiquidityBinTokenTest is TestHelper {
     function testSafeTransferFrom() public {
         uint256 amountIn = 1e18;
 
-        (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, 5, 0);
+        (uint256[] memory _ids,,,) = addLiquidity(amountIn, ID_ONE, 5, 0);
 
         uint256[] memory amounts = new uint256[](5);
         for (uint256 i; i < 5; i++) {
@@ -91,7 +87,7 @@ contract LiquidityBinTokenTest is TestHelper {
 
     function testSafeBatchTransferNotApprovedReverts() public {
         uint256 amountIn = 1e18;
-        (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, 5, 0);
+        (uint256[] memory _ids,,,) = addLiquidity(amountIn, ID_ONE, 5, 0);
 
         uint256[] memory amounts = new uint256[](5);
         for (uint256 i; i < 5; i++) {
@@ -105,7 +101,7 @@ contract LiquidityBinTokenTest is TestHelper {
 
     function testSafeTransferNotApprovedReverts() public {
         uint256 amountIn = 1e18;
-        (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, 5, 0);
+        (uint256[] memory _ids,,,) = addLiquidity(amountIn, ID_ONE, 5, 0);
 
         uint256[] memory amounts = new uint256[](5);
         for (uint256 i; i < 5; i++) {
@@ -120,7 +116,7 @@ contract LiquidityBinTokenTest is TestHelper {
     function testSafeBatchTransferFromReverts() public {
         uint24 binAmount = 11;
         uint256 amountIn = 1e18;
-        (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, binAmount, 0);
+        (uint256[] memory _ids,,,) = addLiquidity(amountIn, ID_ONE, binAmount, 0);
 
         uint256[] memory amounts = new uint256[](binAmount);
         for (uint256 i; i < binAmount; i++) {
@@ -152,7 +148,7 @@ contract LiquidityBinTokenTest is TestHelper {
     function testSafeTransferFromReverts() public {
         uint24 binAmount = 11;
         uint256 amountIn = 1e18;
-        (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, binAmount, 0);
+        (uint256[] memory _ids,,,) = addLiquidity(amountIn, ID_ONE, binAmount, 0);
 
         uint256[] memory amounts = new uint256[](binAmount);
         for (uint256 i; i < binAmount; i++) {
@@ -183,7 +179,7 @@ contract LiquidityBinTokenTest is TestHelper {
     function testModifierCheckLength() public {
         uint24 binAmount = 11;
         uint256 amountIn = 1e18;
-        (uint256[] memory _ids, , , ) = addLiquidity(amountIn, ID_ONE, binAmount, 0);
+        (uint256[] memory _ids,,,) = addLiquidity(amountIn, ID_ONE, binAmount, 0);
 
         uint256[] memory amounts = new uint256[](binAmount - 1);
         for (uint256 i; i < binAmount - 1; i++) {
@@ -232,7 +228,7 @@ contract LiquidityBinTokenTest is TestHelper {
             assertEq(batchBalances[i], 0);
         }
 
-        (_ids, , , ) = addLiquidity(amountIn, _startId, binAmount, _gap);
+        (_ids,,,) = addLiquidity(amountIn, _startId, binAmount, _gap);
         uint256[] memory amounts = new uint256[](binAmount);
         for (uint256 i; i < binAmount; i++) {
             amounts[i] = pair.balanceOf(DEV, _ids[i]);

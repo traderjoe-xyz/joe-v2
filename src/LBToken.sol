@@ -111,12 +111,13 @@ contract LBToken is ILBToken {
     /// @param _to The address of the recipient
     /// @param _id The token id
     /// @param _amount The amount to send
-    function safeTransferFrom(
-        address _from,
-        address _to,
-        uint256 _id,
-        uint256 _amount
-    ) public virtual override checkAddresses(_from, _to) checkApproval(_from, msg.sender) {
+    function safeTransferFrom(address _from, address _to, uint256 _id, uint256 _amount)
+        public
+        virtual
+        override
+        checkAddresses(_from, _to)
+        checkApproval(_from, msg.sender)
+    {
         address _spender = msg.sender;
 
         _transfer(_from, _to, _id, _amount);
@@ -129,12 +130,7 @@ contract LBToken is ILBToken {
     /// @param _to The address of the recipient
     /// @param _ids The list of token ids
     /// @param _amounts The list of amounts to send
-    function safeBatchTransferFrom(
-        address _from,
-        address _to,
-        uint256[] calldata _ids,
-        uint256[] calldata _amounts
-    )
+    function safeBatchTransferFrom(address _from, address _to, uint256[] calldata _ids, uint256[] calldata _amounts)
         public
         virtual
         override
@@ -164,12 +160,7 @@ contract LBToken is ILBToken {
     /// @param _to The address of the recipient
     /// @param _id The token id
     /// @param _amount The amount to send
-    function _transfer(
-        address _from,
-        address _to,
-        uint256 _id,
-        uint256 _amount
-    ) internal virtual {
+    function _transfer(address _from, address _to, uint256 _id, uint256 _amount) internal virtual {
         uint256 _fromBalance = _balances[_id][_from];
         if (_fromBalance < _amount) revert LBToken__TransferExceedsBalance(_from, _id, _amount);
 
@@ -185,11 +176,7 @@ contract LBToken is ILBToken {
     /// @param _account The address of the recipient
     /// @param _id The token id
     /// @param _amount The amount to mint
-    function _mint(
-        address _account,
-        uint256 _id,
-        uint256 _amount
-    ) internal virtual {
+    function _mint(address _account, uint256 _id, uint256 _amount) internal virtual {
         if (_account == address(0)) revert LBToken__MintToAddress0();
 
         _beforeTokenTransfer(address(0), _account, _id, _amount);
@@ -207,11 +194,7 @@ contract LBToken is ILBToken {
     /// @param _account The address of the owner
     /// @param _id The token id
     /// @param _amount The amount to destroy
-    function _burn(
-        address _account,
-        uint256 _id,
-        uint256 _amount
-    ) internal virtual {
+    function _burn(address _account, uint256 _id, uint256 _amount) internal virtual {
         if (_account == address(0)) revert LBToken__BurnFromAddress0();
 
         uint256 _accountBalance = _balances[_id][_account];
@@ -231,11 +214,7 @@ contract LBToken is ILBToken {
     /// @param _owner The address of the owner
     /// @param _spender The address of the spender
     /// @param _approved The boolean value to grant or revoke permission
-    function _setApprovalForAll(
-        address _owner,
-        address _spender,
-        bool _approved
-    ) internal virtual {
+    function _setApprovalForAll(address _owner, address _spender, bool _approved) internal virtual {
         if (_owner == _spender) revert LBToken__SelfApproval(_owner);
 
         _spenderApprovals[_owner][_spender] = _approved;
@@ -267,10 +246,5 @@ contract LBToken is ILBToken {
     /// @param to The address of the recipient of the  token
     /// @param id The id of the token
     /// @param amount The amount of token of type `id`
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount
-    ) internal virtual {}
+    function _beforeTokenTransfer(address from, address to, uint256 id, uint256 amount) internal virtual {}
 }

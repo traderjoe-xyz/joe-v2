@@ -2,13 +2,13 @@
 
 pragma solidity 0.8.10;
 
-import "./TestHelper.sol";
+import "test/helpers/TestHelper.sol";
 import "../src/LBToken.sol";
 
 contract LiquidityBinTokenTest is TestHelper, LBToken {
-    function setUp() public {
-        token6D = new ERC20MockDecimals(6);
-        token18D = new ERC20MockDecimals(18);
+    function setUp() public override {
+        usdc = new ERC20Mock(6);
+        weth = new ERC20Mock(18);
 
         factory = new LBFactory(DEV, 8e14);
         ILBPair _LBPairImplementation = new LBPair(factory);
@@ -16,16 +16,16 @@ contract LiquidityBinTokenTest is TestHelper, LBToken {
         addAllAssetsToQuoteWhitelist(factory);
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
 
-        pair = createLBPairDefaultFees(token6D, token18D);
+        pair = createLBPairDefaultFees(usdc, weth);
     }
 
     function testInternalMintTo0AddressReverts() public {
         vm.expectRevert(LBToken__MintToAddress0.selector);
-        _mint(address(0), 2**23, 1000);
+        _mint(address(0), 2 ** 23, 1000);
     }
 
     function testInternalMint(uint256 mintAmount) public {
-        uint256 binNumber = 2**23;
+        uint256 binNumber = 2 ** 23;
         uint256 totalSupplyBefore = totalSupply(binNumber);
         uint256 balanceBefore = balanceOf(ALICE, binNumber);
         vm.expectEmit(true, true, true, true);
@@ -39,13 +39,13 @@ contract LiquidityBinTokenTest is TestHelper, LBToken {
 
     function testInternalBurnFrom0AddressReverts() public {
         vm.expectRevert(LBToken__BurnFromAddress0.selector);
-        _burn(address(0), 2**23, 1000);
+        _burn(address(0), 2 ** 23, 1000);
     }
 
     function testInternalExcessiveBurnAmountReverts(uint128 mintAmount, uint128 excessiveBurnAmount) public {
         vm.assume(excessiveBurnAmount > 0);
         uint256 burnAmount = uint256(mintAmount) + uint256(excessiveBurnAmount);
-        uint256 binNumber = 2**23;
+        uint256 binNumber = 2 ** 23;
         _mint(ALICE, binNumber, mintAmount);
         vm.expectRevert(abi.encodeWithSelector(LBToken__BurnExceedsBalance.selector, ALICE, binNumber, burnAmount));
         _burn(ALICE, binNumber, burnAmount);
@@ -54,7 +54,7 @@ contract LiquidityBinTokenTest is TestHelper, LBToken {
     function testInternalBurn(uint256 mintAmount, uint256 burnAmount) public {
         vm.assume(mintAmount > 0 && burnAmount > 0);
         vm.assume(mintAmount >= burnAmount);
-        uint256 binNumber = 2**23;
+        uint256 binNumber = 2 ** 23;
 
         _mint(ALICE, binNumber, mintAmount);
 

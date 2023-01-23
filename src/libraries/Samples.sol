@@ -37,12 +37,11 @@ library Samples {
     /// @param _volatilityAccumulated The volatility accumulated of the pair during the latest swap
     /// @param _binCrossed The bin crossed during the latest swap
     /// @return packedSample The packed sample as bytes32
-    function update(
-        bytes32 _lastSample,
-        uint256 _activeId,
-        uint256 _volatilityAccumulated,
-        uint256 _binCrossed
-    ) internal view returns (bytes32 packedSample) {
+    function update(bytes32 _lastSample, uint256 _activeId, uint256 _volatilityAccumulated, uint256 _binCrossed)
+        internal
+        view
+        returns (bytes32 packedSample)
+    {
         uint256 _deltaTime = block.timestamp - timestamp(_lastSample);
 
         // cumulative can overflow without any issue as what matter is the delta cumulative.
@@ -50,9 +49,8 @@ library Samples {
         // The delta calculation needs to be unchecked math to allow for it to overflow again.
         unchecked {
             uint256 _cumulativeId = cumulativeId(_lastSample) + _activeId * _deltaTime;
-            uint256 _cumulativeVolatilityAccumulated = cumulativeVolatilityAccumulated(_lastSample) +
-                _volatilityAccumulated *
-                _deltaTime;
+            uint256 _cumulativeVolatilityAccumulated =
+                cumulativeVolatilityAccumulated(_lastSample) + _volatilityAccumulated * _deltaTime;
             uint256 _cumulativeBinCrossed = cumulativeBinCrossed(_lastSample) + _binCrossed * _deltaTime;
 
             return pack(_cumulativeBinCrossed, _cumulativeVolatilityAccumulated, _cumulativeId, block.timestamp, 1);
@@ -73,15 +71,12 @@ library Samples {
         uint256 _timestamp,
         uint256 _initialized
     ) internal pure returns (bytes32 packedSample) {
-        return
-            _cumulativeBinCrossed.encode(_MASK_CUMULATIVE_BIN_CROSSED, _OFFSET_CUMULATIVE_BIN_CROSSED) |
-            _cumulativeVolatilityAccumulated.encode(
-                _MASK_CUMULATIVE_VolatilityAccumulated,
-                _OFFSET_CUMULATIVE_VolatilityAccumulated
-            ) |
-            _cumulativeId.encode(_MASK_CUMULATIVE_ID, _OFFSET_CUMULATIVE_ID) |
-            _timestamp.encode(_MASK_TIMESTAMP, _OFFSET_TIMESTAMP) |
-            _initialized.encode(_MASK_INITIALIZED, _OFFSET_INITIALIZED);
+        return _cumulativeBinCrossed.encode(_MASK_CUMULATIVE_BIN_CROSSED, _OFFSET_CUMULATIVE_BIN_CROSSED)
+            | _cumulativeVolatilityAccumulated.encode(
+                _MASK_CUMULATIVE_VolatilityAccumulated, _OFFSET_CUMULATIVE_VolatilityAccumulated
+            ) | _cumulativeId.encode(_MASK_CUMULATIVE_ID, _OFFSET_CUMULATIVE_ID)
+            | _timestamp.encode(_MASK_TIMESTAMP, _OFFSET_TIMESTAMP)
+            | _initialized.encode(_MASK_INITIALIZED, _OFFSET_INITIALIZED);
     }
 
     /// @notice View function to return the initialized value

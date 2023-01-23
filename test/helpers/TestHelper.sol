@@ -36,6 +36,7 @@ abstract contract TestHelper is Test, IERC165 {
     uint16 internal constant DEFAULT_PROTOCOL_SHARE = 1_000;
     uint24 internal constant DEFAULT_MAX_VOLATILITY_ACCUMULATED = 350_000;
     uint16 internal constant DEFAULT_SAMPLE_LIFETIME = 120;
+    uint256 internal constant DEFAULT_FLASHLOAN_FEE = 8e14;
 
     address payable internal immutable DEV = payable(address(this));
     address payable internal constant ALICE = payable(makeAddr("alice"));
@@ -87,7 +88,7 @@ abstract contract TestHelper is Test, IERC165 {
         vm.label(address(taxToken), "taxToken");
 
         // Create factory
-        factory = new LBFactory(DEV, 8e14);
+        factory = new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
         ILBPair _LBPairImplementation = new LBPair(factory);
 
         // Setup factory

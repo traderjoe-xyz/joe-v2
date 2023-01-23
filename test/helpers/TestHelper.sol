@@ -38,9 +38,9 @@ abstract contract TestHelper is Test, IERC165 {
     uint16 internal constant DEFAULT_SAMPLE_LIFETIME = 120;
     uint256 internal constant DEFAULT_FLASHLOAN_FEE = 8e14;
 
-    address payable internal immutable DEV = payable(address(this));
-    address payable internal constant ALICE = payable(makeAddr("alice"));
-    address payable internal constant BOB = payable(makeAddr("bob"));
+    address payable immutable DEV = payable(address(this));
+    address payable immutable ALICE = payable(makeAddr("alice"));
+    address payable immutable BOB = payable(makeAddr("bob"));
 
     // Wrapped Native
     WAVAX internal wavax;

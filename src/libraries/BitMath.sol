@@ -11,11 +11,7 @@ library BitMath {
     /// @param _bit The bit index
     /// @param _rightSide Whether we're searching in the right side of the tree (true) or the left side (false)
     /// @return The index of the closest non-zero bit. If there is no closest bit, it returns max(uint256)
-    function closestBit(
-        uint256 _integer,
-        uint8 _bit,
-        bool _rightSide
-    ) internal pure returns (uint256) {
+    function closestBit(uint256 _integer, uint8 _bit, bool _rightSide) internal pure returns (uint256) {
         return _rightSide ? closestBitRight(_integer, _bit - 1) : closestBitLeft(_integer, _bit + 1);
     }
 

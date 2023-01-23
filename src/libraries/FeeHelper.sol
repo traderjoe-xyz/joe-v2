@@ -62,9 +62,8 @@ library FeeHelper {
             if (_deltaT < _fp.decayPeriod) {
                 unchecked {
                     // This can't overflow as `reductionFactor <= BASIS_POINT_MAX`
-                    _fp.volatilityReference = uint24(
-                        (uint256(_fp.reductionFactor) * _fp.volatilityAccumulated) / Constants.BASIS_POINT_MAX
-                    );
+                    _fp.volatilityReference =
+                        uint24((uint256(_fp.reductionFactor) * _fp.volatilityAccumulated) / Constants.BASIS_POINT_MAX);
                 }
             } else {
                 _fp.volatilityReference = 0;
@@ -80,8 +79,8 @@ library FeeHelper {
     /// @param _fp The fee parameter
     /// @param _activeId The current active id
     function updateVolatilityAccumulated(FeeParameters memory _fp, uint256 _activeId) internal pure {
-        uint256 volatilityAccumulated = (_activeId.absSub(_fp.indexRef) * Constants.BASIS_POINT_MAX) +
-            _fp.volatilityReference;
+        uint256 volatilityAccumulated =
+            (_activeId.absSub(_fp.indexRef) * Constants.BASIS_POINT_MAX) + _fp.volatilityReference;
         _fp.volatilityAccumulated = volatilityAccumulated > _fp.maxVolatilityAccumulated
             ? _fp.maxVolatilityAccumulated
             : uint24(volatilityAccumulated);

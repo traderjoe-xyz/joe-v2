@@ -42,8 +42,9 @@ contract LBRouter is ILBRouter {
     }
 
     modifier verifyInputs(uint256[] memory _pairBinSteps, IERC20[] memory _tokenPath) {
-        if (_pairBinSteps.length == 0 || _pairBinSteps.length + 1 != _tokenPath.length)
+        if (_pairBinSteps.length == 0 || _pairBinSteps.length + 1 != _tokenPath.length) {
             revert LBRouter__LengthsMismatch();
+        }
         _;
     }
 
@@ -51,11 +52,7 @@ contract LBRouter is ILBRouter {
     /// @param _factory LBFactory address
     /// @param _oldFactory Address of old factory (Joe V1)
     /// @param _wavax Address of WAVAX
-    constructor(
-        ILBFactory _factory,
-        IJoeFactory _oldFactory,
-        IWAVAX _wavax
-    ) {
+    constructor(ILBFactory _factory, IJoeFactory _oldFactory, IWAVAX _wavax) {
         factory = _factory;
         oldFactory = _oldFactory;
         wavax = _wavax;
@@ -89,15 +86,17 @@ contract LBRouter is ILBRouter {
     /// @param _swapForY Whether you swap X for Y (true), or Y for X (false)
     /// @return amountIn The amount of token to send in order to receive _amountOut token
     /// @return feesIn The amount of fees paid in token sent
-    function getSwapIn(
-        ILBPair _LBPair,
-        uint256 _amountOut,
-        bool _swapForY
-    ) public view override returns (uint256 amountIn, uint256 feesIn) {
+    function getSwapIn(ILBPair _LBPair, uint256 _amountOut, bool _swapForY)
+        public
+        view
+        override
+        returns (uint256 amountIn, uint256 feesIn)
+    {
         (uint256 _pairReserveX, uint256 _pairReserveY, uint256 _activeId) = _LBPair.getReservesAndId();
 
-        if (_amountOut == 0 || (_swapForY ? _amountOut > _pairReserveY : _amountOut > _pairReserveX))
-            revert LBRouter__WrongAmounts(_amountOut, _swapForY ? _pairReserveY : _pairReserveX); // If this is wrong, then we're sure the amounts sent are wrong
+        if (_amountOut == 0 || (_swapForY ? _amountOut > _pairReserveY : _amountOut > _pairReserveX)) {
+            revert LBRouter__WrongAmounts(_amountOut, _swapForY ? _pairReserveY : _pairReserveX);
+        } // If this is wrong, then we're sure the amounts sent are wrong
 
         FeeHelper.FeeParameters memory _fp = _LBPair.feeParameters();
         _fp.updateVariableFeeParameters(_activeId);
@@ -146,12 +145,13 @@ contract LBRouter is ILBRouter {
     /// @param _swapForY Whether you swap X for Y (true), or Y for X (false)
     /// @return amountOut The amount of token received if _amountIn tokenX are sent
     /// @return feesIn The amount of fees paid in token sent
-    function getSwapOut(
-        ILBPair _LBPair,
-        uint256 _amountIn,
-        bool _swapForY
-    ) external view override returns (uint256 amountOut, uint256 feesIn) {
-        (, , uint256 _activeId) = _LBPair.getReservesAndId();
+    function getSwapOut(ILBPair _LBPair, uint256 _amountIn, bool _swapForY)
+        external
+        view
+        override
+        returns (uint256 amountOut, uint256 feesIn)
+    {
+        (,, uint256 _activeId) = _LBPair.getReservesAndId();
 
         FeeHelper.FeeParameters memory _fp = _LBPair.feeParameters();
         _fp.updateVariableFeeParameters(_activeId);
@@ -166,8 +166,8 @@ contract LBRouter is ILBRouter {
                 _bin = ILBPair.Bin(uint112(_reserveX), uint112(_reserveY), 0, 0);
             }
             if (_bin.reserveX != 0 || _bin.reserveY != 0) {
-                (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) = _bin
-                    .getAmounts(_fp, _activeId, _swapForY, _amountIn);
+                (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) =
+                    _bin.getAmounts(_fp, _activeId, _swapForY, _amountIn);
 
                 if (_amountInToBin > type(uint112).max) revert LBRouter__BinReserveOverflows(_activeId);
 
@@ -191,12 +191,11 @@ contract LBRouter is ILBRouter {
     /// @param _activeId The active id of the pair
     /// @param _binStep The bin step in basis point, used to calculate log(1 + binStep)
     /// @return pair The address of the newly created LBPair
-    function createLBPair(
-        IERC20 _tokenX,
-        IERC20 _tokenY,
-        uint24 _activeId,
-        uint16 _binStep
-    ) external override returns (ILBPair pair) {
+    function createLBPair(IERC20 _tokenX, IERC20 _tokenY, uint24 _activeId, uint16 _binStep)
+        external
+        override
+        returns (ILBPair pair)
+    {
         pair = factory.createLBPair(_tokenX, _tokenY, _activeId, _binStep);
     }
 
@@ -211,9 +210,7 @@ contract LBRouter is ILBRouter {
         returns (uint256[] memory depositIds, uint256[] memory liquidityMinted)
     {
         ILBPair _LBPair = _getLBPairInformation(
-            _liquidityParameters.tokenX,
-            _liquidityParameters.tokenY,
-            _liquidityParameters.binStep
+            _liquidityParameters.tokenX, _liquidityParameters.tokenY, _liquidityParameters.binStep
         );
         if (_liquidityParameters.tokenX != _LBPair.tokenX()) revert LBRouter__WrongTokenOrder();
 
@@ -235,9 +232,7 @@ contract LBRouter is ILBRouter {
         returns (uint256[] memory depositIds, uint256[] memory liquidityMinted)
     {
         ILBPair _LBPair = _getLBPairInformation(
-            _liquidityParameters.tokenX,
-            _liquidityParameters.tokenY,
-            _liquidityParameters.binStep
+            _liquidityParameters.tokenX, _liquidityParameters.tokenY, _liquidityParameters.binStep
         );
         if (_liquidityParameters.tokenX != _LBPair.tokenX()) revert LBRouter__WrongTokenOrder();
 
@@ -247,7 +242,7 @@ contract LBRouter is ILBRouter {
         } else if (_liquidityParameters.tokenY == wavax && _liquidityParameters.amountY == msg.value) {
             _liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(_LBPair), _liquidityParameters.amountX);
             _wavaxDepositAndTransfer(address(_LBPair), msg.value);
-        } else
+        } else {
             revert LBRouter__WrongAvaxLiquidityParameters(
                 address(_liquidityParameters.tokenX),
                 address(_liquidityParameters.tokenY),
@@ -255,6 +250,7 @@ contract LBRouter is ILBRouter {
                 _liquidityParameters.amountY,
                 msg.value
             );
+        }
 
         (depositIds, liquidityMinted) = _addLiquidity(_liquidityParameters, _LBPair);
     }
@@ -325,14 +321,8 @@ contract LBRouter is ILBRouter {
                 (_amountTokenMin, _amountAVAXMin) = (_amountAVAXMin, _amountTokenMin);
             }
 
-            (uint256 _amountX, uint256 _amountY) = _removeLiquidity(
-                _LBPair,
-                _amountTokenMin,
-                _amountAVAXMin,
-                _ids,
-                _amounts,
-                address(this)
-            );
+            (uint256 _amountX, uint256 _amountY) =
+                _removeLiquidity(_LBPair, _amountTokenMin, _amountAVAXMin, _ids, _amounts, address(this));
 
             (amountToken, amountAVAX) = _isAVAXTokenY ? (_amountX, _amountY) : (_amountY, _amountX);
         }
@@ -384,8 +374,9 @@ contract LBRouter is ILBRouter {
         address payable _to,
         uint256 _deadline
     ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256 amountOut) {
-        if (_tokenPath[_pairBinSteps.length] != IERC20(wavax))
+        if (_tokenPath[_pairBinSteps.length] != IERC20(wavax)) {
             revert LBRouter__InvalidTokenPath(address(_tokenPath[_pairBinSteps.length]));
+        }
 
         address[] memory _pairs = _getPairs(_pairBinSteps, _tokenPath);
 
@@ -439,7 +430,13 @@ contract LBRouter is ILBRouter {
         IERC20[] memory _tokenPath,
         address _to,
         uint256 _deadline
-    ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256[] memory amountsIn) {
+    )
+        external
+        override
+        ensure(_deadline)
+        verifyInputs(_pairBinSteps, _tokenPath)
+        returns (uint256[] memory amountsIn)
+    {
         address[] memory _pairs = _getPairs(_pairBinSteps, _tokenPath);
         amountsIn = _getAmountsIn(_pairBinSteps, _pairs, _tokenPath, _amountOut);
 
@@ -467,9 +464,16 @@ contract LBRouter is ILBRouter {
         IERC20[] memory _tokenPath,
         address payable _to,
         uint256 _deadline
-    ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256[] memory amountsIn) {
-        if (_tokenPath[_pairBinSteps.length] != IERC20(wavax))
+    )
+        external
+        override
+        ensure(_deadline)
+        verifyInputs(_pairBinSteps, _tokenPath)
+        returns (uint256[] memory amountsIn)
+    {
+        if (_tokenPath[_pairBinSteps.length] != IERC20(wavax)) {
             revert LBRouter__InvalidTokenPath(address(_tokenPath[_pairBinSteps.length]));
+        }
 
         address[] memory _pairs = _getPairs(_pairBinSteps, _tokenPath);
         amountsIn = _getAmountsIn(_pairBinSteps, _pairs, _tokenPath, _amountAVAXOut);
@@ -570,8 +574,9 @@ contract LBRouter is ILBRouter {
         address payable _to,
         uint256 _deadline
     ) external override ensure(_deadline) verifyInputs(_pairBinSteps, _tokenPath) returns (uint256 amountOut) {
-        if (_tokenPath[_pairBinSteps.length] != IERC20(wavax))
+        if (_tokenPath[_pairBinSteps.length] != IERC20(wavax)) {
             revert LBRouter__InvalidTokenPath(address(_tokenPath[_pairBinSteps.length]));
+        }
 
         address[] memory _pairs = _getPairs(_pairBinSteps, _tokenPath);
 
@@ -623,11 +628,7 @@ contract LBRouter is ILBRouter {
     /// @param _token The address of the token
     /// @param _to The address of the user to send back the tokens
     /// @param _amount The amount to send
-    function sweep(
-        IERC20 _token,
-        address _to,
-        uint256 _amount
-    ) external override onlyFactoryOwner {
+    function sweep(IERC20 _token, address _to, uint256 _amount) external override onlyFactoryOwner {
         if (address(_token) == address(0)) {
             if (_amount == type(uint256).max) _amount = address(this).balance;
             _safeTransferAVAX(_to, _amount);
@@ -643,12 +644,11 @@ contract LBRouter is ILBRouter {
     /// @param _to The address of the user to send back the tokens
     /// @param _ids The list of token ids
     /// @param _amounts The list of amounts to send
-    function sweepLBToken(
-        ILBToken _lbToken,
-        address _to,
-        uint256[] calldata _ids,
-        uint256[] calldata _amounts
-    ) external override onlyFactoryOwner {
+    function sweepLBToken(ILBToken _lbToken, address _to, uint256[] calldata _ids, uint256[] calldata _amounts)
+        external
+        override
+        onlyFactoryOwner
+    {
         _lbToken.safeBatchTransferFrom(address(this), _to, _ids, _amounts);
     }
 
@@ -664,12 +664,15 @@ contract LBRouter is ILBRouter {
     {
         unchecked {
             if (_liq.deltaIds.length != _liq.distributionX.length && _liq.deltaIds.length != _liq.distributionY.length)
+            {
                 revert LBRouter__LengthsMismatch();
+            }
 
-            if (_liq.activeIdDesired > type(uint24).max || _liq.idSlippage > type(uint24).max)
+            if (_liq.activeIdDesired > type(uint24).max || _liq.idSlippage > type(uint24).max) {
                 revert LBRouter__IdDesiredOverflows(_liq.activeIdDesired, _liq.idSlippage);
+            }
 
-            (, , uint256 _activeId) = _LBPair.getReservesAndId();
+            (,, uint256 _activeId) = _LBPair.getReservesAndId();
             if (
                 _liq.activeIdDesired + _liq.idSlippage < _activeId || _activeId + _liq.idSlippage < _liq.activeIdDesired
             ) revert LBRouter__IdSlippageCaught(_liq.activeIdDesired, _liq.idSlippage, _activeId);
@@ -684,15 +687,12 @@ contract LBRouter is ILBRouter {
             uint256 _amountXAdded;
             uint256 _amountYAdded;
 
-            (_amountXAdded, _amountYAdded, liquidityMinted) = _LBPair.mint(
-                depositIds,
-                _liq.distributionX,
-                _liq.distributionY,
-                _liq.to
-            );
+            (_amountXAdded, _amountYAdded, liquidityMinted) =
+                _LBPair.mint(depositIds, _liq.distributionX, _liq.distributionY, _liq.to);
 
-            if (_amountXAdded < _liq.amountXMin || _amountYAdded < _liq.amountYMin)
+            if (_amountXAdded < _liq.amountXMin || _amountYAdded < _liq.amountYMin) {
                 revert LBRouter__AmountSlippageCaught(_liq.amountXMin, _amountXAdded, _liq.amountYMin, _amountYAdded);
+            }
         }
     }
 
@@ -719,7 +719,7 @@ contract LBRouter is ILBRouter {
             address _pair = _pairs[i - 1];
 
             if (_binStep == 0) {
-                (uint256 _reserveIn, uint256 _reserveOut, ) = IJoePair(_pair).getReserves();
+                (uint256 _reserveIn, uint256 _reserveOut,) = IJoePair(_pair).getReserves();
                 if (_token > _tokenPath[i]) {
                     (_reserveIn, _reserveOut) = (_reserveOut, _reserveIn);
                 }
@@ -727,7 +727,7 @@ contract LBRouter is ILBRouter {
                 uint256 amountOut_ = amountsIn[i];
                 amountsIn[i - 1] = amountOut_.getAmountIn(_reserveIn, _reserveOut);
             } else {
-                (amountsIn[i - 1], ) = getSwapIn(ILBPair(_pair), amountsIn[i], ILBPair(_pair).tokenX() == _token);
+                (amountsIn[i - 1],) = getSwapIn(ILBPair(_pair), amountsIn[i], ILBPair(_pair).tokenX() == _token);
             }
         }
     }
@@ -751,8 +751,9 @@ contract LBRouter is ILBRouter {
     ) private returns (uint256 amountX, uint256 amountY) {
         ILBToken(address(_LBPair)).safeBatchTransferFrom(msg.sender, address(_LBPair), _ids, _amounts);
         (amountX, amountY) = _LBPair.burn(_ids, _amounts, _to);
-        if (amountX < _amountXMin || amountY < _amountYMin)
+        if (amountX < _amountXMin || amountY < _amountYMin) {
             revert LBRouter__AmountSlippageCaught(_amountXMin, amountX, _amountYMin, amountY);
+        }
     }
 
     /// @notice Helper function to swap exact tokens for tokens
@@ -788,7 +789,7 @@ contract LBRouter is ILBRouter {
                 _recipient = i + 1 == _pairs.length ? _to : _pairs[i + 1];
 
                 if (_binStep == 0) {
-                    (uint256 _reserve0, uint256 _reserve1, ) = IJoePair(_pair).getReserves();
+                    (uint256 _reserve0, uint256 _reserve1,) = IJoePair(_pair).getReserves();
 
                     if (_token < _tokenNext) {
                         amountOut = amountOut.getAmountOut(_reserve0, _reserve1);
@@ -888,7 +889,7 @@ contract LBRouter is ILBRouter {
                 _recipient = i + 1 == _pairs.length ? _to : _pairs[i + 1];
 
                 if (_binStep == 0) {
-                    (uint256 _reserve0, uint256 _reserve1, ) = IJoePair(_pair).getReserves();
+                    (uint256 _reserve0, uint256 _reserve1,) = IJoePair(_pair).getReserves();
                     if (_token < _tokenNext) {
                         uint256 _amountIn = _token.balanceOf(_pair) - _reserve0;
                         uint256 _amountOut = _amountIn.getAmountOut(_reserve0, _reserve1);
@@ -913,14 +914,11 @@ contract LBRouter is ILBRouter {
     /// @param _tokenY The address of the tokenY
     /// @param _binStep The bin step of the LBPair
     /// @return The address of the LBPair
-    function _getLBPairInformation(
-        IERC20 _tokenX,
-        IERC20 _tokenY,
-        uint256 _binStep
-    ) private view returns (ILBPair) {
+    function _getLBPairInformation(IERC20 _tokenX, IERC20 _tokenY, uint256 _binStep) private view returns (ILBPair) {
         ILBPair _LBPair = factory.getLBPairInformation(_tokenX, _tokenY, _binStep).LBPair;
-        if (address(_LBPair) == address(0))
+        if (address(_LBPair) == address(0)) {
             revert LBRouter__PairNotCreated(address(_tokenX), address(_tokenY), _binStep);
+        }
         return _LBPair;
     }
 
@@ -930,15 +928,13 @@ contract LBRouter is ILBRouter {
     /// @param _tokenX The address of the tokenX
     /// @param _tokenY The address of the tokenY
     /// @return _pair The address of the pair of binStep `_binStep`
-    function _getPair(
-        uint256 _binStep,
-        IERC20 _tokenX,
-        IERC20 _tokenY
-    ) private view returns (address _pair) {
+    function _getPair(uint256 _binStep, IERC20 _tokenX, IERC20 _tokenY) private view returns (address _pair) {
         if (_binStep == 0) {
             _pair = oldFactory.getPair(address(_tokenX), address(_tokenY));
             if (_pair == address(0)) revert LBRouter__PairNotCreated(address(_tokenX), address(_tokenY), _binStep);
-        } else _pair = address(_getLBPairInformation(_tokenX, _tokenY, _binStep));
+        } else {
+            _pair = address(_getLBPairInformation(_tokenX, _tokenY, _binStep));
+        }
     }
 
     function _getPairs(uint256[] memory _pairBinSteps, IERC20[] memory _tokenPath)
@@ -964,7 +960,7 @@ contract LBRouter is ILBRouter {
     /// @param _to The address of the recipient
     /// @param _amount The AVAX amount to send
     function _safeTransferAVAX(address _to, uint256 _amount) private {
-        (bool success, ) = _to.call{value: _amount}("");
+        (bool success,) = _to.call{value: _amount}("");
         if (!success) revert LBRouter__FailedToSendAVAX(_to, _amount);
     }
 

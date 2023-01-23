@@ -2,7 +2,9 @@
 
 pragma solidity 0.8.10;
 
-/** Imports **/
+/**
+ * Imports *
+ */
 
 import "./LBErrors.sol";
 import "./LBToken.sol";
@@ -24,7 +26,9 @@ import "./interfaces/ILBPair.sol";
 /// @author Trader Joe
 /// @notice This contract is the implementation of Liquidity Book Pair that also acts as the receipt token for liquidity positions
 contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
-    /** Libraries **/
+    /**
+     * Libraries *
+     */
 
     using Math512Bits for uint256;
     using TreeMath for mapping(uint256 => uint256)[3];
@@ -37,7 +41,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     using FeeDistributionHelper for FeeHelper.FeesDistribution;
     using Oracle for bytes32[65_535];
 
-    /** Modifiers **/
+    /**
+     * Modifiers *
+     */
 
     /// @notice Checks if the caller is the factory
     modifier onlyFactory() {
@@ -45,12 +51,16 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         _;
     }
 
-    /** Public immutable variables **/
+    /**
+     * Public immutable variables *
+     */
 
     /// @notice The factory contract that created this pair
     ILBFactory public immutable override factory;
 
-    /** Public variables **/
+    /**
+     * Public variables *
+     */
 
     /// @notice The token that is used as the base currency for the pair
     IERC20 public override tokenX;
@@ -58,7 +68,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @notice The token that is used as the quote currency for the pair
     IERC20 public override tokenY;
 
-    /** Private variables **/
+    /**
+     * Private variables *
+     */
 
     /// @dev The pair information that is used to track reserves, active ids,
     /// fees and oracle parameters
@@ -86,7 +98,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @dev The oracle samples that are used to calculate the time weighted average data
     bytes32[65_535] private _oracle;
 
-    /** OffSets */
+    /**
+     * OffSets
+     */
 
     uint256 private constant _OFFSET_PAIR_RESERVE_X = 24;
     uint256 private constant _OFFSET_PROTOCOL_FEE = 128;
@@ -98,7 +112,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     uint256 private constant _OFFSET_ORACLE_LAST_TIMESTAMP = 184;
     uint256 private constant _OFFSET_ORACLE_ID = 224;
 
-    /** Constructor **/
+    /**
+     * Constructor *
+     */
 
     /// @notice Set the factory address
     /// @param _factory The address of the factory
@@ -138,22 +154,15 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         _increaseOracle(2);
     }
 
-    /** External View Functions **/
+    /**
+     * External View Functions *
+     */
 
     /// @notice View function to get the reserves and active id
     /// @return reserveX The reserve of asset X
     /// @return reserveY The reserve of asset Y
     /// @return activeId The active id of the pair
-    function getReservesAndId()
-        external
-        view
-        override
-        returns (
-            uint256 reserveX,
-            uint256 reserveY,
-            uint256 activeId
-        )
-    {
+    function getReservesAndId() external view override returns (uint256 reserveX, uint256 reserveY, uint256 activeId) {
         return _getReservesAndId();
     }
 
@@ -166,12 +175,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         external
         view
         override
-        returns (
-            uint128 feesXTotal,
-            uint128 feesYTotal,
-            uint128 feesXProtocol,
-            uint128 feesYProtocol
-        )
+        returns (uint128 feesXTotal, uint128 feesYTotal, uint128 feesXProtocol, uint128 feesYProtocol)
     {
         return _getGlobalFees();
     }
@@ -213,22 +217,15 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         external
         view
         override
-        returns (
-            uint256 cumulativeId,
-            uint256 cumulativeVolatilityAccumulated,
-            uint256 cumulativeBinCrossed
-        )
+        returns (uint256 cumulativeId, uint256 cumulativeVolatilityAccumulated, uint256 cumulativeBinCrossed)
     {
         uint256 _lookUpTimestamp = block.timestamp - _timeDelta;
 
-        (, , uint256 _oracleActiveSize, , uint256 _oracleId) = _getOracleParameters();
+        (,, uint256 _oracleActiveSize,, uint256 _oracleId) = _getOracleParameters();
 
         uint256 timestamp;
-        (timestamp, cumulativeId, cumulativeVolatilityAccumulated, cumulativeBinCrossed) = _oracle.getSampleAt(
-            _oracleActiveSize,
-            _oracleId,
-            _lookUpTimestamp
-        );
+        (timestamp, cumulativeId, cumulativeVolatilityAccumulated, cumulativeBinCrossed) =
+            _oracle.getSampleAt(_oracleActiveSize, _oracleId, _lookUpTimestamp);
 
         if (timestamp < _lookUpTimestamp) {
             FeeHelper.FeeParameters memory _fp = _feeParameters;
@@ -318,7 +315,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         return super.supportsInterface(_interfaceId) || _interfaceId == type(ILBPair).interfaceId;
     }
 
-    /** External Functions **/
+    /**
+     * External Functions *
+     */
 
     /// @notice Swap tokens iterating over the bins until the entire amount is swapped.
     /// Will swap token X for token Y if `_swapForY` is true, and token Y for token X if `_swapForY` is false.
@@ -358,8 +357,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         while (true) {
             Bin memory _bin = _bins[_pair.activeId];
             if ((!_swapForY && _bin.reserveX != 0) || (_swapForY && _bin.reserveY != 0)) {
-                (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) = _bin
-                    .getAmounts(_fp, _pair.activeId, _swapForY, _amountIn);
+                (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) =
+                    _bin.getAmounts(_fp, _pair.activeId, _swapForY, _amountIn);
 
                 _bin.updateFees(_swapForY ? _pair.feesX : _pair.feesY, _fees, _swapForY, totalSupply(_pair.activeId));
 
@@ -435,12 +434,11 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @param _token The address of the token to flashloan
     /// @param _amount The amount of token to flashloan
     /// @param _data The call data that will be forwarded to the `_receiver` contract during the callback
-    function flashLoan(
-        ILBFlashLoanCallback _receiver,
-        IERC20 _token,
-        uint256 _amount,
-        bytes calldata _data
-    ) external override nonReentrant {
+    function flashLoan(ILBFlashLoanCallback _receiver, IERC20 _token, uint256 _amount, bytes calldata _data)
+        external
+        override
+        nonReentrant
+    {
         IERC20 _tokenX = tokenX;
         if ((_token != _tokenX && _token != tokenY)) revert LBPair__FlashLoanInvalidToken();
 
@@ -468,12 +466,12 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
 
         if (_totalFee > 0) {
             if (_token == _tokenX) {
-                (uint128 _feesXTotal, , uint128 _feesXProtocol, ) = _getGlobalFees();
+                (uint128 _feesXTotal,, uint128 _feesXProtocol,) = _getGlobalFees();
 
                 _setFees(_pairInformation.feesX, _feesXTotal + _fees.total, _feesXProtocol + _fees.protocol);
                 _bins[_activeId].accTokenXPerShare += _fees.getTokenPerShare(_totalSupply);
             } else {
-                (, uint128 _feesYTotal, , uint128 _feesYProtocol) = _getGlobalFees();
+                (, uint128 _feesYTotal,, uint128 _feesYProtocol) = _getGlobalFees();
 
                 _setFees(_pairInformation.feesY, _feesYTotal + _fees.total, _feesYProtocol + _fees.protocol);
                 _bins[_activeId].accTokenYPerShare += _fees.getTokenPerShare(_totalSupply);
@@ -503,18 +501,10 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         uint256[] calldata _distributionX,
         uint256[] calldata _distributionY,
         address _to
-    )
-        external
-        override
-        nonReentrant
-        returns (
-            uint256,
-            uint256,
-            uint256[] memory liquidityMinted
-        )
-    {
-        if (_ids.length == 0 || _ids.length != _distributionX.length || _ids.length != _distributionY.length)
+    ) external override nonReentrant returns (uint256, uint256, uint256[] memory liquidityMinted) {
+        if (_ids.length == 0 || _ids.length != _distributionX.length || _ids.length != _distributionY.length) {
             revert LBPair__WrongLengths();
+        }
 
         PairInformation memory _pair = _pairInformation;
 
@@ -528,7 +518,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         liquidityMinted = new uint256[](_ids.length);
 
         // Iterate over the ids to calculate the amount of LB tokens to mint for each bin
-        for (uint256 i; i < _ids.length; ) {
+        for (uint256 i; i < _ids.length;) {
             _mintInfo.id = _ids[i].safe24();
             Bin memory _bin = _bins[_mintInfo.id];
 
@@ -556,8 +546,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                         uint256 _receivedY;
 
                         {
-                            uint256 _userL = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) +
-                                _mintInfo.amountY;
+                            uint256 _userL =
+                                _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) + _mintInfo.amountY;
 
                             uint256 _supply = _totalSupply + _userL;
 
@@ -575,9 +565,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                         // tokens sent by the user. If it is, we add a composition fee of the difference between the two amounts.
                         if (_mintInfo.amountX > _receivedX) {
                             unchecked {
-                                _fees = _fp.getFeeAmountDistribution(
-                                    _fp.getFeeAmountForC(_mintInfo.amountX - _receivedX)
-                                );
+                                _fees =
+                                    _fp.getFeeAmountDistribution(_fp.getFeeAmountForC(_mintInfo.amountX - _receivedX));
                             }
 
                             _mintInfo.amountX -= _fees.total;
@@ -587,9 +576,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                         }
                         if (_mintInfo.amountY > _receivedY) {
                             unchecked {
-                                _fees = _fp.getFeeAmountDistribution(
-                                    _fp.getFeeAmountForC(_mintInfo.amountY - _receivedY)
-                                );
+                                _fees =
+                                    _fp.getFeeAmountDistribution(_fp.getFeeAmountForC(_mintInfo.amountY - _receivedY));
                             }
 
                             _mintInfo.amountY -= _fees.total;
@@ -598,21 +586,21 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
                             _bin.updateFees(_pair.feesY, _fees, false, _totalSupply);
                         }
 
-                        if (_mintInfo.activeFeeX > 0 || _mintInfo.activeFeeY > 0)
+                        if (_mintInfo.activeFeeX > 0 || _mintInfo.activeFeeY > 0) {
                             emit CompositionFee(
-                                msg.sender,
-                                _to,
-                                _mintInfo.id,
-                                _mintInfo.activeFeeX,
-                                _mintInfo.activeFeeY
-                            );
+                                msg.sender, _to, _mintInfo.id, _mintInfo.activeFeeX, _mintInfo.activeFeeY
+                                );
+                        }
                     }
-                } else if (_mintInfo.amountY != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
-            } else if (_mintInfo.amountX != 0) revert LBPair__CompositionFactorFlawed(_mintInfo.id);
+                } else if (_mintInfo.amountY != 0) {
+                    revert LBPair__CompositionFactorFlawed(_mintInfo.id);
+                }
+            } else if (_mintInfo.amountX != 0) {
+                revert LBPair__CompositionFactorFlawed(_mintInfo.id);
+            }
 
             // Calculate the amount of LB tokens to mint for this bin
-            uint256 _liquidity = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) +
-                _mintInfo.amountY;
+            uint256 _liquidity = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) + _mintInfo.amountY;
 
             if (_liquidity == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
 
@@ -644,8 +632,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         }
 
         // Assert that the distributions don't exceed 100%
-        if (_mintInfo.totalDistributionX > Constants.PRECISION || _mintInfo.totalDistributionY > Constants.PRECISION)
+        if (_mintInfo.totalDistributionX > Constants.PRECISION || _mintInfo.totalDistributionY > Constants.PRECISION) {
             revert LBPair__DistributionsOverflow();
+        }
 
         _pairInformation = _pair;
 
@@ -676,11 +665,12 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @param _to The address that will receive the tokens
     /// @return amountX The amount of token X sent to `_to`
     /// @return amountY The amount of token Y sent to `_to`
-    function burn(
-        uint256[] calldata _ids,
-        uint256[] calldata _amounts,
-        address _to
-    ) external override nonReentrant returns (uint256 amountX, uint256 amountY) {
+    function burn(uint256[] calldata _ids, uint256[] calldata _amounts, address _to)
+        external
+        override
+        nonReentrant
+        returns (uint256 amountX, uint256 amountY)
+    {
         if (_ids.length == 0 || _ids.length != _amounts.length) revert LBPair__WrongLengths();
 
         (uint256 _pairReserveX, uint256 _pairReserveY, uint256 _activeId) = _getReservesAndId();
@@ -768,7 +758,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         amountY = _unclaimedData.decode(type(uint128).max, 128);
 
         // Iterate over the ids to collect the fees
-        for (uint256 i; i < _ids.length; ) {
+        for (uint256 i; i < _ids.length;) {
             uint256 _id = _ids[i];
             uint256 _balance = balanceOf(_account, _id);
 
@@ -851,7 +841,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         _feeParameters.indexRef = _pairInformation.activeId;
     }
 
-    /** Internal Functions **/
+    /**
+     * Internal Functions *
+     */
 
     /// @notice Cache the accrued fees for a user before any transfer, mint or burn of LB tokens.
     /// The tokens are not transferred to reduce the gas cost and to avoid reentrancy.
@@ -859,12 +851,10 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @param _to The address of the receiver of the tokens
     /// @param _id The id of the bin
     /// @param _amount The amount of LB tokens transferred
-    function _beforeTokenTransfer(
-        address _from,
-        address _to,
-        uint256 _id,
-        uint256 _amount
-    ) internal override(LBToken) {
+    function _beforeTokenTransfer(address _from, address _to, uint256 _id, uint256 _amount)
+        internal
+        override(LBToken)
+    {
         super._beforeTokenTransfer(_from, _to, _id, _amount);
 
         if (_from != _to) {
@@ -883,7 +873,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         }
     }
 
-    /** Private Functions **/
+    /**
+     * Private Functions *
+     */
 
     /// @notice View function to get the pending fees of an account on a given bin
     /// @param _bin The bin data where the user is collecting fees
@@ -892,12 +884,11 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @param _balance The previous balance of the user
     /// @return amountX The amount of token X not collected yet by `_account`
     /// @return amountY The amount of token Y not collected yet by `_account`
-    function _getPendingFees(
-        Bin memory _bin,
-        address _account,
-        uint256 _id,
-        uint256 _balance
-    ) private view returns (uint128 amountX, uint128 amountY) {
+    function _getPendingFees(Bin memory _bin, address _account, uint256 _id, uint256 _balance)
+        private
+        view
+        returns (uint128 amountX, uint128 amountY)
+    {
         Debts memory _debts = _accruedDebts[_account][_id];
 
         amountX = (_bin.accTokenXPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET) - _debts.debtX).safe128();
@@ -909,12 +900,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @param _account The address of the user
     /// @param _id The id where the user has collected fees
     /// @param _balance The new balance of the user
-    function _updateUserDebts(
-        Bin memory _bin,
-        address _account,
-        uint256 _id,
-        uint256 _balance
-    ) private {
+    function _updateUserDebts(Bin memory _bin, address _account, uint256 _id, uint256 _balance) private {
         uint256 _debtX = _bin.accTokenXPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET);
         uint256 _debtY = _bin.accTokenYPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET);
 
@@ -928,13 +914,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @param _id The id where the user is receiving LB tokens
     /// @param _previousBalance The previous balance of the user
     /// @param _newBalance The new balance of the user
-    function _cacheFees(
-        Bin memory _bin,
-        address _user,
-        uint256 _id,
-        uint256 _previousBalance,
-        uint256 _newBalance
-    ) private {
+    function _cacheFees(Bin memory _bin, address _user, uint256 _id, uint256 _previousBalance, uint256 _newBalance)
+        private
+    {
         bytes32 _unclaimedData = _unclaimedFees[_user];
 
         uint128 amountX = uint128(_unclaimedData.decode(type(uint128).max, 0));
@@ -977,7 +959,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         _pairInformation.oracleSize = _newSize;
 
         // Iterate over the uninitialized oracle samples and initialize them
-        for (uint256 _id = _oracleSize; _id < _newSize; ) {
+        for (uint256 _id = _oracleSize; _id < _newSize;) {
             _oracle.initialize(_id);
 
             unchecked {
@@ -1020,15 +1002,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @return reserveX The reserve of token X
     /// @return reserveY The reserve of token Y
     /// @return activeId The active id of the pair
-    function _getReservesAndId()
-        private
-        view
-        returns (
-            uint256 reserveX,
-            uint256 reserveY,
-            uint256 activeId
-        )
-    {
+    function _getReservesAndId() private view returns (uint256 reserveX, uint256 reserveY, uint256 activeId) {
         uint256 _mask24 = type(uint24).max;
         uint256 _mask136 = type(uint136).max;
         assembly {
@@ -1070,12 +1044,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     function _getGlobalFees()
         private
         view
-        returns (
-            uint128 feesXTotal,
-            uint128 feesYTotal,
-            uint128 feesXProtocol,
-            uint128 feesYProtocol
-        )
+        returns (uint128 feesXTotal, uint128 feesYTotal, uint128 feesXProtocol, uint128 feesYProtocol)
     {
         bytes32 _slotX;
         bytes32 _slotY;
@@ -1106,11 +1075,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
     /// @param _pairFees The storage slot of the fees
     /// @param _totalFees The new total fees
     /// @param _protocolFees The new protocol fees
-    function _setFees(
-        FeeHelper.FeesDistribution storage _pairFees,
-        uint128 _totalFees,
-        uint128 _protocolFees
-    ) private {
+    function _setFees(FeeHelper.FeesDistribution storage _pairFees, uint128 _totalFees, uint128 _protocolFees)
+        private
+    {
         assembly {
             sstore(_pairFees.slot, or(shl(_OFFSET_PROTOCOL_FEE, _protocolFees), _totalFees))
         }
@@ -1136,15 +1103,6 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
         uint256 _volatilityAccumulated,
         uint256 _fees
     ) private {
-        emit Swap(
-            msg.sender,
-            _to,
-            _activeId,
-            _swapForY,
-            _amountInToBin,
-            _amountOutOfBin,
-            _volatilityAccumulated,
-            _fees
-        );
+        emit Swap(msg.sender, _to, _activeId, _swapForY, _amountInToBin, _amountOutOfBin, _volatilityAccumulated, _fees);
     }
 }

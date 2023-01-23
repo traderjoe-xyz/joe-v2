@@ -37,11 +37,7 @@ contract LBQuoter {
     /// @param _routerV2 Dex V2 router address
     /// @param _factoryV1 Dex V1 factory address
     /// @param _factoryV2 Dex V2 factory address
-    constructor(
-        address _routerV2,
-        address _factoryV1,
-        address _factoryV2
-    ) {
+    constructor(address _routerV2, address _factoryV1, address _factoryV2) {
         routerV2 = _routerV2;
         factoryV1 = _factoryV1;
         factoryV2 = _factoryV2;
@@ -88,18 +84,15 @@ contract LBQuoter {
             }
 
             // Fetch swaps for V2
-            ILBFactory.LBPairInformation[] memory LBPairsAvailable = ILBFactory(factoryV2).getAllLBPairs(
-                IERC20(_route[i]),
-                IERC20(_route[i + 1])
-            );
+            ILBFactory.LBPairInformation[] memory LBPairsAvailable =
+                ILBFactory(factoryV2).getAllLBPairs(IERC20(_route[i]), IERC20(_route[i + 1]));
 
             if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
                 for (uint256 j; j < LBPairsAvailable.length; j++) {
                     if (!LBPairsAvailable[j].ignoredForRouting) {
                         bool swapForY = address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i + 1];
 
-                        try
-                            ILBRouter(routerV2).getSwapOut(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
+                        try ILBRouter(routerV2).getSwapOut(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
                         returns (uint256 swapAmountOut, uint256 fees) {
                             if (swapAmountOut > quote.amounts[i + 1]) {
                                 quote.amounts[i + 1] = swapAmountOut;
@@ -107,12 +100,9 @@ contract LBQuoter {
                                 quote.binSteps[i] = LBPairsAvailable[j].binStep;
 
                                 // Getting current price
-                                (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
+                                (,, uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
                                 quote.virtualAmountsWithoutSlippage[i + 1] = _getV2Quote(
-                                    quote.virtualAmountsWithoutSlippage[i] - fees,
-                                    activeId,
-                                    quote.binSteps[i],
-                                    swapForY
+                                    quote.virtualAmountsWithoutSlippage[i] - fees, activeId, quote.binSteps[i], swapForY
                                 );
 
                                 quote.fees[i] = (fees * 1e18) / quote.amounts[i]; // fee percentage in amountIn
@@ -164,35 +154,26 @@ contract LBQuoter {
             }
 
             // Fetch swaps for V2
-            ILBFactory.LBPairInformation[] memory LBPairsAvailable = ILBFactory(factoryV2).getAllLBPairs(
-                IERC20(_route[i - 1]),
-                IERC20(_route[i])
-            );
+            ILBFactory.LBPairInformation[] memory LBPairsAvailable =
+                ILBFactory(factoryV2).getAllLBPairs(IERC20(_route[i - 1]), IERC20(_route[i]));
 
             if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
                 for (uint256 j; j < LBPairsAvailable.length; j++) {
                     if (!LBPairsAvailable[j].ignoredForRouting) {
                         bool swapForY = address(LBPairsAvailable[j].LBPair.tokenY()) == _route[i];
-                        try
-                            ILBRouter(routerV2).getSwapIn(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
+                        try ILBRouter(routerV2).getSwapIn(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
                         returns (uint256 swapAmountIn, uint256 fees) {
-                            if (
-                                swapAmountIn != 0 && (swapAmountIn < quote.amounts[i - 1] || quote.amounts[i - 1] == 0)
-                            ) {
+                            if (swapAmountIn != 0 && (swapAmountIn < quote.amounts[i - 1] || quote.amounts[i - 1] == 0))
+                            {
                                 quote.amounts[i - 1] = swapAmountIn;
                                 quote.pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
                                 quote.binSteps[i - 1] = LBPairsAvailable[j].binStep;
 
                                 // Getting current price
-                                (, , uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
-                                quote.virtualAmountsWithoutSlippage[i - 1] =
-                                    _getV2Quote(
-                                        quote.virtualAmountsWithoutSlippage[i],
-                                        activeId,
-                                        quote.binSteps[i - 1],
-                                        !swapForY
-                                    ) +
-                                    fees;
+                                (,, uint256 activeId) = LBPairsAvailable[j].LBPair.getReservesAndId();
+                                quote.virtualAmountsWithoutSlippage[i - 1] = _getV2Quote(
+                                    quote.virtualAmountsWithoutSlippage[i], activeId, quote.binSteps[i - 1], !swapForY
+                                ) + fees;
 
                                 quote.fees[i - 1] = (fees * 1e18) / quote.amounts[i - 1]; // fee percentage in amountIn
                             }
@@ -210,13 +191,13 @@ contract LBQuoter {
     /// @param _tokenB Address of token B
     /// @return reserveA Reserve of token A in the pair
     /// @return reserveB Reserve of token B in the pair
-    function _getReserves(
-        address _pair,
-        address _tokenA,
-        address _tokenB
-    ) internal view returns (uint256 reserveA, uint256 reserveB) {
-        (address token0, ) = JoeLibrary.sortTokens(_tokenA, _tokenB);
-        (uint256 reserve0, uint256 reserve1, ) = IJoePair(_pair).getReserves();
+    function _getReserves(address _pair, address _tokenA, address _tokenB)
+        internal
+        view
+        returns (uint256 reserveA, uint256 reserveB)
+    {
+        (address token0,) = JoeLibrary.sortTokens(_tokenA, _tokenB);
+        (uint256 reserve0, uint256 reserve1,) = IJoePair(_pair).getReserves();
         (reserveA, reserveB) = _tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
 
@@ -226,12 +207,11 @@ contract LBQuoter {
     /// @param _binStep Bin step of the considered pair
     /// @param _swapForY Boolean describing if we are swapping from X to Y or the opposite
     /// @return quote Amount Out if _amount was swapped with no slippage and no fees
-    function _getV2Quote(
-        uint256 _amount,
-        uint256 _activeId,
-        uint256 _binStep,
-        bool _swapForY
-    ) internal pure returns (uint256 quote) {
+    function _getV2Quote(uint256 _amount, uint256 _activeId, uint256 _binStep, bool _swapForY)
+        internal
+        pure
+        returns (uint256 quote)
+    {
         if (_swapForY) {
             quote = BinHelper.getPriceFromId(_activeId, _binStep).mulShiftRoundDown(_amount, Constants.SCALE_OFFSET);
         } else {

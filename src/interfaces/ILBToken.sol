@@ -11,11 +11,7 @@ interface ILBToken is IERC165 {
     event TransferSingle(address indexed sender, address indexed from, address indexed to, uint256 id, uint256 amount);
 
     event TransferBatch(
-        address indexed sender,
-        address indexed from,
-        address indexed to,
-        uint256[] ids,
-        uint256[] amounts
+        address indexed sender, address indexed from, address indexed to, uint256[] ids, uint256[] amounts
     );
 
     event ApprovalForAll(address indexed account, address indexed sender, bool approved);
@@ -37,17 +33,8 @@ interface ILBToken is IERC165 {
 
     function setApprovalForAll(address sender, bool approved) external;
 
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount
-    ) external;
+    function safeTransferFrom(address from, address to, uint256 id, uint256 amount) external;
 
-    function safeBatchTransferFrom(
-        address from,
-        address to,
-        uint256[] calldata id,
-        uint256[] calldata amount
-    ) external;
+    function safeBatchTransferFrom(address from, address to, uint256[] calldata id, uint256[] calldata amount)
+        external;
 }

@@ -20,12 +20,7 @@ library TokenHelper {
     /// @param owner The owner of the tokens
     /// @param recipient The address of the recipient
     /// @param amount The amount to send
-    function safeTransferFrom(
-        IERC20 token,
-        address owner,
-        address recipient,
-        uint256 amount
-    ) internal {
+    function safeTransferFrom(IERC20 token, address owner, address recipient, uint256 amount) internal {
         if (amount != 0) {
             bytes memory data = abi.encodeWithSelector(token.transferFrom.selector, owner, recipient, amount);
 
@@ -39,11 +34,7 @@ library TokenHelper {
     /// @param token The address of the token
     /// @param recipient The address of the recipient
     /// @param amount The amount to send
-    function safeTransfer(
-        IERC20 token,
-        address recipient,
-        uint256 amount
-    ) internal {
+    function safeTransfer(IERC20 token, address recipient, uint256 amount) internal {
         if (amount != 0) {
             bytes memory data = abi.encodeWithSelector(token.transfer.selector, recipient, amount);
 
@@ -58,11 +49,7 @@ library TokenHelper {
     /// @param reserve The total reserve of token
     /// @param fees The total fees of token
     /// @return The amount received by the pair
-    function received(
-        IERC20 token,
-        uint256 reserve,
-        uint256 fees
-    ) internal view returns (uint256) {
+    function received(IERC20 token, uint256 reserve, uint256 fees) internal view returns (uint256) {
         uint256 _internalBalance;
         unchecked {
             _internalBalance = reserve + fees;
@@ -81,8 +68,9 @@ library TokenHelper {
         if (success) {
             if (returnData.length == 0 && !_isContract(target)) revert TokenHelper__NonContract();
         } else {
-            if (returnData.length == 0) revert TokenHelper__CallFailed();
-            else {
+            if (returnData.length == 0) {
+                revert TokenHelper__CallFailed();
+            } else {
                 // Look for revert reason and bubble it up if present
                 assembly {
                     revert(add(32, returnData), mload(returnData))

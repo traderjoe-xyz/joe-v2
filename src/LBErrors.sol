@@ -4,7 +4,9 @@ pragma solidity 0.8.10;
 
 import "./interfaces/ILBPair.sol";
 
-/** LBRouter errors */
+/**
+ * LBRouter errors
+ */
 
 error LBRouter__SenderIsNotWAVAX();
 error LBRouter__PairNotCreated(address tokenX, address tokenY, uint256 binStep);
@@ -28,14 +30,12 @@ error LBRouter__MaxAmountInExceeded(uint256 amountInMax, uint256 amountIn);
 error LBRouter__InvalidTokenPath(address wrongToken);
 error LBRouter__InvalidVersion(uint256 version);
 error LBRouter__WrongAvaxLiquidityParameters(
-    address tokenX,
-    address tokenY,
-    uint256 amountX,
-    uint256 amountY,
-    uint256 msgValue
+    address tokenX, address tokenY, uint256 amountX, uint256 amountY, uint256 msgValue
 );
 
-/** LBToken errors */
+/**
+ * LBToken errors
+ */
 
 error LBToken__SpenderNotApproved(address owner, address spender);
 error LBToken__TransferFromOrToAddress0();
@@ -47,7 +47,9 @@ error LBToken__SelfApproval(address owner);
 error LBToken__TransferExceedsBalance(address from, uint256 id, uint256 amount);
 error LBToken__TransferToSelf();
 
-/** LBFactory errors */
+/**
+ * LBFactory errors
+ */
 
 error LBFactory__IdenticalAddresses(IERC20 token);
 error LBFactory__QuoteAssetNotWhitelisted(IERC20 quoteAsset);
@@ -73,7 +75,9 @@ error LBFactory__LBPairSafetyCheckFailed(address LBPairImplementation);
 error LBFactory__SameImplementation(address LBPairImplementation);
 error LBFactory__ImplementationNotSet();
 
-/** LBPair errors */
+/**
+ * LBPair errors
+ */
 
 error LBPair__InsufficientAmounts();
 error LBPair__AddressZero();
@@ -93,30 +97,40 @@ error LBPair__FlashLoanCallbackFailed();
 error LBPair__FlashLoanInvalidBalance();
 error LBPair__FlashLoanInvalidToken();
 
-/** BinHelper errors */
+/**
+ * BinHelper errors
+ */
 
 error BinHelper__BinStepOverflows(uint256 bp);
 error BinHelper__IdOverflows();
 
-/** Math128x128 errors */
+/**
+ * Math128x128 errors
+ */
 
 error Math128x128__PowerUnderflow(uint256 x, int256 y);
 error Math128x128__LogUnderflow();
 
-/** Math512Bits errors */
+/**
+ * Math512Bits errors
+ */
 
 error Math512Bits__MulDivOverflow(uint256 prod1, uint256 denominator);
 error Math512Bits__ShiftDivOverflow(uint256 prod1, uint256 denominator);
 error Math512Bits__MulShiftOverflow(uint256 prod1, uint256 offset);
 error Math512Bits__OffsetOverflows(uint256 offset);
 
-/** Oracle errors */
+/**
+ * Oracle errors
+ */
 
 error Oracle__AlreadyInitialized(uint256 _index);
 error Oracle__LookUpTimestampTooOld(uint256 _minTimestamp, uint256 _lookUpTimestamp);
 error Oracle__NotInitialized();
 
-/** PendingOwnable errors */
+/**
+ * PendingOwnable errors
+ */
 
 error PendingOwnable__NotOwner();
 error PendingOwnable__NotPendingOwner();
@@ -124,12 +138,16 @@ error PendingOwnable__PendingOwnerAlreadySet();
 error PendingOwnable__NoPendingOwner();
 error PendingOwnable__AddressZero();
 
-/** ReentrancyGuardUpgradeable errors */
+/**
+ * ReentrancyGuardUpgradeable errors
+ */
 
 error ReentrancyGuardUpgradeable__ReentrantCall();
 error ReentrancyGuardUpgradeable__AlreadyInitialized();
 
-/** SafeCast errors */
+/**
+ * SafeCast errors
+ */
 
 error SafeCast__Exceeds256Bits(uint256 x);
 error SafeCast__Exceeds248Bits(uint256 x);
@@ -164,23 +182,31 @@ error SafeCast__Exceeds24Bits(uint256 x);
 error SafeCast__Exceeds16Bits(uint256 x);
 error SafeCast__Exceeds8Bits(uint256 x);
 
-/** TreeMath errors */
+/**
+ * TreeMath errors
+ */
 
 error TreeMath__ErrorDepthSearch();
 
-/** JoeLibrary errors */
+/**
+ * JoeLibrary errors
+ */
 
 error JoeLibrary__IdenticalAddresses();
 error JoeLibrary__AddressZero();
 error JoeLibrary__InsufficientAmount();
 error JoeLibrary__InsufficientLiquidity();
 
-/** TokenHelper errors */
+/**
+ * TokenHelper errors
+ */
 
 error TokenHelper__NonContract();
 error TokenHelper__CallFailed();
 error TokenHelper__TransferFailed();
 
-/** LBQuoter errors */
+/**
+ * LBQuoter errors
+ */
 
 error LBQuoter_InvalidLength();

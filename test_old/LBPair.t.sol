@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.10;
 
-import "./helpers/TestHelper.sol";
+import "test/helpers/TestHelper.sol";
 
-contract TODO_LiquidityBinPairTest is TestHelper {
+contract LiquidityBinPairTest is TestHelper {
     ILBPair _LBPairImplementation;
 
     function setUp() public override {

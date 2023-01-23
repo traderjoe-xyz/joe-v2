@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.10;
 
-import "./helpers/TestHelper.sol";
-import {Addresses} from "./integration/Addresses.sol";
+import "test/helpers/TestHelper.sol";
+import {Addresses} from "test/integration/Addresses.sol";
 
-contract TODO_LiquidityBinRouterTest is TestHelper {
+contract LiquidityBinRouterTest is TestHelper {
     function setUp() public override {
         super.setUp();
     }
@@ -85,7 +85,7 @@ contract TODO_LiquidityBinRouterTest is TestHelper {
             1, defaultUintArray, defaultIERCArray, DEV, wrongDeadline
         );
 
-        //TODO_ _addLiquidity private
+        // _addLiquidity private
     }
 
     function testModifieronlyFactoryOwner() public {

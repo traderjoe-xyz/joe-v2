@@ -2,9 +2,9 @@
 
 pragma solidity 0.8.10;
 
-import "./helpers/TestHelper.sol";
+import "test/helpers/TestHelper.sol";
 
-contract TODO_LiquidityBinPairFlashLoansTest is TestHelper {
+contract LiquidityBinPairFlashLoansTest is TestHelper {
     FlashBorrower private borrower;
 
     event CalldataTransmitted();

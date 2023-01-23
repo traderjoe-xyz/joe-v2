@@ -2,9 +2,9 @@
 
 pragma solidity 0.8.10;
 
-import "./helpers/TestHelper.sol";
+import "test/helpers/TestHelper.sol";
 
-contract TODO_LiquidityBinRouterTest is TestHelper {
+contract LiquidityBinRouterTest is TestHelper {
     LBPair internal pair0;
     LBPair internal pair1;
     LBPair internal pair2;

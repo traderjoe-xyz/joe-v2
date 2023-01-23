@@ -2,9 +2,9 @@
 
 pragma solidity 0.8.10;
 
-import "./helpers/TestHelper.sol";
+import "test/helpers/TestHelper.sol";
 
-contract TODO_LiquidityBinRouterTest is TestHelper {
+contract LiquidityBinRouterTest is TestHelper {
     event AVAXreceived();
 
     function setUp() public override {

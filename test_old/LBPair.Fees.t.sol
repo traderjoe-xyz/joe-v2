@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.10;
 
-import "./helpers/TestHelper.sol";
+import "test/helpers/TestHelper.sol";
 import "src/libraries/Math512Bits.sol";
 
-contract TODO_LiquidityBinPairFeesTest is TestHelper {
+contract LiquidityBinPairFeesTest is TestHelper {
     using Math512Bits for uint256;
 
     function setUp() public override {

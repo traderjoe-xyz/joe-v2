@@ -2,9 +2,9 @@
 
 pragma solidity 0.8.10;
 
-import "./helpers/TestHelper.sol";
+import "test/helpers/TestHelper.sol";
 
-contract TODO_LiquidityBinFactoryTest is TestHelper {
+contract LiquidityBinFactoryTest is TestHelper {
     event QuoteAssetRemoved(IERC20 indexed _quoteAsset);
     event QuoteAssetAdded(IERC20 indexed _quoteAsset);
     event LBPairImplementationSet(ILBPair oldLBPairImplementation, ILBPair LBPairImplementation);

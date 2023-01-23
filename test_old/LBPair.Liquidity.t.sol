@@ -2,9 +2,9 @@
 
 pragma solidity 0.8.10;
 
-import "./helpers/TestHelper.sol";
+import "test/helpers/TestHelper.sol";
 
-contract TODO_LiquidityBinPairLiquidityTest is TestHelper {
+contract LiquidityBinPairLiquidityTest is TestHelper {
     function setUp() public override {
         usdc = new ERC20Mock(6);
         weth = new ERC20Mock(18);

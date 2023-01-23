@@ -5,7 +5,7 @@ pragma solidity 0.8.10;
 import "../helpers/TestHelper.sol";
 import {Addresses} from "./Addresses.sol";
 
-contract TODO__LiquidityBinQuoterTest is TestHelper {
+contract _LiquidityBinQuoterTest is TestHelper {
     using Math512Bits for uint256;
 
     IJoeFactory private factoryV1;

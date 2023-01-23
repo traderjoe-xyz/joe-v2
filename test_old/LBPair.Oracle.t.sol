@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.10;
 
-import "./helpers/TestHelper.sol";
+import "test/helpers/TestHelper.sol";
 import "src/libraries/Oracle.sol";
 
-contract TODO_LiquidityBinPairOracleTest is TestHelper {
+contract LiquidityBinPairOracleTest is TestHelper {
     function setUp() public override {
         usdc = new ERC20Mock(6);
         weth = new ERC20Mock(18);

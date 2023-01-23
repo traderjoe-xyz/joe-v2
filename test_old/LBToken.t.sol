@@ -2,9 +2,9 @@
 
 pragma solidity 0.8.10;
 
-import "./helpers/TestHelper.sol";
+import "test/helpers/TestHelper.sol";
 
-contract TODO_LiquidityBinTokenTest is TestHelper {
+contract LiquidityBinTokenTest is TestHelper {
     event TransferBatch(
         address indexed sender, address indexed from, address indexed to, uint256[] ids, uint256[] amounts
     );

@@ -337,7 +337,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _availableLBPairBinSteps[_tokenA][_tokenB] = _avLBPairBinSteps;
         }
 
-        emit LBPairCreated(_tokenX, _tokenY, _binStep, _LBPair, allLBPairs.length - _REVISION_START_INDEX);
+        emit LBPairCreated(_tokenX, _tokenY, _binStep, _LBPair, allLBPairs.length - 1);
 
         emit FeeParametersSet(
             msg.sender,
@@ -408,7 +408,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         allLBPairs.push(_LBPair);
 
-        emit LBPairCreated(_tokenX, _tokenY, _binStep, _LBPair, allLBPairs.length - _REVISION_START_INDEX);
+        emit LBPairCreated(_tokenX, _tokenY, _binStep, _LBPair, allLBPairs.length - 1);
 
         emit FeeParametersSet(
             msg.sender,
@@ -559,8 +559,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint24 _maxVolatilityAccumulated
     ) external override onlyOwner {
         ILBPair _LBPair = _getLBPairInformation(_tokenX, _tokenY, _binStep, _revision).LBPair;
-
-        if (address(_LBPair) == address(0)) revert LBFactory__LBPairNotCreated(_tokenX, _tokenY, _binStep);
 
         bytes32 _packedFeeParameters = _getPackedFeeParameters(
             _binStep,

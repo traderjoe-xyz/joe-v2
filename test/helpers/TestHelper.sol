@@ -62,9 +62,10 @@ abstract contract TestHelper is Test, IERC165 {
 
     LBFactory internal factory;
     LBRouter internal router;
-    LBPair internal pair;
+    LBPair internal localPair;
     LBPair internal pairWavax;
     LBQuoter internal quoter;
+    LBPair internal pairImplementation;
 
     function setUp() public virtual {
         // Create mocks
@@ -89,10 +90,10 @@ abstract contract TestHelper is Test, IERC165 {
 
         // Create factory
         factory = new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
-        ILBPair LBPairImplementation = new LBPair(factory);
+        pairImplementation = new LBPair(factory);
 
         // Setup factory
-        factory.setLBPairImplementation(address(LBPairImplementation));
+        factory.setLBPairImplementation(address(pairImplementation));
         addAllAssetsToQuoteWhitelist();
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
 
@@ -102,7 +103,7 @@ abstract contract TestHelper is Test, IERC165 {
         // Label deployed contracts
         vm.label(address(factory), "factory");
         vm.label(address(router), "router");
-        vm.label(address(LBPairImplementation), "LBPairImplementation");
+        vm.label(address(pairImplementation), "pairImplementation");
     }
 
     function supportsInterface(bytes4 interfaceId) external view virtual returns (bool) {
@@ -225,10 +226,10 @@ abstract contract TestHelper is Test, IERC165 {
     {
         (ids, distributionX, distributionY, amountXIn) = spreadLiquidity(amountYIn, startId, numberBins, gap);
 
-        tokenX.mint(address(pair), amountXIn);
-        tokenY.mint(address(pair), amountYIn);
+        tokenX.mint(address(localPair), amountXIn);
+        tokenY.mint(address(localPair), amountYIn);
 
-        pair.mint(ids, distributionX, distributionY, DEV);
+        localPair.mint(ids, distributionX, distributionY, DEV);
     }
 
     function spreadLiquidity(uint256 amountYIn, uint24 startId, uint24 numberBins, uint24 gap)

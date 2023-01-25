@@ -13,6 +13,11 @@ import "./FeeHelper.sol";
 import "./PriceHelper.sol";
 import "./TokenHelper.sol";
 
+/**
+ * @title Liquidity Book Bin Helper Library
+ * @author Trader Joe
+ * @notice This library contains functions to help interaction with bins.
+ */
 library BinHelper {
     using PackedUint128Math for bytes32;
     using PackedUint128Math for uint128;

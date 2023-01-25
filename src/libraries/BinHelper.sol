@@ -30,39 +30,13 @@ library BinHelper {
 
     error BinMath__CompositionFactorFlawed(uint24 id);
 
-    function received(bytes32 reserves, IERC20 tokenX, IERC20 tokenY) internal view returns (bytes32 amounts) {
-        amounts = _balanceOf(tokenX).encode(_balanceOf(tokenY)).sub(reserves);
-    }
-
-    function receivedX(bytes32 reserves, IERC20 tokenX) internal view returns (bytes32) {
-        uint128 reserveX = reserves.decodeFirst();
-        return (_balanceOf(tokenX) - reserveX).encodeFirst();
-    }
-
-    function receivedY(bytes32 reserves, IERC20 tokenY) internal view returns (bytes32) {
-        uint128 reserveY = reserves.decodeSecond();
-        return (_balanceOf(tokenY) - reserveY).encodeSecond();
-    }
-
-    function transfer(bytes32 amounts, IERC20 tokenX, IERC20 tokenY, address recipient) internal {
-        (uint128 amountX, uint128 amountY) = amounts.decode();
-
-        if (amountX > 0) tokenX.safeTransfer(recipient, amountX);
-        if (amountY > 0) tokenY.safeTransfer(recipient, amountY);
-    }
-
-    function transferX(bytes32 amounts, IERC20 tokenX, address recipient) internal {
-        uint128 amountX = amounts.decodeFirst();
-
-        if (amountX > 0) tokenX.safeTransfer(recipient, amountX);
-    }
-
-    function transferY(bytes32 amounts, IERC20 tokenY, address recipient) internal {
-        uint128 amountY = amounts.decodeSecond();
-
-        if (amountY > 0) tokenY.safeTransfer(recipient, amountY);
-    }
-
+    /**
+     * @dev Returns the amount of tokens that will be received when burning the given amount of liquidity
+     * @param binReserves The reserves of the bin
+     * @param amountToBurn The amount of liquidity to burn
+     * @param totalSupply The total supply of the liquidity book
+     * @return amountsOut The encoded amount of tokens that will be received
+     */
     function getAmountOutOfBin(bytes32 binReserves, uint256 amountToBurn, uint256 totalSupply)
         internal
         pure
@@ -84,6 +58,17 @@ library BinHelper {
         amountsOut = amountXOutFromBin.encode(amountYOutFromBin);
     }
 
+    /**
+     * @dev Returns the share and the effective amounts in when adding liquidity
+     * @param binReserves The reserves of the bin
+     * @param amountsIn The amounts of tokens to add
+     * @param price The price of the bin
+     * @param totalSupply The total supply of the liquidity book
+     * @return shares The share of the liquidity book that the user will receive
+     * @return effectiveAmountsIn The encoded effective amounts of tokens that the user will add.
+     * This is the amount of tokens that the user will actually add to the liquidity book,
+     * and will always be less than or equal to the amountsIn.
+     */
     function getShareAndEffectiveAmountsIn(bytes32 binReserves, bytes32 amountsIn, uint256 price, uint256 totalSupply)
         internal
         pure
@@ -101,6 +86,12 @@ library BinHelper {
         effectiveAmountsIn = amountsIn.scalarMulShift128RoundUp(ratioLiquidity.safe128());
     }
 
+    /**
+     * @dev Returns the amount of liquidity following the constant sum formula `L = price * x + y`
+     * @param amounts The amounts of tokens
+     * @param price The price of the bin
+     * @return liquidity The amount of liquidity
+     */
     function getLiquidity(bytes32 amounts, uint256 price) internal pure returns (uint256 liquidity) {
         (uint128 x, uint128 y) = amounts.decode();
         if (x > 0) {
@@ -111,6 +102,12 @@ library BinHelper {
         }
     }
 
+    /**
+     * @dev Verify that the amounts are correct and that the composition factor is not flawed
+     * @param amounts The amounts of tokens
+     * @param activeId The id of the active bin
+     * @param id The id of the bin
+     */
     function verifyAmounts(bytes32 amounts, uint24 activeId, uint24 id) internal pure {
         if (
             uint256(amounts) <= type(uint128).max && id < activeId
@@ -118,6 +115,17 @@ library BinHelper {
         ) revert BinMath__CompositionFactorFlawed(id);
     }
 
+    /**
+     * @dev Returns the composition fees when adding liquidity to the active bin with a different
+     * composition factor than the bin's one, as it does an implicit swap
+     * @param binReserves The reserves of the bin
+     * @param parameters The parameters of the liquidity book
+     * @param binStep The step of the bin
+     * @param amountsIn The amounts of tokens to add
+     * @param totalSupply The total supply of the liquidity book
+     * @param shares The share of the liquidity book that the user will receive
+     * @return fees The encoded fees that will be charged
+     */
     function getCompositionFees(
         bytes32 binReserves,
         bytes32 parameters,
@@ -141,10 +149,29 @@ library BinHelper {
         }
     }
 
+    /**
+     * @dev Returns whether the bin is empty (true) or not (false)
+     * @param binReserves The reserves of the bin
+     * @param isX Whether the reserve to check is the X reserve (true) or the Y reserve (false)
+     * @return Whether the bin is empty (true) or not (false)
+     */
     function isEmpty(bytes32 binReserves, bool isX) internal pure returns (bool) {
         return isX ? binReserves.decodeFirst() == 0 : binReserves.decodeSecond() == 0;
     }
 
+    /**
+     * @dev Returns the amounts of tokens that will be added and removed from the bin during a swap
+     * along with the fees that will be charged
+     * @param binReserves The reserves of the bin
+     * @param parameters The parameters of the liquidity book
+     * @param binStep The step of the bin
+     * @param swapForY Whether the swap is for Y (true) or for X (false)
+     * @param activeId The id of the active bin
+     * @param amountsLeft The amounts of tokens left to swap
+     * @return amountsInToBin The encoded amounts of tokens that will be added to the bin
+     * @return amountsOutOfBin The encoded amounts of tokens that will be removed from the bin
+     * @return totalFees The encoded fees that will be charged
+     */
     function getAmounts(
         bytes32 binReserves,
         bytes32 parameters,
@@ -191,6 +218,89 @@ library BinHelper {
         (amountsInToBin, amountsOutOfBin, totalFees) = swapForY
             ? (amountIn128.encodeFirst(), amountOut128.encodeSecond(), fee128.encodeFirst())
             : (amountIn128.encodeSecond(), amountOut128.encodeFirst(), fee128.encodeSecond());
+    }
+
+    /**
+     * @dev Returns the encoded amounts that was transferred to the contract
+     * @param reserves The reserves
+     * @param tokenX The token X
+     * @param tokenY The token Y
+     * @return amounts The amounts, encoded as follows:
+     * [0 - 128[: amountX
+     * [128 - 256[: amountY
+     */
+    function received(bytes32 reserves, IERC20 tokenX, IERC20 tokenY) internal view returns (bytes32 amounts) {
+        amounts = _balanceOf(tokenX).encode(_balanceOf(tokenY)).sub(reserves);
+    }
+
+    /**
+     * @dev Returns the encoded amounts that was transferred to the contract, only for token X
+     * @param reserves The reserves
+     * @param tokenX The token X
+     * @return amounts The amounts, encoded as follows:
+     * [0 - 128[: amountX
+     * [128 - 256[: empty
+     */
+    function receivedX(bytes32 reserves, IERC20 tokenX) internal view returns (bytes32) {
+        uint128 reserveX = reserves.decodeFirst();
+        return (_balanceOf(tokenX) - reserveX).encodeFirst();
+    }
+
+    /**
+     * @dev Returns the encoded amounts that was transferred to the contract, only for token Y
+     * @param reserves The reserves
+     * @param tokenY The token Y
+     * @return amounts The amounts, encoded as follows:
+     * [0 - 128[: empty
+     * [128 - 256[: amountY
+     */
+    function receivedY(bytes32 reserves, IERC20 tokenY) internal view returns (bytes32) {
+        uint128 reserveY = reserves.decodeSecond();
+        return (_balanceOf(tokenY) - reserveY).encodeSecond();
+    }
+
+    /**
+     * @dev Transfers the encoded amounts to the recipient
+     * @param amounts The amounts, encoded as follows:
+     * [0 - 128[: amountX
+     * [128 - 256[: amountY
+     * @param tokenX The token X
+     * @param tokenY The token Y
+     * @param recipient The recipient
+     */
+    function transfer(bytes32 amounts, IERC20 tokenX, IERC20 tokenY, address recipient) internal {
+        (uint128 amountX, uint128 amountY) = amounts.decode();
+
+        if (amountX > 0) tokenX.safeTransfer(recipient, amountX);
+        if (amountY > 0) tokenY.safeTransfer(recipient, amountY);
+    }
+
+    /**
+     * @dev Transfers the encoded amounts to the recipient, only for token X
+     * @param amounts The amounts, encoded as follows:
+     * [0 - 128[: amountX
+     * [128 - 256[: empty
+     * @param tokenX The token X
+     * @param recipient The recipient
+     */
+    function transferX(bytes32 amounts, IERC20 tokenX, address recipient) internal {
+        uint128 amountX = amounts.decodeFirst();
+
+        if (amountX > 0) tokenX.safeTransfer(recipient, amountX);
+    }
+
+    /**
+     * @dev Transfers the encoded amounts to the recipient, only for token Y
+     * @param amounts The amounts, encoded as follows:
+     * [0 - 128[: empty
+     * [128 - 256[: amountY
+     * @param tokenY The token Y
+     * @param recipient The recipient
+     */
+    function transferY(bytes32 amounts, IERC20 tokenY, address recipient) internal {
+        uint128 amountY = amounts.decodeSecond();
+
+        if (amountY > 0) tokenY.safeTransfer(recipient, amountY);
     }
 
     function _balanceOf(IERC20 token) private view returns (uint128) {

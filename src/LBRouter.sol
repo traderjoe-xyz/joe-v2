@@ -15,6 +15,7 @@ import "./libraries/TokenHelper.sol";
 import "./interfaces/IJoePair.sol";
 import "./interfaces/ILBToken.sol";
 import "./interfaces/ILBRouter.sol";
+import "./interfaces/ILBLegacyFactory.sol";
 
 /// @title Liquidity Book Router
 /// @author Trader Joe
@@ -28,6 +29,7 @@ contract LBRouter is ILBRouter {
     using JoeLibrary for uint256;
 
     ILBFactory public immutable override factory;
+    ILBLegacyFactory public immutable legacyFactory;
     IJoeFactory public immutable override oldFactory;
     IWAVAX public immutable override wavax;
 
@@ -53,8 +55,9 @@ contract LBRouter is ILBRouter {
     /// @param _factory LBFactory address
     /// @param _oldFactory Address of old factory (Joe V1)
     /// @param _wavax Address of WAVAX
-    constructor(ILBFactory _factory, IJoeFactory _oldFactory, IWAVAX _wavax) {
+    constructor(ILBFactory _factory, ILBLegacyFactory _legacyFactory, IJoeFactory _oldFactory, IWAVAX _wavax) {
         factory = _factory;
+        legacyFactory = _legacyFactory;
         oldFactory = _oldFactory;
         wavax = _wavax;
     }
@@ -267,7 +270,6 @@ contract LBRouter is ILBRouter {
     /// @param _tokenX The address of token X
     /// @param _tokenY The address of token Y
     /// @param _binStep The bin step of the LBPair
-    /// @param _revision The revision of the LBPair
     /// @param _amountXMin The min amount to receive of token X
     /// @param _amountYMin The min amount to receive of token Y
     /// @param _ids The list of ids to burn
@@ -304,7 +306,6 @@ contract LBRouter is ILBRouter {
     /// use the `removeLiquidity` function to remove liquidity with fee on transfer tokens.
     /// @param _token The address of token
     /// @param _binStep The bin step of the LBPair
-    /// @param _revision The revision of the LBPair
     /// @param _amountTokenMin The min amount to receive of token
     /// @param _amountAVAXMin The min amount to receive of AVAX
     /// @param _ids The list of ids to burn
@@ -889,17 +890,24 @@ contract LBRouter is ILBRouter {
         view
         returns (ILBPair)
     {
-        ILBPair _LBPair = factory.getLBPairInformation(_tokenX, _tokenY, _binStep, _revision).LBPair;
+        ILBPair _LBPair;
+        if (_revision == 0) {
+            _LBPair = legacyFactory.getLBPairInformation(_tokenX, _tokenY, _binStep).LBPair;
+        } else {
+            _LBPair = factory.getLBPairInformation(_tokenX, _tokenY, _binStep, _revision).LBPair;
+        }
 
+        if (address(_LBPair) == address(0)) {
+            revert LBRouter__PairNotCreated(address(_tokenX), address(_tokenY), _binStep);
+        }
         return _LBPair;
     }
 
-    /// @notice Helper function to return the address of the pair (v1, v2 or v2.1, according to `_binStep` and `_revision`)
+    /// @notice Helper function to return the address of the pair (v1 or v2, according to `_binStep`)
     /// @dev Revert if the pair is not created yet
+    /// @param _binStep The bin step of the LBPair, 0 means using V1 pair, any other value will use V2
     /// @param _tokenX The address of the tokenX
     /// @param _tokenY The address of the tokenY
-    /// @param _binStep The bin step of the LBPair, 0 means using V1 pair, any other value will use V2 or V2.1
-    /// @param _revision The revision of the LBPair, 0 means using V1 or V2 pair, any other value will use V2.1
     /// @return _pair The address of the pair of binStep `_binStep`
     function _getPair(IERC20 _tokenX, IERC20 _tokenY, uint256 _binStep, uint256 _revision)
         private
@@ -914,12 +922,6 @@ contract LBRouter is ILBRouter {
         }
     }
 
-    /// @notice Loops over an array of token paris and returns their addresses
-    /// Calls `_getPair` for each pair
-    /// @param pairBinSteps The bin step of the pairs (0: V1, other values will use V2 or V2.1)
-    /// @param revisions The revision of the pairs (0: V1 or V2, others values are V2.1)
-    /// @param tokenPath The swap path using the binSteps following `pairBinSteps`
-    /// @return pairs The array of pairs
     function _getPairs(uint256[] memory pairBinSteps, uint256[] memory revisions, IERC20[] memory tokenPath)
         private
         view

@@ -41,11 +41,11 @@ contract CoreDeployer is Script {
         console.log("LBPair implementation deployed -->", address(pairImplementation));
 
         vm.broadcast();
-        LBRouter router = new LBRouter(factory, IJoeFactory(factoryV1), IWAVAX(wavax));
+        LBRouter router = new LBRouter(factory,  ILBLegacyFactory(address(0)), IJoeFactory(factoryV1), IWAVAX(wavax));
         console.log("LBRouter deployed -->", address(router));
 
         vm.startBroadcast();
-        LBQuoter quoter = new LBQuoter(address(router), address(factoryV1), address(factory));
+        LBQuoter quoter = new LBQuoter(address(router), address(factoryV1), address(factory),address(0));
         console.log("LBQuoter deployed -->", address(quoter));
 
         factory.setLBPairImplementation(address(pairImplementation));

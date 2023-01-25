@@ -2,1107 +2,764 @@
 
 pragma solidity 0.8.10;
 
-/**
- * Imports *
- */
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-import "./LBErrors.sol";
-import "./LBToken.sol";
-import "./libraries/BinHelper.sol";
-import "./libraries/Constants.sol";
-import "./libraries/Decoder.sol";
-import "./libraries/FeeDistributionHelper.sol";
-import "./libraries/Math512Bits.sol";
-import "./libraries/Oracle.sol";
-import "./libraries/ReentrancyGuardUpgradeable.sol";
-import "./libraries/SafeCast.sol";
-import "./libraries/SafeMath.sol";
-import "./libraries/SwapHelper.sol";
-import "./libraries/TokenHelper.sol";
-import "./libraries/TreeMath.sol";
-import "./interfaces/ILBPair.sol";
+import {BinHelper} from "./libraries/BinHelper.sol";
+import {Clone} from "./libraries/Clone.sol";
+import {Constants} from "./libraries/Constants.sol";
+import {LiquidityConfigurations} from "./libraries/math/LiquidityConfigurations.sol";
+import {ILBFactory} from "./interfaces/ILBFactory.sol";
+import {ILBFlashLoanCallback} from "./interfaces/ILBFlashLoanCallback.sol";
+import {ILBPair} from "./interfaces/ILBPair.sol";
+import {LBToken} from "./LBToken.sol";
+import {OracleHelper} from "./libraries/OracleHelper.sol";
+import {PackedUint128Math} from "./libraries/math/PackedUint128Math.sol";
+import {PairParameterHelper} from "./libraries/PairParameterHelper.sol";
+import {PriceHelper} from "./libraries/PriceHelper.sol";
+import {ReentrancyGuardUpgradeable} from "./libraries/ReentrancyGuardUpgradeable.sol";
+import {SafeCast} from "./libraries/math/SafeCast.sol";
+import {SampleMath} from "./libraries/math/SampleMath.sol";
+import {TreeMath} from "./libraries/math/TreeMath.sol";
+import {Uint256x256Math} from "./libraries/math/Uint256x256Math.sol";
 
-/// @title Liquidity Book Pair
-/// @author Trader Joe
-/// @notice This contract is the implementation of Liquidity Book Pair that also acts as the receipt token for liquidity positions
-contract LBPair is LBToken, ReentrancyGuardUpgradeable, ILBPair {
-    /**
-     * Libraries *
-     */
-
-    using Math512Bits for uint256;
-    using TreeMath for mapping(uint256 => uint256)[3];
+contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
+    using BinHelper for bytes32;
+    using LiquidityConfigurations for bytes32;
+    using OracleHelper for OracleHelper.Oracle;
+    using PackedUint128Math for bytes32;
+    using PackedUint128Math for uint128;
+    using PairParameterHelper for bytes32;
+    using PriceHelper for uint24;
     using SafeCast for uint256;
-    using SafeMath for uint256;
-    using TokenHelper for IERC20;
-    using FeeHelper for FeeHelper.FeeParameters;
-    using SwapHelper for Bin;
-    using Decoder for bytes32;
-    using FeeDistributionHelper for FeeHelper.FeesDistribution;
-    using Oracle for bytes32[65_535];
+    using TreeMath for TreeMath.TreeUint24;
+    using Uint256x256Math for uint256;
 
-    /**
-     * Modifiers *
-     */
-
-    /// @notice Checks if the caller is the factory
     modifier onlyFactory() {
-        if (msg.sender != address(factory)) revert LBPair__OnlyFactory();
+        if (msg.sender != address(_factory)) revert LBPair__OnlyFactory();
         _;
     }
 
-    /**
-     * Public immutable variables *
-     */
-
-    /// @notice The factory contract that created this pair
-    ILBFactory public immutable override factory;
-
-    /**
-     * Public variables *
-     */
-
-    /// @notice The token that is used as the base currency for the pair
-    IERC20 public override tokenX;
-
-    /// @notice The token that is used as the quote currency for the pair
-    IERC20 public override tokenY;
-
-    /**
-     * Private variables *
-     */
-
-    /// @dev The pair information that is used to track reserves, active ids,
-    /// fees and oracle parameters
-    PairInformation private _pairInformation;
-
-    /// @dev The fee parameters that are used to calculate fees
-    FeeHelper.FeeParameters private _feeParameters;
-
-    /// @dev The reserves of tokens for every bin. This is the amount
-    /// of tokenY if `id < _pairInformation.activeId`; of tokenX if `id > _pairInformation.activeId`
-    /// and a mix of both if `id == _pairInformation.activeId`
-    mapping(uint256 => Bin) private _bins;
-
-    /// @dev Tree to find bins with non zero liquidity
-
-    /// @dev The tree that is used to find the first bin with non zero liquidity
-    mapping(uint256 => uint256)[3] private _tree;
-
-    /// @dev The mapping from account to user's unclaimed fees. The first 128 bits are tokenX and the last are for tokenY
-    mapping(address => bytes32) private _unclaimedFees;
-
-    /// @dev The mapping from account to id to user's accruedDebt
-    mapping(address => mapping(uint256 => Debts)) private _accruedDebts;
-
-    /// @dev The oracle samples that are used to calculate the time weighted average data
-    bytes32[65_535] private _oracle;
-
-    /**
-     * OffSets
-     */
-
-    uint256 private constant _OFFSET_PAIR_RESERVE_X = 24;
-    uint256 private constant _OFFSET_PROTOCOL_FEE = 128;
-    uint256 private constant _OFFSET_BIN_RESERVE_Y = 112;
-    uint256 private constant _OFFSET_VARIABLE_FEE_PARAMETERS = 144;
-    uint256 private constant _OFFSET_ORACLE_SAMPLE_LIFETIME = 136;
-    uint256 private constant _OFFSET_ORACLE_SIZE = 152;
-    uint256 private constant _OFFSET_ORACLE_ACTIVE_SIZE = 168;
-    uint256 private constant _OFFSET_ORACLE_LAST_TIMESTAMP = 184;
-    uint256 private constant _OFFSET_ORACLE_ID = 224;
-
-    /**
-     * Constructor *
-     */
-
-    /// @notice Set the factory address
-    /// @param _factory The address of the factory
-    constructor(ILBFactory _factory) LBToken() {
-        if (address(_factory) == address(0)) revert LBPair__AddressZero();
-        factory = _factory;
+    modifier onlyProtocolFeeReceiver() {
+        if (msg.sender != _factory.getProtocolFeeRecipient()) revert LBPair__OnlyProtocolFeeReceiver();
+        _;
     }
 
-    /// @notice Initialize the parameters of the LBPair
-    /// @dev The different parameters needs to be validated very cautiously
-    /// It is highly recommended to never call this function directly, use the factory
-    /// as it validates the different parameters
-    /// @param _tokenX The address of the tokenX. Can't be address 0
-    /// @param _tokenY The address of the tokenY. Can't be address 0
-    /// @param _activeId The active id of the pair
-    /// @param _sampleLifetime The lifetime of a sample. It's the min time between 2 oracle's sample
-    /// @param _packedFeeParameters The fee parameters packed in a single 256 bits slot
+    ILBFactory private immutable _factory;
+
+    bytes32 private _parameters;
+
+    bytes32 private _reserves;
+    bytes32 private _protocolFees;
+
+    mapping(uint256 => bytes32) private _bins;
+
+    TreeMath.TreeUint24 private _tree;
+    OracleHelper.Oracle private _oracle;
+
+    /**
+     * @dev Constructor for the Liquidity Book Pair contract that sets the Liquidity Book Factory
+     * @param factory_ The Liquidity Book Factory
+     */
+    constructor(ILBFactory factory_) {
+        _factory = factory_;
+    }
+
+    /**
+     * @notice Initialize the Liquidity Book Pair fee parameters and active id
+     * @dev Can only be called by the Liquidity Book Factory
+     * @param baseFactor The base factor for the static fee
+     * @param filterPeriod The filter period for the static fee
+     * @param decayPeriod The decay period for the static fee
+     * @param reductionFactor The reduction factor for the static fee
+     * @param variableFeeControl The variable fee control for the static fee
+     * @param protocolShare The protocol share for the static fee
+     * @param maxVolatilityAccumulated The max volatility accumulated for the static fee
+     * @param activeId The active id of the Liquidity Book Pair
+     */
     function initialize(
-        IERC20 _tokenX,
-        IERC20 _tokenY,
-        uint24 _activeId,
-        uint16 _sampleLifetime,
-        bytes32 _packedFeeParameters
+        uint16 baseFactor,
+        uint16 filterPeriod,
+        uint16 decayPeriod,
+        uint16 reductionFactor,
+        uint24 variableFeeControl,
+        uint16 protocolShare,
+        uint24 maxVolatilityAccumulated,
+        uint24 activeId
     ) external override onlyFactory {
-        if (address(_tokenX) == address(0) || address(_tokenY) == address(0)) revert LBPair__AddressZero();
-        if (address(tokenX) != address(0)) revert LBPair__AlreadyInitialized();
+        bytes32 parameters = _parameters;
+        if (parameters != 0) revert LBPair__AlreadyInitialized();
 
         __ReentrancyGuard_init();
 
-        tokenX = _tokenX;
-        tokenY = _tokenY;
-
-        _pairInformation.activeId = _activeId;
-        _pairInformation.oracleSampleLifetime = _sampleLifetime;
-
-        _setFeesParameters(_packedFeeParameters);
-        _increaseOracle(2);
+        _setStaticFeeParameters(
+            parameters.setActiveId(activeId),
+            baseFactor,
+            filterPeriod,
+            decayPeriod,
+            reductionFactor,
+            variableFeeControl,
+            protocolShare,
+            maxVolatilityAccumulated
+        );
     }
 
     /**
-     * External View Functions *
+     * @notice Returns the Liquidity Book Factory
+     * @return factory The Liquidity Book Factory
      */
-
-    /// @notice View function to get the reserves and active id
-    /// @return reserveX The reserve of asset X
-    /// @return reserveY The reserve of asset Y
-    /// @return activeId The active id of the pair
-    function getReservesAndId() external view override returns (uint256 reserveX, uint256 reserveY, uint256 activeId) {
-        return _getReservesAndId();
+    function getFactory() external view override returns (ILBFactory factory) {
+        return _factory;
     }
 
-    /// @notice View function to get the total fees and the protocol fees of each tokens
-    /// @return feesXTotal The total fees of tokenX
-    /// @return feesYTotal The total fees of tokenY
-    /// @return feesXProtocol The protocol fees of tokenX
-    /// @return feesYProtocol The protocol fees of tokenY
-    function getGlobalFees()
-        external
-        view
-        override
-        returns (uint128 feesXTotal, uint128 feesYTotal, uint128 feesXProtocol, uint128 feesYProtocol)
-    {
-        return _getGlobalFees();
+    /**
+     * @notice Returns the token X of the Liquidity Book Pair
+     * @return tokenX The address of the token X
+     */
+    function getTokenX() external pure override returns (IERC20 tokenX) {
+        return _tokenX();
     }
 
-    /// @notice View function to get the oracle parameters
-    /// @return oracleSampleLifetime The lifetime of a sample, it accumulates information for up to this timestamp
-    /// @return oracleSize The size of the oracle (last ids can be empty)
-    /// @return oracleActiveSize The active size of the oracle (no empty data)
-    /// @return oracleLastTimestamp The timestamp of the creation of the oracle's latest sample
-    /// @return oracleId The index of the oracle's latest sample
-    /// @return min The min delta time of two samples
-    /// @return max The safe max delta time of two samples
-    function getOracleParameters()
+    /**
+     * @notice Returns the token Y of the Liquidity Book Pair
+     * @return tokenY The address of the token Y
+     */
+    function getTokenY() external pure override returns (IERC20 tokenY) {
+        return _tokenY();
+    }
+
+    /**
+     * @notice Returns the bin step of the Liquidity Book Pair
+     * @dev The bin step is the increase in price between two consecutive bins, in 20_000th.
+     * For example, a bin step of 1 means that the price of the next bin is 0.005% higher than the price of the previous bin.
+     * The maximum bin step is 200, which means that the price of the next bin is 1% higher than the price of the previous bin.
+     * @return binStep The bin step of the Liquidity Book Pair, in 20_000th
+     */
+    function getBinStep() external pure override returns (uint8) {
+        return _binStep();
+    }
+
+    /**
+     * @notice Returns the reserves of the Liquidity Book Pair
+     * This is the sum of the reserves of all bins, minus the protocol fees.
+     * @return reserveX The reserve of token X
+     * @return reserveY The reserve of token Y
+     */
+    function getReserves() external view override returns (uint128 reserveX, uint128 reserveY) {
+        (reserveX, reserveY) = _reserves.sub(_protocolFees).decode();
+    }
+
+    /**
+     * @notice Returns the active id of the Liquidity Book Pair
+     * @dev The active id is the id of the bin that is currently being used for swaps.
+     * The price of the active bin is the price of the Liquidity Book Pair and can be calculated as follows:
+     * `price = (1 + binStep / 20_000) ^ (activeId - 2^23)`
+     * @return activeId The active id of the Liquidity Book Pair
+     */
+    function getActiveId() external view override returns (uint24 activeId) {
+        activeId = _parameters.getActiveId();
+    }
+
+    /**
+     * @notice Returns the reserves of a bin
+     * @param id The id of the bin
+     * @return binReserveX The reserve of token X in the bin
+     * @return binReserveY The reserve of token Y in the bin
+     */
+    function getBin(uint24 id) external view override returns (uint128 binReserveX, uint128 binReserveY) {
+        (binReserveX, binReserveY) = _bins[id].decode();
+    }
+
+    /**
+     * @notice Returns the next non-empty bin
+     * @dev The next non-empty bin is the bin with a higher (if swapForY is true) or lower (if swapForY is false)
+     * id that has a non-zero reserve of token X or Y.
+     * @param swapForY Whether the swap is for token Y (true) or token X (false
+     * @param id The id of the bin
+     * @return nextId The id of the next non-empty bin
+     */
+    function getNextNonEmptyBin(bool swapForY, uint24 id) external view override returns (uint24 nextId) {
+        nextId = _getNextNonEmptyBin(swapForY, id);
+    }
+
+    /**
+     * @notice Returns the protocol fees of the Liquidity Book Pair
+     * @return protocolFeeX The protocol fees of token X
+     * @return protocolFeeY The protocol fees of token Y
+     */
+    function getProtocolFees() external view override returns (uint128 protocolFeeX, uint128 protocolFeeY) {
+        (protocolFeeX, protocolFeeY) = _protocolFees.decode();
+    }
+
+    /**
+     * @notice Returns the static fee parameters of the Liquidity Book Pair
+     * @return baseFactor The base factor for the static fee
+     * @return filterPeriod The filter period for the static fee
+     * @return decayPeriod The decay period for the static fee
+     * @return reductionFactor The reduction factor for the static fee
+     * @return variableFeeControl The variable fee control for the static fee
+     * @return protocolShare The protocol share for the static fee
+     * @return maxVolatilityAccumulated The maximum volatility accumulated for the static fee
+     */
+    function getStaticFeeParameters()
         external
         view
         override
         returns (
-            uint256 oracleSampleLifetime,
-            uint256 oracleSize,
-            uint256 oracleActiveSize,
-            uint256 oracleLastTimestamp,
-            uint256 oracleId,
-            uint256 min,
-            uint256 max
+            uint16 baseFactor,
+            uint16 filterPeriod,
+            uint16 decayPeriod,
+            uint16 reductionFactor,
+            uint24 variableFeeControl,
+            uint16 protocolShare,
+            uint24 maxVolatilityAccumulated
         )
     {
-        (oracleSampleLifetime, oracleSize, oracleActiveSize, oracleLastTimestamp, oracleId) = _getOracleParameters();
-        min = oracleActiveSize == 0 ? 0 : oracleSampleLifetime;
-        max = oracleSampleLifetime * oracleActiveSize;
-    }
+        bytes32 parameters = _parameters;
 
-    /// @notice View function to get the oracle's sample at `_timeDelta` seconds
-    /// @dev Return a linearized sample, the weighted average of 2 neighboring samples
-    /// @param _timeDelta The number of seconds before the current timestamp
-    /// @return cumulativeId The weighted average cumulative id
-    /// @return cumulativeVolatilityAccumulated The weighted average cumulative volatility accumulated
-    /// @return cumulativeBinCrossed The weighted average cumulative bin crossed
-    function getOracleSampleFrom(uint256 _timeDelta)
-        external
-        view
-        override
-        returns (uint256 cumulativeId, uint256 cumulativeVolatilityAccumulated, uint256 cumulativeBinCrossed)
-    {
-        uint256 _lookUpTimestamp = block.timestamp - _timeDelta;
-
-        (,, uint256 _oracleActiveSize,, uint256 _oracleId) = _getOracleParameters();
-
-        uint256 timestamp;
-        (timestamp, cumulativeId, cumulativeVolatilityAccumulated, cumulativeBinCrossed) =
-            _oracle.getSampleAt(_oracleActiveSize, _oracleId, _lookUpTimestamp);
-
-        if (timestamp < _lookUpTimestamp) {
-            FeeHelper.FeeParameters memory _fp = _feeParameters;
-            uint256 _activeId = _pairInformation.activeId;
-            _fp.updateVariableFeeParameters(_activeId);
-
-            unchecked {
-                uint256 _deltaT = _lookUpTimestamp - timestamp;
-
-                cumulativeId += _activeId * _deltaT;
-                cumulativeVolatilityAccumulated += uint256(_fp.volatilityAccumulated) * _deltaT;
-            }
-        }
-    }
-
-    /// @notice View function to get the fee parameters
-    /// @return The fee parameters
-    function feeParameters() external view override returns (FeeHelper.FeeParameters memory) {
-        return _feeParameters;
-    }
-
-    /// @notice View function to get the first bin that isn't empty, will not be `_id` itself
-    /// @param _id The bin id
-    /// @param _swapForY Whether you've swapping token X for token Y (true) or token Y for token X (false)
-    /// @return The id of the non empty bin
-    function findFirstNonEmptyBinId(uint24 _id, bool _swapForY) external view override returns (uint24) {
-        return _tree.findFirstBin(_id, _swapForY);
-    }
-
-    /// @notice View function to get the bin at `id`
-    /// @param _id The bin id
-    /// @return reserveX The reserve of tokenX of the bin
-    /// @return reserveY The reserve of tokenY of the bin
-    function getBin(uint24 _id) external view override returns (uint256 reserveX, uint256 reserveY) {
-        return _getBin(_id);
-    }
-
-    /// @notice View function to get the pending fees of a user
-    /// @dev The array must be strictly increasing to ensure uniqueness
-    /// @param _account The address of the user
-    /// @param _ids The list of ids
-    /// @return amountX The amount of tokenX pending
-    /// @return amountY The amount of tokenY pending
-    function pendingFees(address _account, uint256[] calldata _ids)
-        external
-        view
-        override
-        returns (uint256 amountX, uint256 amountY)
-    {
-        if (_account == address(this) || _account == address(0)) return (0, 0);
-
-        bytes32 _unclaimedData = _unclaimedFees[_account];
-
-        amountX = _unclaimedData.decode(type(uint128).max, 0);
-        amountY = _unclaimedData.decode(type(uint128).max, 128);
-
-        uint256 _lastId;
-        // Iterate over the ids to get the pending fees of the user for each bin
-        unchecked {
-            for (uint256 i; i < _ids.length; ++i) {
-                uint256 _id = _ids[i];
-
-                // Ensures uniqueness of ids
-                if (_lastId >= _id && i != 0) revert LBPair__OnlyStrictlyIncreasingId();
-
-                uint256 _balance = balanceOf(_account, _id);
-
-                if (_balance != 0) {
-                    Bin memory _bin = _bins[_id];
-
-                    (uint128 _amountX, uint128 _amountY) = _getPendingFees(_bin, _account, _id, _balance);
-
-                    amountX += _amountX;
-                    amountY += _amountY;
-                }
-
-                _lastId = _id;
-            }
-        }
-    }
-
-    /// @notice Returns whether this contract implements the interface defined by
-    /// `interfaceId` (true) or not (false)
-    /// @param _interfaceId The interface identifier
-    /// @return Whether the interface is supported (true) or not (false)
-    function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
-        return super.supportsInterface(_interfaceId) || _interfaceId == type(ILBPair).interfaceId;
+        baseFactor = parameters.getBaseFactor();
+        filterPeriod = parameters.getFilterPeriod();
+        decayPeriod = parameters.getDecayPeriod();
+        reductionFactor = parameters.getReductionFactor();
+        variableFeeControl = parameters.getVariableFeeControl();
+        protocolShare = parameters.getProtocolShare();
+        maxVolatilityAccumulated = parameters.getMaxVolatilityAccumulated();
     }
 
     /**
-     * External Functions *
+     * @notice Returns the variable fee parameters of the Liquidity Book Pair
+     * @return volatilityAccumulated The volatility accumulated for the variable fee
+     * @return volatilityReference The volatility reference for the variable fee
+     * @return idReference The id reference for the variable fee
+     * @return timeOfLastUpdate The time of last update for the variable fee
      */
-
-    /// @notice Swap tokens iterating over the bins until the entire amount is swapped.
-    /// Will swap token X for token Y if `_swapForY` is true, and token Y for token X if `_swapForY` is false.
-    /// This function will not transfer the tokens from the caller, it is expected that the tokens have already been
-    /// transferred to this contract through another contract.
-    /// That is why this function shouldn't be called directly, but through one of the swap functions of the router
-    /// that will also perform safety checks.
-    ///
-    /// The variable fee is updated throughout the swap, it increases with the number of bins crossed.
-    /// @param _swapForY Whether you've swapping token X for token Y (true) or token Y for token X (false)
-    /// @param _to The address to send the tokens to
-    /// @return amountXOut The amount of token X sent to `_to`
-    /// @return amountYOut The amount of token Y sent to `_to`
-    function swap(bool _swapForY, address _to)
+    function getVariableFeeParameters()
         external
+        view
         override
-        nonReentrant
-        returns (uint256 amountXOut, uint256 amountYOut)
+        returns (uint24 volatilityAccumulated, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate)
     {
-        PairInformation memory _pair = _pairInformation;
+        bytes32 parameters = _parameters;
 
-        uint256 _amountIn = _swapForY
-            ? tokenX.received(_pair.reserveX, _pair.feesX.total)
-            : tokenY.received(_pair.reserveY, _pair.feesY.total);
+        volatilityAccumulated = parameters.getVolatilityAccumulated();
+        volatilityReference = parameters.getVolatilityReference();
+        idReference = parameters.getIdReference();
+        timeOfLastUpdate = parameters.getTimeOfLastUpdate();
+    }
 
-        if (_amountIn == 0) revert LBPair__InsufficientAmounts();
+    /**
+     * @notice Returns the cumulative values of the Liquidity Book Pair at a given timestamp
+     * @dev The cumulative values are the cumulative id, the cumulative volatility and the cumulative bin crossed.
+     * @param lookupTimestamp The timestamp at which to look up the cumulative values
+     * @return cumulativeId The cumulative id of the Liquidity Book Pair at the given timestamp
+     * @return cumulativeVolatility The cumulative volatility of the Liquidity Book Pair at the given timestamp
+     * @return cumulativeBinCrossed The cumulative bin crossed of the Liquidity Book Pair at the given timestamp
+     */
+    function getOracleSampleAt(uint40 lookupTimestamp)
+        external
+        view
+        override
+        returns (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed)
+    {
+        bytes32 parameters = _parameters;
 
-        FeeHelper.FeeParameters memory _fp = _feeParameters;
+        if (lookupTimestamp > block.timestamp) return (0, 0, 0);
 
-        uint256 _startId = _pair.activeId;
-        _fp.updateVariableFeeParameters(_startId);
+        uint40 timeOfLastUpdate;
+        (timeOfLastUpdate, cumulativeId, cumulativeVolatility, cumulativeBinCrossed) =
+            _oracle.getSampleAt(parameters.getOracleId(), lookupTimestamp);
 
-        uint256 _amountOut;
-        /// Performs the actual swap, iterating over the bins until the entire amount is swapped.
-        /// It uses the tree to find the next bin to have a non zero reserve of the token we're swapping for.
-        /// It will also update the variable fee parameters.
-        while (true) {
-            Bin memory _bin = _bins[_pair.activeId];
-            if ((!_swapForY && _bin.reserveX != 0) || (_swapForY && _bin.reserveY != 0)) {
-                (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) =
-                    _bin.getAmounts(_fp, _pair.activeId, _swapForY, _amountIn);
+        if (timeOfLastUpdate < lookupTimestamp) {
+            parameters.updateVolatilityParameters(parameters.getActiveId());
 
-                _bin.updateFees(_swapForY ? _pair.feesX : _pair.feesY, _fees, _swapForY, totalSupply(_pair.activeId));
+            uint40 deltaTime = lookupTimestamp - timeOfLastUpdate;
 
-                _bin.updateReserves(_pair, _swapForY, _amountInToBin.safe112(), _amountOutOfBin.safe112());
-
-                _amountIn -= _amountInToBin + _fees.total;
-                _amountOut += _amountOutOfBin;
-
-                _bins[_pair.activeId] = _bin;
-
-                // Avoids stack too deep error
-                _emitSwap(
-                    _to,
-                    _pair.activeId,
-                    _swapForY,
-                    _amountInToBin,
-                    _amountOutOfBin,
-                    _fp.volatilityAccumulated,
-                    _fees.total
-                );
-            }
-
-            /// If the amount in is not 0, it means that we haven't swapped the entire amount yet.
-            /// We need to find the next bin to swap for.
-            if (_amountIn != 0) {
-                _pair.activeId = _tree.findFirstBin(_pair.activeId, _swapForY);
-            } else {
-                break;
-            }
-        }
-
-        // Update the oracle and return the updated oracle id. It uses the oracle size to start filling the new slots.
-        uint256 _updatedOracleId = _oracle.update(
-            _pair.oracleSize,
-            _pair.oracleSampleLifetime,
-            _pair.oracleLastTimestamp,
-            _pair.oracleId,
-            _pair.activeId,
-            _fp.volatilityAccumulated,
-            _startId.absSub(_pair.activeId)
-        );
-
-        // Update the oracleId and lastTimestamp if the sample write on another slot
-        if (_updatedOracleId != _pair.oracleId || _pair.oracleLastTimestamp == 0) {
-            // Can't overflow as the updatedOracleId < oracleSize
-            _pair.oracleId = uint16(_updatedOracleId);
-            _pair.oracleLastTimestamp = block.timestamp.safe40();
-
-            // Increase the activeSize if the updated sample is written in a new slot
-            // Can't overflow as _updatedOracleId < maxSize = 2**16-1
-            unchecked {
-                if (_updatedOracleId == _pair.oracleActiveSize) ++_pair.oracleActiveSize;
-            }
-        }
-
-        /// Update the fee parameters and the pair information
-        _feeParameters = _fp;
-        _pairInformation = _pair;
-
-        if (_swapForY) {
-            amountYOut = _amountOut;
-            tokenY.safeTransfer(_to, _amountOut);
-        } else {
-            amountXOut = _amountOut;
-            tokenX.safeTransfer(_to, _amountOut);
+            cumulativeId += uint64(parameters.getIdReference()) * deltaTime;
+            cumulativeVolatility += uint64(parameters.getVolatilityAccumulated()) * deltaTime;
         }
     }
 
-    /// @notice Perform a flashloan on one of the tokens of the pair. The flashloan will call the `_receiver` contract
-    /// to perform the desired operations. The `_receiver` contract is expected to transfer the `amount + fee` of the
-    /// token to this contract.
-    /// @param _receiver The contract that will receive the flashloan and execute the callback
-    /// @param _token The address of the token to flashloan
-    /// @param _amount The amount of token to flashloan
-    /// @param _data The call data that will be forwarded to the `_receiver` contract during the callback
-    function flashLoan(ILBFlashLoanCallback _receiver, IERC20 _token, uint256 _amount, bytes calldata _data)
+    /**
+     * @notice Swap tokens iterating over the bins until the entire amount is swapped.
+     * Token X will be swapped for token Y if `swapForY` is true, and token Y for token X if `swapForY` is false.
+     * This function will not transfer the tokens from the caller, it is expected that the tokens have already been
+     * transferred to this contract through another contract, most likely the router.
+     * That is why this function shouldn't be called directly, but only through one of the swap functions of a router
+     * that will also perform safety checks, such as minimum amounts and slippage.
+     * The variable fee is updated throughout the swap, it increases with the number of bins crossed.
+     * The oracle is updated at the end of the swap.
+     * @param swapForY Whether you're swapping token X for token Y (true) or token Y for token X (false)
+     * @param to The address to send the tokens to
+     * @return amountsOut The encoded amounts of token X and token Y sent to `to`
+     */
+    function swap(bool swapForY, address to) external override nonReentrant returns (bytes32 amountsOut) {
+        bytes32 reserves = _reserves;
+        bytes32 protocolFees = _protocolFees;
+
+        bytes32 amountsLeft = swapForY ? reserves.receivedX(_tokenX()) : reserves.receivedY(_tokenY());
+
+        if (amountsLeft == 0) revert LBPair__InsufficientAmountIn();
+
+        bytes32 parameters = _parameters;
+        uint8 binStep = _binStep();
+
+        uint24 activeId = parameters.getActiveId();
+
+        parameters = parameters.updateReferences();
+
+        while (true) {
+            bytes32 binReserves = _bins[activeId];
+            if (!binReserves.isEmpty(swapForY)) {
+                parameters = parameters.updateVolatilityAccumulated(activeId);
+
+                (bytes32 amountsInToBin, bytes32 amountsOutOfBin, bytes32 totalFees) =
+                    binReserves.getAmounts(parameters, binStep, swapForY, activeId, amountsLeft);
+
+                if (amountsInToBin > 0) {
+                    amountsLeft = amountsLeft.sub(amountsInToBin);
+                    reserves.add(amountsInToBin.add(totalFees));
+
+                    amountsOut = amountsOut.add(amountsOutOfBin);
+
+                    bytes32 pFees = totalFees.scalarMulDivBasisPointRoundDown(parameters.getProtocolShare());
+                    protocolFees = protocolFees.add(pFees);
+
+                    _bins[activeId] = binReserves.add(amountsInToBin).sub(amountsOutOfBin);
+
+                    emit Swap(
+                        msg.sender,
+                        to,
+                        activeId,
+                        amountsInToBin,
+                        amountsOutOfBin,
+                        parameters.getVolatilityAccumulated(),
+                        totalFees,
+                        pFees
+                        );
+                }
+            }
+
+            if (amountsLeft == 0) {
+                break;
+            } else {
+                uint24 nextId = _getNextNonEmptyBin(swapForY, activeId);
+
+                if (nextId == 0 || nextId == type(uint24).max) revert LBPair__OutOfLiquidity();
+
+                activeId = nextId;
+            }
+        }
+
+        if (amountsOut == 0) revert LBPair__InsufficientAmountOut();
+
+        _oracle.update(parameters, activeId);
+
+        _reserves = reserves.sub(amountsOut);
+        _parameters = parameters.setActiveId(activeId);
+
+        if (swapForY) {
+            amountsOut.transferY(_tokenY(), to);
+        } else {
+            amountsOut.transferX(_tokenX(), to);
+        }
+    }
+
+    /**
+     * @notice Flash loan tokens from the pool to a receiver contract and execute a callback function.
+     * The receiver contract is expected to return the tokens plus a fee to this contract.
+     * The fee is calculated as a percentage of the amount borrowed, and is the same for both tokens.
+     * @param receiver The contract that will receive the tokens and execute the callback function
+     * @param amounts The encoded amounts of token X and token Y to flash loan
+     * @param data Any data that will be passed to the callback function
+     */
+    function flashLoan(ILBFlashLoanCallback receiver, bytes32 amounts, bytes calldata data)
         external
         override
         nonReentrant
     {
-        IERC20 _tokenX = tokenX;
-        if ((_token != _tokenX && _token != tokenY)) revert LBPair__FlashLoanInvalidToken();
+        bytes32 reservesBefore = _reserves;
+        bytes32 parameters = _parameters;
 
-        uint256 _totalFee = _getFlashLoanFee(_amount);
+        bytes32 totalFees = _getFlashLoanFees(amounts);
 
-        FeeHelper.FeesDistribution memory _fees = FeeHelper.FeesDistribution({
-            total: _totalFee.safe128(),
-            protocol: uint128((_totalFee * _feeParameters.protocolShare) / Constants.BASIS_POINT_MAX)
-        });
-
-        uint256 _balanceBefore = _token.balanceOf(address(this));
-
-        _token.safeTransfer(address(_receiver), _amount);
+        amounts.transfer(_tokenX(), _tokenY(), address(receiver));
 
         if (
-            _receiver.LBFlashLoanCallback(msg.sender, _token, _amount, _fees.total, _data) != Constants.CALLBACK_SUCCESS
-        ) revert LBPair__FlashLoanCallbackFailed();
-
-        uint256 _balanceAfter = _token.balanceOf(address(this));
-
-        if (_balanceAfter != _balanceBefore + _fees.total) revert LBPair__FlashLoanInvalidBalance();
-
-        uint256 _activeId = _pairInformation.activeId;
-        uint256 _totalSupply = totalSupply(_activeId);
-
-        if (_totalFee > 0) {
-            if (_token == _tokenX) {
-                (uint128 _feesXTotal,, uint128 _feesXProtocol,) = _getGlobalFees();
-
-                _setFees(_pairInformation.feesX, _feesXTotal + _fees.total, _feesXProtocol + _fees.protocol);
-                _bins[_activeId].accTokenXPerShare += _fees.getTokenPerShare(_totalSupply);
-            } else {
-                (, uint128 _feesYTotal,, uint128 _feesYProtocol) = _getGlobalFees();
-
-                _setFees(_pairInformation.feesY, _feesYTotal + _fees.total, _feesYProtocol + _fees.protocol);
-                _bins[_activeId].accTokenYPerShare += _fees.getTokenPerShare(_totalSupply);
-            }
+            receiver.LBFlashLoanCallback(msg.sender, _tokenX(), _tokenY(), amounts, totalFees, data)
+                != Constants.CALLBACK_SUCCESS
+        ) {
+            revert LBPair__FlashLoanCallbackFailed();
         }
 
-        emit FlashLoan(msg.sender, _receiver, _token, _amount, _fees.total);
+        bytes32 balancesAfter = bytes32(0).received(_tokenX(), _tokenY());
+
+        if (balancesAfter.lt(reservesBefore.add(totalFees))) revert LBPair__FlashLoanInsufficientAmount();
+
+        totalFees = reservesBefore.sub(balancesAfter);
+
+        bytes32 protocolFees = totalFees.scalarMulDivBasisPointRoundDown(parameters.getProtocolShare());
+        uint24 activeId = parameters.getActiveId();
+
+        _reserves = balancesAfter;
+
+        _protocolFees = _protocolFees.add(protocolFees);
+        _bins[activeId] = _bins[activeId].add(totalFees.sub(protocolFees));
+
+        emit FlashLoan(msg.sender, receiver, activeId, amounts, totalFees, protocolFees);
     }
 
-    /// @notice Mint new LB tokens for each bins where the user adds liquidity.
-    /// This function will not transfer the tokens from the caller, it is expected that the tokens have already been
-    /// transferred to this contract through another contract.
-    /// That is why this function shouldn't be called directly, but through one of the add liquidity functions of the
-    /// router that will also perform safety checks.
-    /// @dev Any excess amount of token will be sent to the `to` address. The lengths of the arrays must be the same.
-    /// @param _ids The ids of the bins where the liquidity will be added. It will mint LB tokens for each of these bins.
-    /// @param _distributionX The percentage of token X to add to each bin. The sum of all the values must not exceed 100%,
-    /// that is 1e18.
-    /// @param _distributionY The percentage of token Y to add to each bin. The sum of all the values must not exceed 100%,
-    /// that is 1e18.
-    /// @param _to The address that will receive the LB tokens and the excess amount of tokens.
-    /// @return The amount of token X added to the pair
-    /// @return The amount of token Y added to the pair
-    /// @return liquidityMinted The amounts of LB tokens minted for each bin
-    function mint(
-        uint256[] calldata _ids,
-        uint256[] calldata _distributionX,
-        uint256[] calldata _distributionY,
-        address _to
-    ) external override nonReentrant returns (uint256, uint256, uint256[] memory liquidityMinted) {
-        if (_ids.length == 0 || _ids.length != _distributionX.length || _ids.length != _distributionY.length) {
-            revert LBPair__WrongLengths();
-        }
+    /**
+     * @notice Mint liquidity tokens by depositing tokens into the pool.
+     * It will mint Liquidity Book (LB) tokens for each bin where the user adds liquidity.
+     * This function will not transfer the tokens from the caller, it is expected that the tokens have already been
+     * transferred to this contract through another contract, most likely the router.
+     * That is why this function shouldn't be called directly, but through one of the add liquidity functions of a
+     * router that will also perform safety checks.
+     * @dev Any excess amount of token will be sent to the `to` address.
+     * @param to The address that will receive the LB tokens
+     * @param liquidityConfigs The encoded liquidity configurations, each one containing the id of the bin and the
+     * @param refundTo The address that will receive the excess amount of tokens
+     * percentage of token X and token Y to add to the bin.
+     * @return amountsReceived The amounts of token X and token Y received by the pool
+     * @return amountsLeft The amounts of token X and token Y that were not added to the pool and were sent to `to`
+     * @return liquidityMinted The amounts of LB tokens minted for each bin
+     */
+    function mint(address to, bytes32[] calldata liquidityConfigs, address refundTo)
+        external
+        override
+        nonReentrant
+        returns (bytes32 amountsReceived, bytes32 amountsLeft, uint256[] memory liquidityMinted)
+    {
+        if (liquidityConfigs.length == 0) revert LBPair__EmptyMarketConfigs();
 
-        PairInformation memory _pair = _pairInformation;
+        liquidityMinted = new uint256[](liquidityConfigs.length);
 
-        FeeHelper.FeeParameters memory _fp = _feeParameters;
+        uint256[] memory ids = new uint256[](liquidityConfigs.length);
+        bytes32[] memory amounts = new bytes32[](liquidityConfigs.length);
 
-        MintInfo memory _mintInfo;
+        bytes32 reserves = _reserves;
 
-        _mintInfo.amountXIn = tokenX.received(_pair.reserveX, _pair.feesX.total).safe112();
-        _mintInfo.amountYIn = tokenY.received(_pair.reserveY, _pair.feesY.total).safe112();
+        bytes32 parameters = _parameters;
+        uint24 activeId = parameters.getActiveId();
 
-        liquidityMinted = new uint256[](_ids.length);
+        amountsReceived = reserves.received(_tokenX(), _tokenY());
+        amountsLeft = amountsReceived;
 
-        // Iterate over the ids to calculate the amount of LB tokens to mint for each bin
-        for (uint256 i; i < _ids.length;) {
-            _mintInfo.id = _ids[i].safe24();
-            Bin memory _bin = _bins[_mintInfo.id];
+        for (uint256 i; i < liquidityConfigs.length;) {
+            (bytes32 maxAmountsInToBin, uint24 id) = liquidityConfigs[i].getAmountsAndId(amountsReceived);
+            (uint256 shares, bytes32 amountsIn, bytes32 amountsInToBin) =
+                _mintBin(activeId, id, maxAmountsInToBin, parameters);
 
-            if (_bin.reserveX == 0 && _bin.reserveY == 0) _tree.addToTree(_mintInfo.id);
+            amountsLeft = amountsLeft.sub(amountsIn);
 
-            _mintInfo.totalDistributionX += _distributionX[i];
-            _mintInfo.totalDistributionY += _distributionY[i];
-
-            // Can't overflow as amounts are uint112 and total distributions will be checked to be smaller or equal than 1e18
-            unchecked {
-                _mintInfo.amountX = (_mintInfo.amountXIn * _distributionX[i]) / Constants.PRECISION;
-                _mintInfo.amountY = (_mintInfo.amountYIn * _distributionY[i]) / Constants.PRECISION;
-            }
-
-            uint256 _price = BinHelper.getPriceFromId(_mintInfo.id, _fp.binStep);
-            if (_mintInfo.id >= _pair.activeId) {
-                // The active bin is the only bin that can have a non-zero reserve of the two tokens. When adding liquidity
-                // with a different ratio than the active bin, the user would actually perform a swap without paying any
-                // fees. This is why we calculate the fees for the active bin here.
-                if (_mintInfo.id == _pair.activeId) {
-                    if (_bin.reserveX != 0 || _bin.reserveY != 0) {
-                        uint256 _totalSupply = totalSupply(_mintInfo.id);
-
-                        uint256 _receivedX;
-                        uint256 _receivedY;
-
-                        {
-                            uint256 _userL =
-                                _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) + _mintInfo.amountY;
-
-                            uint256 _supply = _totalSupply + _userL;
-
-                            // Calculate the amounts received by the user if he were to burn its liquidity directly after adding
-                            // it. These amounts will be used to calculate the fees.
-                            _receivedX = _userL.mulDivRoundDown(uint256(_bin.reserveX) + _mintInfo.amountX, _supply);
-                            _receivedY = _userL.mulDivRoundDown(uint256(_bin.reserveY) + _mintInfo.amountY, _supply);
-                        }
-
-                        _fp.updateVariableFeeParameters(_mintInfo.id);
-
-                        FeeHelper.FeesDistribution memory _fees;
-
-                        // Checks if the amount of tokens received after burning its liquidity is greater than the amount of
-                        // tokens sent by the user. If it is, we add a composition fee of the difference between the two amounts.
-                        if (_mintInfo.amountX > _receivedX) {
-                            unchecked {
-                                _fees =
-                                    _fp.getFeeAmountDistribution(_fp.getFeeAmountForC(_mintInfo.amountX - _receivedX));
-                            }
-
-                            _mintInfo.amountX -= _fees.total;
-                            _mintInfo.activeFeeX += _fees.total;
-
-                            _bin.updateFees(_pair.feesX, _fees, true, _totalSupply);
-                        }
-                        if (_mintInfo.amountY > _receivedY) {
-                            unchecked {
-                                _fees =
-                                    _fp.getFeeAmountDistribution(_fp.getFeeAmountForC(_mintInfo.amountY - _receivedY));
-                            }
-
-                            _mintInfo.amountY -= _fees.total;
-                            _mintInfo.activeFeeY += _fees.total;
-
-                            _bin.updateFees(_pair.feesY, _fees, false, _totalSupply);
-                        }
-
-                        if (_mintInfo.activeFeeX > 0 || _mintInfo.activeFeeY > 0) {
-                            emit CompositionFee(
-                                msg.sender, _to, _mintInfo.id, _mintInfo.activeFeeX, _mintInfo.activeFeeY
-                                );
-                        }
-                    }
-                } else if (_mintInfo.amountY != 0) {
-                    revert LBPair__CompositionFactorFlawed(_mintInfo.id);
-                }
-            } else if (_mintInfo.amountX != 0) {
-                revert LBPair__CompositionFactorFlawed(_mintInfo.id);
-            }
-
-            // Calculate the amount of LB tokens to mint for this bin
-            uint256 _liquidity = _price.mulShiftRoundDown(_mintInfo.amountX, Constants.SCALE_OFFSET) + _mintInfo.amountY;
-
-            if (_liquidity == 0) revert LBPair__InsufficientLiquidityMinted(_mintInfo.id);
-
-            liquidityMinted[i] = _liquidity;
-
-            // Cast can't overflow as amounts are smaller than amountsIn as totalDistribution will be checked to be smaller than 1e18
-            _bin.reserveX += uint112(_mintInfo.amountX);
-            _bin.reserveY += uint112(_mintInfo.amountY);
-
-            // The addition or the cast can't overflow as it would have reverted during the previous 2 lines if
-            // amounts were greater than uint112
-            unchecked {
-                _pair.reserveX += uint112(_mintInfo.amountX);
-                _pair.reserveY += uint112(_mintInfo.amountY);
-
-                _mintInfo.amountXAddedToPair += _mintInfo.amountX;
-                _mintInfo.amountYAddedToPair += _mintInfo.amountY;
-            }
-
-            _bins[_mintInfo.id] = _bin;
-
-            _mint(_to, _mintInfo.id, _liquidity);
-
-            emit DepositedToBin(msg.sender, _to, _mintInfo.id, _mintInfo.amountX, _mintInfo.amountY);
+            ids[i] = id;
+            amounts[i] = amountsInToBin;
+            liquidityMinted[i] = shares;
 
             unchecked {
                 ++i;
             }
         }
 
-        // Assert that the distributions don't exceed 100%
-        if (_mintInfo.totalDistributionX > Constants.PRECISION || _mintInfo.totalDistributionY > Constants.PRECISION) {
-            revert LBPair__DistributionsOverflow();
-        }
+        _reserves = reserves.add(amountsReceived.sub(amountsLeft));
 
-        _pairInformation = _pair;
+        _mintBatch(to, ids, liquidityMinted);
 
-        // Send back the excess of tokens to `_to`
-        unchecked {
-            uint256 _amountXAddedPlusFee = _mintInfo.amountXAddedToPair + _mintInfo.activeFeeX;
-            if (_mintInfo.amountXIn > _amountXAddedPlusFee) {
-                tokenX.safeTransfer(_to, _mintInfo.amountXIn - _amountXAddedPlusFee);
-            }
+        if (amountsLeft > 0) amountsLeft.transfer(_tokenX(), _tokenY(), refundTo);
 
-            uint256 _amountYAddedPlusFee = _mintInfo.amountYAddedToPair + _mintInfo.activeFeeY;
-            if (_mintInfo.amountYIn > _amountYAddedPlusFee) {
-                tokenY.safeTransfer(_to, _mintInfo.amountYIn - _amountYAddedPlusFee);
-            }
-        }
-
-        return (_mintInfo.amountXAddedToPair, _mintInfo.amountYAddedToPair, liquidityMinted);
+        emit DepositedToBins(msg.sender, to, ids, amounts);
     }
 
-    /// @notice Burns LB tokens and sends the corresponding amounts of tokens to `_to`. The amount of tokens sent is
-    /// determined by the ratio of the amount of LB tokens burned to the total supply of LB tokens in the bin.
-    /// This function will not transfer the LB Tokens from the caller, it is expected that the tokens have already been
-    /// transferred to this contract through another contract.
-    /// That is why this function shouldn't be called directly, but through one of the remove liquidity functions of the router
-    /// that will also perform safety checks.
-    /// @param _ids The ids of the bins from which to remove liquidity
-    /// @param _amounts The amounts of LB tokens to burn
-    /// @param _to The address that will receive the tokens
-    /// @return amountX The amount of token X sent to `_to`
-    /// @return amountY The amount of token Y sent to `_to`
-    function burn(uint256[] calldata _ids, uint256[] calldata _amounts, address _to)
+    /**
+     * @notice Burn Liquidity Book (LB) tokens and withdraw tokens from the pool.
+     * This function will burn the tokens directly from the caller
+     * @param from The address that will burn the LB tokens
+     * @param to The address that will receive the tokens
+     * @param ids The ids of the bins from which to withdraw
+     * @param amountsToBurn The amounts of LB tokens to burn for each bin
+     * @return amounts The amounts of token X and token Y received by the user
+     */
+    function burn(address from, address to, uint256[] calldata ids, uint256[] calldata amountsToBurn)
         external
         override
         nonReentrant
-        returns (uint256 amountX, uint256 amountY)
+        checkApproval(from, msg.sender)
+        returns (bytes32[] memory amounts)
     {
-        if (_ids.length == 0 || _ids.length != _amounts.length) revert LBPair__WrongLengths();
+        if (ids.length == 0 || ids.length != amountsToBurn.length) revert LBPair__InvalidInput();
 
-        (uint256 _pairReserveX, uint256 _pairReserveY, uint256 _activeId) = _getReservesAndId();
+        amounts = new bytes32[](ids.length);
 
-        // Iterate over the ids to burn the LB tokens
-        unchecked {
-            for (uint256 i; i < _ids.length; ++i) {
-                uint24 _id = _ids[i].safe24();
-                uint256 _amountToBurn = _amounts[i];
+        bytes32 amountsOut;
 
-                if (_amountToBurn == 0) revert LBPair__InsufficientLiquidityBurned(_id);
+        for (uint256 i; i < ids.length;) {
+            uint24 id = ids[i].safe24();
+            uint256 amountToBurn = amountsToBurn[i];
 
-                (uint256 _reserveX, uint256 _reserveY) = _getBin(_id);
+            if (amountToBurn == 0) revert LBPair__ZeroAmount(id);
 
-                uint256 _totalSupply = totalSupply(_id);
+            bytes32 binReserves = _bins[id];
 
-                uint256 _amountX;
-                uint256 _amountY;
+            bytes32 amountsOutFromBin = binReserves.getAmountOutOfBin(amountToBurn, totalSupply(id));
 
-                if (_id <= _activeId) {
-                    _amountY = _amountToBurn.mulDivRoundDown(_reserveY, _totalSupply);
+            if (amountsOutFromBin == 0) revert LBPair__ZeroAmountsOut(id);
 
-                    amountY += _amountY;
-                    _reserveY -= _amountY;
-                    _pairReserveY -= _amountY;
-                }
-                if (_id >= _activeId) {
-                    _amountX = _amountToBurn.mulDivRoundDown(_reserveX, _totalSupply);
+            binReserves = binReserves.sub(amountsOutFromBin);
 
-                    amountX += _amountX;
-                    _reserveX -= _amountX;
-                    _pairReserveX -= _amountX;
-                }
+            if (binReserves == 0) _tree.remove(id);
 
-                if (_reserveX == 0 && _reserveY == 0) _tree.removeFromTree(_id);
-
-                // Optimized `_bins[_id] = _bin` to do only 1 sstore
-                assembly {
-                    mstore(0, _id)
-                    mstore(32, _bins.slot)
-                    let slot := keccak256(0, 64)
-
-                    let reserves := add(shl(_OFFSET_BIN_RESERVE_Y, _reserveY), _reserveX)
-                    sstore(slot, reserves)
-                }
-
-                _burn(address(this), _id, _amountToBurn);
-
-                emit WithdrawnFromBin(msg.sender, _to, _id, _amountX, _amountY);
-            }
-        }
-
-        // Optimization to do only 2 sstore
-        _pairInformation.reserveX = uint136(_pairReserveX);
-        _pairInformation.reserveY = uint136(_pairReserveY);
-
-        tokenX.safeTransfer(_to, amountX);
-        tokenY.safeTransfer(_to, amountY);
-    }
-
-    /// @notice Increases the length of the oracle to the given `_newLength` by adding empty samples to the end of the oracle.
-    /// The samples are however initialized to reduce the gas cost of the updates during a swap.
-    /// @param _newLength The new length of the oracle
-    function increaseOracleLength(uint16 _newLength) external override {
-        _increaseOracle(_newLength);
-    }
-
-    /// @notice Collect the fees accumulated by a user.
-    /// @param _account The address of the user
-    /// @param _ids The ids of the bins for which to collect the fees
-    /// @return amountX The amount of token X collected and sent to `_account`
-    /// @return amountY The amount of token Y collected and sent to `_account`
-    function collectFees(address _account, uint256[] calldata _ids)
-        external
-        override
-        nonReentrant
-        returns (uint256 amountX, uint256 amountY)
-    {
-        if (_account == address(0) || _account == address(this)) revert LBPair__AddressZeroOrThis();
-
-        bytes32 _unclaimedData = _unclaimedFees[_account];
-        delete _unclaimedFees[_account];
-
-        amountX = _unclaimedData.decode(type(uint128).max, 0);
-        amountY = _unclaimedData.decode(type(uint128).max, 128);
-
-        // Iterate over the ids to collect the fees
-        for (uint256 i; i < _ids.length;) {
-            uint256 _id = _ids[i];
-            uint256 _balance = balanceOf(_account, _id);
-
-            if (_balance != 0) {
-                Bin memory _bin = _bins[_id];
-
-                (uint256 _amountX, uint256 _amountY) = _getPendingFees(_bin, _account, _id, _balance);
-                _updateUserDebts(_bin, _account, _id, _balance);
-
-                amountX += _amountX;
-                amountY += _amountY;
-            }
+            _bins[id] = binReserves;
+            amountsOut = amountsOut.add(amountsOutFromBin);
 
             unchecked {
                 ++i;
             }
         }
 
-        if (amountX != 0) {
-            _pairInformation.feesX.total -= uint128(amountX);
-        }
-        if (amountY != 0) {
-            _pairInformation.feesY.total -= uint128(amountY);
-        }
+        _reserves = _reserves.sub(amountsOut);
 
-        tokenX.safeTransfer(_account, amountX);
-        tokenY.safeTransfer(_account, amountY);
+        _burnBatch(from, ids, amountsToBurn);
 
-        emit FeesCollected(msg.sender, _account, amountX, amountY);
+        amountsOut.transfer(_tokenX(), _tokenY(), to);
+
+        emit WithdrawnFromBins(msg.sender, to, ids, amounts);
     }
 
-    /// @notice Collect the protocol fees and send them to the fee recipient.
-    /// @dev The protocol fees are not set to zero to save gas by not resetting the storage slot.
-    /// @return amountX The amount of token X collected and sent to the fee recipient
-    /// @return amountY The amount of token Y collected and sent to the fee recipient
-    function collectProtocolFees() external override nonReentrant returns (uint128 amountX, uint128 amountY) {
-        address _feeRecipient = factory.feeRecipient();
+    /**
+     * @notice Collect the protocol fees from the pool.
+     * @return collectedProtocolFees The amount of protocol fees collected
+     */
+    function collectProtocolFees()
+        external
+        override
+        nonReentrant
+        onlyProtocolFeeReceiver
+        returns (bytes32 collectedProtocolFees)
+    {
+        bytes32 protocolFees = _protocolFees;
 
-        if (msg.sender != _feeRecipient) revert LBPair__OnlyFeeRecipient(_feeRecipient, msg.sender);
+        (uint128 x, uint128 y) = protocolFees.decode();
+        bytes32 ones = uint128(x > 1 ? 1 : 0).encode(uint128(y > 1 ? 1 : 0));
 
-        (uint128 _feesXTotal, uint128 _feesYTotal, uint128 _feesXProtocol, uint128 _feesYProtocol) = _getGlobalFees();
+        collectedProtocolFees = protocolFees.sub(ones);
 
-        // The protocol fees are not set to 0 to reduce the gas cost during a swap
-        if (_feesXProtocol > 1) {
-            amountX = _feesXProtocol - 1;
-            _feesXTotal -= amountX;
+        if (collectedProtocolFees != 0) {
+            _protocolFees = ones;
+            _reserves.sub(collectedProtocolFees);
 
-            _setFees(_pairInformation.feesX, _feesXTotal, 1);
+            collectedProtocolFees.transfer(_tokenX(), _tokenY(), msg.sender);
 
-            tokenX.safeTransfer(_feeRecipient, amountX);
+            emit CollectedProtocolFees(msg.sender, collectedProtocolFees);
         }
-
-        if (_feesYProtocol > 1) {
-            amountY = _feesYProtocol - 1;
-            _feesYTotal -= amountY;
-
-            _setFees(_pairInformation.feesY, _feesYTotal, 1);
-
-            tokenY.safeTransfer(_feeRecipient, amountY);
-        }
-
-        emit ProtocolFeesCollected(msg.sender, _feeRecipient, amountX, amountY);
     }
 
-    /// @notice Set the fees parameters
-    /// @dev Needs to be called by the factory that will validate the values
-    /// The bin step will not change
-    /// Only callable by the factory
-    /// @param _packedFeeParameters The packed fee parameters
-    function setFeesParameters(bytes32 _packedFeeParameters) external override onlyFactory {
-        _setFeesParameters(_packedFeeParameters);
+    /**
+     * @notice Increase the length of the oracle used by the pool
+     * @param newLength The new length of the oracle
+     */
+    function increaseOracleLength(uint16 newLength) external override {
+        uint16 oracleId = _parameters.getOracleId();
+        _oracle.inreaseLength(oracleId, newLength);
     }
 
-    /// @notice Force the decaying of the references for volatility and index
-    /// @dev Only callable by the factory
-    function forceDecay() external override onlyFactory {
-        _feeParameters.volatilityReference = uint24(
-            (uint256(_feeParameters.reductionFactor) * _feeParameters.volatilityReference) / Constants.BASIS_POINT_MAX
+    /**
+     * @notice Sets the static fee parameters of the pool
+     * @dev Can only be called by the factory
+     * @param baseFactor The base factor of the static fee
+     * @param filterPeriod The filter period of the static fee
+     * @param decayPeriod The decay period of the static fee
+     * @param reductionFactor The reduction factor of the static fee
+     * @param variableFeeControl The variable fee control of the static fee
+     * @param protocolShare The protocol share of the static fee
+     * @param maxVolatilityAccumulated The max volatility accumulated of the static fee
+     */
+    function setStaticFeeParameters(
+        uint16 baseFactor,
+        uint16 filterPeriod,
+        uint16 decayPeriod,
+        uint16 reductionFactor,
+        uint24 variableFeeControl,
+        uint16 protocolShare,
+        uint24 maxVolatilityAccumulated
+    ) external override onlyFactory {
+        _setStaticFeeParameters(
+            _parameters,
+            baseFactor,
+            filterPeriod,
+            decayPeriod,
+            reductionFactor,
+            variableFeeControl,
+            protocolShare,
+            maxVolatilityAccumulated
         );
-        _feeParameters.indexRef = _pairInformation.activeId;
     }
 
     /**
-     * Internal Functions *
+     * @notice Forces the decay of the volatility reference variables
+     * @dev Can only be called by the factory
      */
+    function forceDecay() external override onlyFactory {
+        bytes32 parameters = _parameters;
 
-    /// @notice Cache the accrued fees for a user before any transfer, mint or burn of LB tokens.
-    /// The tokens are not transferred to reduce the gas cost and to avoid reentrancy.
-    /// @param _from The address of the sender of the tokens
-    /// @param _to The address of the receiver of the tokens
-    /// @param _id The id of the bin
-    /// @param _amount The amount of LB tokens transferred
-    function _beforeTokenTransfer(address _from, address _to, uint256 _id, uint256 _amount)
+        _parameters = parameters.updateIdReference().updateVolatilityReference();
+
+        emit ForcedDecay(msg.sender, parameters.getIdReference(), parameters.getVolatilityReference());
+    }
+
+    /**
+     * @dev Returns the address of the token X
+     * @return The address of the token X
+     */
+    function _tokenX() internal pure returns (IERC20) {
+        return IERC20(_getArgAddress(0));
+    }
+
+    /**
+     * @dev Returns the address of the token Y
+     * @return The address of the token Y
+     */
+    function _tokenY() internal pure returns (IERC20) {
+        return IERC20(_getArgAddress(20));
+    }
+
+    /**
+     * @dev Returns the bin step of the pool, in 20_000ths.
+     * @return The bin step of the pool
+     */
+    function _binStep() internal pure returns (uint8) {
+        return _getArgUint8(40);
+    }
+
+    /**
+     * @dev Returns next non-empty bin
+     * @param swapForY Whether the swap is for Y
+     * @param id The id of the bin
+     * @return The id of the next non-empty bin
+     */
+    function _getNextNonEmptyBin(bool swapForY, uint24 id) internal view returns (uint24) {
+        return swapForY ? _tree.findFirstRight(id) : _tree.findFirstLeft(id);
+    }
+
+    /**
+     * @dev Returns the encoded fees amounts for a flash loan
+     * @param amounts The amounts of the flash loan
+     * @return The encoded fees amounts
+     */
+    function _getFlashLoanFees(bytes32 amounts) private view returns (bytes32) {
+        uint128 fee = _factory.getFlashLoanFee();
+        (uint128 x, uint128 y) = amounts.decode();
+
+        unchecked {
+            uint256 precisionSubOne = Constants.PRECISION - 1;
+            x = ((uint256(x) * fee + precisionSubOne) / Constants.PRECISION).safe128();
+            y = ((uint256(y) * fee + precisionSubOne) / Constants.PRECISION).safe128();
+        }
+
+        return x.encode(y);
+    }
+
+    /**
+     * @dev Sets the static fee parameters of the pair
+     * @param parameters The current parameters of the pair
+     * @param baseFactor The base factor of the static fee
+     * @param filterPeriod The filter period of the static fee
+     * @param decayPeriod The decay period of the static fee
+     * @param reductionFactor The reduction factor of the static fee
+     * @param variableFeeControl The variable fee control of the static fee
+     * @param protocolShare The protocol share of the static fee
+     * @param maxVolatilityAccumulated The max volatility accumulated of the static fee
+     */
+    function _setStaticFeeParameters(
+        bytes32 parameters,
+        uint16 baseFactor,
+        uint16 filterPeriod,
+        uint16 decayPeriod,
+        uint16 reductionFactor,
+        uint24 variableFeeControl,
+        uint16 protocolShare,
+        uint24 maxVolatilityAccumulated
+    ) internal {
+        if (
+            baseFactor == 0 && filterPeriod == 0 && decayPeriod == 0 && reductionFactor == 0 && variableFeeControl == 0
+                && protocolShare == 0 && maxVolatilityAccumulated == 0
+        ) {
+            revert LBPair__InvalidStaticFeeParameters();
+        }
+
+        _parameters = parameters.setStaticFeeParameters(
+            baseFactor,
+            filterPeriod,
+            decayPeriod,
+            reductionFactor,
+            variableFeeControl,
+            protocolShare,
+            maxVolatilityAccumulated
+        );
+
+        emit StaticFeeParametersSet(
+            msg.sender,
+            baseFactor,
+            filterPeriod,
+            decayPeriod,
+            reductionFactor,
+            variableFeeControl,
+            protocolShare,
+            maxVolatilityAccumulated
+            );
+    }
+
+    /**
+     * @dev Helper function to mint liquidity in a bin
+     * @param activeId The id of the active bin
+     * @param id The id of the bin
+     * @param maxAmountsInToBin The maximum amounts in to the bin
+     * @param parameters The parameters of the pair
+     * @return shares The amount of shares minted
+     * @return amountsIn The amounts in
+     * @return amountsInToBin The amounts in to the bin
+     */
+    function _mintBin(uint24 activeId, uint24 id, bytes32 maxAmountsInToBin, bytes32 parameters)
         internal
-        override(LBToken)
+        returns (uint256 shares, bytes32 amountsIn, bytes32 amountsInToBin)
     {
-        super._beforeTokenTransfer(_from, _to, _id, _amount);
+        bytes32 binReserves = _bins[id];
+        uint8 binStep = _binStep();
 
-        if (_from != _to) {
-            Bin memory _bin = _bins[_id];
-            if (_from != address(0) && _from != address(this)) {
-                uint256 _balanceFrom = balanceOf(_from, _id);
+        uint256 price = id.getPriceFromId(binStep);
+        uint256 supply = totalSupply(id);
 
-                _cacheFees(_bin, _from, _id, _balanceFrom, _balanceFrom - _amount);
+        (shares, amountsIn) = binReserves.getShareAndEffectiveAmountsIn(maxAmountsInToBin, price, supply);
+        amountsInToBin = amountsIn;
+
+        if (id == activeId) {
+            parameters = parameters.updateVolatilityParameters(id);
+
+            bytes32 fees = binReserves.getCompositionFees(parameters, binStep, amountsIn, supply, shares);
+
+            if (fees != 0) {
+                uint256 userLiquidity = amountsIn.sub(fees).getLiquidity(price);
+                uint256 binLiquidity = binReserves.getLiquidity(price);
+
+                shares = userLiquidity.mulDivRoundDown(supply, binLiquidity);
+                bytes32 protocolCFees = fees.scalarMulDivBasisPointRoundDown(parameters.getProtocolShare());
+
+                if (protocolCFees != 0) {
+                    amountsInToBin = amountsInToBin.sub(protocolCFees);
+                    _protocolFees = _protocolFees.add(protocolCFees);
+                }
+
+                _parameters = parameters;
+                _oracle.update(parameters, id);
+
+                emit CompositionFees(msg.sender, id, fees, protocolCFees);
             }
-
-            if (_to != address(0) && _to != address(this)) {
-                uint256 _balanceTo = balanceOf(_to, _id);
-
-                _cacheFees(_bin, _to, _id, _balanceTo, _balanceTo + _amount);
-            }
-        }
-    }
-
-    /**
-     * Private Functions *
-     */
-
-    /// @notice View function to get the pending fees of an account on a given bin
-    /// @param _bin The bin data where the user is collecting fees
-    /// @param _account The address of the user
-    /// @param _id The id where the user is collecting fees
-    /// @param _balance The previous balance of the user
-    /// @return amountX The amount of token X not collected yet by `_account`
-    /// @return amountY The amount of token Y not collected yet by `_account`
-    function _getPendingFees(Bin memory _bin, address _account, uint256 _id, uint256 _balance)
-        private
-        view
-        returns (uint128 amountX, uint128 amountY)
-    {
-        Debts memory _debts = _accruedDebts[_account][_id];
-
-        amountX = (_bin.accTokenXPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET) - _debts.debtX).safe128();
-        amountY = (_bin.accTokenYPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET) - _debts.debtY).safe128();
-    }
-
-    /// @notice Update the user debts of a user on a given bin
-    /// @param _bin The bin data where the user has collected fees
-    /// @param _account The address of the user
-    /// @param _id The id where the user has collected fees
-    /// @param _balance The new balance of the user
-    function _updateUserDebts(Bin memory _bin, address _account, uint256 _id, uint256 _balance) private {
-        uint256 _debtX = _bin.accTokenXPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET);
-        uint256 _debtY = _bin.accTokenYPerShare.mulShiftRoundDown(_balance, Constants.SCALE_OFFSET);
-
-        _accruedDebts[_account][_id].debtX = _debtX;
-        _accruedDebts[_account][_id].debtY = _debtY;
-    }
-
-    /// @notice Cache the accrued fees for a user.
-    /// @param _bin The bin data where the user is receiving LB tokens
-    /// @param _user The address of the user
-    /// @param _id The id where the user is receiving LB tokens
-    /// @param _previousBalance The previous balance of the user
-    /// @param _newBalance The new balance of the user
-    function _cacheFees(Bin memory _bin, address _user, uint256 _id, uint256 _previousBalance, uint256 _newBalance)
-        private
-    {
-        bytes32 _unclaimedData = _unclaimedFees[_user];
-
-        uint128 amountX = uint128(_unclaimedData.decode(type(uint128).max, 0));
-        uint128 amountY = uint128(_unclaimedData.decode(type(uint128).max, 128));
-
-        (uint128 _amountX, uint128 _amountY) = _getPendingFees(_bin, _user, _id, _previousBalance);
-        _updateUserDebts(_bin, _user, _id, _newBalance);
-
-        amountX += _amountX;
-        amountY += _amountY;
-
-        _unclaimedFees[_user] = bytes32(uint256((uint256(amountY) << 128) | amountX));
-    }
-
-    /// @notice Set the fee parameters of the pair.
-    /// @dev Only the first 112 bits can be set, as the last 144 bits are reserved for the variables parameters
-    /// @param _packedFeeParameters The packed fee parameters
-    function _setFeesParameters(bytes32 _packedFeeParameters) private {
-        bytes32 _feeStorageSlot;
-        assembly {
-            _feeStorageSlot := sload(_feeParameters.slot)
+        } else {
+            amountsIn.verifyAmounts(activeId, id);
         }
 
-        uint256 _varParameters = _feeStorageSlot.decode(type(uint112).max, _OFFSET_VARIABLE_FEE_PARAMETERS);
-        uint256 _newFeeParameters = _packedFeeParameters.decode(type(uint144).max, 0);
+        if (shares == 0 || amountsInToBin == 0) revert LBPair__ZeroShares(id);
 
-        assembly {
-            sstore(_feeParameters.slot, or(_newFeeParameters, shl(_OFFSET_VARIABLE_FEE_PARAMETERS, _varParameters)))
-        }
-    }
+        if (binReserves == 0) _tree.add(id);
 
-    /// @notice Increases the length of the oracle to the given `_newSize` by adding empty samples to the end of the oracle.
-    /// The samples are however initialized to reduce the gas cost of the updates during a swap.
-    /// @param _newSize The new size of the oracle. Needs to be bigger than current one
-    function _increaseOracle(uint16 _newSize) private {
-        uint256 _oracleSize = _pairInformation.oracleSize;
-
-        if (_oracleSize >= _newSize) revert LBPair__OracleNewSizeTooSmall(_newSize, _oracleSize);
-
-        _pairInformation.oracleSize = _newSize;
-
-        // Iterate over the uninitialized oracle samples and initialize them
-        for (uint256 _id = _oracleSize; _id < _newSize;) {
-            _oracle.initialize(_id);
-
-            unchecked {
-                ++_id;
-            }
-        }
-
-        emit OracleSizeIncreased(_oracleSize, _newSize);
-    }
-
-    /// @notice Return the oracle's parameters
-    /// @return oracleSampleLifetime The lifetime of a sample, it accumulates information for up to this timestamp
-    /// @return oracleSize The size of the oracle (last ids can be empty)
-    /// @return oracleActiveSize The active size of the oracle (no empty data)
-    /// @return oracleLastTimestamp The timestamp of the creation of the oracle's latest sample
-    /// @return oracleId The index of the oracle's latest sample
-    function _getOracleParameters()
-        private
-        view
-        returns (
-            uint256 oracleSampleLifetime,
-            uint256 oracleSize,
-            uint256 oracleActiveSize,
-            uint256 oracleLastTimestamp,
-            uint256 oracleId
-        )
-    {
-        bytes32 _slot;
-        assembly {
-            _slot := sload(add(_pairInformation.slot, 1))
-        }
-        oracleSampleLifetime = _slot.decode(type(uint16).max, _OFFSET_ORACLE_SAMPLE_LIFETIME);
-        oracleSize = _slot.decode(type(uint16).max, _OFFSET_ORACLE_SIZE);
-        oracleActiveSize = _slot.decode(type(uint16).max, _OFFSET_ORACLE_ACTIVE_SIZE);
-        oracleLastTimestamp = _slot.decode(type(uint40).max, _OFFSET_ORACLE_LAST_TIMESTAMP);
-        oracleId = _slot.decode(type(uint16).max, _OFFSET_ORACLE_ID);
-    }
-
-    /// @notice Return the reserves and the active id of the pair
-    /// @return reserveX The reserve of token X
-    /// @return reserveY The reserve of token Y
-    /// @return activeId The active id of the pair
-    function _getReservesAndId() private view returns (uint256 reserveX, uint256 reserveY, uint256 activeId) {
-        uint256 _mask24 = type(uint24).max;
-        uint256 _mask136 = type(uint136).max;
-        assembly {
-            let slot := sload(add(_pairInformation.slot, 1))
-            reserveY := and(slot, _mask136)
-
-            slot := sload(_pairInformation.slot)
-            activeId := and(slot, _mask24)
-            reserveX := and(shr(_OFFSET_PAIR_RESERVE_X, slot), _mask136)
-        }
-    }
-
-    /// @notice Return the reserves of the bin at index `_id`
-    /// @param _id The id of the bin
-    /// @return reserveX The reserve of token X in the bin
-    /// @return reserveY The reserve of token Y in the bin
-    function _getBin(uint24 _id) private view returns (uint256 reserveX, uint256 reserveY) {
-        bytes32 _data;
-        uint256 _mask112 = type(uint112).max;
-        // low level read of mapping to only load 1 storage slot
-        assembly {
-            mstore(0, _id)
-            mstore(32, _bins.slot)
-            _data := sload(keccak256(0, 64))
-
-            reserveX := and(_data, _mask112)
-            reserveY := shr(_OFFSET_BIN_RESERVE_Y, _data)
-        }
-
-        return (reserveX.safe112(), reserveY.safe112());
-    }
-
-    /// @notice Return the total fees and the protocol fees of the pair
-    /// @dev The fees for users can be computed by subtracting the protocol fees from the total fees
-    /// @return feesXTotal The total fees of token X
-    /// @return feesYTotal The total fees of token Y
-    /// @return feesXProtocol The protocol fees of token X
-    /// @return feesYProtocol The protocol fees of token Y
-    function _getGlobalFees()
-        private
-        view
-        returns (uint128 feesXTotal, uint128 feesYTotal, uint128 feesXProtocol, uint128 feesYProtocol)
-    {
-        bytes32 _slotX;
-        bytes32 _slotY;
-        assembly {
-            _slotX := sload(add(_pairInformation.slot, 2))
-            _slotY := sload(add(_pairInformation.slot, 3))
-        }
-
-        feesXTotal = uint128(_slotX.decode(type(uint128).max, 0));
-        feesYTotal = uint128(_slotY.decode(type(uint128).max, 0));
-
-        feesXProtocol = uint128(_slotX.decode(type(uint128).max, _OFFSET_PROTOCOL_FEE));
-        feesYProtocol = uint128(_slotY.decode(type(uint128).max, _OFFSET_PROTOCOL_FEE));
-    }
-
-    /// @notice Return the fee added to a flashloan
-    /// @dev Rounds up the amount of fees
-    /// @param _amount The amount of the flashloan
-    /// @return The fee added to the flashloan
-    function _getFlashLoanFee(uint256 _amount) private view returns (uint256) {
-        uint256 _fee = factory.flashLoanFee();
-        return (_amount * _fee + Constants.PRECISION - 1) / Constants.PRECISION;
-    }
-
-    /// @notice Set the total and protocol fees
-    /// @dev The assembly block does:
-    /// _pairFees = FeeHelper.FeesDistribution({total: _totalFees, protocol: _protocolFees});
-    /// @param _pairFees The storage slot of the fees
-    /// @param _totalFees The new total fees
-    /// @param _protocolFees The new protocol fees
-    function _setFees(FeeHelper.FeesDistribution storage _pairFees, uint128 _totalFees, uint128 _protocolFees)
-        private
-    {
-        assembly {
-            sstore(_pairFees.slot, or(shl(_OFFSET_PROTOCOL_FEE, _protocolFees), _totalFees))
-        }
-    }
-
-    /// @notice Emit the Swap event and avoid stack too deep error
-    /// if `swapForY` is:
-    /// - true: tokenIn is tokenX, and tokenOut is tokenY
-    /// - false: tokenIn is tokenY, and tokenOut is tokenX
-    /// @param _to The address of the recipient of the swap
-    /// @param _swapForY Whether the `amountInToBin` is tokenX (true) or tokenY (false),
-    /// and if `amountOutOfBin` is tokenY (true) or tokenX (false)
-    /// @param _amountInToBin The amount of tokenIn sent by the user
-    /// @param _amountOutOfBin The amount of tokenOut received by the user
-    /// @param _volatilityAccumulated The volatility accumulated number
-    /// @param _fees The amount of fees, always denominated in tokenIn
-    function _emitSwap(
-        address _to,
-        uint24 _activeId,
-        bool _swapForY,
-        uint256 _amountInToBin,
-        uint256 _amountOutOfBin,
-        uint256 _volatilityAccumulated,
-        uint256 _fees
-    ) private {
-        emit Swap(msg.sender, _to, _activeId, _swapForY, _amountInToBin, _amountOutOfBin, _volatilityAccumulated, _fees);
+        _bins[id] = binReserves.add(amountsInToBin);
     }
 }

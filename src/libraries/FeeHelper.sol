@@ -3,166 +3,63 @@
 pragma solidity 0.8.10;
 
 import "./Constants.sol";
-import "./SafeCast.sol";
-import "./SafeMath.sol";
+import "./math/SafeCast.sol";
 
-/// @title Liquidity Book Fee Helper Library
-/// @author Trader Joe
-/// @notice Helper contract used for fees calculation
+/**
+ * @title Liquidity Book Fee Helper Library
+ * @author Trader Joe
+ * @notice This library contains functions to calculate fees
+ */
 library FeeHelper {
     using SafeCast for uint256;
-    using SafeMath for uint256;
 
-    /// @dev Structure to store the protocol fees:
-    /// - binStep: The bin step
-    /// - baseFactor: The base factor
-    /// - filterPeriod: The filter period, where the fees stays constant
-    /// - decayPeriod: The decay period, where the fees are halved
-    /// - reductionFactor: The reduction factor, used to calculate the reduction of the accumulator
-    /// - variableFeeControl: The variable fee control, used to control the variable fee, can be 0 to disable them
-    /// - protocolShare: The share of fees sent to protocol
-    /// - maxVolatilityAccumulated: The max value of volatility accumulated
-    /// - volatilityAccumulated: The value of volatility accumulated
-    /// - volatilityReference: The value of volatility reference
-    /// - indexRef: The index reference
-    /// - time: The last time the accumulator was called
-    struct FeeParameters {
-        // 144 lowest bits in slot
-        uint16 binStep;
-        uint16 baseFactor;
-        uint16 filterPeriod;
-        uint16 decayPeriod;
-        uint16 reductionFactor;
-        uint24 variableFeeControl;
-        uint16 protocolShare;
-        uint24 maxVolatilityAccumulated;
-        // 112 highest bits in slot
-        uint24 volatilityAccumulated;
-        uint24 volatilityReference;
-        uint24 indexRef;
-        uint40 time;
-    }
-
-    /// @dev Structure used during swaps to distributes the fees:
-    /// - total: The total amount of fees
-    /// - protocol: The amount of fees reserved for protocol
-    struct FeesDistribution {
-        uint128 total;
-        uint128 protocol;
-    }
-
-    /// @notice Update the value of the volatility accumulated
-    /// @param _fp The current fee parameters
-    /// @param _activeId The current active id
-    function updateVariableFeeParameters(FeeParameters memory _fp, uint256 _activeId) internal view {
-        uint256 _deltaT = block.timestamp - _fp.time;
-
-        if (_deltaT >= _fp.filterPeriod || _fp.time == 0) {
-            _fp.indexRef = uint24(_activeId);
-            if (_deltaT < _fp.decayPeriod) {
-                unchecked {
-                    // This can't overflow as `reductionFactor <= BASIS_POINT_MAX`
-                    _fp.volatilityReference =
-                        uint24((uint256(_fp.reductionFactor) * _fp.volatilityAccumulated) / Constants.BASIS_POINT_MAX);
-                }
-            } else {
-                _fp.volatilityReference = 0;
-            }
-        }
-
-        _fp.time = (block.timestamp).safe40();
-
-        updateVolatilityAccumulated(_fp, _activeId);
-    }
-
-    /// @notice Update the volatility accumulated
-    /// @param _fp The fee parameter
-    /// @param _activeId The current active id
-    function updateVolatilityAccumulated(FeeParameters memory _fp, uint256 _activeId) internal pure {
-        uint256 volatilityAccumulated =
-            (_activeId.absSub(_fp.indexRef) * Constants.BASIS_POINT_MAX) + _fp.volatilityReference;
-        _fp.volatilityAccumulated = volatilityAccumulated > _fp.maxVolatilityAccumulated
-            ? _fp.maxVolatilityAccumulated
-            : uint24(volatilityAccumulated);
-    }
-
-    /// @notice Returns the base fee added to a swap, with 18 decimals
-    /// @param _fp The current fee parameters
-    /// @return The fee with 18 decimals precision
-    function getBaseFee(FeeParameters memory _fp) internal pure returns (uint256) {
+    /**
+     * @dev Calculates the fee amount from the amount with fees
+     * @param amounWithFees The amount with fees
+     * @param totalFee The total fee
+     * @return feeAmount The fee amount
+     */
+    function getFeeAmountFrom(uint128 amounWithFees, uint256 totalFee) internal pure returns (uint128) {
         unchecked {
-            return uint256(_fp.baseFactor) * _fp.binStep * 1e10;
+            return ((uint256(amounWithFees) * totalFee + Constants.PRECISION - 1) / Constants.PRECISION).safe128();
         }
     }
 
-    /// @notice Returns the variable fee added to a swap, with 18 decimals
-    /// @param _fp The current fee parameters
-    /// @return variableFee The variable fee with 18 decimals precision
-    function getVariableFee(FeeParameters memory _fp) internal pure returns (uint256 variableFee) {
-        if (_fp.variableFeeControl != 0) {
-            // Can't overflow as the max value is `max(uint24) * (max(uint24) * max(uint16)) ** 2 < max(uint104)`
-            // It returns 18 decimals as:
-            // decimals(variableFeeControl * (volatilityAccumulated * binStep)**2 / 100) = 4 + (4 + 4) * 2 - 2 = 18
-            unchecked {
-                uint256 _prod = uint256(_fp.volatilityAccumulated) * _fp.binStep;
-                variableFee = (_prod * _prod * _fp.variableFeeControl + 99) / 100;
-            }
-        }
-    }
-
-    /// @notice Return the amount of fees from an amount
-    /// @dev Rounds amount up, follows `amount = amountWithFees - getFeeAmountFrom(fp, amountWithFees)`
-    /// @param _fp The current fee parameter
-    /// @param _amountWithFees The amount of token sent
-    /// @return The fee amount from the amount sent
-    function getFeeAmountFrom(FeeParameters memory _fp, uint256 _amountWithFees) internal pure returns (uint256) {
-        return (_amountWithFees * getTotalFee(_fp) + Constants.PRECISION - 1) / (Constants.PRECISION);
-    }
-
-    /// @notice Return the fees to add to an amount
-    /// @dev Rounds amount up, follows `amountWithFees = amount + getFeeAmount(fp, amount)`
-    /// @param _fp The current fee parameter
-    /// @param _amount The amount of token sent
-    /// @return The fee amount to add to the amount
-    function getFeeAmount(FeeParameters memory _fp, uint256 _amount) internal pure returns (uint256) {
-        uint256 _fee = getTotalFee(_fp);
-        uint256 _denominator = Constants.PRECISION - _fee;
-        return (_amount * _fee + _denominator - 1) / _denominator;
-    }
-
-    /// @notice Return the fees added when an user adds liquidity and change the ratio in the active bin
-    /// @dev Rounds amount up
-    /// @param _fp The current fee parameter
-    /// @param _amountWithFees The amount of token sent
-    /// @return The fee amount
-    function getFeeAmountForC(FeeParameters memory _fp, uint256 _amountWithFees) internal pure returns (uint256) {
-        uint256 _fee = getTotalFee(_fp);
-        uint256 _denominator = Constants.PRECISION * Constants.PRECISION;
-        return (_amountWithFees * _fee * (_fee + Constants.PRECISION) + _denominator - 1) / _denominator;
-    }
-
-    /// @notice Return the fees distribution added to an amount
-    /// @param _fp The current fee parameter
-    /// @param _fees The fee amount
-    /// @return fees The fee distribution
-    function getFeeAmountDistribution(FeeParameters memory _fp, uint256 _fees)
-        internal
-        pure
-        returns (FeesDistribution memory fees)
-    {
-        fees.total = _fees.safe128();
-        // unsafe math is fine because total >= protocol
+    /**
+     * @dev Calculates the fee amount that will be charged
+     * @param amount The amount
+     * @param totalFee The total fee
+     * @return feeAmount The fee amount
+     */
+    function getFeeAmount(uint128 amount, uint256 totalFee) internal pure returns (uint128) {
         unchecked {
-            fees.protocol = uint128((_fees * _fp.protocolShare) / Constants.BASIS_POINT_MAX);
+            uint256 denominator = Constants.PRECISION - totalFee;
+            return ((uint256(amount) * totalFee + denominator - 1) / denominator).safe128();
         }
     }
 
-    /// @notice Return the total fee, i.e. baseFee + variableFee
-    /// @param _fp The current fee parameter
-    /// @return The total fee, with 18 decimals
-    function getTotalFee(FeeParameters memory _fp) private pure returns (uint256) {
+    /**
+     * @dev Calculates the composition fee amount from the amount with fees
+     * @param amountWithFees The amount with fees
+     * @param totalFee The total fee
+     * @return The amount with fees
+     */
+    function getCompositionFee(uint128 amountWithFees, uint256 totalFee) internal pure returns (uint128) {
         unchecked {
-            return getBaseFee(_fp) + getVariableFee(_fp);
+            uint256 denominator = Constants.PRECISION * Constants.PRECISION;
+            return (uint256(amountWithFees) * totalFee * (totalFee + Constants.PRECISION) / denominator).safe128();
+        }
+    }
+
+    /**
+     * @dev Calculates the protocol fee amount from the fee amount and the protocol share
+     * @param feeAmount The fee amount
+     * @param protocolShare The protocol share
+     * @return protocolFeeAmount The protocol fee amount
+     */
+    function getProtocolFeeAmount(uint128 feeAmount, uint128 protocolShare) internal pure returns (uint128) {
+        unchecked {
+            return (uint256(feeAmount) * protocolShare / Constants.BASIS_POINT_MAX).safe128();
         }
     }
 }

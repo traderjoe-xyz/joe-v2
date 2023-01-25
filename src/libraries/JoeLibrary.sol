@@ -2,12 +2,17 @@
 
 pragma solidity 0.8.10;
 
-import "../LBErrors.sol";
-
-/// @title Liquidity Book Joe Library Helper Library
-/// @author Trader Joe
-/// @notice Helper contract used for Joe V1 related calculations
+/**
+ * @title Liquidity Book Joe Library Helper Library
+ * @author Trader Joe
+ * @notice Helper contract used for Joe V1 related calculations
+ */
 library JoeLibrary {
+    error JoeLibrary__AddressZero();
+    error JoeLibrary__IdenticalAddresses();
+    error JoeLibrary__InsufficientAmount();
+    error JoeLibrary__InsufficientLiquidity();
+
     // returns sorted token addresses, used to handle return values from pairs sorted in this order
     function sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {
         if (tokenA == tokenB) revert JoeLibrary__IdenticalAddresses();

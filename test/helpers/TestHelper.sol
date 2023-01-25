@@ -8,14 +8,15 @@ import "src/LBFactory.sol";
 import "src/LBPair.sol";
 import "src/LBRouter.sol";
 import "src/LBQuoter.sol";
-import "src/LBErrors.sol";
 import "src/interfaces/ILBRouter.sol";
 import "src/interfaces/IJoeRouter02.sol";
 import "src/interfaces/ILBLegacyRouter.sol";
 import "src/interfaces/ILBLegacyFactory.sol";
 import "src/LBToken.sol";
-import "src/libraries/Math512Bits.sol";
+import "src/libraries/math/Uint256x256Math.sol";
 import "src/libraries/Constants.sol";
+
+import "../../src/interfaces/IPendingOwnable.sol";
 
 import "./Utils.sol";
 
@@ -26,8 +27,8 @@ import "test/mocks/ERC20TransferTax.sol";
 
 import {AvalancheAddresses} from "../integration/Addresses.sol";
 
-abstract contract TestHelper is Test, IERC165 {
-    using Math512Bits for uint256;
+abstract contract TestHelper is Test {
+    using Uint256x256Math for uint256;
     using Utils for uint256[];
     using Utils for int256[];
 

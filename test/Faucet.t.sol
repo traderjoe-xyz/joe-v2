@@ -5,7 +5,8 @@ pragma solidity 0.8.10;
 import "forge-std/Test.sol";
 import "test/mocks/ERC20.sol";
 import "test/mocks/Faucet.sol";
-import "src/LBErrors.sol";
+
+import "../src/interfaces/IPendingOwnable.sol";
 
 contract FaucetTest is Test {
     Faucet private faucet;
@@ -52,7 +53,7 @@ contract FaucetTest is Test {
 
     function testLockRequest() external {
         vm.startPrank(ALICE, ALICE);
-        vm.expectRevert(abi.encodeWithSelector(PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
         faucet.setUnlockedRequest(false);
         vm.stopPrank();
 
@@ -75,7 +76,7 @@ contract FaucetTest is Test {
         newToken.mint(address(faucet), 1_000e18);
 
         vm.startPrank(ALICE, ALICE);
-        vm.expectRevert(abi.encodeWithSelector(PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
         faucet.addFaucetToken(IERC20(newToken), 1e18);
         vm.stopPrank();
 
@@ -87,7 +88,7 @@ contract FaucetTest is Test {
 
     function testRemoveToken() external {
         vm.startPrank(ALICE, ALICE);
-        vm.expectRevert(abi.encodeWithSelector(PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
         faucet.removeFaucetToken(IERC20(address(1)));
         vm.stopPrank();
 
@@ -165,7 +166,7 @@ contract FaucetTest is Test {
         uint96 newRequestAvaxAmount = 2e18;
 
         vm.startPrank(ALICE, ALICE);
-        vm.expectRevert(abi.encodeWithSelector(PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
         faucet.setAmountPerRequest(AVAX, newRequestToken6Amount);
         vm.stopPrank();
 
@@ -188,7 +189,7 @@ contract FaucetTest is Test {
         assertEq(ALICE.balance, 1e18);
 
         vm.startPrank(ALICE, ALICE);
-        vm.expectRevert(abi.encodeWithSelector(PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
         faucet.withdrawToken(AVAX, ALICE, 1e18);
         vm.stopPrank();
 
@@ -212,7 +213,7 @@ contract FaucetTest is Test {
         assertEq(token12.balanceOf(ALICE), 2 * TOKEN6_PER_REQUEST);
 
         vm.startPrank(ALICE, ALICE);
-        vm.expectRevert(abi.encodeWithSelector(PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
         faucet.withdrawToken(IERC20(token6), ALICE, 1e18);
         vm.stopPrank();
 
@@ -257,7 +258,7 @@ contract FaucetTest is Test {
         faucet.setRequestCooldown(1 hours);
 
         vm.startPrank(ALICE, ALICE);
-        vm.expectRevert(abi.encodeWithSelector(PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
         faucet.setRequestCooldown(10 hours);
         vm.stopPrank();
 

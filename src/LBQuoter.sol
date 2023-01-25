@@ -2,10 +2,9 @@
 
 pragma solidity 0.8.10;
 
-import "./LBErrors.sol";
 import "./libraries/BinHelper.sol";
 import "./libraries/JoeLibrary.sol";
-import "./libraries/Math512Bits.sol";
+import "./libraries/math/Uint256x256Math.sol";
 import "./interfaces/IJoeFactory.sol";
 import "./interfaces/IJoePair.sol";
 import "./interfaces/ILBFactory.sol";
@@ -16,7 +15,9 @@ import "./interfaces/ILBRouter.sol";
 /// @author Trader Joe
 /// @notice Helper contract to determine best path through multiple markets
 contract LBQuoter {
-    using Math512Bits for uint256;
+    using Uint256x256Math for uint256;
+
+    error LBQuoter_InvalidLength();
 
     /// @notice Dex V2 router address
     address public immutable routerV2;

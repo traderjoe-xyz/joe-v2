@@ -96,9 +96,9 @@ contract LiquidityBinQuoterTest is TestHelper {
     function test_InvalidLength() public {
         address[] memory route;
         route = new address[](1);
-        vm.expectRevert(LBQuoter_InvalidLength.selector);
+        vm.expectRevert(LBQuoter.LBQuoter_InvalidLength.selector);
         quoter.findBestPathFromAmountIn(route, 1e18);
-        vm.expectRevert(LBQuoter_InvalidLength.selector);
+        vm.expectRevert(LBQuoter.LBQuoter_InvalidLength.selector);
         quoter.findBestPathFromAmountOut(route, 20e6);
     }
 

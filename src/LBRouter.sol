@@ -4,13 +4,11 @@ pragma solidity 0.8.10;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 
-import "./LBErrors.sol";
 import "./libraries/BinHelper.sol";
 import "./libraries/Constants.sol";
 import "./libraries/FeeHelper.sol";
 import "./libraries/JoeLibrary.sol";
-import "./libraries/Math512Bits.sol";
-import "./libraries/SwapHelper.sol";
+import "./libraries/math/Uint256x256Math.sol";
 import "./libraries/TokenHelper.sol";
 import "./interfaces/IJoePair.sol";
 import "./interfaces/ILBToken.sol";
@@ -23,9 +21,8 @@ import "./interfaces/ILBLegacyFactory.sol";
 contract LBRouter is ILBRouter {
     using TokenHelper for IERC20;
     using TokenHelper for IWAVAX;
-    using FeeHelper for FeeHelper.FeeParameters;
-    using Math512Bits for uint256;
-    using SwapHelper for ILBPair.Bin;
+    using Uint256x256Math for uint256;
+    // using SwapHelper for ILBPair.Bin;
     using JoeLibrary for uint256;
 
     ILBFactory public immutable override factory;
@@ -96,51 +93,7 @@ contract LBRouter is ILBRouter {
         override
         returns (uint256 amountIn, uint256 feesIn)
     {
-        (uint256 _pairReserveX, uint256 _pairReserveY, uint256 _activeId) = _LBPair.getReservesAndId();
-
-        if (_amountOut == 0 || (_swapForY ? _amountOut > _pairReserveY : _amountOut > _pairReserveX)) {
-            revert LBRouter__WrongAmounts(_amountOut, _swapForY ? _pairReserveY : _pairReserveX);
-        } // If this is wrong, then we're sure the amounts sent are wrong
-
-        FeeHelper.FeeParameters memory _fp = _LBPair.feeParameters();
-        _fp.updateVariableFeeParameters(_activeId);
-
-        uint256 _amountOutOfBin;
-        uint256 _amountInWithFees;
-        uint256 _reserve;
-        // Performs the actual swap, bin per bin
-        // It uses the findFirstNonEmptyBinId function to make sure the bin we're currently looking at
-        // has liquidity in it.
-        while (true) {
-            {
-                (uint256 _reserveX, uint256 _reserveY) = _LBPair.getBin(uint24(_activeId));
-                _reserve = _swapForY ? _reserveY : _reserveX;
-            }
-            uint256 _price = BinHelper.getPriceFromId(_activeId, _fp.binStep);
-            if (_reserve != 0) {
-                _amountOutOfBin = _amountOut >= _reserve ? _reserve : _amountOut;
-                uint256 _amountInToBin = _swapForY
-                    ? _amountOutOfBin.shiftDivRoundUp(Constants.SCALE_OFFSET, _price)
-                    : _price.mulShiftRoundUp(_amountOutOfBin, Constants.SCALE_OFFSET);
-
-                // We update the fee, but we don't store the new volatility reference, volatility accumulated and indexRef to not penalize traders
-                _fp.updateVolatilityAccumulated(_activeId);
-                uint256 _fee = _fp.getFeeAmount(_amountInToBin);
-                _amountInWithFees = _amountInToBin + _fee;
-
-                if (_amountInWithFees + _reserve > type(uint112).max) revert LBRouter__SwapOverflows(_activeId);
-                amountIn += _amountInWithFees;
-                feesIn += _fee;
-                _amountOut -= _amountOutOfBin;
-            }
-
-            if (_amountOut != 0) {
-                _activeId = _LBPair.findFirstNonEmptyBinId(uint24(_activeId), _swapForY);
-            } else {
-                break;
-            }
-        }
-        if (_amountOut != 0) revert LBRouter__BrokenSwapSafetyCheck(); // Safety check, but should never be false as it would have reverted on transfer
+        (amountIn, feesIn) = _LBPair.getSwapIn(_amountOut, _swapForY);
     }
 
     /// @notice Simulate a swap out
@@ -155,38 +108,7 @@ contract LBRouter is ILBRouter {
         override
         returns (uint256 amountOut, uint256 feesIn)
     {
-        (,, uint256 _activeId) = _LBPair.getReservesAndId();
-
-        FeeHelper.FeeParameters memory _fp = _LBPair.feeParameters();
-        _fp.updateVariableFeeParameters(_activeId);
-        ILBPair.Bin memory _bin;
-
-        // Performs the actual swap, bin per bin
-        // It uses the findFirstNonEmptyBinId function to make sure the bin we're currently looking at
-        // has liquidity in it.
-        while (true) {
-            {
-                (uint256 _reserveX, uint256 _reserveY) = _LBPair.getBin(uint24(_activeId));
-                _bin = ILBPair.Bin(uint112(_reserveX), uint112(_reserveY), 0, 0);
-            }
-            if (_bin.reserveX != 0 || _bin.reserveY != 0) {
-                (uint256 _amountInToBin, uint256 _amountOutOfBin, FeeHelper.FeesDistribution memory _fees) =
-                    _bin.getAmounts(_fp, _activeId, _swapForY, _amountIn);
-
-                if (_amountInToBin > type(uint112).max) revert LBRouter__BinReserveOverflows(_activeId);
-
-                _amountIn -= _amountInToBin + _fees.total;
-                feesIn += _fees.total;
-                amountOut += _amountOutOfBin;
-            }
-
-            if (_amountIn != 0) {
-                _activeId = _LBPair.findFirstNonEmptyBinId(uint24(_activeId), _swapForY);
-            } else {
-                break;
-            }
-        }
-        if (_amountIn != 0) revert LBRouter__TooMuchTokensIn(_amountIn);
+        (amountOut, feesIn) = _LBPair.getSwapOut(_amountIn, _swapForY);
     }
 
     /// @notice Create a liquidity bin LBPair for _tokenX and _tokenY using the factory

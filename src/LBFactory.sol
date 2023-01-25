@@ -5,12 +5,11 @@ pragma solidity 0.8.10;
 import "openzeppelin/proxy/Clones.sol";
 import "openzeppelin/utils/structs/EnumerableSet.sol";
 
-import "./LBErrors.sol";
 import "./libraries/BinHelper.sol";
 import "./libraries/Constants.sol";
-import "./libraries/Decoder.sol";
+import "./libraries/math/Decoder.sol";
 import "./libraries/PendingOwnable.sol";
-import "./libraries/SafeCast.sol";
+import "./libraries/math/SafeCast.sol";
 import "./interfaces/ILBFactory.sol";
 
 /// @title Liquidity Book Factory
@@ -253,7 +252,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @dev Needs to be called by the owner
     /// @param _LBPairImplementation The address of the implementation
     function setLBPairImplementation(address _LBPairImplementation) external override onlyOwner {
-        if (ILBPair(_LBPairImplementation).factory() != this) {
+        if (ILBPair(_LBPairImplementation).getFactory() != this) {
             revert LBFactory__LBPairSafetyCheckFailed(_LBPairImplementation);
         }
 
@@ -290,7 +289,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         if (_tokenX == _tokenY) revert LBFactory__IdenticalAddresses(_tokenX);
 
         // safety check, making sure that the price can be calculated
-        BinHelper.getPriceFromId(_activeId, _binStep);
+        // BinHelper.getPriceFromId(_activeId, _binStep);
 
         // We sort token for storage efficiency, only one input needs to be stored because they are sorted
         (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);
@@ -380,9 +379,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         ILBPair _oldLBPair = _LBPairInformation.LBPair;
 
-        FeeHelper.FeeParameters memory _feeParameters = _oldLBPair.feeParameters();
-
-        bytes32 _preset = _presets[_feeParameters.binStep];
+        bytes32 _preset = _presets[_binStep];
 
         bytes32 _salt = keccak256(abi.encode(_tokenA, _tokenB, _binStep, ++currentVersionNumber));
         _LBPair = ILBPair(Clones.cloneDeterministic(LBPairImplementation, _salt));

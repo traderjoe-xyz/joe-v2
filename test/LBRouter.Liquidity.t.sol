@@ -28,7 +28,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
     function test_ReceiveAVAX() public {
         // Users can't send AVAX to the router
-        vm.expectRevert(abi.encodeWithSelector(LBRouter__SenderIsNotWAVAX.selector));
+        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__SenderIsNotWAVAX.selector));
         (bool success,) = address(router).call{value: 1e18}("");
 
         // WAVAX can

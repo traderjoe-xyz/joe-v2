@@ -11,6 +11,31 @@ import "./IPendingOwnable.sol";
 /// @author Trader Joe
 /// @notice Required interface of LBFactory contract
 interface ILBFactory is IPendingOwnable {
+    error LBFactory__IdenticalAddresses(IERC20 token);
+    error LBFactory__QuoteAssetNotWhitelisted(IERC20 quoteAsset);
+    error LBFactory__QuoteAssetAlreadyWhitelisted(IERC20 quoteAsset);
+    error LBFactory__AddressZero();
+    error LBFactory__LBPairAlreadyExists(IERC20 tokenX, IERC20 tokenY, uint256 _binStep);
+    error LBFactory__LBPairDoesNotExists(IERC20 tokenX, IERC20 tokenY, uint256 _binStep);
+    error LBFactory__LBPairNotCreated(IERC20 tokenX, IERC20 tokenY, uint256 binStep);
+    error LBFactory__DecreasingPeriods(uint16 filterPeriod, uint16 decayPeriod);
+    error LBFactory__ReductionFactorOverflows(uint16 reductionFactor, uint256 max);
+    error LBFactory__VariableFeeControlOverflows(uint16 variableFeeControl, uint256 max);
+    error LBFactory__BaseFeesBelowMin(uint256 baseFees, uint256 minBaseFees);
+    error LBFactory__FeesAboveMax(uint256 fees, uint256 maxFees);
+    error LBFactory__FlashLoanFeeAboveMax(uint256 fees, uint256 maxFees);
+    error LBFactory__BinStepRequirementsBreached(uint256 lowerBound, uint16 binStep, uint256 higherBound);
+    error LBFactory__ProtocolShareOverflows(uint16 protocolShare, uint256 max);
+    error LBFactory__FunctionIsLockedForUsers(address user);
+    error LBFactory__FactoryLockIsAlreadyInTheSameState();
+    error LBFactory__LBPairIgnoredIsAlreadyInTheSameState();
+    error LBFactory__BinStepHasNoPreset(uint256 binStep);
+    error LBFactory__SameFeeRecipient(address feeRecipient);
+    error LBFactory__SameFlashLoanFee(uint256 flashLoanFee);
+    error LBFactory__LBPairSafetyCheckFailed(address LBPairImplementation);
+    error LBFactory__SameImplementation(address LBPairImplementation);
+    error LBFactory__ImplementationNotSet();
+
     /// @dev Structure to store the LBPair information, such as:
     /// - binStep: The bin step of the LBPair
     /// - LBPair: The address of the LBPair

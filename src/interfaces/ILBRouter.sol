@@ -11,6 +11,31 @@ import "./IWAVAX.sol";
 /// @author Trader Joe
 /// @notice Required interface of LBRouter contract
 interface ILBRouter {
+    error LBRouter__SenderIsNotWAVAX();
+    error LBRouter__PairNotCreated(address tokenX, address tokenY, uint256 binStep);
+    error LBRouter__WrongAmounts(uint256 amount, uint256 reserve);
+    error LBRouter__SwapOverflows(uint256 id);
+    error LBRouter__BrokenSwapSafetyCheck();
+    error LBRouter__NotFactoryOwner();
+    error LBRouter__TooMuchTokensIn(uint256 excess);
+    error LBRouter__BinReserveOverflows(uint256 id);
+    error LBRouter__IdOverflows(int256 id);
+    error LBRouter__LengthsMismatch();
+    error LBRouter__WrongTokenOrder();
+    error LBRouter__IdSlippageCaught(uint256 activeIdDesired, uint256 idSlippage, uint256 activeId);
+    error LBRouter__AmountSlippageCaught(uint256 amountXMin, uint256 amountX, uint256 amountYMin, uint256 amountY);
+    error LBRouter__IdDesiredOverflows(uint256 idDesired, uint256 idSlippage);
+    error LBRouter__FailedToSendAVAX(address recipient, uint256 amount);
+    error LBRouter__DeadlineExceeded(uint256 deadline, uint256 currentTimestamp);
+    error LBRouter__AmountSlippageBPTooBig(uint256 amountSlippage);
+    error LBRouter__InsufficientAmountOut(uint256 amountOutMin, uint256 amountOut);
+    error LBRouter__MaxAmountInExceeded(uint256 amountInMax, uint256 amountIn);
+    error LBRouter__InvalidTokenPath(address wrongToken);
+    error LBRouter__InvalidVersion(uint256 version);
+    error LBRouter__WrongAvaxLiquidityParameters(
+        address tokenX, address tokenY, uint256 amountX, uint256 amountY, uint256 msgValue
+    );
+
     /// @dev The liquidity parameters, such as:
     /// - tokenX: The address of token X
     /// - tokenY: The address of token Y

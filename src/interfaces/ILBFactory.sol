@@ -11,159 +11,163 @@ import "./IPendingOwnable.sol";
 /// @author Trader Joe
 /// @notice Required interface of LBFactory contract
 interface ILBFactory is IPendingOwnable {
-    /// @dev Structure to store the LBPair information, such as:
-    /// - binStep: The bin step of the LBPair
-    /// - LBPair: The address of the LBPair
-    /// - createdByOwner: Whether the pair was created by the owner of the factory
-    /// - ignoredForRouting: Whether the pair is ignored for routing or not. An ignored pair will not be explored during routes finding
-    struct LBPairInformation {
-        uint16 binStep;
-        ILBPair LBPair;
-        bool createdByOwner;
-        bool ignoredForRouting;
-    }
+    function getProtocolFeeRecipient() external view returns (address);
 
-    event LBPairCreated(
-        IERC20 indexed tokenX, IERC20 indexed tokenY, uint256 indexed binStep, ILBPair LBPair, uint256 pid
-    );
+    function getFlashLoanFee() external view returns (uint128);
 
-    event FeeRecipientSet(address oldRecipient, address newRecipient);
+    // /// @dev Structure to store the LBPair information, such as:
+    // /// - binStep: The bin step of the LBPair
+    // /// - LBPair: The address of the LBPair
+    // /// - createdByOwner: Whether the pair was created by the owner of the factory
+    // /// - ignoredForRouting: Whether the pair is ignored for routing or not. An ignored pair will not be explored during routes finding
+    // struct LBPairInformation {
+    //     uint16 binStep;
+    //     ILBPair LBPair;
+    //     bool createdByOwner;
+    //     bool ignoredForRouting;
+    // }
 
-    event FlashLoanFeeSet(uint256 oldFlashLoanFee, uint256 newFlashLoanFee);
+    // event LBPairCreated(
+    //     IERC20 indexed tokenX, IERC20 indexed tokenY, uint256 indexed binStep, ILBPair LBPair, uint256 pid
+    // );
 
-    event FeeParametersSet(
-        address indexed sender,
-        ILBPair indexed LBPair,
-        uint256 binStep,
-        uint256 baseFactor,
-        uint256 filterPeriod,
-        uint256 decayPeriod,
-        uint256 reductionFactor,
-        uint256 variableFeeControl,
-        uint256 protocolShare,
-        uint256 maxVolatilityAccumulated
-    );
+    // event FeeRecipientSet(address oldRecipient, address newRecipient);
 
-    event FactoryLockedStatusUpdated(bool unlocked);
+    // event FlashLoanFeeSet(uint256 oldFlashLoanFee, uint256 newFlashLoanFee);
 
-    event LBPairImplementationSet(address oldLBPairImplementation, address LBPairImplementation);
+    // event FeeParametersSet(
+    //     address indexed sender,
+    //     ILBPair indexed LBPair,
+    //     uint256 binStep,
+    //     uint256 baseFactor,
+    //     uint256 filterPeriod,
+    //     uint256 decayPeriod,
+    //     uint256 reductionFactor,
+    //     uint256 variableFeeControl,
+    //     uint256 protocolShare,
+    //     uint256 maxVolatilityAccumulated
+    // );
 
-    event LBPairIgnoredStateChanged(ILBPair indexed LBPair, bool ignored);
+    // event FactoryLockedStatusUpdated(bool unlocked);
 
-    event PresetSet(
-        uint256 indexed binStep,
-        uint256 baseFactor,
-        uint256 filterPeriod,
-        uint256 decayPeriod,
-        uint256 reductionFactor,
-        uint256 variableFeeControl,
-        uint256 protocolShare,
-        uint256 maxVolatilityAccumulated,
-        uint256 sampleLifetime
-    );
+    // event LBPairImplementationSet(address oldLBPairImplementation, address LBPairImplementation);
 
-    event PresetRemoved(uint256 indexed binStep);
+    // event LBPairIgnoredStateChanged(ILBPair indexed LBPair, bool ignored);
 
-    event QuoteAssetAdded(IERC20 indexed quoteAsset);
+    // event PresetSet(
+    //     uint256 indexed binStep,
+    //     uint256 baseFactor,
+    //     uint256 filterPeriod,
+    //     uint256 decayPeriod,
+    //     uint256 reductionFactor,
+    //     uint256 variableFeeControl,
+    //     uint256 protocolShare,
+    //     uint256 maxVolatilityAccumulated,
+    //     uint256 sampleLifetime
+    // );
 
-    event QuoteAssetRemoved(IERC20 indexed quoteAsset);
+    // event PresetRemoved(uint256 indexed binStep);
 
-    function MAX_FEE() external pure returns (uint256);
+    // event QuoteAssetAdded(IERC20 indexed quoteAsset);
 
-    function MIN_BIN_STEP() external pure returns (uint256);
+    // event QuoteAssetRemoved(IERC20 indexed quoteAsset);
 
-    function MAX_BIN_STEP() external pure returns (uint256);
+    // function MAX_FEE() external pure returns (uint256);
 
-    function MAX_PROTOCOL_SHARE() external pure returns (uint256);
+    // function MIN_BIN_STEP() external pure returns (uint256);
 
-    function LBPairImplementation() external view returns (address);
+    // function MAX_BIN_STEP() external pure returns (uint256);
 
-    function getNumberOfQuoteAssets() external view returns (uint256);
+    // function MAX_PROTOCOL_SHARE() external pure returns (uint256);
 
-    function getQuoteAsset(uint256 index) external view returns (IERC20);
+    // function LBPairImplementation() external view returns (address);
 
-    function isQuoteAsset(IERC20 token) external view returns (bool);
+    // function getNumberOfQuoteAssets() external view returns (uint256);
 
-    function feeRecipient() external view returns (address);
+    // function getQuoteAsset(uint256 index) external view returns (IERC20);
 
-    function flashLoanFee() external view returns (uint256);
+    // function isQuoteAsset(IERC20 token) external view returns (bool);
 
-    function creationUnlocked() external view returns (bool);
+    // function feeRecipient() external view returns (address);
 
-    function allLBPairs(uint256 id) external returns (ILBPair);
+    // function flashLoanFee() external view returns (uint256);
 
-    function getNumberOfLBPairs() external view returns (uint256);
+    // function creationUnlocked() external view returns (bool);
 
-    function getLBPairInformation(IERC20 tokenX, IERC20 tokenY, uint256 binStep)
-        external
-        view
-        returns (LBPairInformation memory);
+    // function allLBPairs(uint256 id) external returns (ILBPair);
 
-    function getPreset(uint16 binStep)
-        external
-        view
-        returns (
-            uint256 baseFactor,
-            uint256 filterPeriod,
-            uint256 decayPeriod,
-            uint256 reductionFactor,
-            uint256 variableFeeControl,
-            uint256 protocolShare,
-            uint256 maxAccumulator,
-            uint256 sampleLifetime
-        );
+    // function getNumberOfLBPairs() external view returns (uint256);
 
-    function getAllBinSteps() external view returns (uint256[] memory presetsBinStep);
+    // function getLBPairInformation(IERC20 tokenX, IERC20 tokenY, uint256 binStep)
+    //     external
+    //     view
+    //     returns (LBPairInformation memory);
 
-    function getAllLBPairs(IERC20 tokenX, IERC20 tokenY)
-        external
-        view
-        returns (LBPairInformation[] memory LBPairsBinStep);
+    // function getPreset(uint16 binStep)
+    //     external
+    //     view
+    //     returns (
+    //         uint256 baseFactor,
+    //         uint256 filterPeriod,
+    //         uint256 decayPeriod,
+    //         uint256 reductionFactor,
+    //         uint256 variableFeeControl,
+    //         uint256 protocolShare,
+    //         uint256 maxAccumulator,
+    //         uint256 sampleLifetime
+    //     );
 
-    function setLBPairImplementation(address LBPairImplementation) external;
+    // function getAllBinSteps() external view returns (uint256[] memory presetsBinStep);
 
-    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
-        external
-        returns (ILBPair pair);
+    // function getAllLBPairs(IERC20 tokenX, IERC20 tokenY)
+    //     external
+    //     view
+    //     returns (LBPairInformation[] memory LBPairsBinStep);
 
-    function setLBPairIgnored(IERC20 tokenX, IERC20 tokenY, uint256 binStep, bool ignored) external;
+    // function setLBPairImplementation(address LBPairImplementation) external;
 
-    function setPreset(
-        uint16 binStep,
-        uint16 baseFactor,
-        uint16 filterPeriod,
-        uint16 decayPeriod,
-        uint16 reductionFactor,
-        uint24 variableFeeControl,
-        uint16 protocolShare,
-        uint24 maxVolatilityAccumulated,
-        uint16 sampleLifetime
-    ) external;
+    // function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
+    //     external
+    //     returns (ILBPair pair);
 
-    function removePreset(uint16 binStep) external;
+    // function setLBPairIgnored(IERC20 tokenX, IERC20 tokenY, uint256 binStep, bool ignored) external;
 
-    function setFeesParametersOnPair(
-        IERC20 tokenX,
-        IERC20 tokenY,
-        uint16 binStep,
-        uint16 baseFactor,
-        uint16 filterPeriod,
-        uint16 decayPeriod,
-        uint16 reductionFactor,
-        uint24 variableFeeControl,
-        uint16 protocolShare,
-        uint24 maxVolatilityAccumulated
-    ) external;
+    // function setPreset(
+    //     uint16 binStep,
+    //     uint16 baseFactor,
+    //     uint16 filterPeriod,
+    //     uint16 decayPeriod,
+    //     uint16 reductionFactor,
+    //     uint24 variableFeeControl,
+    //     uint16 protocolShare,
+    //     uint24 maxVolatilityAccumulated,
+    //     uint16 sampleLifetime
+    // ) external;
 
-    function setFeeRecipient(address feeRecipient) external;
+    // function removePreset(uint16 binStep) external;
 
-    function setFlashLoanFee(uint256 flashLoanFee) external;
+    // function setFeesParametersOnPair(
+    //     IERC20 tokenX,
+    //     IERC20 tokenY,
+    //     uint16 binStep,
+    //     uint16 baseFactor,
+    //     uint16 filterPeriod,
+    //     uint16 decayPeriod,
+    //     uint16 reductionFactor,
+    //     uint24 variableFeeControl,
+    //     uint16 protocolShare,
+    //     uint24 maxVolatilityAccumulated
+    // ) external;
 
-    function setFactoryLockedState(bool locked) external;
+    // function setFeeRecipient(address feeRecipient) external;
 
-    function addQuoteAsset(IERC20 quoteAsset) external;
+    // function setFlashLoanFee(uint256 flashLoanFee) external;
 
-    function removeQuoteAsset(IERC20 quoteAsset) external;
+    // function setFactoryLockedState(bool locked) external;
 
-    function forceDecay(ILBPair LBPair) external;
+    // function addQuoteAsset(IERC20 quoteAsset) external;
+
+    // function removeQuoteAsset(IERC20 quoteAsset) external;
+
+    // function forceDecay(ILBPair LBPair) external;
 }

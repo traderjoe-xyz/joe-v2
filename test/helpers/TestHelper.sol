@@ -11,17 +11,25 @@ import "src/LBQuoter.sol";
 import "src/LBErrors.sol";
 import "src/interfaces/ILBRouter.sol";
 import "src/interfaces/IJoeRouter02.sol";
+import "src/interfaces/ILBLegacyRouter.sol";
+import "src/interfaces/ILBLegacyFactory.sol";
 import "src/LBToken.sol";
 import "src/libraries/Math512Bits.sol";
 import "src/libraries/Constants.sol";
+
+import "./Utils.sol";
 
 import "test/mocks/WAVAX.sol";
 import "test/mocks/ERC20.sol";
 import "test/mocks/FlashloanBorrower.sol";
 import "test/mocks/ERC20TransferTax.sol";
 
+import {AvalancheAddresses} from "../integration/Addresses.sol";
+
 abstract contract TestHelper is Test, IERC165 {
     using Math512Bits for uint256;
+    using Utils for uint256[];
+    using Utils for int256[];
 
     uint24 internal constant ID_ONE = 2 ** 23;
     uint256 internal constant BASIS_POINT_MAX = 10_000;
@@ -67,9 +75,20 @@ abstract contract TestHelper is Test, IERC165 {
     LBQuoter internal quoter;
     LBPair internal pairImplementation;
 
+    // Forked contracts
+    IJoeRouter02 internal routerV1;
+    IJoeFactory internal factoryV1;
+    ILBLegacyRouter internal legacyRouterV2;
+    ILBLegacyFactory internal legacyFactoryV2;
+
     function setUp() public virtual {
+        wavax = WAVAX(AvalancheAddresses.WAVAX);
+        // If not forking, deploy mock
+        if (address(wavax).code.length == 0) {
+            vm.etch(address(wavax), address(new WAVAX()).code);
+        }
+
         // Create mocks
-        wavax = new WAVAX();
         usdc = new ERC20Mock(6);
         usdt = new ERC20Mock(6);
         wbtc = new ERC20Mock(8);
@@ -88,6 +107,12 @@ abstract contract TestHelper is Test, IERC165 {
         vm.label(address(bnb), "bnb");
         vm.label(address(taxToken), "taxToken");
 
+        // Get forked contracts
+        routerV1 = IJoeRouter02(AvalancheAddresses.JOE_V1_ROUTER);
+        factoryV1 = IJoeFactory(AvalancheAddresses.JOE_V1_FACTORY);
+        legacyRouterV2 = ILBLegacyRouter(AvalancheAddresses.JOE_V2_ROUTER);
+        legacyFactoryV2 = ILBLegacyFactory(AvalancheAddresses.JOE_V2_FACTORY);
+
         // Create factory
         factory = new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
         pairImplementation = new LBPair(factory);
@@ -98,12 +123,49 @@ abstract contract TestHelper is Test, IERC165 {
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
 
         // Create router
-        router = new LBRouter(factory, IJoeFactory(address(0)), IWAVAX(address(0)));
+        router = new LBRouter(factory, legacyFactoryV2, factoryV1, IWAVAX(address(wavax)));
+
+        // Create quoter
+        quoter = new LBQuoter( address(factoryV1), address(legacyFactoryV2), address(factory),address(router));
 
         // Label deployed contracts
-        vm.label(address(factory), "factory");
         vm.label(address(router), "router");
+        vm.label(address(quoter), "quoter");
+        vm.label(address(factory), "factory");
         vm.label(address(pairImplementation), "pairImplementation");
+
+        vm.label(address(routerV1), "routerV1");
+        vm.label(address(factoryV1), "factoryV1");
+        vm.label(address(legacyRouterV2), "legacyRouterV2");
+        vm.label(address(legacyFactoryV2), "legacyFactoryV2");
+
+        // Give approvals to routers
+        wavax.approve(address(routerV1), type(uint256).max);
+        usdc.approve(address(routerV1), type(uint256).max);
+        usdt.approve(address(routerV1), type(uint256).max);
+        wbtc.approve(address(routerV1), type(uint256).max);
+        weth.approve(address(routerV1), type(uint256).max);
+        link.approve(address(routerV1), type(uint256).max);
+        bnb.approve(address(routerV1), type(uint256).max);
+        taxToken.approve(address(routerV1), type(uint256).max);
+
+        wavax.approve(address(legacyRouterV2), type(uint256).max);
+        usdc.approve(address(legacyRouterV2), type(uint256).max);
+        usdt.approve(address(legacyRouterV2), type(uint256).max);
+        wbtc.approve(address(legacyRouterV2), type(uint256).max);
+        weth.approve(address(legacyRouterV2), type(uint256).max);
+        link.approve(address(legacyRouterV2), type(uint256).max);
+        bnb.approve(address(legacyRouterV2), type(uint256).max);
+        taxToken.approve(address(legacyRouterV2), type(uint256).max);
+
+        wavax.approve(address(router), type(uint256).max);
+        usdc.approve(address(router), type(uint256).max);
+        usdt.approve(address(router), type(uint256).max);
+        wbtc.approve(address(router), type(uint256).max);
+        weth.approve(address(router), type(uint256).max);
+        link.approve(address(router), type(uint256).max);
+        bnb.approve(address(router), type(uint256).max);
+        taxToken.approve(address(router), type(uint256).max);
     }
 
     function supportsInterface(bytes4 interfaceId) external view virtual returns (bool) {
@@ -118,8 +180,15 @@ abstract contract TestHelper is Test, IERC165 {
         id = BinHelper.getIdFromPrice(price, DEFAULT_BIN_STEP);
     }
 
-    function createLBPair(IERC20 tokenX, IERC20 tokenY) internal returns (LBPair newPair) {
-        newPair = createLBPairFromStartId(tokenX, tokenY, ID_ONE);
+    function addAllAssetsToQuoteWhitelist() internal {
+        if (address(wavax) != address(0)) factory.addQuoteAsset(wavax);
+        if (address(usdc) != address(0)) factory.addQuoteAsset(usdc);
+        if (address(usdt) != address(0)) factory.addQuoteAsset(usdt);
+        if (address(wbtc) != address(0)) factory.addQuoteAsset(wbtc);
+        if (address(weth) != address(0)) factory.addQuoteAsset(weth);
+        if (address(link) != address(0)) factory.addQuoteAsset(link);
+        if (address(bnb) != address(0)) factory.addQuoteAsset(bnb);
+        if (address(taxToken) != address(0)) factory.addQuoteAsset(taxToken);
     }
 
     function setDefaultFactoryPresets(uint16 binStep) internal {
@@ -136,6 +205,10 @@ abstract contract TestHelper is Test, IERC165 {
         );
     }
 
+    function createLBPair(IERC20 tokenX, IERC20 tokenY) internal returns (LBPair newPair) {
+        newPair = createLBPairFromStartId(tokenX, tokenY, ID_ONE);
+    }
+
     function createLBPairFromStartId(IERC20 tokenX, IERC20 tokenY, uint24 startId) internal returns (LBPair newPair) {
         newPair = createLBPairFromStartIdAndBinStep(tokenX, tokenY, startId, DEFAULT_BIN_STEP);
     }
@@ -147,89 +220,34 @@ abstract contract TestHelper is Test, IERC165 {
         newPair = LBPair(address(factory.createLBPair(tokenX, tokenY, startId, binStep)));
     }
 
-    function convertRelativeIdsToAbsolute(int256[] memory relativeIds, uint24 startId)
-        internal
-        pure
-        returns (uint256[] memory absoluteIds)
-    {
-        absoluteIds = new uint256[](relativeIds.length);
-        for (uint256 i = 0; i < relativeIds.length; i++) {
-            int256 id = int256(uint256(startId)) + relativeIds[i];
-            require(id >= 0, "Id conversion: id must be positive");
-            absoluteIds[i] = uint256(id);
-        }
-    }
-
-    function convertAbsoluteIdsToRelative(uint256[] memory absoluteIds, uint24 startId)
-        internal
-        pure
-        returns (int256[] memory relativeIds)
-    {
-        relativeIds = new int256[](absoluteIds.length);
-        for (uint256 i = 0; i < absoluteIds.length; i++) {
-            relativeIds[i] = int256(absoluteIds[i]) - int256(uint256(startId));
-        }
-    }
-
-    function addLiquidityAndReturnAbsoluteIds(
-        ERC20Mock tokenX,
-        ERC20Mock tokenY,
+    function getLiquidityParameters(
+        IERC20 tokenX,
+        IERC20 tokenY,
         uint256 amountYIn,
         uint24 startId,
         uint24 numberBins,
         uint24 gap
-    )
-        internal
-        returns (
-            uint256[] memory ids,
-            uint256[] memory distributionX,
-            uint256[] memory distributionY,
-            uint256 amountXIn
-        )
-    {
-        (ids, distributionX, distributionY, amountXIn) =
-            addLiquidity(tokenX, tokenY, amountYIn, startId, numberBins, gap);
-    }
+    ) internal view returns (ILBRouter.LiquidityParameters memory liquidityParameters) {
+        (uint256[] memory ids, uint256[] memory distributionX, uint256[] memory distributionY, uint256 amountXIn) =
+            spreadLiquidity(amountYIn, startId, numberBins, gap);
 
-    function addLiquidityAndReturnRelativeIds(
-        ERC20Mock tokenX,
-        ERC20Mock tokenY,
-        uint256 amountYIn,
-        uint24 startId,
-        uint24 numberBins,
-        uint24 gap
-    )
-        internal
-        returns (int256[] memory ids, uint256[] memory distributionX, uint256[] memory distributionY, uint256 amountXIn)
-    {
-        uint256[] memory absoluteIds;
-        (absoluteIds, distributionX, distributionY, amountXIn) =
-            addLiquidity(tokenX, tokenY, amountYIn, startId, numberBins, gap);
-        ids = convertAbsoluteIdsToRelative(absoluteIds, startId);
-    }
-
-    function addLiquidity(
-        ERC20Mock tokenX,
-        ERC20Mock tokenY,
-        uint256 amountYIn,
-        uint24 startId,
-        uint24 numberBins,
-        uint24 gap
-    )
-        internal
-        returns (
-            uint256[] memory ids,
-            uint256[] memory distributionX,
-            uint256[] memory distributionY,
-            uint256 amountXIn
-        )
-    {
-        (ids, distributionX, distributionY, amountXIn) = spreadLiquidity(amountYIn, startId, numberBins, gap);
-
-        tokenX.mint(address(localPair), amountXIn);
-        tokenY.mint(address(localPair), amountYIn);
-
-        localPair.mint(ids, distributionX, distributionY, DEV);
+        liquidityParameters = ILBRouter.LiquidityParameters({
+            tokenX: tokenX,
+            tokenY: tokenY,
+            binStep: DEFAULT_BIN_STEP,
+            revision: 1,
+            amountX: amountXIn,
+            amountY: amountYIn,
+            amountXMin: 0,
+            amountYMin: 0,
+            activeIdDesired: startId,
+            idSlippage: 0,
+            deltaIds: ids.convertToRelative(startId),
+            distributionX: distributionX,
+            distributionY: distributionY,
+            to: DEV,
+            deadline: block.timestamp + 1000
+        });
     }
 
     function spreadLiquidity(uint256 amountYIn, uint24 startId, uint24 numberBins, uint24 gap)
@@ -262,20 +280,10 @@ abstract contract TestHelper is Test, IERC165 {
             }
             if (i >= spread) {
                 distributionX[i] = binDistribution;
-                amountXIn +=
-                    binLiquidity > 0 ? (binLiquidity * Constants.SCALE - 1) / getPriceFromId(uint24(ids[i])) + 1 : 0;
+                amountXIn += binLiquidity > 0
+                    ? binLiquidity.shiftDivRoundDown(Constants.SCALE_OFFSET, getPriceFromId(uint24(ids[i])))
+                    : 0;
             }
         }
-    }
-
-    function addAllAssetsToQuoteWhitelist() internal {
-        if (address(wavax) != address(0)) factory.addQuoteAsset(wavax);
-        if (address(usdc) != address(0)) factory.addQuoteAsset(usdc);
-        if (address(usdt) != address(0)) factory.addQuoteAsset(usdt);
-        if (address(wbtc) != address(0)) factory.addQuoteAsset(wbtc);
-        if (address(weth) != address(0)) factory.addQuoteAsset(weth);
-        if (address(link) != address(0)) factory.addQuoteAsset(link);
-        if (address(bnb) != address(0)) factory.addQuoteAsset(bnb);
-        if (address(taxToken) != address(0)) factory.addQuoteAsset(taxToken);
     }
 }

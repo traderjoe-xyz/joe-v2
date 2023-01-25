@@ -161,7 +161,7 @@ library BinHelper {
             ? uint256(binReserveOut).shiftDivRoundUp(Constants.SCALE_OFFSET, price).safe128()
             : uint256(binReserveOut).mulShiftRoundUp(price, Constants.SCALE_OFFSET).safe128();
 
-        uint256 totalFee = parameters.getTotalFee(binStep);
+        uint128 totalFee = parameters.getTotalFee(binStep);
         uint128 maxFee = maxAmountIn.getFeeAmount(totalFee);
 
         uint128 fee128;

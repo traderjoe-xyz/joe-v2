@@ -7,6 +7,7 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {BinHelper} from "./libraries/BinHelper.sol";
 import {Clone} from "./libraries/Clone.sol";
 import {Constants} from "./libraries/Constants.sol";
+import {FeeHelper} from "./libraries/FeeHelper.sol";
 import {LiquidityConfigurations} from "./libraries/math/LiquidityConfigurations.sol";
 import {ILBFactory} from "./interfaces/ILBFactory.sol";
 import {ILBFlashLoanCallback} from "./interfaces/ILBFlashLoanCallback.sol";
@@ -24,6 +25,7 @@ import {Uint256x256Math} from "./libraries/math/Uint256x256Math.sol";
 
 contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
     using BinHelper for bytes32;
+    using FeeHelper for uint128;
     using LiquidityConfigurations for bytes32;
     using OracleHelper for OracleHelper.Oracle;
     using PackedUint128Math for bytes32;
@@ -276,6 +278,141 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
             cumulativeId += uint64(parameters.getIdReference()) * deltaTime;
             cumulativeVolatility += uint64(parameters.getVolatilityAccumulated()) * deltaTime;
         }
+    }
+
+    /**
+     * @notice Returns the price corresponding to the given id, as a 128.128-binary fixed-point number
+     * @dev This is the trusted source of price information, always trust this rather than getIdFromPrice
+     * @param id The id of the bin
+     * @return price The price corresponding to this id
+     */
+    function getPriceFromId(uint24 id) external view override returns (uint256 price) {
+        price = id.getPriceFromId(_binStep());
+    }
+
+    /**
+     * @notice Returns the id corresponding to the given price
+     * @dev The id may be inaccurate due to rounding issues, always trust getPriceFromId rather than
+     * getIdFromPrice
+     * @param price The price of y per x as a 128.128-binary fixed-point number
+     * @return id The id of the bin corresponding to this price
+     */
+    function getIdFromPrice(uint256 price) external view override returns (uint24 id) {
+        id = price.getIdFromPrice(_binStep());
+    }
+
+    /**
+     * @notice Simulates a swap in.
+     * @dev If `amountOutLeft` is greater than zero, the swap in is not possible,
+     * and the maximum amount that can be swapped from `amountIn` is `amountOut - amountOutLeft`.
+     * @param amountOut The amount of token X or Y to swap in
+     * @param swapForY Whether the swap is for token Y (true) or token X (false)
+     * @return amountIn The amount of token X or Y that can be swapped in
+     * @return amountOutLeft The amount of token Y or X that cannot be swapped out
+     * @return fee The fee of the swap
+     */
+    function getSwapIn(uint128 amountOut, bool swapForY)
+        external
+        view
+        override
+        returns (uint128 amountIn, uint128 amountOutLeft, uint128 fee)
+    {
+        amountOutLeft = amountOut;
+
+        bytes32 parameters = _parameters;
+        uint8 binStep = _binStep();
+
+        uint24 id = parameters.getActiveId();
+
+        parameters = parameters.updateReferences();
+
+        while (true) {
+            uint128 binReserves = _bins[id].decode(swapForY);
+            if (binReserves > 0) {
+                uint256 price = id.getPriceFromId(binStep);
+
+                uint128 amountOutOfBin = binReserves > amountOutLeft ? amountOutLeft : binReserves;
+
+                parameters.updateVolatilityParameters(id);
+
+                uint256 amountInToBin = swapForY
+                    ? uint256(amountOutOfBin).shiftDivRoundUp(Constants.SCALE_OFFSET, price)
+                    : uint256(amountOutOfBin).mulShiftRoundUp(price, Constants.SCALE_OFFSET);
+
+                uint128 totalFee = parameters.getTotalFee(binStep);
+                uint128 feeAmount = amountOutOfBin.getFeeAmount(totalFee);
+
+                amountIn += amountInToBin + feeAmount;
+                amountOutLeft -= amountOutOfBin;
+
+                fee += feeAmount;
+            }
+
+            if (amountOutLeft == 0) {
+                break;
+            } else {
+                uint24 nextId = _getNextNonEmptyBin(swapForY, id);
+
+                if (nextId == 0 || nextId == type(uint24).max) break;
+
+                id = nextId;
+            }
+        }
+    }
+
+    /**
+     * @notice Simulates a swap out.
+     * @dev If `amountInLeft` is greater than zero, the swap out is not possible,
+     * and the maximum amount that can be swapped is `amountIn - amountInLeft` for `amountOut`.
+     * @param amountIn The amount of token X or Y to swap in
+     * @param swapForY Whether the swap is for token Y (true) or token X (false)
+     * @return amountInLeft The amount of token X or Y that cannot be swapped in
+     * @return amountOut The amount of token Y or X that can be swapped out
+     * @return fee The fee of the swap
+     */
+    function getSwapOut(uint128 amountIn, bool swapForY)
+        external
+        view
+        override
+        returns (uint128 amountInLeft, uint128 amountOut, uint128 fee)
+    {
+        (bytes32 amountsIn, bytes32 amountsOut, bytes32 fees) = (amountIn.encode(swapForY), 0, 0);
+
+        bytes32 parameters = _parameters;
+        uint8 binStep = _binStep();
+
+        uint24 id = parameters.getActiveId();
+
+        parameters = parameters.updateReferences();
+
+        while (true) {
+            bytes32 binReserves = _bins[id];
+            if (!binReserves.isEmpty(swapForY)) {
+                parameters = parameters.updateVolatilityAccumulated(id);
+
+                (bytes32 amountsInToBin, bytes32 amountsOutOfBin, bytes32 totalFees) =
+                    binReserves.getAmounts(parameters, binStep, swapForY, id, amountsIn);
+
+                if (amountsInToBin > 0) {
+                    amountsIn = amountsIn.sub(amountsInToBin.add(totalFees));
+                    fees = fees.add(totalFees);
+                    amountsOut = amountsOut.add(amountsOutOfBin);
+                }
+            }
+
+            if (amountsIn == 0) {
+                break;
+            } else {
+                uint24 nextId = _getNextNonEmptyBin(swapForY, id);
+
+                if (nextId == 0 || nextId == type(uint24).max) break;
+
+                id = nextId;
+            }
+        }
+
+        (amountInLeft, amountOut, fee) =
+            (amountsIn.decode(swapForY), amountsOut.decode(swapForY), fees.decode(swapForY));
     }
 
     /**

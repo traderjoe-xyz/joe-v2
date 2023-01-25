@@ -19,7 +19,7 @@ library FeeHelper {
      * @param totalFee The total fee
      * @return feeAmount The fee amount
      */
-    function getFeeAmountFrom(uint128 amounWithFees, uint256 totalFee) internal pure returns (uint128) {
+    function getFeeAmountFrom(uint128 amounWithFees, uint128 totalFee) internal pure returns (uint128) {
         unchecked {
             return ((uint256(amounWithFees) * totalFee + Constants.PRECISION - 1) / Constants.PRECISION).safe128();
         }
@@ -31,7 +31,7 @@ library FeeHelper {
      * @param totalFee The total fee
      * @return feeAmount The fee amount
      */
-    function getFeeAmount(uint128 amount, uint256 totalFee) internal pure returns (uint128) {
+    function getFeeAmount(uint128 amount, uint128 totalFee) internal pure returns (uint128) {
         unchecked {
             uint256 denominator = Constants.PRECISION - totalFee;
             return ((uint256(amount) * totalFee + denominator - 1) / denominator).safe128();
@@ -44,10 +44,11 @@ library FeeHelper {
      * @param totalFee The total fee
      * @return The amount with fees
      */
-    function getCompositionFee(uint128 amountWithFees, uint256 totalFee) internal pure returns (uint128) {
+    function getCompositionFee(uint128 amountWithFees, uint128 totalFee) internal pure returns (uint128) {
         unchecked {
             uint256 denominator = Constants.PRECISION * Constants.PRECISION;
-            return (uint256(amountWithFees) * totalFee * (totalFee + Constants.PRECISION) / denominator).safe128();
+            return
+                (uint256(amountWithFees) * totalFee * (uint256(totalFee) + Constants.PRECISION) / denominator).safe128();
         }
     }
 

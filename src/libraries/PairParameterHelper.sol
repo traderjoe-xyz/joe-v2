@@ -381,9 +381,9 @@ library PairParameterHelper {
      * @param binStep The bin step
      * @return totalFee The total fee
      */
-    function getTotalFee(bytes32 params, uint8 binStep) internal pure returns (uint256) {
+    function getTotalFee(bytes32 params, uint8 binStep) internal pure returns (uint128) {
         unchecked {
-            return getBaseFee(params, binStep) + getVariableFee(params, binStep);
+            return (getBaseFee(params, binStep) + getVariableFee(params, binStep)).safe128();
         }
     }
 

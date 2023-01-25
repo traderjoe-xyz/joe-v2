@@ -119,6 +119,20 @@ interface ILBPair is ILBToken {
         view
         returns (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed);
 
+    function getPriceFromId(uint24 id) external view returns (uint256 price);
+
+    function getIdFromPrice(uint256 price) external view returns (uint24 id);
+
+    function getSwapIn(uint128 amountOut, bool swapForY)
+        external
+        view
+        returns (uint128 amountIn, uint128 amountOutLeft, uint128 fee);
+
+    function getSwapOut(uint128 amountIn, bool swapForY)
+        external
+        view
+        returns (uint128 amountInLeft, uint128 amountOut, uint128 fee);
+
     function swap(bool swapForY, address to) external returns (bytes32 amountsOut);
 
     function flashLoan(ILBFlashLoanCallback receiver, bytes32 amounts, bytes calldata data) external;

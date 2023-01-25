@@ -16,15 +16,38 @@ pragma solidity 0.8.10;
  * 216 - 256: sample creation timestamp (40 bits)
  */
 library SampleMath {
-    uint256 internal constant _MASK_ORACLE_LENGTH = 0xffff;
-    uint256 internal constant _MASK_CUMULATIVE = 0xffffffffffff;
-    uint256 internal constant _MASK_SAMPLE_LIFETIME = 0xff;
-
     uint256 internal constant _SHIFT_CUMULATIVE_ID = 16;
     uint256 internal constant _SHIFT_CUMULATIVE_VOLATILITY = 80;
     uint256 internal constant _SHIFT_CUMULATIVE_BIN_CROSSED = 144;
     uint256 internal constant _SHIFT_SAMPLE_LIFETIME = 208;
     uint256 internal constant _SHIFT_SAMPLE_CREATION = 216;
+
+    /**
+     * @dev Encodes a sample
+     * @param oracleLength The oracle length
+     * @param cumulativeId The cumulative id
+     * @param cumulativeVolatility The cumulative volatility
+     * @param cumulativeBinCrossed The cumulative bin crossed
+     * @param sampleLifetime The sample lifetime
+     * @param createdAt The sample creation timestamp
+     * @return sample The encoded sample
+     */
+    function encode(
+        uint16 oracleLength,
+        uint64 cumulativeId,
+        uint64 cumulativeVolatility,
+        uint64 cumulativeBinCrossed,
+        uint8 sampleLifetime,
+        uint40 createdAt
+    ) internal pure returns (bytes32 sample) {
+        assembly {
+            sample := or(oracleLength, shl(_SHIFT_CUMULATIVE_ID, cumulativeId))
+            sample := or(sample, shl(_SHIFT_CUMULATIVE_VOLATILITY, cumulativeVolatility))
+            sample := or(sample, shl(_SHIFT_CUMULATIVE_BIN_CROSSED, cumulativeBinCrossed))
+            sample := or(sample, shl(_SHIFT_SAMPLE_LIFETIME, sampleLifetime))
+            sample := or(sample, shl(_SHIFT_SAMPLE_CREATION, createdAt))
+        }
+    }
 
     /**
      * @dev Decodes an encoded sample and return all the values
@@ -54,33 +77,6 @@ library SampleMath {
         cumulativeBinCrossed = getCumulativeBinCrossed(sample);
         sampleLifetime = getSampleLifetime(sample);
         createdAt = getSampleCreation(sample);
-    }
-
-    /**
-     * @dev Encodes a sample
-     * @param oracleLength The oracle length
-     * @param cumulativeId The cumulative id
-     * @param cumulativeVolatility The cumulative volatility
-     * @param cumulativeBinCrossed The cumulative bin crossed
-     * @param sampleLifetime The sample lifetime
-     * @param createdAt The sample creation timestamp
-     * @return sample The encoded sample
-     */
-    function encode(
-        uint16 oracleLength,
-        uint64 cumulativeId,
-        uint64 cumulativeVolatility,
-        uint64 cumulativeBinCrossed,
-        uint8 sampleLifetime,
-        uint40 createdAt
-    ) internal pure returns (bytes32 sample) {
-        assembly {
-            sample := or(oracleLength, shl(_SHIFT_CUMULATIVE_ID, cumulativeId))
-            sample := or(sample, shl(_SHIFT_CUMULATIVE_VOLATILITY, cumulativeVolatility))
-            sample := or(sample, shl(_SHIFT_CUMULATIVE_BIN_CROSSED, cumulativeBinCrossed))
-            sample := or(sample, shl(_SHIFT_SAMPLE_LIFETIME, sampleLifetime))
-            sample := or(sample, shl(_SHIFT_SAMPLE_CREATION, createdAt))
-        }
     }
 
     /**

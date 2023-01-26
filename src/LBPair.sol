@@ -373,12 +373,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
      * @return amountOut The amount of token Y or X that can be swapped out
      * @return fee The fee of the swap
      */
-    function getSwapOut(uint128 amountIn, bool swapForY)
-        external
-        view
-        override
-        returns (uint128 amountInLeft, uint128 amountOut, uint128 fee)
-    {
+    function getSwapOut(uint128 amountIn, bool swapForY) external view override returns (uint128, uint128, uint128) {
         (bytes32 amountsIn, bytes32 amountsOut, bytes32 fees) = (amountIn.encode(swapForY), 0, 0);
 
         bytes32 parameters = _parameters;
@@ -414,8 +409,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
             }
         }
 
-        (amountInLeft, amountOut, fee) =
-            (amountsIn.decode(swapForY), amountsOut.decode(swapForY), fees.decode(swapForY));
+        return (amountsIn.decode(swapForY), amountsOut.decode(swapForY), fees.decode(swapForY));
     }
 
     /**

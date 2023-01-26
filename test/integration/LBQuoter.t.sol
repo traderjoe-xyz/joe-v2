@@ -109,7 +109,7 @@ contract LiquidityBinQuoterTest is TestHelper {
         route[1] = address(usdc);
 
         // Small amountIn
-        uint256 amountIn = 1e16;
+        uint128 amountIn = 1e16;
         LBQuoter.Quote memory quote = quoter.findBestPathFromAmountIn(route, amountIn);
 
         assertEq(quote.amounts[0], amountIn);

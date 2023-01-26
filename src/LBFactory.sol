@@ -11,6 +11,7 @@ import "./libraries/math/Decoder.sol";
 import "./libraries/PendingOwnable.sol";
 import "./libraries/math/SafeCast.sol";
 import "./interfaces/ILBFactory.sol";
+import "./libraries/ImmutableClone.sol";
 
 /// @title Liquidity Book Factory
 /// @author Trader Joe
@@ -21,6 +22,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     using SafeCast for uint256;
     using Decoder for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using PairParameterHelper for bytes32;
 
     uint256 public constant override MAX_FEE = 0.1e18; // 10%
 
@@ -277,8 +279,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
         override
         returns (ILBPair _LBPair)
     {
-        address _owner = owner();
-        if (!creationUnlocked && msg.sender != _owner) revert LBFactory__FunctionIsLockedForUsers(msg.sender);
+        // address _owner = owner();
+        if (!creationUnlocked && msg.sender != owner()) revert LBFactory__FunctionIsLockedForUsers(msg.sender);
 
         address _LBPairImplementation = LBPairImplementation;
 
@@ -289,7 +291,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         if (_tokenX == _tokenY) revert LBFactory__IdenticalAddresses(_tokenX);
 
         // safety check, making sure that the price can be calculated
-        // BinHelper.getPriceFromId(_activeId, _binStep);
+        // BinHelper.getPriceFromId(_activeId, _binStep); - TODO - check if necessary
 
         // We sort token for storage efficiency, only one input needs to be stored because they are sorted
         (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(_tokenX, _tokenY);
@@ -299,23 +301,39 @@ contract LBFactory is PendingOwnable, ILBFactory {
             revert LBFactory__LBPairAlreadyExists(_tokenX, _tokenY, _binStep);
         }
 
-        bytes32 _preset = _presets[_binStep];
-        if (_preset == bytes32(0)) revert LBFactory__BinStepHasNoPreset(_binStep);
-
-        uint256 _sampleLifetime = _preset.decode(type(uint16).max, 240);
+        // uint256 _sampleLifetime = _preset.decode(type(uint16).max, 240);
         // We remove the bits that are not part of the feeParameters
-        _preset &= bytes32(uint256(type(uint144).max));
+        // _preset &= bytes32(uint256(type(uint144).max));
+        {
+            bytes32 _salt = keccak256(abi.encode(_tokenA, _tokenB, _binStep, _REVISION_START_INDEX));
+            _LBPair = ILBPair(
+                ImmutableClone.cloneDeterministic(
+                    _LBPairImplementation, abi.encodePacked(_tokenX, _tokenY, _binStep), _salt
+                )
+            );
+        }
 
-        bytes32 _salt = keccak256(abi.encode(_tokenA, _tokenB, _binStep, _REVISION_START_INDEX));
-        _LBPair = ILBPair(Clones.cloneDeterministic(_LBPairImplementation, _salt));
+        {
+            bytes32 _preset = _presets[_binStep];
+            if (_preset == bytes32(0)) revert LBFactory__BinStepHasNoPreset(_binStep);
 
-        _LBPair.initialize(_tokenX, _tokenY, _activeId, uint16(_sampleLifetime), _preset);
+            _LBPair.initialize(
+                _preset.getBaseFactor(),
+                _preset.getFilterPeriod(),
+                _preset.getDecayPeriod(),
+                _preset.getReductionFactor(),
+                _preset.getVariableFeeControl(),
+                _preset.getProtocolShare(),
+                _preset.getMaxVolatilityAccumulated(),
+                _activeId
+            );
+        }
 
         _LBPairsInfos[_tokenA][_tokenB][_binStep].push(
             LBPairInformation({
                 binStep: _binStep,
                 LBPair: _LBPair,
-                createdByOwner: msg.sender == _owner,
+                createdByOwner: msg.sender == owner(),
                 ignoredForRouting: false,
                 revisionIndex: uint16(_REVISION_START_INDEX),
                 implementation: LBPairImplementation
@@ -338,18 +356,21 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         emit LBPairCreated(_tokenX, _tokenY, _binStep, _LBPair, allLBPairs.length - 1);
 
-        emit FeeParametersSet(
-            msg.sender,
-            _LBPair,
-            _binStep,
-            _preset.decode(type(uint16).max, 16),
-            _preset.decode(type(uint16).max, 32),
-            _preset.decode(type(uint16).max, 48),
-            _preset.decode(type(uint16).max, 64),
-            _preset.decode(type(uint24).max, 80),
-            _preset.decode(type(uint16).max, 104),
-            _preset.decode(type(uint24).max, 120)
-            );
+        {
+            bytes32 _preset = _presets[_binStep];
+            emit FeeParametersSet(
+                msg.sender,
+                _LBPair,
+                _binStep,
+                _preset.decode(type(uint16).max, 16),
+                _preset.decode(type(uint16).max, 32),
+                _preset.decode(type(uint16).max, 48),
+                _preset.decode(type(uint16).max, 64),
+                _preset.decode(type(uint24).max, 80),
+                _preset.decode(type(uint16).max, 104),
+                _preset.decode(type(uint24).max, 120)
+                );
+        }
     }
 
     /// @notice Function to create a new revision of a pair
@@ -369,12 +390,14 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint256 currentVersionNumber = _LBPairsInfos[_tokenA][_tokenB][_binStep].length;
         if (currentVersionNumber == 0) revert LBFactory__LBPairDoesNotExists(_tokenX, _tokenY, _binStep);
 
+        address _LBPairImplementation = LBPairImplementation;
+
         // Get latest version
         LBPairInformation memory _LBPairInformation =
             _LBPairsInfos[_tokenA][_tokenB][_binStep][currentVersionNumber - _REVISION_START_INDEX];
 
-        if (_LBPairInformation.implementation == LBPairImplementation) {
-            revert LBFactory__SameImplementation(LBPairImplementation);
+        if (_LBPairInformation.implementation == _LBPairImplementation) {
+            revert LBFactory__SameImplementation(_LBPairImplementation);
         }
 
         ILBPair _oldLBPair = _LBPairInformation.LBPair;
@@ -382,14 +405,27 @@ contract LBFactory is PendingOwnable, ILBFactory {
         bytes32 _preset = _presets[_binStep];
 
         bytes32 _salt = keccak256(abi.encode(_tokenA, _tokenB, _binStep, ++currentVersionNumber));
-        _LBPair = ILBPair(Clones.cloneDeterministic(LBPairImplementation, _salt));
+        _LBPair = ILBPair(
+            ImmutableClone.cloneDeterministic(
+                _LBPairImplementation, abi.encodePacked(_tokenX, _tokenY, _binStep), _salt
+            )
+        );
 
         {
-            (uint256 oracleSampleLifetime,,,,,,) = _oldLBPair.getOracleParameters();
+            // (uint256 oracleSampleLifetime,,,,,,) = _oldLBPair.getOracleParameters();
 
-            (,, uint256 activeId) = _oldLBPair.getReservesAndId();
+            // (,, uint256 activeId) = _oldLBPair.getReservesAndId();
 
-            _LBPair.initialize(_tokenX, _tokenY, uint24(activeId), uint16(oracleSampleLifetime), _preset);
+            _LBPair.initialize(
+                _preset.getBaseFactor(),
+                _preset.getFilterPeriod(),
+                _preset.getDecayPeriod(),
+                _preset.getReductionFactor(),
+                _preset.getVariableFeeControl(),
+                _preset.getProtocolShare(),
+                _preset.getMaxVolatilityAccumulated(),
+                _oldLBPair.getActiveId()
+            );
 
             _LBPairsInfos[_tokenA][_tokenB][_binStep].push(
                 LBPairInformation({
@@ -557,8 +593,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     ) external override onlyOwner {
         ILBPair _LBPair = _getLBPairInformation(_tokenX, _tokenY, _binStep, _revision).LBPair;
 
-        bytes32 _packedFeeParameters = _getPackedFeeParameters(
-            _binStep,
+        _LBPair.setStaticFeeParameters(
             _baseFactor,
             _filterPeriod,
             _decayPeriod,
@@ -567,8 +602,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
             _protocolShare,
             _maxVolatilityAccumulated
         );
-
-        _LBPair.setFeesParameters(_packedFeeParameters);
 
         emit FeeParametersSet(
             msg.sender,

@@ -90,15 +90,15 @@ interface ILBRouter {
 
     function getPriceFromId(ILBPair LBPair, uint24 id) external view returns (uint256);
 
-    function getSwapIn(ILBPair LBPair, uint256 amountOut, bool swapForY)
+    function getSwapIn(ILBPair LBPair, uint128 amountOut, bool swapForY)
         external
         view
-        returns (uint256 amountIn, uint256 feesIn);
+        returns (uint128 amountIn, uint128 amountOutLeft, uint128 fee);
 
-    function getSwapOut(ILBPair LBPair, uint256 amountIn, bool swapForY)
+    function getSwapOut(ILBPair LBPair, uint128 amountIn, bool swapForY)
         external
         view
-        returns (uint256 amountOut, uint256 feesIn);
+        returns (uint128 amountInLeft, uint128 amountOut, uint128 fee);
 
     function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
         external
@@ -106,12 +106,12 @@ interface ILBRouter {
 
     function addLiquidity(LiquidityParameters calldata liquidityParameters)
         external
-        returns (uint256[] memory depositIds, uint256[] memory liquidityMinted);
+        returns (bytes32[] memory depositIds, uint256[] memory liquidityMinted);
 
     function addLiquidityAVAX(LiquidityParameters calldata liquidityParameters)
         external
         payable
-        returns (uint256[] memory depositIds, uint256[] memory liquidityMinted);
+        returns (bytes32[] memory depositIds, uint256[] memory liquidityMinted);
 
     function removeLiquidity(
         IERC20 tokenX,

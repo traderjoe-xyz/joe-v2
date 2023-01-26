@@ -16,6 +16,8 @@ import "src/LBToken.sol";
 import "src/libraries/math/Uint256x256Math.sol";
 import "src/libraries/Constants.sol";
 
+import {PriceHelper} from "src/libraries/PriceHelper.sol";
+
 import "../../src/interfaces/IPendingOwnable.sol";
 
 import "./Utils.sol";
@@ -36,7 +38,7 @@ abstract contract TestHelper is Test {
     uint256 internal constant BASIS_POINT_MAX = 10_000;
 
     // Avalanche market config for 10bps
-    uint16 internal constant DEFAULT_BIN_STEP = 10;
+    uint8 internal constant DEFAULT_BIN_STEP = 10;
     uint16 internal constant DEFAULT_BASE_FACTOR = 1000;
     uint16 internal constant DEFAULT_FILTER_PERIOD = 30;
     uint16 internal constant DEFAULT_DECAY_PERIOD = 600;
@@ -175,11 +177,11 @@ abstract contract TestHelper is Test {
     }
 
     function getPriceFromId(uint24 id) internal pure returns (uint256 price) {
-        price = BinHelper.getPriceFromId(id, DEFAULT_BIN_STEP);
+        price = PriceHelper.getPriceFromId(id, DEFAULT_BIN_STEP);
     }
 
     function getIdFromPrice(uint256 price) internal pure returns (uint24 id) {
-        id = BinHelper.getIdFromPrice(price, DEFAULT_BIN_STEP);
+        id = PriceHelper.getIdFromPrice(price, DEFAULT_BIN_STEP);
     }
 
     function addAllAssetsToQuoteWhitelist() internal {

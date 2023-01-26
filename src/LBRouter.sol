@@ -9,11 +9,14 @@ import "./libraries/Constants.sol";
 import "./libraries/FeeHelper.sol";
 import "./libraries/JoeLibrary.sol";
 import "./libraries/math/Uint256x256Math.sol";
+import "./libraries/math/PackedUint128Math.sol";
 import "./libraries/TokenHelper.sol";
 import "./interfaces/IJoePair.sol";
 import "./interfaces/ILBToken.sol";
 import "./interfaces/ILBRouter.sol";
 import "./interfaces/ILBLegacyFactory.sol";
+
+import {LiquidityConfigurations} from "./libraries/math/LiquidityConfigurations.sol";
 
 /// @title Liquidity Book Router
 /// @author Trader Joe
@@ -22,8 +25,10 @@ contract LBRouter is ILBRouter {
     using TokenHelper for IERC20;
     using TokenHelper for IWAVAX;
     using Uint256x256Math for uint256;
+    using LiquidityConfigurations for bytes32;
     // using SwapHelper for ILBPair.Bin;
     using JoeLibrary for uint256;
+    using PackedUint128Math for bytes32;
 
     ILBFactory public immutable override factory;
     ILBLegacyFactory public immutable legacyFactory;
@@ -70,7 +75,7 @@ contract LBRouter is ILBRouter {
     /// @param _price The price of y per x (multiplied by 1e36)
     /// @return The id corresponding to this price
     function getIdFromPrice(ILBPair _LBPair, uint256 _price) external view override returns (uint24) {
-        return BinHelper.getIdFromPrice(_price, _LBPair.feeParameters().binStep);
+        return _LBPair.getIdFromPrice(_price);
     }
 
     /// @notice Returns the price corresponding to the inputted id
@@ -78,7 +83,7 @@ contract LBRouter is ILBRouter {
     /// @param _id The id
     /// @return The price corresponding to this id
     function getPriceFromId(ILBPair _LBPair, uint24 _id) external view override returns (uint256) {
-        return BinHelper.getPriceFromId(_id, _LBPair.feeParameters().binStep);
+        return _LBPair.getPriceFromId(_id);
     }
 
     /// @notice Simulate a swap in
@@ -86,29 +91,31 @@ contract LBRouter is ILBRouter {
     /// @param _amountOut The amount of token to receive
     /// @param _swapForY Whether you swap X for Y (true), or Y for X (false)
     /// @return amountIn The amount of token to send in order to receive _amountOut token
-    /// @return feesIn The amount of fees paid in token sent
-    function getSwapIn(ILBPair _LBPair, uint256 _amountOut, bool _swapForY)
+    /// @return amountOutLeft The amount of token Out that can't be returned due to a lack of liquidity
+    /// @return fee The amount of fees paid in token sent
+    function getSwapIn(ILBPair _LBPair, uint128 _amountOut, bool _swapForY)
         public
         view
         override
-        returns (uint256 amountIn, uint256 feesIn)
+        returns (uint128 amountIn, uint128 amountOutLeft, uint128 fee)
     {
-        (amountIn, feesIn) = _LBPair.getSwapIn(_amountOut, _swapForY);
+        (amountIn, amountOutLeft, fee) = _LBPair.getSwapIn(_amountOut, _swapForY);
     }
 
     /// @notice Simulate a swap out
     /// @param _LBPair The address of the LBPair
     /// @param _amountIn The amount of token sent
     /// @param _swapForY Whether you swap X for Y (true), or Y for X (false)
+    /// @return amountInLeft The amount of token In that can't be swapped due to a lack of liquidity
     /// @return amountOut The amount of token received if _amountIn tokenX are sent
-    /// @return feesIn The amount of fees paid in token sent
-    function getSwapOut(ILBPair _LBPair, uint256 _amountIn, bool _swapForY)
+    /// @return fee The amount of fees paid in token sent
+    function getSwapOut(ILBPair _LBPair, uint128 _amountIn, bool _swapForY)
         external
         view
         override
-        returns (uint256 amountOut, uint256 feesIn)
+        returns (uint128 amountInLeft, uint128 amountOut, uint128 fee)
     {
-        (amountOut, feesIn) = _LBPair.getSwapOut(_amountIn, _swapForY);
+        (amountInLeft, amountOut, fee) = _LBPair.getSwapOut(_amountIn, _swapForY);
     }
 
     /// @notice Create a liquidity bin LBPair for _tokenX and _tokenY using the factory
@@ -133,7 +140,7 @@ contract LBRouter is ILBRouter {
     function addLiquidity(LiquidityParameters calldata _liquidityParameters)
         external
         override
-        returns (uint256[] memory depositIds, uint256[] memory liquidityMinted)
+        returns (bytes32[] memory depositIds, uint256[] memory liquidityMinted)
     {
         ILBPair _LBPair = _getLBPairInformation(
             _liquidityParameters.tokenX,
@@ -141,7 +148,7 @@ contract LBRouter is ILBRouter {
             _liquidityParameters.binStep,
             _liquidityParameters.revision
         );
-        if (_liquidityParameters.tokenX != _LBPair.tokenX()) revert LBRouter__WrongTokenOrder();
+        if (_liquidityParameters.tokenX != _LBPair.getTokenX()) revert LBRouter__WrongTokenOrder();
 
         _liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(_LBPair), _liquidityParameters.amountX);
         _liquidityParameters.tokenY.safeTransferFrom(msg.sender, address(_LBPair), _liquidityParameters.amountY);
@@ -158,7 +165,7 @@ contract LBRouter is ILBRouter {
         external
         payable
         override
-        returns (uint256[] memory depositIds, uint256[] memory liquidityMinted)
+        returns (bytes32[] memory depositIds, uint256[] memory liquidityMinted)
     {
         ILBPair _LBPair = _getLBPairInformation(
             _liquidityParameters.tokenX,
@@ -166,7 +173,7 @@ contract LBRouter is ILBRouter {
             _liquidityParameters.binStep,
             _liquidityParameters.revision
         );
-        if (_liquidityParameters.tokenX != _LBPair.tokenX()) revert LBRouter__WrongTokenOrder();
+        if (_liquidityParameters.tokenX != _LBPair.getTokenX()) revert LBRouter__WrongTokenOrder();
 
         if (_liquidityParameters.tokenX == wavax && _liquidityParameters.amountX == msg.value) {
             _wavaxDepositAndTransfer(address(_LBPair), msg.value);
@@ -213,7 +220,7 @@ contract LBRouter is ILBRouter {
         uint256 _deadline
     ) external override ensure(_deadline) returns (uint256 amountX, uint256 amountY) {
         ILBPair _LBPair = _getLBPairInformation(_tokenX, _tokenY, _binStep, _revision);
-        bool _isWrongOrder = _tokenX != _LBPair.tokenX();
+        bool _isWrongOrder = _tokenX != _LBPair.getTokenX();
 
         if (_isWrongOrder) (_amountXMin, _amountYMin) = (_amountYMin, _amountXMin);
 
@@ -250,7 +257,7 @@ contract LBRouter is ILBRouter {
         ILBPair _LBPair = _getLBPairInformation(_token, IERC20(wavax), _binStep, _revision);
 
         {
-            bool _isAVAXTokenY = IERC20(wavax) == _LBPair.tokenY();
+            bool _isAVAXTokenY = IERC20(wavax) == _LBPair.getTokenY();
 
             if (!_isAVAXTokenY) {
                 (_amountTokenMin, _amountAVAXMin) = (_amountAVAXMin, _amountTokenMin);
@@ -542,18 +549,18 @@ contract LBRouter is ILBRouter {
         override
         onlyFactoryOwner
     {
-        _lbToken.safeBatchTransferFrom(address(this), _to, _ids, _amounts);
+        _lbToken.batchTransferFrom(address(this), _to, _ids, _amounts);
     }
 
     /// @notice Helper function to add liquidity
     /// @param _liq The liquidity parameter
     /// @param _LBPair LBPair where liquidity is deposited
-    /// @return depositIds Bin ids where the liquidity was actually deposited
+    /// @return liquidityConfigs Bin ids where the liquidity was actually deposited
     /// @return liquidityMinted Amounts of LBToken minted for each bin
     function _addLiquidity(LiquidityParameters calldata _liq, ILBPair _LBPair)
         private
         ensure(_liq.deadline)
-        returns (uint256[] memory depositIds, uint256[] memory liquidityMinted)
+        returns (bytes32[] memory liquidityConfigs, uint256[] memory liquidityMinted)
     {
         unchecked {
             if (_liq.deltaIds.length != _liq.distributionX.length && _liq.deltaIds.length != _liq.distributionY.length)
@@ -565,23 +572,25 @@ contract LBRouter is ILBRouter {
                 revert LBRouter__IdDesiredOverflows(_liq.activeIdDesired, _liq.idSlippage);
             }
 
-            (,, uint256 _activeId) = _LBPair.getReservesAndId();
+            uint256 _activeId = _LBPair.getActiveId();
             if (
                 _liq.activeIdDesired + _liq.idSlippage < _activeId || _activeId + _liq.idSlippage < _liq.activeIdDesired
             ) revert LBRouter__IdSlippageCaught(_liq.activeIdDesired, _liq.idSlippage, _activeId);
 
-            depositIds = new uint256[](_liq.deltaIds.length);
-            for (uint256 i; i < depositIds.length; ++i) {
+            liquidityConfigs = new bytes32[](_liq.deltaIds.length);
+            for (uint256 i; i < liquidityConfigs.length; ++i) {
                 int256 _id = int256(_activeId) + _liq.deltaIds[i];
                 if (_id < 0 || uint256(_id) > type(uint24).max) revert LBRouter__IdOverflows(_id);
-                depositIds[i] = uint256(_id);
+                liquidityConfigs[i] = LiquidityConfigurations.encodeParams(
+                    uint64(_liq.distributionX[i]), uint64(_liq.distributionY[i]), uint24(uint256(_id))
+                );
             }
 
             uint256 _amountXAdded;
             uint256 _amountYAdded;
 
-            (_amountXAdded, _amountYAdded, liquidityMinted) =
-                _LBPair.mint(depositIds, _liq.distributionX, _liq.distributionY, _liq.to);
+            (bytes32 amountsReceived, bytes32 amountsLeft, uint256[] memory liquidityMinted) =
+                _LBPair.mint(msg.sender, liquidityConfigs, _liq.to);
 
             if (_amountXAdded < _liq.amountXMin || _amountYAdded < _liq.amountYMin) {
                 revert LBRouter__AmountSlippageCaught(_liq.amountXMin, _amountXAdded, _liq.amountYMin, _amountYAdded);
@@ -618,9 +627,10 @@ contract LBRouter is ILBRouter {
                 }
 
                 uint256 amountOut_ = amountsIn[i];
-                amountsIn[i - 1] = amountOut_.getAmountIn(_reserveIn, _reserveOut);
+                amountsIn[i - 1] = uint128(uint256(amountOut_).getAmountIn(_reserveIn, _reserveOut));
             } else {
-                (amountsIn[i - 1],) = getSwapIn(ILBPair(_pair), amountsIn[i], ILBPair(_pair).tokenX() == _token);
+                (amountsIn[i - 1],,) =
+                    getSwapIn(ILBPair(_pair), uint128(amountsIn[i]), ILBPair(_pair).getTokenX() == _token);
             }
         }
     }
@@ -642,8 +652,8 @@ contract LBRouter is ILBRouter {
         uint256[] memory _amounts,
         address _to
     ) private returns (uint256 amountX, uint256 amountY) {
-        ILBToken(address(_LBPair)).safeBatchTransferFrom(msg.sender, address(_LBPair), _ids, _amounts);
-        (amountX, amountY) = _LBPair.burn(_ids, _amounts, _to);
+        ILBToken(address(_LBPair)).batchTransferFrom(msg.sender, address(_LBPair), _ids, _amounts);
+        (bytes32[] memory amounts) = _LBPair.burn(msg.sender, _to, _ids, _amounts);
         if (amountX < _amountXMin || amountY < _amountYMin) {
             revert LBRouter__AmountSlippageCaught(_amountXMin, amountX, _amountYMin, amountY);
         }
@@ -692,9 +702,9 @@ contract LBRouter is ILBRouter {
                         IJoePair(_pair).swap(amountOut, 0, _recipient, "");
                     }
                 } else {
-                    bool _swapForY = _tokenNext == ILBPair(_pair).tokenY();
+                    bool _swapForY = _tokenNext == ILBPair(_pair).getTokenY();
 
-                    (uint256 _amountXOut, uint256 _amountYOut) = ILBPair(_pair).swap(_swapForY, _recipient);
+                    (uint256 _amountXOut, uint256 _amountYOut) = ILBPair(_pair).swap(_swapForY, _recipient).decode();
 
                     if (_swapForY) amountOut = _amountYOut;
                     else amountOut = _amountXOut;
@@ -742,9 +752,9 @@ contract LBRouter is ILBRouter {
                         IJoePair(_pair).swap(amountOut, 0, _recipient, "");
                     }
                 } else {
-                    bool _swapForY = _tokenNext == ILBPair(_pair).tokenY();
+                    bool _swapForY = _tokenNext == ILBPair(_pair).getTokenY();
 
-                    (uint256 _amountXOut, uint256 _amountYOut) = ILBPair(_pair).swap(_swapForY, _recipient);
+                    (uint256 _amountXOut, uint256 _amountYOut) = ILBPair(_pair).swap(_swapForY, _recipient).decode();
 
                     if (_swapForY) amountOut = _amountYOut;
                     else amountOut = _amountXOut;
@@ -795,7 +805,7 @@ contract LBRouter is ILBRouter {
                         IJoePair(_pair).swap(_amountOut, 0, _recipient, "");
                     }
                 } else {
-                    ILBPair(_pair).swap(_tokenNext == ILBPair(_pair).tokenY(), _recipient);
+                    ILBPair(_pair).swap(_tokenNext == ILBPair(_pair).getTokenY(), _recipient);
                 }
             }
         }

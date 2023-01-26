@@ -31,6 +31,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
     using PackedUint128Math for bytes32;
     using PackedUint128Math for uint128;
     using PairParameterHelper for bytes32;
+    using PriceHelper for uint256;
     using PriceHelper for uint24;
     using SafeCast for uint256;
     using TreeMath for TreeMath.TreeUint24;
@@ -42,7 +43,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
     }
 
     modifier onlyProtocolFeeReceiver() {
-        if (msg.sender != _factory.getProtocolFeeRecipient()) revert LBPair__OnlyProtocolFeeReceiver();
+        if (msg.sender != _factory.feeRecipient()) revert LBPair__OnlyProtocolFeeReceiver();
         _;
     }
 
@@ -335,9 +336,11 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
 
                 parameters.updateVolatilityParameters(id);
 
-                uint256 amountInToBin = swapForY
-                    ? uint256(amountOutOfBin).shiftDivRoundUp(Constants.SCALE_OFFSET, price)
-                    : uint256(amountOutOfBin).mulShiftRoundUp(price, Constants.SCALE_OFFSET);
+                uint128 amountInToBin = uint128(
+                    swapForY
+                        ? uint256(amountOutOfBin).shiftDivRoundUp(Constants.SCALE_OFFSET, price)
+                        : uint256(amountOutOfBin).mulShiftRoundUp(price, Constants.SCALE_OFFSET)
+                );
 
                 uint128 totalFee = parameters.getTotalFee(binStep);
                 uint128 feeAmount = amountOutOfBin.getFeeAmount(totalFee);
@@ -376,7 +379,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
         override
         returns (uint128 amountInLeft, uint128 amountOut, uint128 fee)
     {
-        (bytes32 amountsIn, bytes32 amountsOut, bytes32 fees) = (amountIn.encode(swapForY), 0, 0);
+        bytes32 amountsInLeft = amountIn.encode(!swapForY);
 
         bytes32 parameters = _parameters;
         uint8 binStep = _binStep();
@@ -391,16 +394,17 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
                 parameters = parameters.updateVolatilityAccumulated(id);
 
                 (bytes32 amountsInToBin, bytes32 amountsOutOfBin, bytes32 totalFees) =
-                    binReserves.getAmounts(parameters, binStep, swapForY, id, amountsIn);
+                    binReserves.getAmounts(parameters, binStep, swapForY, id, amountsInLeft);
 
                 if (amountsInToBin > 0) {
-                    amountsIn = amountsIn.sub(amountsInToBin.add(totalFees));
-                    fees = fees.add(totalFees);
-                    amountsOut = amountsOut.add(amountsOutOfBin);
+                    amountsInLeft = amountsInLeft.sub(amountsInToBin.add(totalFees));
+                    amountOut += amountsOutOfBin.decode(swapForY);
+
+                    fee += totalFees.decode(!swapForY);
                 }
             }
 
-            if (amountsIn == 0) {
+            if (amountsInLeft == 0) {
                 break;
             } else {
                 uint24 nextId = _getNextNonEmptyBin(swapForY, id);
@@ -411,8 +415,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
             }
         }
 
-        (amountInLeft, amountOut, fee) =
-            (amountsIn.decode(swapForY), amountsOut.decode(swapForY), fees.decode(swapForY));
+        amountInLeft = amountsInLeft.decode(!swapForY);
     }
 
     /**
@@ -782,7 +785,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
      * @return The encoded fees amounts
      */
     function _getFlashLoanFees(bytes32 amounts) private view returns (bytes32) {
-        uint128 fee = _factory.getFlashLoanFee();
+        uint128 fee = uint128(_factory.flashLoanFee());
         (uint128 x, uint128 y) = amounts.decode();
 
         unchecked {

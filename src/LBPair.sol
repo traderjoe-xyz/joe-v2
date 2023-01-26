@@ -373,8 +373,13 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
      * @return amountOut The amount of token Y or X that can be swapped out
      * @return fee The fee of the swap
      */
-    function getSwapOut(uint128 amountIn, bool swapForY) external view override returns (uint128, uint128, uint128) {
-        (bytes32 amountsIn, bytes32 amountsOut, bytes32 fees) = (amountIn.encode(!swapForY), 0, 0);
+    function getSwapOut(uint128 amountIn, bool swapForY)
+        external
+        view
+        override
+        returns (uint128 amountInLeft, uint128 amountOut, uint128 fee)
+    {
+        bytes32 amountsInLeft = amountIn.encode(!swapForY);
 
         bytes32 parameters = _parameters;
         uint8 binStep = _binStep();
@@ -389,16 +394,17 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
                 parameters = parameters.updateVolatilityAccumulated(id);
 
                 (bytes32 amountsInToBin, bytes32 amountsOutOfBin, bytes32 totalFees) =
-                    binReserves.getAmounts(parameters, binStep, swapForY, id, amountsIn);
+                    binReserves.getAmounts(parameters, binStep, swapForY, id, amountsInLeft);
 
                 if (amountsInToBin > 0) {
-                    amountsIn = amountsIn.sub(amountsInToBin.add(totalFees));
-                    fees = fees.add(totalFees);
-                    amountsOut = amountsOut.add(amountsOutOfBin);
+                    amountsInLeft = amountsInLeft.sub(amountsInToBin.add(totalFees));
+                    amountOut += amountsOutOfBin.decode(swapForY);
+
+                    fee += totalFees.decode(!swapForY);
                 }
             }
 
-            if (amountsIn == 0) {
+            if (amountsInLeft == 0) {
                 break;
             } else {
                 uint24 nextId = _getNextNonEmptyBin(swapForY, id);
@@ -409,7 +415,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
             }
         }
 
-        return (amountsIn.decode(!swapForY), amountsOut.decode(swapForY), fees.decode(!swapForY));
+        amountInLeft = amountsInLeft.decode(!swapForY);
     }
 
     /**

@@ -374,7 +374,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
      * @return fee The fee of the swap
      */
     function getSwapOut(uint128 amountIn, bool swapForY) external view override returns (uint128, uint128, uint128) {
-        (bytes32 amountsIn, bytes32 amountsOut, bytes32 fees) = (amountIn.encode(swapForY), 0, 0);
+        (bytes32 amountsIn, bytes32 amountsOut, bytes32 fees) = (amountIn.encode(!swapForY), 0, 0);
 
         bytes32 parameters = _parameters;
         uint8 binStep = _binStep();
@@ -409,7 +409,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
             }
         }
 
-        return (amountsIn.decode(swapForY), amountsOut.decode(swapForY), fees.decode(swapForY));
+        return (amountsIn.decode(!swapForY), amountsOut.decode(swapForY), fees.decode(!swapForY));
     }
 
     /**

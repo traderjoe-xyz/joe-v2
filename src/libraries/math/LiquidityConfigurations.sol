@@ -3,7 +3,7 @@
 pragma solidity 0.8.10;
 
 import "./PackedUint128Math.sol";
-import "./Decoder.sol";
+import "./Encoded.sol";
 
 /**
  * @title Liquidity Book Liquidity Configurations Library
@@ -11,16 +11,16 @@ import "./Decoder.sol";
  * @notice This library contains functions to encode and decode the config of a pool and interact with the encoded bytes32.
  */
 library LiquidityConfigurations {
-    using Decoder for bytes32;
     using PackedUint128Math for bytes32;
     using PackedUint128Math for uint128;
+    using Encoded for bytes32;
 
     error LiquidityConfigurations__InvalidConfig();
 
-    uint256 private constant _OFFSET_DISTRIBUTION_Y = 24;
-    uint256 private constant _OFFSET_DISTRIBUTION_X = 88;
+    uint256 private constant OFFSET_DISTRIBUTION_Y = 24;
+    uint256 private constant OFFSET_DISTRIBUTION_X = 88;
 
-    uint256 private constant _PRECISION = 1e18;
+    uint256 private constant PRECISION = 1e18;
 
     /**
      * @dev Encode the distributionX, distributionY and id into a single bytes32
@@ -39,7 +39,7 @@ library LiquidityConfigurations {
         returns (bytes32 config)
     {
         assembly {
-            config := or(shl(_OFFSET_DISTRIBUTION_Y, distributionX), or(shl(_OFFSET_DISTRIBUTION_X, distributionY), id))
+            config := or(shl(OFFSET_DISTRIBUTION_X, distributionX), or(shl(OFFSET_DISTRIBUTION_Y, distributionY), id))
         }
     }
 
@@ -59,13 +59,11 @@ library LiquidityConfigurations {
         pure
         returns (uint64 distributionX, uint64 distributionY, uint24 id)
     {
-        assembly {
-            distributionX := shr(_OFFSET_DISTRIBUTION_Y, config)
-            distributionY := shr(_OFFSET_DISTRIBUTION_X, config)
-            id := config
-        }
+        distributionX = config.decodeUint64(OFFSET_DISTRIBUTION_X);
+        distributionY = config.decodeUint64(OFFSET_DISTRIBUTION_Y);
+        id = config.decodeUint24(0);
 
-        if (uint256(config) > type(uint152).max || distributionX > _PRECISION || distributionY > _PRECISION) {
+        if (uint256(config) > type(uint152).max || distributionX > PRECISION || distributionY > PRECISION) {
             revert LiquidityConfigurations__InvalidConfig();
         }
     }
@@ -91,8 +89,8 @@ library LiquidityConfigurations {
         (uint128 x1, uint128 x2) = amountsIn.decode();
 
         assembly {
-            x1 := div(mul(x1, distributionX), _PRECISION)
-            x2 := div(mul(x2, distributionY), _PRECISION)
+            x1 := div(mul(x1, distributionX), PRECISION)
+            x2 := div(mul(x2, distributionY), PRECISION)
         }
 
         return (x1.encode(x2), id);

@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.10;
 
+import "./Encoded.sol";
+
 /**
  * @title Liquidity Book Sample Math Library
  * @author Trader Joe
@@ -16,11 +18,13 @@ pragma solidity 0.8.10;
  * 216 - 256: sample creation timestamp (40 bits)
  */
 library SampleMath {
-    uint256 internal constant _SHIFT_CUMULATIVE_ID = 16;
-    uint256 internal constant _SHIFT_CUMULATIVE_VOLATILITY = 80;
-    uint256 internal constant _SHIFT_CUMULATIVE_BIN_CROSSED = 144;
-    uint256 internal constant _SHIFT_SAMPLE_LIFETIME = 208;
-    uint256 internal constant _SHIFT_SAMPLE_CREATION = 216;
+    using Encoded for bytes32;
+
+    uint256 internal constant OFFSET_CUMULATIVE_ID = 16;
+    uint256 internal constant OFFSET_CUMULATIVE_VOLATILITY = 80;
+    uint256 internal constant OFFSET_CUMULATIVE_BIN_CROSSED = 144;
+    uint256 internal constant OFFSET_SAMPLE_LIFETIME = 208;
+    uint256 internal constant OFFSET_SAMPLE_CREATION = 216;
 
     /**
      * @dev Encodes a sample
@@ -41,122 +45,82 @@ library SampleMath {
         uint40 createdAt
     ) internal pure returns (bytes32 sample) {
         assembly {
-            sample := or(oracleLength, shl(_SHIFT_CUMULATIVE_ID, cumulativeId))
-            sample := or(sample, shl(_SHIFT_CUMULATIVE_VOLATILITY, cumulativeVolatility))
-            sample := or(sample, shl(_SHIFT_CUMULATIVE_BIN_CROSSED, cumulativeBinCrossed))
-            sample := or(sample, shl(_SHIFT_SAMPLE_LIFETIME, sampleLifetime))
-            sample := or(sample, shl(_SHIFT_SAMPLE_CREATION, createdAt))
+            sample := or(oracleLength, shl(OFFSET_CUMULATIVE_ID, cumulativeId))
+            sample := or(sample, shl(OFFSET_CUMULATIVE_VOLATILITY, cumulativeVolatility))
+            sample := or(sample, shl(OFFSET_CUMULATIVE_BIN_CROSSED, cumulativeBinCrossed))
+            sample := or(sample, shl(OFFSET_SAMPLE_LIFETIME, sampleLifetime))
+            sample := or(sample, shl(OFFSET_SAMPLE_CREATION, createdAt))
         }
-    }
-
-    /**
-     * @dev Decodes an encoded sample and return all the values
-     * @param sample The encoded sample
-     * @return oracleLength The oracle length
-     * @return cumulativeId The cumulative id
-     * @return cumulativeVolatility The cumulative volatility
-     * @return cumulativeBinCrossed The cumulative bin crossed
-     * @return sampleLifetime The sample lifetime
-     * @return createdAt The sample creation timestamp
-     */
-    function decode(bytes32 sample)
-        internal
-        pure
-        returns (
-            uint16 oracleLength,
-            uint64 cumulativeId,
-            uint64 cumulativeVolatility,
-            uint64 cumulativeBinCrossed,
-            uint8 sampleLifetime,
-            uint40 createdAt
-        )
-    {
-        oracleLength = getOracleLength(sample);
-        cumulativeId = getCumulativeId(sample);
-        cumulativeVolatility = getCumulativeVolatility(sample);
-        cumulativeBinCrossed = getCumulativeBinCrossed(sample);
-        sampleLifetime = getSampleLifetime(sample);
-        createdAt = getSampleCreation(sample);
     }
 
     /**
      * @dev Gets the oracle length from an encoded sample
-     * @param sample The encoded sample
+     * @param sample The encoded sample as follows:
+     * [0 - 16[: oracle length (16 bits)
+     * [16 - 256[: any (240 bits)
      * @return length The oracle length
      */
     function getOracleLength(bytes32 sample) internal pure returns (uint16 length) {
-        assembly {
-            length := sample
-        }
+        return sample.decodeUint16(0);
     }
 
     /**
      * @dev Gets the cumulative id from an encoded sample
      * @param sample The encoded sample as follows:
-     * [0 - 16[: oracle length (16 bits)
-     * [16 - 256[: any (240 bits)
+     * [0 - 16[: any (16 bits)
+     * [16 - 80[: cumulative id (64 bits)
+     * [80 - 256[: any (176 bits)
      * @return id The cumulative id
      */
     function getCumulativeId(bytes32 sample) internal pure returns (uint64 id) {
-        assembly {
-            id := shr(_SHIFT_CUMULATIVE_ID, sample)
-        }
+        return sample.decodeUint64(OFFSET_CUMULATIVE_ID);
     }
 
     /**
      * @dev Gets the cumulative volatility accumulated from an encoded sample
      * @param sample The encoded sample as follows:
-     * [0 - 16[: any (16 bits)
-     * [16 - 80[: cumulative id (64 bits)
-     * [80 - 256[: any (176 bits)
+     * [0 - 80[: any (80 bits)
+     * [80 - 144[: cumulative volatility accumulated (64 bits)
+     * [144 - 256[: any (112 bits)
      * @return volatilityAccumulated The cumulative volatility
      */
     function getCumulativeVolatility(bytes32 sample) internal pure returns (uint64 volatilityAccumulated) {
-        assembly {
-            volatilityAccumulated := shr(_SHIFT_CUMULATIVE_VOLATILITY, sample)
-        }
+        return sample.decodeUint64(OFFSET_CUMULATIVE_VOLATILITY);
     }
 
     /**
      * @dev Gets the cumulative bin crossed from an encoded sample
      * @param sample The encoded sample as follows:
-     * [0 - 80[: any (80 bits)
-     * [80 - 144[: cumulative volatility accumulated (64 bits)
-     * [144 - 256[: any (112 bits)
+     * [0 - 144[: any (144 bits)
+     * [144 - 208[: cumulative bin crossed (64 bits)
+     * [208 - 256[: any (48 bits)
      * @return binCrossed The cumulative bin crossed
      */
     function getCumulativeBinCrossed(bytes32 sample) internal pure returns (uint64 binCrossed) {
-        assembly {
-            binCrossed := shr(_SHIFT_CUMULATIVE_BIN_CROSSED, sample)
-        }
+        return sample.decodeUint64(OFFSET_CUMULATIVE_BIN_CROSSED);
     }
 
     /**
      * @dev Gets the sample lifetime from an encoded sample
      * @param sample The encoded sample as follows:
-     * [0 - 144[: any (144 bits)
-     * [144 - 208[: cumulative bin crossed (64 bits)
-     * [208 - 256[: any (48 bits)
+     * [0 - 208[: any (208 bits)
+     * [208 - 216[: sample lifetime (8 bits)
+     * [216 - 256[: any (40 bits)
      * @return lifetime The sample lifetime
      */
     function getSampleLifetime(bytes32 sample) internal pure returns (uint8 lifetime) {
-        assembly {
-            lifetime := shr(_SHIFT_SAMPLE_LIFETIME, sample)
-        }
+        return sample.decodeUint8(OFFSET_SAMPLE_LIFETIME);
     }
 
     /**
      * @dev Gets the sample creation timestamp from an encoded sample
      * @param sample The encoded sample as follows:
-     * [0 - 208[: any (208 bits)
-     * [208 - 216[: sample lifetime (8 bits)
-     * [216 - 256[: any (40 bits)
+     * [0 - 216[: any (216 bits)
+     * [216 - 256[: sample creation timestamp (40 bits)
      * @return creation The sample creation timestamp
      */
     function getSampleCreation(bytes32 sample) internal pure returns (uint40 creation) {
-        assembly {
-            creation := shr(_SHIFT_SAMPLE_CREATION, sample)
-        }
+        return sample.decodeUint40(OFFSET_SAMPLE_CREATION);
     }
 
     /**

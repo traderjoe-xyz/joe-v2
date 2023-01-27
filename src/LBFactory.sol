@@ -7,7 +7,7 @@ import "openzeppelin/utils/structs/EnumerableSet.sol";
 
 import "./libraries/BinHelper.sol";
 import "./libraries/Constants.sol";
-import "./libraries/math/Decoder.sol";
+import "./libraries/math/Encoded.sol";
 import "./libraries/PendingOwnable.sol";
 import "./libraries/math/SafeCast.sol";
 import "./interfaces/ILBFactory.sol";
@@ -20,7 +20,7 @@ import "./libraries/ImmutableClone.sol";
 /// Unless the `creationUnlocked` is `true`, only the owner of the factory can create pairs.
 contract LBFactory is PendingOwnable, ILBFactory {
     using SafeCast for uint256;
-    using Decoder for bytes32;
+    using Encoded for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
     using PairParameterHelper for bytes32;
 

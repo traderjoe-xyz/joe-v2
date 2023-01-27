@@ -19,8 +19,8 @@ library PackedUint128Math {
     error PackedUint128Math__AddFirstSubSecondOverflow();
     error PackedUint128Math__MultiplierBiggerThanMax();
 
-    uint256 private constant _OFFSET = 128;
-    uint256 private constant _MASK_128 = 0xffffffffffffffffffffffffffffffff;
+    uint256 private constant OFFSET = 128;
+    uint256 private constant MASK_128 = 0xffffffffffffffffffffffffffffffff;
 
     /**
      * @dev Encodes two uint128 into a single bytes32
@@ -32,7 +32,7 @@ library PackedUint128Math {
      */
     function encode(uint128 x1, uint128 x2) internal pure returns (bytes32 z) {
         assembly {
-            z := or(x1, shl(_OFFSET, x2))
+            z := or(x1, shl(OFFSET, x2))
         }
     }
 
@@ -58,7 +58,7 @@ library PackedUint128Math {
      */
     function encodeSecond(uint128 x2) internal pure returns (bytes32 z) {
         assembly {
-            z := shl(_OFFSET, x2)
+            z := shl(OFFSET, x2)
         }
     }
 
@@ -88,8 +88,8 @@ library PackedUint128Math {
      */
     function decode(bytes32 z) internal pure returns (uint128 x1, uint128 x2) {
         assembly {
-            x1 := and(z, _MASK_128)
-            x2 := shr(_OFFSET, z)
+            x1 := and(z, MASK_128)
+            x2 := shr(OFFSET, z)
         }
     }
 
@@ -102,7 +102,7 @@ library PackedUint128Math {
      */
     function decodeFirst(bytes32 z) internal pure returns (uint128 x1) {
         assembly {
-            x1 := and(z, _MASK_128)
+            x1 := and(z, MASK_128)
         }
     }
 
@@ -115,7 +115,7 @@ library PackedUint128Math {
      */
     function decodeSecond(bytes32 z) internal pure returns (uint128 x2) {
         assembly {
-            x2 := shr(_OFFSET, z)
+            x2 := shr(OFFSET, z)
         }
     }
 
@@ -263,11 +263,11 @@ library PackedUint128Math {
         // ```
         // max(x{1,2} * multiplier) = type(uint128).max * type(uint128).max
         //                      = type(uint256).max - (2**129 - 2)
-        // _MASK_128 = 2**128 - 1 < 2**129 - 2
+        // MASK_128 = 2**128 - 1 < 2**129 - 2
         // ```
         assembly {
-            x1 := shr(_OFFSET, add(mul(x1, multiplier), _MASK_128))
-            x2 := shr(_OFFSET, add(mul(x2, multiplier), _MASK_128))
+            x1 := shr(OFFSET, add(mul(x1, multiplier), MASK_128))
+            x2 := shr(OFFSET, add(mul(x2, multiplier), MASK_128))
         }
 
         return encode(x1, x2);

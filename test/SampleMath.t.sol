@@ -78,24 +78,6 @@ contract SampleMathTest is Test {
         assertEq(sample.getSampleCreation(), createdAt, "testFuzz_encode::6");
     }
 
-    function testFuzz_decode(bytes32 sample) external {
-        (
-            uint16 oracleLength,
-            uint64 cumulativeId,
-            uint64 cumulativeVolatility,
-            uint64 cumulativeBinCrossed,
-            uint8 sampleLifetime,
-            uint40 createdAt
-        ) = SampleMath.decode(sample);
-
-        assertEq(oracleLength, sample.getOracleLength(), "testFuzz_decode::1");
-        assertEq(cumulativeId, sample.getCumulativeId(), "testFuzz_decode::2");
-        assertEq(cumulativeVolatility, sample.getCumulativeVolatility(), "testFuzz_decode::3");
-        assertEq(cumulativeBinCrossed, sample.getCumulativeBinCrossed(), "testFuzz_decode::4");
-        assertEq(sampleLifetime, sample.getSampleLifetime(), "testFuzz_decode::5");
-        assertEq(createdAt, sample.getSampleCreation(), "testFuzz_decode::6");
-    }
-
     function testFuzz_GetWeightedAverage(bytes32 sample1, bytes32 sample2, uint40 weight1, uint40 weight2) external {
         uint256 totalWeight = uint256(weight1) + weight2;
 

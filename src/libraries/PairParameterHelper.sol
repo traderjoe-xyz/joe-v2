@@ -4,6 +4,7 @@ pragma solidity 0.8.10;
 
 import "./Constants.sol";
 import "./math/SafeCast.sol";
+import "./math/Encoded.sol";
 
 /**
  * @title Liquidity Book Pair Parameter Helper Library
@@ -26,177 +27,186 @@ import "./math/SafeCast.sol";
  */
 library PairParameterHelper {
     using SafeCast for uint256;
+    using Encoded for bytes32;
 
     error PairParametersHelper__InvalidParameter();
 
-    uint256 internal constant _FILTER_PERIOD_OFFSET = 16;
-    uint256 internal constant _DECAY_PERIOD_OFFSET = 28;
-    uint256 internal constant _REDUCTION_FACTOR_OFFSET = 40;
-    uint256 internal constant _VARIABLE_FEE_CONTROL_OFFSET = 54;
-    uint256 internal constant _PROTOCOL_SHARE_OFFSET = 78;
-    uint256 internal constant _MAX_VOL_ACC_OFFSET = 92;
-    uint256 internal constant _VOL_ACC_OFFSET = 112;
-    uint256 internal constant _VOLATILITY_REFERENCE_OFFSET = 132;
-    uint256 internal constant _INDEX_REF_OFFSET = 152;
-    uint256 internal constant _TIME_OFFSET = 176;
-    uint256 internal constant _ORACLE_ID_OFFSET = 216;
-    uint256 internal constant _ACTIVE_ID_OFFSET = 232;
+    uint256 internal constant OFFSET_FILTER_PERIOD = 16;
+    uint256 internal constant OFFSET_DECAY_PERIOD = 28;
+    uint256 internal constant OFFSET_REDUCTION_FACTOR = 40;
+    uint256 internal constant OFFSET_VAR_FEE_CONTROL = 54;
+    uint256 internal constant OFFSET_PROTOCOL_SHARE = 78;
+    uint256 internal constant OFFSET_MAX_VOL_ACC = 92;
+    uint256 internal constant OFFSET_VOL_ACC = 112;
+    uint256 internal constant OFFSET_VOL_REF = 132;
+    uint256 internal constant OFFSET_ID_REF = 152;
+    uint256 internal constant OFFSET_TIME_LAST_UPDATE = 176;
+    uint256 internal constant OFFSET_ORACLE_ID = 216;
+    uint256 internal constant OFFSET_ACTIVE_ID = 232;
 
-    uint256 internal constant _STATIC_PARAMETER_MASK = 0xffffffffffffffffffffffffffff;
-    uint256 internal constant _DYNAMIC_PARAMETER_MASK = 0xffffffffffffffffffffffffffffffffffff;
+    uint256 internal constant MASK_STATIC_PARAMETER = 0xffffffffffffffffffffffffffff;
 
-    uint256 internal constant _BASE_FACTOR_MASK = 0xffff;
-    uint256 internal constant _FILTER_PERIOD_MASK = 0xfff;
-    uint256 internal constant _DECAY_PERIOD_MASK = 0xfff;
-    uint256 internal constant _REDUCTION_FACTOR_MASK = 0x3fff;
-    uint256 internal constant _VARIABLE_FEE_CONTROL_MASK = 0xffffff;
-    uint256 internal constant _PROTOCOL_SHARE_MASK = 0x3fff;
-    uint256 internal constant _VOLATILITY_MASK = 0xfffff;
-    uint256 internal constant _INDEX_REF_MASK = 0xffffff;
-    uint256 internal constant _TIME_MASK = 0xffffffffff;
-    uint256 internal constant _ORACLE_ID_MASK = 0xffff;
-    uint256 internal constant _ACTIVE_ID_MASK = 0xffffff;
-
-    uint256 internal constant _MAX_BASIS_POINTS = 10_000;
-    uint256 internal constant _MAX_PROTOCOL_SHARE = 2_500;
-    uint256 internal constant _PRECISION = 1e18;
-    uint256 internal constant _PRECISION_SUB_ONE = _PRECISION - 1;
+    uint256 internal constant MAX_OFFSET_PROTOCOL_SHARE = 2_500;
 
     /**
      * @dev Get the base factor from the encoded pair parameters
-     * @param params The encoded pair parameters
+     * @param params The encoded pair parameters, as follows:
+     * [0 - 16[: base factor (16 bits)
+     * [16 - 256[: other parameters
      * @return baseFactor The base factor
      */
     function getBaseFactor(bytes32 params) internal pure returns (uint16 baseFactor) {
-        assembly {
-            baseFactor := and(params, _BASE_FACTOR_MASK)
-        }
+        baseFactor = params.decodeUint16(0);
     }
 
     /**
      * @dev Get the filter period from the encoded pair parameters
-     * @param params The encoded pair parameters
+     * @param params The encoded pair parameters, as follows:
+     * [0 - 16[: other parameters
+     * [16 - 28[: filter period (12 bits)
+     * [28 - 256[: other parameters
      * @return filterPeriod The filter period
      */
     function getFilterPeriod(bytes32 params) internal pure returns (uint16 filterPeriod) {
-        assembly {
-            filterPeriod := shr(_FILTER_PERIOD_OFFSET, and(params, _FILTER_PERIOD_MASK))
-        }
+        filterPeriod = params.decodeUint12(OFFSET_FILTER_PERIOD);
     }
 
     /**
      * @dev Get the decay period from the encoded pair parameters
-     * @param params The encoded pair parameters
+     * @param params The encoded pair parameters, as follows:
+     * [0 - 28[: other parameters
+     * [28 - 40[: decay period (12 bits)
+     * [40 - 256[: other parameters
      * @return decayPeriod The decay period
      */
     function getDecayPeriod(bytes32 params) internal pure returns (uint16 decayPeriod) {
-        assembly {
-            decayPeriod := shr(_DECAY_PERIOD_OFFSET, and(params, _DECAY_PERIOD_MASK))
-        }
+        decayPeriod = params.decodeUint12(OFFSET_DECAY_PERIOD);
     }
 
     /**
      * @dev Get the reduction factor from the encoded pair parameters
-     * @param params The encoded pair parameters
+     * @param params The encoded pair parameters, as follows:
+     * [0 - 40[: other parameters
+     * [40 - 54[: reduction factor (14 bits)
+     * [54 - 256[: other parameters
      * @return reductionFactor The reduction factor
      */
     function getReductionFactor(bytes32 params) internal pure returns (uint16 reductionFactor) {
-        assembly {
-            reductionFactor := shr(_REDUCTION_FACTOR_OFFSET, and(params, _REDUCTION_FACTOR_MASK))
-        }
+        reductionFactor = params.decodeUint14(OFFSET_REDUCTION_FACTOR);
     }
 
     /**
      * @dev Get the variable fee control from the encoded pair parameters
-     * @param params The encoded pair parameters
+     * @param params The encoded pair parameters, as follows:
+     * [0 - 54[: other parameters
+     * [54 - 78[: variable fee control (24 bits)
+     * [78 - 256[: other parameters
      * @return variableFeeControl The variable fee control
      */
     function getVariableFeeControl(bytes32 params) internal pure returns (uint24 variableFeeControl) {
-        assembly {
-            variableFeeControl := shr(_VARIABLE_FEE_CONTROL_OFFSET, and(params, _VARIABLE_FEE_CONTROL_MASK))
-        }
+        variableFeeControl = params.decodeUint24(OFFSET_VAR_FEE_CONTROL);
     }
 
     /**
      * @dev Get the protocol share from the encoded pair parameters
-     * @param params The encoded pair parameters
+     * @param params The encoded pair parameters, as follows:
+     * [0 - 78[: other parameters
+     * [78 - 92[: protocol share (14 bits)
+     * [92 - 256[: other parameters
      * @return protocolShare The protocol share
      */
     function getProtocolShare(bytes32 params) internal pure returns (uint16 protocolShare) {
-        assembly {
-            protocolShare := shr(_PROTOCOL_SHARE_OFFSET, and(params, _PROTOCOL_SHARE_MASK))
-        }
+        protocolShare = params.decodeUint14(OFFSET_PROTOCOL_SHARE);
     }
 
     /**
      * @dev Get the max volatility accumulated from the encoded pair parameters
-     * @param params The encoded pair parameters
+     * @param params The encoded pair parameters, as follows:
+     * [0 - 92[: other parameters
+     * [92 - 112[: max volatility accumulated (20 bits)
+     * [112 - 256[: other parameters
      * @return maxVolatilityAccumulated The max volatility accumulated
      */
     function getMaxVolatilityAccumulated(bytes32 params) internal pure returns (uint24 maxVolatilityAccumulated) {
-        assembly {
-            maxVolatilityAccumulated := shr(_MAX_VOL_ACC_OFFSET, and(params, _VOLATILITY_MASK))
-        }
+        maxVolatilityAccumulated = params.decodeUint20(OFFSET_MAX_VOL_ACC);
     }
 
     /**
      * @dev Get the volatility accumulated from the encoded pair parameters
-     * @param params The encoded pair parameters
+     * @param params The encoded pair parameters, as follows:
+     * [0 - 112[: other parameters
+     * [112 - 132[: volatility accumulated (20 bits)
+     * [132 - 256[: other parameters
      * @return volatilityAccumulated The volatility accumulated
      */
     function getVolatilityAccumulated(bytes32 params) internal pure returns (uint24 volatilityAccumulated) {
-        assembly {
-            volatilityAccumulated := shr(_VOL_ACC_OFFSET, and(params, _VOLATILITY_MASK))
-        }
+        volatilityAccumulated = params.decodeUint20(OFFSET_VOL_ACC);
     }
 
     /**
      * @dev Get the volatility reference from the encoded pair parameters
-     * @param params The encoded pair parameters
+     * @param params The encoded pair parameters, as follows:
+     * [0 - 132[: other parameters
+     * [132 - 152[: volatility reference (20 bits)
+     * [152 - 256[: other parameters
      * @return volatilityReference The volatility reference
      */
     function getVolatilityReference(bytes32 params) internal pure returns (uint24 volatilityReference) {
-        assembly {
-            volatilityReference := shr(_VOLATILITY_REFERENCE_OFFSET, and(params, _VOLATILITY_MASK))
-        }
+        volatilityReference = params.decodeUint20(OFFSET_VOL_REF);
     }
 
     /**
      * @dev Get the index reference from the encoded pair parameters
-     * @param params The encoded pair parameters
+     * @param params The encoded pair parameters, as follows:
+     * [0 - 152[: other parameters
+     * [152 - 176[: index reference (24 bits)
+     * [176 - 256[: other parameters
      * @return idReference The index reference
      */
     function getIdReference(bytes32 params) internal pure returns (uint24 idReference) {
-        assembly {
-            idReference := shr(_INDEX_REF_OFFSET, and(params, _INDEX_REF_MASK))
-        }
+        idReference = params.decodeUint24(OFFSET_ID_REF);
     }
 
     /**
      * @dev Get the time of last update from the encoded pair parameters
-     * @param params The encoded pair parameters
+     * @param params The encoded pair parameters, as follows:
+     * [0 - 176[: other parameters
+     * [176 - 216[: time of last update (40 bits)
+     * [216 - 256[: other parameters
      * @return timeOflastUpdate The time of last update
      */
     function getTimeOfLastUpdate(bytes32 params) internal pure returns (uint40 timeOflastUpdate) {
-        assembly {
-            timeOflastUpdate := shr(_TIME_OFFSET, and(params, _TIME_MASK))
-        }
+        timeOflastUpdate = params.decodeUint40(OFFSET_TIME_LAST_UPDATE);
     }
 
     /**
      * @dev Get the oracle id from the encoded pair parameters
-     * @param params The encoded pair parameters
+     * @param params The encoded pair parameters, as follows:
+     * [0 - 216[: other parameters
+     * [216 - 232[: oracle id (16 bits)
+     * [232 - 256[: other parameters
      * @return oracleId The oracle id
      */
     function getOracleId(bytes32 params) internal pure returns (uint16 oracleId) {
-        assembly {
-            oracleId := shr(_ORACLE_ID_OFFSET, params)
-        }
+        oracleId = params.decodeUint16(OFFSET_ORACLE_ID);
+    }
+
+    /**
+     * @dev Get the active index from the encoded pair parameters
+     * @param params The encoded pair parameters, as follows:
+     * [0 - 232[: other parameters
+     * [232 - 256[: active index (24 bits)
+     * @return activeId The active index
+     */
+    function getActiveId(bytes32 params) internal pure returns (uint24 activeId) {
+        activeId = params.decodeUint24(OFFSET_ACTIVE_ID);
     }
 
     /**
      * @dev Get the delta between the active index and the reference index
-     * @param params The encoded pair parameters
+     * @param params The encoded pair parameters, as follows:
+     * [0 - 232[: other parameters
+     * [232 - 256[: active index (24 bits)
      * @param activeId The active index
      * @return The delta
      */
@@ -208,28 +218,13 @@ library PairParameterHelper {
     }
 
     /**
-     * @dev Get the active index from the encoded pair parameters
-     * @param params The encoded pair parameters
-     * @return activeId The active index
-     */
-    function getActiveId(bytes32 params) internal pure returns (uint24 activeId) {
-        assembly {
-            activeId := shr(_ACTIVE_ID_OFFSET, params)
-        }
-    }
-
-    /**
      * @dev Set the oracle id in the encoded pair parameters
      * @param params The encoded pair parameters
      * @param oracleId The oracle id
      * @return The updated encoded pair parameters
      */
     function setOracleId(bytes32 params, uint16 oracleId) internal pure returns (bytes32) {
-        assembly {
-            params := and(params, shl(_ORACLE_ID_OFFSET, not(_ORACLE_ID_MASK)))
-            params := or(params, shl(_ORACLE_ID_OFFSET, oracleId))
-        }
-        return params;
+        return params.set(oracleId, Encoded.MASK_UINT16, OFFSET_ORACLE_ID);
     }
 
     /**
@@ -239,13 +234,9 @@ library PairParameterHelper {
      * @return The updated encoded pair parameters
      */
     function setVolatilityReference(bytes32 params, uint24 volRef) internal pure returns (bytes32) {
-        if (volRef > _VOLATILITY_MASK) revert PairParametersHelper__InvalidParameter();
+        if (volRef > Encoded.MASK_UINT20) revert PairParametersHelper__InvalidParameter();
 
-        assembly {
-            params := and(params, shl(_VOLATILITY_REFERENCE_OFFSET, not(_VOLATILITY_MASK)))
-            params := or(params, shl(_VOLATILITY_REFERENCE_OFFSET, volRef))
-        }
-        return params;
+        return params.set(volRef, Encoded.MASK_UINT20, OFFSET_VOL_REF);
     }
 
     /**
@@ -255,10 +246,7 @@ library PairParameterHelper {
      * @return newParams The updated encoded pair parameters
      */
     function setActiveId(bytes32 params, uint24 activeId) internal pure returns (bytes32 newParams) {
-        assembly {
-            params := and(params, shl(_ACTIVE_ID_OFFSET, not(_ACTIVE_ID_MASK)))
-            newParams := or(params, shl(_ACTIVE_ID_OFFSET, activeId))
-        }
+        return params.set(activeId, Encoded.MASK_UINT24, OFFSET_ACTIVE_ID);
     }
 
     /**
@@ -284,23 +272,23 @@ library PairParameterHelper {
         uint24 maxVolatilityAccumulated
     ) internal pure returns (bytes32) {
         if (
-            filterPeriod > decayPeriod || decayPeriod > _DECAY_PERIOD_MASK || reductionFactor > _MAX_BASIS_POINTS
-                || protocolShare > _MAX_PROTOCOL_SHARE || maxVolatilityAccumulated > _VOLATILITY_MASK
+            filterPeriod > decayPeriod || decayPeriod > Encoded.MASK_UINT12
+                || reductionFactor > Constants.BASIS_POINT_MAX || protocolShare > MAX_OFFSET_PROTOCOL_SHARE
+                || maxVolatilityAccumulated > Encoded.MASK_UINT20
         ) revert PairParametersHelper__InvalidParameter();
 
-        assembly {
-            params := and(params, not(_STATIC_PARAMETER_MASK))
+        uint256 staticParams;
 
-            params := or(params, and(baseFactor, _BASE_FACTOR_MASK))
-            params := or(params, shl(_FILTER_PERIOD_OFFSET, and(filterPeriod, _FILTER_PERIOD_MASK)))
-            params := or(params, shl(_DECAY_PERIOD_OFFSET, and(decayPeriod, _DECAY_PERIOD_MASK)))
-            params := or(params, shl(_REDUCTION_FACTOR_OFFSET, and(reductionFactor, _REDUCTION_FACTOR_MASK)))
-            params := or(params, shl(_VARIABLE_FEE_CONTROL_OFFSET, and(variableFeeControl, _VARIABLE_FEE_CONTROL_MASK)))
-            params := or(params, shl(_PROTOCOL_SHARE_OFFSET, and(protocolShare, _PROTOCOL_SHARE_MASK)))
-            params := or(params, shl(_MAX_VOL_ACC_OFFSET, and(maxVolatilityAccumulated, _VOLATILITY_MASK)))
+        assembly {
+            staticParams := or(baseFactor, shl(OFFSET_FILTER_PERIOD, filterPeriod))
+            staticParams := or(staticParams, shl(OFFSET_DECAY_PERIOD, decayPeriod))
+            staticParams := or(staticParams, shl(OFFSET_REDUCTION_FACTOR, reductionFactor))
+            staticParams := or(staticParams, shl(OFFSET_VAR_FEE_CONTROL, variableFeeControl))
+            staticParams := or(staticParams, shl(OFFSET_PROTOCOL_SHARE, protocolShare))
+            staticParams := or(staticParams, shl(OFFSET_MAX_VOL_ACC, maxVolatilityAccumulated))
         }
 
-        return params;
+        return params.set(staticParams, MASK_STATIC_PARAMETER, 0);
     }
 
     /**
@@ -310,10 +298,7 @@ library PairParameterHelper {
      */
     function updateIdReference(bytes32 params) internal pure returns (bytes32 newParams) {
         uint24 activeId = getActiveId(params);
-        assembly {
-            params := and(params, shl(_INDEX_REF_OFFSET, not(_INDEX_REF_MASK)))
-            newParams := or(params, shl(_INDEX_REF_OFFSET, activeId))
-        }
+        return params.set(activeId, Encoded.MASK_UINT24, OFFSET_ID_REF);
     }
 
     /**
@@ -323,10 +308,7 @@ library PairParameterHelper {
      */
     function updateTimeOfLastUpdate(bytes32 params) internal view returns (bytes32 newParams) {
         uint40 currentTime = block.timestamp.safe40();
-        assembly {
-            params := and(params, shl(_TIME_OFFSET, not(_TIME_MASK)))
-            newParams := or(params, shl(_TIME_OFFSET, currentTime))
-        }
+        return params.set(currentTime, Encoded.MASK_UINT40, OFFSET_TIME_LAST_UPDATE);
     }
 
     /**
@@ -340,28 +322,29 @@ library PairParameterHelper {
 
         uint24 volRef;
         unchecked {
-            volRef = uint24(volAcc * reductionFactor / _MAX_BASIS_POINTS);
+            volRef = uint24(volAcc * reductionFactor / Constants.BASIS_POINT_MAX);
         }
 
         return setVolatilityReference(params, volRef);
     }
 
     /**
-     * @dev Calculates the base fee
+     * @dev Calculates the base fee, with 18 decimals
      * @param params The encoded pair parameters
-     * @param binStep The bin step
+     * @param binStep The bin step (in 20_000th)
      * @return baseFee The base fee
      */
     function getBaseFee(bytes32 params, uint8 binStep) internal pure returns (uint256) {
         unchecked {
-            return uint256(getBaseFactor(params)) * binStep * 1e10;
+            // Base factor is in basis points, binStep is in 20_000th, so we multiply by 5e9
+            return uint256(getBaseFactor(params)) * binStep * 5e9;
         }
     }
 
     /**
      * @dev Calculates the variable fee
      * @param params The encoded pair parameters
-     * @param binStep The bin step
+     * @param binStep The bin step (in 20_000th)
      * @return variableFee The variable fee
      */
     function getVariableFee(bytes32 params, uint8 binStep) internal pure returns (uint256 variableFee) {
@@ -369,8 +352,10 @@ library PairParameterHelper {
 
         if (variableFeeControl != 0) {
             unchecked {
+                // The volatility accumulated is in basis points, binStep is in 20_000th,
+                // and the variable fee control is in basis points, so the result is in 400e18th
                 uint256 prod = uint256(getVolatilityAccumulated(params)) * binStep;
-                variableFee = (prod * prod * variableFeeControl + 99) / 100;
+                variableFee = (prod * prod * variableFeeControl + 399) / 400;
             }
         }
     }
@@ -378,7 +363,7 @@ library PairParameterHelper {
     /**
      * @dev Calculates the total fee, which is the sum of the base fee and the variable fee
      * @param params The encoded pair parameters
-     * @param binStep The bin step
+     * @param binStep The bin step (in 20_000th)
      * @return totalFee The total fee
      */
     function getTotalFee(bytes32 params, uint8 binStep) internal pure returns (uint128) {
@@ -394,22 +379,18 @@ library PairParameterHelper {
      * @return The updated encoded pair parameters
      */
     function updateVolatilityAccumulated(bytes32 params, uint24 activeId) internal pure returns (bytes32) {
-        uint24 deltaId = getDeltaId(params, activeId);
+        uint256 deltaId = getDeltaId(params, activeId);
 
         uint256 volAcc;
         unchecked {
-            volAcc = (uint256(getVolatilityAccumulated(params)) + deltaId * _MAX_BASIS_POINTS);
+            volAcc = (uint256(getVolatilityAccumulated(params)) + deltaId * Constants.BASIS_POINT_MAX);
         }
 
-        uint24 maxVolAcc = getMaxVolatilityAccumulated(params);
+        uint256 maxVolAcc = getMaxVolatilityAccumulated(params);
 
-        if (volAcc > maxVolAcc) volAcc = maxVolAcc;
+        volAcc = volAcc > maxVolAcc ? maxVolAcc : volAcc;
 
-        assembly {
-            params := and(params, shl(_VOL_ACC_OFFSET, not(_VOLATILITY_MASK)))
-            params := or(params, shl(_VOL_ACC_OFFSET, volAcc))
-        }
-        return params;
+        return params.set(volAcc, Encoded.MASK_UINT20, OFFSET_VOL_ACC);
     }
 
     /**
@@ -418,12 +399,11 @@ library PairParameterHelper {
      * @return The updated encoded pair parameters
      */
     function updateReferences(bytes32 params) internal view returns (bytes32) {
-        uint256 deltaT = block.timestamp - getTimeOfLastUpdate(params);
+        uint256 dt = block.timestamp - getTimeOfLastUpdate(params);
 
-        if (deltaT >= getFilterPeriod(params)) {
+        if (dt >= getFilterPeriod(params)) {
             params = updateIdReference(params);
-            if (deltaT < getDecayPeriod(params)) params = updateVolatilityReference(params);
-            else params = setVolatilityReference(params, 0);
+            params = dt < getDecayPeriod(params) ? updateVolatilityReference(params) : setVolatilityReference(params, 0);
         }
 
         return updateTimeOfLastUpdate(params);

@@ -72,7 +72,7 @@ library OracleHelper {
         bytes32 oldestSample = oracle.samples[oracleId];
 
         // Oreacle is not fully initialized yet
-        if (oldestSample >> SampleMath._SHIFT_CUMULATIVE_ID == 0) {
+        if (oldestSample >> SampleMath.OFFSET_CUMULATIVE_ID == 0) {
             length = oracleId;
             oldestSample = oracle.samples[0];
         }

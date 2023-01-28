@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.10;
 
-import "./interfaces/ILBToken.sol";
+import {ILBToken} from "./interfaces/ILBToken.sol";
 
 /**
  * @title Liquidity Book Token

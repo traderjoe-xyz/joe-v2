@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.10;
 
-import "openzeppelin/token/ERC20/IERC20.sol";
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-import "./ILBPair.sol";
-import "./IPendingOwnable.sol";
+import {ILBPair} from "./ILBPair.sol";
+import {IPendingOwnable} from "./IPendingOwnable.sol";
 
 /// @title Liquidity Book Factory Interface
 /// @author Trader Joe
@@ -44,7 +44,7 @@ interface ILBFactory is IPendingOwnable {
     /// - revisionIndex: The revision index of the LBPair
     /// - implementation: The implementation address of the LBPair
     struct LBPairInformation {
-        uint16 binStep;
+        uint8 binStep;
         ILBPair LBPair;
         bool createdByOwner;
         bool ignoredForRouting;
@@ -87,8 +87,7 @@ interface ILBFactory is IPendingOwnable {
         uint256 reductionFactor,
         uint256 variableFeeControl,
         uint256 protocolShare,
-        uint256 maxVolatilityAccumulated,
-        uint256 sampleLifetime
+        uint256 maxVolatilityAccumulated
     );
 
     event PresetRemoved(uint256 indexed binStep);
@@ -97,15 +96,15 @@ interface ILBFactory is IPendingOwnable {
 
     event QuoteAssetRemoved(IERC20 indexed quoteAsset);
 
-    function MAX_FEE() external pure returns (uint256);
+    function getMaxFee() external pure returns (uint256);
 
-    function MIN_BIN_STEP() external pure returns (uint256);
+    function getMinBinStep() external pure returns (uint256);
 
-    function MAX_BIN_STEP() external pure returns (uint256);
+    function getMaxBinStep() external pure returns (uint256);
 
-    function MAX_PROTOCOL_SHARE() external pure returns (uint256);
+    function getMaxProtocolShare() external pure returns (uint256);
 
-    function LBPairImplementation() external view returns (address);
+    function getLBPairImplementation() external view returns (address);
 
     function getNumberOfQuoteAssets() external view returns (uint256);
 
@@ -113,13 +112,13 @@ interface ILBFactory is IPendingOwnable {
 
     function isQuoteAsset(IERC20 token) external view returns (bool);
 
-    function feeRecipient() external view returns (address);
+    function getFeeRecipient() external view returns (address);
 
-    function flashLoanFee() external view returns (uint256);
+    function getFlashloanFee() external view returns (uint256);
 
-    function creationUnlocked() external view returns (bool);
+    function isCreationUnlocked() external view returns (bool);
 
-    function allLBPairs(uint256 id) external returns (ILBPair);
+    function getLBPairAtIndex(uint256 id) external returns (ILBPair);
 
     function getNumberOfLBPairs() external view returns (uint256);
 
@@ -130,7 +129,7 @@ interface ILBFactory is IPendingOwnable {
         view
         returns (LBPairInformation memory);
 
-    function getPreset(uint16 binStep)
+    function getPreset(uint256 binStep)
         external
         view
         returns (
@@ -140,8 +139,7 @@ interface ILBFactory is IPendingOwnable {
             uint256 reductionFactor,
             uint256 variableFeeControl,
             uint256 protocolShare,
-            uint256 maxAccumulator,
-            uint256 sampleLifetime
+            uint256 maxAccumulator
         );
 
     function getAllBinSteps() external view returns (uint256[] memory presetsBinStep);
@@ -153,33 +151,32 @@ interface ILBFactory is IPendingOwnable {
 
     function setLBPairImplementation(address LBPairImplementation) external;
 
-    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
+    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint8 binStep)
         external
         returns (ILBPair pair);
 
-    function createLBPairRevision(IERC20 _tokenX, IERC20 _tokenY, uint16 _binStep) external returns (ILBPair pair);
+    function createLBPairRevision(IERC20 tokenX, IERC20 tokenY, uint8 binStep) external returns (ILBPair pair);
 
     function setLBPairIgnored(IERC20 tokenX, IERC20 tokenY, uint256 binStep, uint256 revision, bool ignored) external;
 
     function setPreset(
-        uint16 binStep,
+        uint8 binStep,
         uint16 baseFactor,
         uint16 filterPeriod,
         uint16 decayPeriod,
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated,
-        uint16 sampleLifetime
+        uint24 maxVolatilityAccumulated
     ) external;
 
-    function removePreset(uint16 binStep) external;
+    function removePreset(uint8 binStep) external;
 
     function setFeesParametersOnPair(
         IERC20 tokenX,
         IERC20 tokenY,
-        uint16 binStep,
-        uint256 revision,
+        uint8 binStep,
+        uint16 revision,
         uint16 baseFactor,
         uint16 filterPeriod,
         uint16 decayPeriod,

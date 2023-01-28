@@ -4,6 +4,8 @@ pragma solidity 0.8.10;
 
 import "./helpers/TestHelper.sol";
 
+import "src/libraries/ImmutableClone.sol";
+
 /*
 * Test scenarios:
 * 1. Constructor
@@ -77,15 +79,15 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function test_constructor() public {
-        assertEq(factory.feeRecipient(), DEV);
-        assertEq(factory.flashLoanFee(), DEFAULT_FLASHLOAN_FEE);
+        assertEq(factory.getFeeRecipient(), DEV);
+        assertEq(factory.getFlashloanFee(), DEFAULT_FLASHLOAN_FEE);
 
         vm.expectEmit(true, true, true, true);
         emit FlashLoanFeeSet(0, DEFAULT_FLASHLOAN_FEE);
         new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
 
         // Reverts if the flash loan fee is above the max fee
-        uint256 maxFee = factory.MAX_FEE();
+        uint256 maxFee = factory.getMaxFee();
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__FlashLoanFeeAboveMax.selector, maxFee + 1, maxFee));
         new LBFactory(DEV, maxFee + 1);
     }
@@ -97,7 +99,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.expectEmit(true, true, true, true);
         emit LBPairImplementationSet(pairImplementation, newImplementation);
         factory.setLBPairImplementation(address(newImplementation));
-        assertEq(factory.LBPairImplementation(), address(newImplementation), "test_setLBPairImplementation:1");
+        assertEq(factory.getLBPairImplementation(), address(newImplementation), "test_setLBPairImplementation:1");
     }
 
     function test_reverts_SetLBPairImplementation() public {
@@ -126,8 +128,11 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function test_createLBPair() public {
-        address expectedPairAddress = Clones.predictDeterministicAddress(
-            address(pairImplementation), keccak256(abi.encode(usdc, usdt, DEFAULT_BIN_STEP, 1)), address(factory)
+        address expectedPairAddress = ImmutableClone.predictDeterministicAddress(
+            address(pairImplementation),
+            abi.encode(0),
+            keccak256(abi.encode(usdc, usdt, DEFAULT_BIN_STEP, 1)),
+            address(factory)
         );
 
         // Check for the correct events
@@ -250,8 +255,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATED,
-            DEFAULT_SAMPLE_LIFETIME
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED
         );
 
         // Can't create the same pair twice (a revision should be created instead)
@@ -269,8 +273,11 @@ contract LiquidityBinFactoryTest is TestHelper {
         pairImplementation = new LBPair(factory);
         factory.setLBPairImplementation(address(pairImplementation));
 
-        address expectedPairAddress = Clones.predictDeterministicAddress(
-            address(pairImplementation), keccak256(abi.encode(usdc, usdt, DEFAULT_BIN_STEP, 2)), address(factory)
+        address expectedPairAddress = ImmutableClone.predictDeterministicAddress(
+            address(pairImplementation),
+            abi.encode(0),
+            keccak256(abi.encode(usdc, usdt, DEFAULT_BIN_STEP, 2)),
+            address(factory)
         );
 
         // Check for the correct events
@@ -402,7 +409,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testFuzz_setPreset(
-        uint16 binStep,
+        uint8 binStep,
         uint16 baseFactor,
         uint16 filterPeriod,
         uint16 decayPeriod,
@@ -412,11 +419,11 @@ contract LiquidityBinFactoryTest is TestHelper {
         uint24 maxVolatilityAccumulated,
         uint16 sampleLifetime
     ) public {
-        binStep = uint16(bound(binStep, factory.MIN_BIN_STEP(), factory.MAX_BIN_STEP()));
+        binStep = uint8(bound(binStep, factory.getMinBinStep(), factory.getMaxBinStep()));
         filterPeriod = uint16(bound(filterPeriod, 0, type(uint16).max - 1));
         decayPeriod = uint16(bound(decayPeriod, filterPeriod + 1, type(uint16).max));
         reductionFactor = uint16(bound(reductionFactor, 0, Constants.BASIS_POINT_MAX));
-        protocolShare = uint16(bound(protocolShare, 0, factory.MAX_PROTOCOL_SHARE()));
+        protocolShare = uint16(bound(protocolShare, 0, factory.getMaxProtocolShare()));
         variableFeeControl = uint24(bound(variableFeeControl, 0, Constants.BASIS_POINT_MAX));
 
         // TODO: maxVolatilityAccumulated should be bounded but that's quite hard to calculate
@@ -428,7 +435,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             totalFeesMax = baseFee + maxVariableFee;
         }
 
-        if (totalFeesMax > factory.MAX_FEE()) {
+        if (totalFeesMax > factory.getMaxFee()) {
             vm.expectRevert();
             factory.setPreset(
                 binStep,
@@ -438,8 +445,7 @@ contract LiquidityBinFactoryTest is TestHelper {
                 reductionFactor,
                 variableFeeControl,
                 protocolShare,
-                maxVolatilityAccumulated,
-                sampleLifetime
+                maxVolatilityAccumulated
             );
         } else {
             vm.expectEmit(true, true, true, true);
@@ -463,8 +469,7 @@ contract LiquidityBinFactoryTest is TestHelper {
                 reductionFactor,
                 variableFeeControl,
                 protocolShare,
-                maxVolatilityAccumulated,
-                sampleLifetime
+                maxVolatilityAccumulated
             );
 
             // Bin step DEFAULT_BIN_STEP is already there
@@ -489,7 +494,6 @@ contract LiquidityBinFactoryTest is TestHelper {
                     uint256 reductionFactorView,
                     ,
                     ,
-                    ,
                 ) = factory.getPreset(binStep);
 
                 assertEq(baseFactorView, baseFactor);
@@ -499,47 +503,37 @@ contract LiquidityBinFactoryTest is TestHelper {
             }
 
             {
-                (
-                    ,
-                    ,
-                    ,
-                    ,
-                    uint256 variableFeeControlView,
-                    uint256 protocolShareView,
-                    uint256 maxVolatilityAccumulatedView,
-                    uint256 sampleLifetimeView
-                ) = factory.getPreset(binStep);
+                (,,,, uint256 variableFeeControlView, uint256 protocolShareView, uint256 maxVolatilityAccumulatedView) =
+                    factory.getPreset(binStep);
 
                 assertEq(variableFeeControlView, variableFeeControl);
                 assertEq(protocolShareView, protocolShare);
                 assertEq(maxVolatilityAccumulatedView, maxVolatilityAccumulated);
-                assertEq(sampleLifetimeView, sampleLifetime);
             }
         }
     }
 
     function testFuzz_reverts_setPreset(
-        uint16 binStep,
+        uint8 binStep,
         uint16 baseFactor,
         uint16 filterPeriod,
         uint16 decayPeriod,
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated,
-        uint16 sampleLifetime
+        uint24 maxVolatilityAccumulated
     ) public {
         uint256 baseFee = (uint256(baseFactor) * binStep) * 1e10;
         uint256 prod = uint256(maxVolatilityAccumulated) * binStep;
         uint256 maxVariableFee = (prod * prod * variableFeeControl) / 100;
 
-        if (binStep < factory.MIN_BIN_STEP() || binStep > factory.MAX_BIN_STEP()) {
+        if (binStep < factory.getMinBinStep() || binStep > factory.getMaxBinStep()) {
             vm.expectRevert(
                 abi.encodeWithSelector(
                     ILBFactory.LBFactory__BinStepRequirementsBreached.selector,
-                    factory.MIN_BIN_STEP(),
+                    factory.getMinBinStep(),
                     binStep,
-                    factory.MAX_BIN_STEP()
+                    factory.getMaxBinStep()
                 )
             );
             factory.setPreset(
@@ -550,8 +544,7 @@ contract LiquidityBinFactoryTest is TestHelper {
                 reductionFactor,
                 variableFeeControl,
                 protocolShare,
-                maxVolatilityAccumulated,
-                sampleLifetime
+                maxVolatilityAccumulated
             );
         } else if (filterPeriod >= decayPeriod) {
             vm.expectRevert(
@@ -565,8 +558,7 @@ contract LiquidityBinFactoryTest is TestHelper {
                 reductionFactor,
                 variableFeeControl,
                 protocolShare,
-                maxVolatilityAccumulated,
-                sampleLifetime
+                maxVolatilityAccumulated
             );
         } else if (reductionFactor > Constants.BASIS_POINT_MAX) {
             vm.expectRevert(
@@ -582,13 +574,12 @@ contract LiquidityBinFactoryTest is TestHelper {
                 reductionFactor,
                 variableFeeControl,
                 protocolShare,
-                maxVolatilityAccumulated,
-                sampleLifetime
+                maxVolatilityAccumulated
             );
-        } else if (protocolShare > factory.MAX_PROTOCOL_SHARE()) {
+        } else if (protocolShare > factory.getMaxProtocolShare()) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    ILBFactory.LBFactory__ProtocolShareOverflows.selector, protocolShare, factory.MAX_PROTOCOL_SHARE()
+                    ILBFactory.LBFactory__ProtocolShareOverflows.selector, protocolShare, factory.getMaxProtocolShare()
                 )
             );
             factory.setPreset(
@@ -599,10 +590,9 @@ contract LiquidityBinFactoryTest is TestHelper {
                 reductionFactor,
                 variableFeeControl,
                 protocolShare,
-                maxVolatilityAccumulated,
-                sampleLifetime
+                maxVolatilityAccumulated
             );
-        } else if (baseFee + maxVariableFee > factory.MAX_FEE()) {
+        } else if (baseFee + maxVariableFee > factory.getMaxFee()) {
             vm.expectRevert();
             factory.setPreset(
                 binStep,
@@ -612,8 +602,7 @@ contract LiquidityBinFactoryTest is TestHelper {
                 reductionFactor,
                 variableFeeControl,
                 protocolShare,
-                maxVolatilityAccumulated,
-                sampleLifetime
+                maxVolatilityAccumulated
             );
         } else {
             factory.setPreset(
@@ -624,8 +613,7 @@ contract LiquidityBinFactoryTest is TestHelper {
                 reductionFactor,
                 variableFeeControl,
                 protocolShare,
-                maxVolatilityAccumulated,
-                sampleLifetime
+                maxVolatilityAccumulated
             );
         }
     }
@@ -639,8 +627,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATED,
-            DEFAULT_SAMPLE_LIFETIME
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED
         );
 
         factory.setPreset(
@@ -651,8 +638,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATED,
-            DEFAULT_SAMPLE_LIFETIME
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED
         );
 
         assertEq(factory.getAllBinSteps().length, 3);
@@ -775,7 +761,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         emit FeeRecipientSet(address(this), ALICE);
         factory.setFeeRecipient(ALICE);
 
-        assertEq(factory.feeRecipient(), ALICE);
+        assertEq(factory.getFeeRecipient(), ALICE);
 
         // Can't set if not the owner
         vm.prank(BOB);
@@ -797,7 +783,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         emit FlashLoanFeeSet(DEFAULT_FLASHLOAN_FEE, newFlashLoanFee);
         factory.setFlashLoanFee(newFlashLoanFee);
 
-        assertEq(factory.flashLoanFee(), newFlashLoanFee);
+        assertEq(factory.getFlashloanFee(), newFlashLoanFee);
 
         // Can't set if not the owner
         vm.prank(ALICE);
@@ -809,7 +795,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setFlashLoanFee(newFlashLoanFee);
 
         // Can't set to a fee greater than the maximum
-        uint256 maxFlashLoanFee = factory.MAX_FEE();
+        uint256 maxFlashLoanFee = factory.getMaxFee();
         vm.expectRevert(
             abi.encodeWithSelector(
                 ILBFactory.LBFactory__FlashLoanFeeAboveMax.selector, maxFlashLoanFee + 1, maxFlashLoanFee
@@ -819,16 +805,16 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function test_setFactoryLockedState() public {
-        assertEq(factory.creationUnlocked(), false);
+        assertEq(factory.isCreationUnlocked(), false);
 
         vm.expectEmit(true, true, true, true);
         emit FactoryLockedStatusUpdated(false);
         factory.setFactoryLockedState(false);
 
-        assertEq(factory.creationUnlocked(), true);
+        assertEq(factory.isCreationUnlocked(), true);
 
         factory.setFactoryLockedState(true);
-        assertEq(factory.creationUnlocked(), false);
+        assertEq(factory.isCreationUnlocked(), false);
 
         // Can't set if not the owner
         vm.prank(ALICE);
@@ -914,8 +900,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATED,
-            DEFAULT_SAMPLE_LIFETIME
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED
         );
 
         factory.setPreset(
@@ -926,8 +911,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATED,
-            DEFAULT_SAMPLE_LIFETIME
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED
         );
 
         ILBPair pair1 = factory.createLBPair(weth, usdc, ID_ONE, 5);
@@ -957,6 +941,6 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(address(pair3Info.LBPair), address(pair3));
         assertEq(pair3Info.binStep, 5);
         assertEq(pair3Info.revisionIndex, 2);
-        assertEq(pair3Info.implementation, address(factory.LBPairImplementation()));
+        assertEq(pair3Info.implementation, address(factory.getLBPairImplementation()));
     }
 }

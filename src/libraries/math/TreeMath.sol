@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.10;
 
-import "./BitMath.sol";
+import {BitMath} from "./BitMath.sol";
 
 /**
  * @title Liquidity Book Tree Math Library

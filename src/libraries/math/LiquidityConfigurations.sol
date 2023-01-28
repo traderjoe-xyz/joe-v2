@@ -2,8 +2,8 @@
 
 pragma solidity 0.8.10;
 
-import "./PackedUint128Math.sol";
-import "./Encoded.sol";
+import {PackedUint128Math} from "./PackedUint128Math.sol";
+import {Encoded} from "./Encoded.sol";
 
 /**
  * @title Liquidity Book Liquidity Configurations Library

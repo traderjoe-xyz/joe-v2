@@ -2,9 +2,9 @@
 
 pragma solidity 0.8.10;
 
-import "./Constants.sol";
-import "./math/SafeCast.sol";
-import "./math/Encoded.sol";
+import {Constants} from "./Constants.sol";
+import {SafeCast} from "./math/SafeCast.sol";
+import {Encoded} from "./math/Encoded.sol";
 
 /**
  * @title Liquidity Book Pair Parameter Helper Library

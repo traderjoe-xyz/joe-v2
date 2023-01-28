@@ -46,7 +46,6 @@ abstract contract TestHelper is Test {
     uint24 internal constant DEFAULT_VARIABLE_FEE_CONTROL = 40_000;
     uint16 internal constant DEFAULT_PROTOCOL_SHARE = 1_000;
     uint24 internal constant DEFAULT_MAX_VOLATILITY_ACCUMULATED = 350_000;
-    uint16 internal constant DEFAULT_SAMPLE_LIFETIME = 120;
     uint256 internal constant DEFAULT_FLASHLOAN_FEE = 8e14;
 
     address payable immutable DEV = payable(address(this));
@@ -195,7 +194,7 @@ abstract contract TestHelper is Test {
         if (address(taxToken) != address(0)) factory.addQuoteAsset(taxToken);
     }
 
-    function setDefaultFactoryPresets(uint16 binStep) internal {
+    function setDefaultFactoryPresets(uint8 binStep) internal {
         factory.setPreset(
             binStep,
             DEFAULT_BASE_FACTOR,
@@ -204,8 +203,7 @@ abstract contract TestHelper is Test {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATED,
-            DEFAULT_SAMPLE_LIFETIME
+            DEFAULT_MAX_VOLATILITY_ACCUMULATED
         );
     }
 
@@ -217,7 +215,7 @@ abstract contract TestHelper is Test {
         newPair = createLBPairFromStartIdAndBinStep(tokenX, tokenY, startId, DEFAULT_BIN_STEP);
     }
 
-    function createLBPairFromStartIdAndBinStep(IERC20 tokenX, IERC20 tokenY, uint24 startId, uint16 binStep)
+    function createLBPairFromStartIdAndBinStep(IERC20 tokenX, IERC20 tokenY, uint24 startId, uint8 binStep)
         internal
         returns (LBPair newPair)
     {

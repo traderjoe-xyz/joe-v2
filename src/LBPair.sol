@@ -19,7 +19,6 @@ import {PairParameterHelper} from "./libraries/PairParameterHelper.sol";
 import {PriceHelper} from "./libraries/PriceHelper.sol";
 import {ReentrancyGuardUpgradeable} from "./libraries/ReentrancyGuardUpgradeable.sol";
 import {SafeCast} from "./libraries/math/SafeCast.sol";
-import {SampleMath} from "./libraries/math/SampleMath.sol";
 import {TreeMath} from "./libraries/math/TreeMath.sol";
 import {Uint256x256Math} from "./libraries/math/Uint256x256Math.sol";
 
@@ -43,7 +42,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
     }
 
     modifier onlyProtocolFeeReceiver() {
-        if (msg.sender != _factory.feeRecipient()) revert LBPair__OnlyProtocolFeeReceiver();
+        if (msg.sender != _factory.getFeeRecipient()) revert LBPair__OnlyProtocolFeeReceiver();
         _;
     }
 
@@ -287,7 +286,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
      * @param id The id of the bin
      * @return price The price corresponding to this id
      */
-    function getPriceFromId(uint24 id) external view override returns (uint256 price) {
+    function getPriceFromId(uint24 id) external pure override returns (uint256 price) {
         price = id.getPriceFromId(_binStep());
     }
 
@@ -298,7 +297,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
      * @param price The price of y per x as a 128.128-binary fixed-point number
      * @return id The id of the bin corresponding to this price
      */
-    function getIdFromPrice(uint256 price) external view override returns (uint24 id) {
+    function getIdFromPrice(uint256 price) external pure override returns (uint24 id) {
         id = price.getIdFromPrice(_binStep());
     }
 
@@ -648,6 +647,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
             if (binReserves == 0) _tree.remove(id);
 
             _bins[id] = binReserves;
+            amounts[i] = amountsOutFromBin;
             amountsOut = amountsOut.add(amountsOutFromBin);
 
             unchecked {
@@ -785,7 +785,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
      * @return The encoded fees amounts
      */
     function _getFlashLoanFees(bytes32 amounts) private view returns (bytes32) {
-        uint128 fee = uint128(_factory.flashLoanFee());
+        uint128 fee = uint128(_factory.getFlashloanFee());
         (uint128 x, uint128 y) = amounts.decode();
 
         unchecked {

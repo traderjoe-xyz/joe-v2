@@ -13,6 +13,7 @@ import {IJoeFactory} from "./interfaces/IJoeFactory.sol";
 import {ILBFactory} from "./interfaces/ILBFactory.sol";
 import {ILBLegacyFactory} from "./interfaces/ILBLegacyFactory.sol";
 import {IJoePair} from "./interfaces/IJoePair.sol";
+import {ILBLegacyPair} from "./interfaces/ILBLegacyPair.sol";
 import {ILBPair} from "./interfaces/ILBPair.sol";
 import {ILBRouter} from "./interfaces/ILBRouter.sol";
 
@@ -123,7 +124,11 @@ contract LBQuoter {
                 if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
                     for (uint256 j; j < LBPairsAvailable.length; j++) {
                         if (!LBPairsAvailable[j].ignoredForRouting) {
-                            bool swapForY = address(LBPairsAvailable[j].LBPair.getTokenY()) == route[i + 1];
+                            bool swapForY = address(
+                                k == 0
+                                    ? LBPairsAvailable[j].LBPair.getTokenY()
+                                    : ILBLegacyPair(address(LBPairsAvailable[j].LBPair)).tokenY()
+                            ) == route[i + 1];
 
                             try ILBRouter(routerV2).getSwapOut(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
                             returns (uint128, uint128 swapAmountOut, uint128 fees) {
@@ -208,7 +213,11 @@ contract LBQuoter {
                 if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
                     for (uint256 j; j < LBPairsAvailable.length; j++) {
                         if (!LBPairsAvailable[j].ignoredForRouting) {
-                            bool swapForY = address(LBPairsAvailable[j].LBPair.getTokenY()) == route[i];
+                            bool swapForY = address(
+                                k == 0
+                                    ? LBPairsAvailable[j].LBPair.getTokenY()
+                                    : ILBLegacyPair(address(LBPairsAvailable[j].LBPair)).tokenY()
+                            ) == route[i];
                             try ILBRouter(routerV2).getSwapIn(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
                             returns (uint128 swapAmountIn, uint128, uint128 fees) {
                                 if (

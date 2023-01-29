@@ -192,18 +192,13 @@ contract LBFactory is PendingOwnable, ILBFactory {
         bytes32 _preset = _presets[binStep];
         if (_preset == bytes32(0)) revert LBFactory__BinStepHasNoPreset(binStep);
 
-        uint256 _shift;
-
-        // Safety check
-        require(binStep == _preset.decode(type(uint16).max, _shift));
-
-        baseFactor = _preset.decode(type(uint16).max, _shift += 16);
-        filterPeriod = _preset.decode(type(uint16).max, _shift += 16);
-        decayPeriod = _preset.decode(type(uint16).max, _shift += 16);
-        reductionFactor = _preset.decode(type(uint16).max, _shift += 16);
-        variableFeeControl = _preset.decode(type(uint24).max, _shift += 16);
-        protocolShare = _preset.decode(type(uint16).max, _shift += 24);
-        maxVolatilityAccumulated = _preset.decode(type(uint24).max, _shift += 16);
+        baseFactor = _preset.getBaseFactor();
+        filterPeriod = _preset.getFilterPeriod();
+        decayPeriod = _preset.getDecayPeriod();
+        reductionFactor = _preset.getReductionFactor();
+        variableFeeControl = _preset.getVariableFeeControl();
+        protocolShare = _preset.getProtocolShare();
+        maxVolatilityAccumulated = _preset.getMaxVolatilityAccumulated();
     }
 
     /// @notice View function to return the list of available binStep with a preset
@@ -335,9 +330,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             revert LBFactory__LBPairAlreadyExists(tokenX, tokenY, binStep);
         }
 
-        // uint256 _sampleLifetime = _preset.decode(type(uint16).max, 240);
         // We remove the bits that are not part of the feeParameters
-        // _preset &= bytes32(uint256(type(uint144).max));
         {
             bytes32 _salt = keccak256(abi.encode(_tokenA, _tokenB, binStep, _REVISION_START_INDEX));
             pair = ILBPair(
@@ -349,6 +342,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         {
             bytes32 _preset = _presets[binStep];
+
             if (_preset == bytes32(0)) revert LBFactory__BinStepHasNoPreset(binStep);
 
             pair.initialize(
@@ -389,22 +383,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
         }
 
         emit LBPairCreated(tokenX, tokenY, binStep, pair, _allLBPairs.length - 1);
-
-        {
-            bytes32 _preset = _presets[binStep];
-            emit FeeParametersSet(
-                msg.sender,
-                pair,
-                binStep,
-                _preset.decode(type(uint16).max, 16),
-                _preset.decode(type(uint16).max, 32),
-                _preset.decode(type(uint16).max, 48),
-                _preset.decode(type(uint16).max, 64),
-                _preset.decode(type(uint24).max, 80),
-                _preset.decode(type(uint16).max, 104),
-                _preset.decode(type(uint24).max, 120)
-                );
-        }
     }
 
     /// @notice Function to create a new revision of a pair
@@ -444,10 +422,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
         );
 
         {
-            // (uint256 oracleSampleLifetime,,,,,,) = _oldLBPair.getOracleParameters();
-
-            // (,, uint256 activeId) = _oldLBPair.getReservesAndId();
-
             pair.initialize(
                 _preset.getBaseFactor(),
                 _preset.getFilterPeriod(),
@@ -474,19 +448,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
         _allLBPairs.push(pair);
 
         emit LBPairCreated(tokenX, tokenY, binStep, pair, _allLBPairs.length - 1);
-
-        emit FeeParametersSet(
-            msg.sender,
-            pair,
-            binStep,
-            _preset.decode(type(uint16).max, 16),
-            _preset.decode(type(uint16).max, 32),
-            _preset.decode(type(uint16).max, 48),
-            _preset.decode(type(uint16).max, 64),
-            _preset.decode(type(uint24).max, 80),
-            _preset.decode(type(uint16).max, 104),
-            _preset.decode(type(uint24).max, 120)
-            );
     }
 
     /// @notice Function to set whether the pair is ignored or not for routing, it will make the pair unusable by the router
@@ -547,8 +508,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             maxVolatilityAccumulated
         );
 
-        // The last 16 bits are reserved for sampleLifetime
-        bytes32 _preset = bytes32((uint256(_packedFeeParameters) & type(uint144).max));
+        bytes32 _preset = bytes32((uint256(_packedFeeParameters)));
 
         _presets[binStep] = _preset;
 
@@ -723,7 +683,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint24 variableFeeControl,
         uint16 protocolShare,
         uint24 maxVolatilityAccumulated
-    ) private pure returns (bytes32) {
+    ) private pure returns (bytes32 preset) {
         if (binStep < _MIN_BIN_STEP || binStep > _MAX_BIN_STEP) {
             revert LBFactory__BinStepRequirementsBreached(_MIN_BIN_STEP, binStep, _MAX_BIN_STEP);
         }
@@ -752,19 +712,14 @@ contract LBFactory is PendingOwnable, ILBFactory {
             }
         }
 
-        /// @dev It's very important that the sum of the sizes of those values is exactly 256 bits
-        /// here, (112 + 24) + 16 + 24 + 16 + 16 + 16 + 16 + 16 = 256
-        return bytes32(
-            abi.encodePacked(
-                uint136(maxVolatilityAccumulated), // The first 112 bits are reserved for the dynamic parameters
-                protocolShare,
-                variableFeeControl,
-                reductionFactor,
-                decayPeriod,
-                filterPeriod,
-                baseFactor,
-                binStep
-            )
+        return preset.setStaticFeeParameters(
+            baseFactor,
+            filterPeriod,
+            decayPeriod,
+            reductionFactor,
+            variableFeeControl,
+            protocolShare,
+            maxVolatilityAccumulated
         );
     }
 

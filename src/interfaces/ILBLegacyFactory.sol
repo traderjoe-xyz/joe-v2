@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-import {ILBPair} from "./ILBPair.sol";
+import {ILBLegacyPair} from "./ILBLegacyPair.sol";
 import {IPendingOwnable} from "./IPendingOwnable.sol";
 
 /// @title Liquidity Book Factory Interface
@@ -18,13 +18,13 @@ interface ILBLegacyFactory is IPendingOwnable {
     /// - ignoredForRouting: Whether the pair is ignored for routing or not. An ignored pair will not be explored during routes finding
     struct LBPairInformation {
         uint16 binStep;
-        ILBPair LBPair;
+        ILBLegacyPair LBPair;
         bool createdByOwner;
         bool ignoredForRouting;
     }
 
     event LBPairCreated(
-        IERC20 indexed tokenX, IERC20 indexed tokenY, uint256 indexed binStep, ILBPair LBPair, uint256 pid
+        IERC20 indexed tokenX, IERC20 indexed tokenY, uint256 indexed binStep, ILBLegacyPair LBPair, uint256 pid
     );
 
     event FeeRecipientSet(address oldRecipient, address newRecipient);
@@ -33,7 +33,7 @@ interface ILBLegacyFactory is IPendingOwnable {
 
     event FeeParametersSet(
         address indexed sender,
-        ILBPair indexed LBPair,
+        ILBLegacyPair indexed LBPair,
         uint256 binStep,
         uint256 baseFactor,
         uint256 filterPeriod,
@@ -48,7 +48,7 @@ interface ILBLegacyFactory is IPendingOwnable {
 
     event LBPairImplementationSet(address oldLBPairImplementation, address LBPairImplementation);
 
-    event LBPairIgnoredStateChanged(ILBPair indexed LBPair, bool ignored);
+    event LBPairIgnoredStateChanged(ILBLegacyPair indexed LBPair, bool ignored);
 
     event PresetSet(
         uint256 indexed binStep,
@@ -90,7 +90,7 @@ interface ILBLegacyFactory is IPendingOwnable {
 
     function creationUnlocked() external view returns (bool);
 
-    function allLBPairs(uint256 id) external returns (ILBPair);
+    function allLBPairs(uint256 id) external returns (ILBLegacyPair);
 
     function getNumberOfLBPairs() external view returns (uint256);
 
@@ -124,7 +124,7 @@ interface ILBLegacyFactory is IPendingOwnable {
 
     function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
         external
-        returns (ILBPair pair);
+        returns (ILBLegacyPair pair);
 
     function setLBPairIgnored(IERC20 tokenX, IERC20 tokenY, uint256 binStep, bool ignored) external;
 
@@ -165,5 +165,5 @@ interface ILBLegacyFactory is IPendingOwnable {
 
     function removeQuoteAsset(IERC20 quoteAsset) external;
 
-    function forceDecay(ILBPair LBPair) external;
+    function forceDecay(ILBLegacyPair LBPair) external;
 }

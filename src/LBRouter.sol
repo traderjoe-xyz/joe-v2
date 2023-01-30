@@ -850,12 +850,7 @@ contract LBRouter is ILBRouter {
         view
         returns (ILBPair)
     {
-        ILBPair _LBPair;
-        if (revision == 0) {
-            _LBPair = _legacyFactory.getLBPairInformation(tokenX, tokenY, binStep).LBPair;
-        } else {
-            _LBPair = _factory.getLBPairInformation(tokenX, tokenY, binStep, revision).LBPair;
-        }
+        ILBPair _LBPair = _factory.getLBPairInformation(tokenX, tokenY, binStep, revision).LBPair;
 
         if (address(_LBPair) == address(0)) {
             revert LBRouter__PairNotCreated(address(tokenX), address(tokenY), binStep);

@@ -6,7 +6,7 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 import {ILBFactory} from "./ILBFactory.sol";
 import {IJoeFactory} from "./IJoeFactory.sol";
-import {ILBPair} from "./ILBPair.sol";
+import {ILBLegacyPair} from "./ILBLegacyPair.sol";
 import {ILBToken} from "./ILBToken.sol";
 import {IWAVAX} from "./IWAVAX.sol";
 
@@ -14,21 +14,6 @@ import {IWAVAX} from "./IWAVAX.sol";
 /// @author Trader Joe
 /// @notice Required interface of LBRouter contract
 interface ILBLegacyRouter {
-    /// @dev The liquidity parameters, such as:
-    /// - tokenX: The address of token X
-    /// - tokenY: The address of token Y
-    /// - binStep: The bin step of the pair
-    /// - amountX: The amount to send of token X
-    /// - amountY: The amount to send of token Y
-    /// - amountXMin: The min amount of token X added to liquidity
-    /// - amountYMin: The min amount of token Y added to liquidity
-    /// - activeIdDesired: The active id that user wants to add liquidity from
-    /// - idSlippage: The number of id that are allowed to slip
-    /// - deltaIds: The list of delta ids to add liquidity (`deltaId = activeId - desiredId`)
-    /// - distributionX: The distribution of tokenX with sum(distributionX) = 100e18 (100%) or 0 (0%)
-    /// - distributionY: The distribution of tokenY with sum(distributionY) = 100e18 (100%) or 0 (0%)
-    /// - to: The address of the recipient
-    /// - deadline: The deadline of the tx
     struct LiquidityParameters {
         IERC20 tokenX;
         IERC20 tokenY;
@@ -46,29 +31,19 @@ interface ILBLegacyRouter {
         uint256 deadline;
     }
 
-    function factory() external view returns (ILBFactory);
-
-    function oldFactory() external view returns (IJoeFactory);
-
-    function wavax() external view returns (IWAVAX);
-
-    function getIdFromPrice(ILBPair LBPair, uint256 price) external view returns (uint24);
-
-    function getPriceFromId(ILBPair LBPair, uint24 id) external view returns (uint256);
-
-    function getSwapIn(ILBPair LBPair, uint256 amountOut, bool swapForY)
+    function getSwapIn(ILBLegacyPair lbPair, uint256 amountOut, bool swapForY)
         external
         view
         returns (uint256 amountIn, uint256 feesIn);
 
-    function getSwapOut(ILBPair LBPair, uint256 amountIn, bool swapForY)
+    function getSwapOut(ILBLegacyPair lbPair, uint256 amountIn, bool swapForY)
         external
         view
         returns (uint256 amountOut, uint256 feesIn);
 
     function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
         external
-        returns (ILBPair pair);
+        returns (ILBLegacyPair pair);
 
     function addLiquidity(LiquidityParameters calldata liquidityParameters)
         external

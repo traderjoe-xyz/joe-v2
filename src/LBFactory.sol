@@ -28,7 +28,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     uint256 private constant _MIN_BIN_STEP = 1; // 0.01%
-    uint256 private constant _MAX_BIN_STEP = 100; // 1%, can't be greater than 247 for indexing reasons
+    uint256 private constant _MAX_BIN_STEP = 200; // 1%, can't be greater than 247 for indexing reasons
 
     /// @notice Whether the createLBPair function is unlocked and can be called by anyone (true) or only by owner (false)
     bool private _creationUnlocked;

@@ -182,7 +182,7 @@ library BinHelper {
     ) internal pure returns (bytes32 amountsInToBin, bytes32 amountsOutOfBin, bytes32 totalFees) {
         uint256 price = activeId.getPriceFromId(binStep);
 
-        uint128 binReserveOut = binReserves.decode(swapForY);
+        uint128 binReserveOut = binReserves.decode(!swapForY);
 
         uint128 maxAmountIn = swapForY
             ? uint256(binReserveOut).shiftDivRoundUp(Constants.SCALE_OFFSET, price).safe128()
@@ -195,7 +195,7 @@ library BinHelper {
         uint128 amountIn128;
         uint128 amountOut128;
 
-        uint128 amountIn = amountsLeft.decode(!swapForY);
+        uint128 amountIn = amountsLeft.decode(swapForY);
 
         if (amountIn >= maxAmountIn + maxFee) {
             fee128 = maxFee;
@@ -205,9 +205,9 @@ library BinHelper {
         } else {
             fee128 = amountIn.getFeeAmountFrom(totalFee);
 
+            amountIn -= fee128;
             amountIn128 = amountIn;
 
-            amountIn -= fee128;
             amountOut128 = swapForY
                 ? uint256(amountIn).mulShiftRoundDown(price, Constants.SCALE_OFFSET).safe128()
                 : uint256(amountIn).shiftDivRoundDown(Constants.SCALE_OFFSET, price).safe128();

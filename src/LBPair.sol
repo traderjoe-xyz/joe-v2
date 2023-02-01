@@ -22,6 +22,11 @@ import {SafeCast} from "./libraries/math/SafeCast.sol";
 import {TreeMath} from "./libraries/math/TreeMath.sol";
 import {Uint256x256Math} from "./libraries/math/Uint256x256Math.sol";
 
+/**
+ * @title Liquidity Book Pair
+ * @author Trader Joe
+ * @notice The Liquidity Book Pair contract is the core contract of the Liquidity Book protocol
+ */
 contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
     using BinHelper for bytes32;
     using FeeHelper for uint128;

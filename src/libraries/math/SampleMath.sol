@@ -12,7 +12,7 @@ import {Encoded} from "./Encoded.sol";
  * The sample is encoded as follows:
  * 0 - 16: oracle length (16 bits)
  * 16 - 80: cumulative id (64 bits)
- * 80 - 144: cumulative volatility accumulated (64 bits)
+ * 80 - 144: cumulative volatility accumulator (64 bits)
  * 144 - 208: cumulative bin crossed (64 bits)
  * 208 - 216: sample lifetime (8 bits)
  * 216 - 256: sample creation timestamp (40 bits)
@@ -77,14 +77,14 @@ library SampleMath {
     }
 
     /**
-     * @dev Gets the cumulative volatility accumulated from an encoded sample
+     * @dev Gets the cumulative volatility accumulator from an encoded sample
      * @param sample The encoded sample as follows:
      * [0 - 80[: any (80 bits)
-     * [80 - 144[: cumulative volatility accumulated (64 bits)
+     * [80 - 144[: cumulative volatility accumulator (64 bits)
      * [144 - 256[: any (112 bits)
-     * @return volatilityAccumulated The cumulative volatility
+     * @return volatilityAccumulator The cumulative volatility
      */
-    function getCumulativeVolatility(bytes32 sample) internal pure returns (uint64 volatilityAccumulated) {
+    function getCumulativeVolatility(bytes32 sample) internal pure returns (uint64 volatilityAccumulator) {
         return sample.decodeUint64(OFFSET_CUMULATIVE_VOLATILITY);
     }
 
@@ -175,20 +175,20 @@ library SampleMath {
      * @param sample The encoded sample
      * @param deltaTime The time elapsed since the last update
      * @param activeId The active id
-     * @param volatilityAccumulated The volatility accumulated
+     * @param volatilityAccumulator The volatility accumulator
      * @param binCrossed The bin crossed
      * @return cumulativeId The cumulative id
      * @return cumulativeVolatility The cumulative volatility
      * @return cumulativeBinCrossed The cumulative bin crossed
      */
-    function update(bytes32 sample, uint40 deltaTime, uint24 activeId, uint24 volatilityAccumulated, uint24 binCrossed)
+    function update(bytes32 sample, uint40 deltaTime, uint24 activeId, uint24 volatilityAccumulator, uint24 binCrossed)
         internal
         pure
         returns (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed)
     {
         unchecked {
             cumulativeId = uint64(activeId) * deltaTime;
-            cumulativeVolatility = uint64(volatilityAccumulated) * deltaTime;
+            cumulativeVolatility = uint64(volatilityAccumulator) * deltaTime;
             cumulativeBinCrossed = uint64(binCrossed) * deltaTime;
         }
 

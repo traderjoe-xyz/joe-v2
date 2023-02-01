@@ -38,14 +38,14 @@ abstract contract TestHelper is Test {
     uint256 internal constant BASIS_POINT_MAX = 10_000;
 
     // Avalanche market config for 10bps
-    uint8 internal constant DEFAULT_BIN_STEP = 10;
-    uint16 internal constant DEFAULT_BASE_FACTOR = 1000;
+    uint8 internal constant DEFAULT_BIN_STEP = 20;
+    uint16 internal constant DEFAULT_BASE_FACTOR = 5_000;
     uint16 internal constant DEFAULT_FILTER_PERIOD = 30;
     uint16 internal constant DEFAULT_DECAY_PERIOD = 600;
     uint16 internal constant DEFAULT_REDUCTION_FACTOR = 5_000;
     uint24 internal constant DEFAULT_VARIABLE_FEE_CONTROL = 40_000;
     uint16 internal constant DEFAULT_PROTOCOL_SHARE = 1_000;
-    uint24 internal constant DEFAULT_MAX_VOLATILITY_ACCUMULATED = 350_000;
+    uint24 internal constant DEFAULT_MAX_VOLATILITY_ACCUMULATOR = 350_000;
     uint256 internal constant DEFAULT_FLASHLOAN_FEE = 8e14;
 
     address payable immutable DEV = payable(address(this));
@@ -204,7 +204,7 @@ abstract contract TestHelper is Test {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATED
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
         );
     }
 

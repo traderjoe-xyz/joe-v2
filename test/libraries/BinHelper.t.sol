@@ -153,7 +153,7 @@ contract BinHelperTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATED
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
         );
 
         bytes32 compositionFees = binReserves.getCompositionFees(parameters, binStep, amountsIn, totalSupply, shares);
@@ -189,7 +189,7 @@ contract BinHelperTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATED
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
         );
 
         uint24 activeId = uint24(uint256(int256(uint256(ID_ONE)) + deltaId));
@@ -241,7 +241,7 @@ contract BinHelperTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATED
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
         );
 
         uint24 activeId = uint24(uint256(int256(uint256(ID_ONE)) + deltaId));

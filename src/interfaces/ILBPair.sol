@@ -40,7 +40,7 @@ interface ILBPair is ILBToken {
         uint24 id,
         bytes32 amountsIn,
         bytes32 amountsOut,
-        uint24 volatilityAccumulated,
+        uint24 volatilityAccumulator,
         bytes32 totalFees,
         bytes32 protocolFees
     );
@@ -53,7 +53,7 @@ interface ILBPair is ILBToken {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated
+        uint24 maxVolatilityAccumulator
     );
 
     event FlashLoan(
@@ -76,7 +76,7 @@ interface ILBPair is ILBToken {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated,
+        uint24 maxVolatilityAccumulator,
         uint24 activeId
     ) external;
 
@@ -108,13 +108,13 @@ interface ILBPair is ILBToken {
             uint16 reductionFactor,
             uint24 variableFeeControl,
             uint16 protocolShare,
-            uint24 maxVolatilityAccumulated
+            uint24 maxVolatilityAccumulator
         );
 
     function getVariableFeeParameters()
         external
         view
-        returns (uint24 volatilityAccumulated, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate);
+        returns (uint24 volatilityAccumulator, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate);
 
     function getOracleSampleAt(uint40 lookupTimestamp)
         external
@@ -158,7 +158,7 @@ interface ILBPair is ILBToken {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated
+        uint24 maxVolatilityAccumulator
     ) external;
 
     function forceDecay() external;

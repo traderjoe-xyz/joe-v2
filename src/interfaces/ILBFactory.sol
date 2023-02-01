@@ -70,7 +70,7 @@ interface ILBFactory is IPendingOwnable {
         uint256 reductionFactor,
         uint256 variableFeeControl,
         uint256 protocolShare,
-        uint256 maxVolatilityAccumulated
+        uint256 maxVolatilityAccumulator
     );
 
     event FactoryLockedStatusUpdated(bool unlocked);
@@ -87,7 +87,7 @@ interface ILBFactory is IPendingOwnable {
         uint256 reductionFactor,
         uint256 variableFeeControl,
         uint256 protocolShare,
-        uint256 maxVolatilityAccumulated
+        uint256 maxVolatilityAccumulator
     );
 
     event PresetRemoved(uint256 indexed binStep);
@@ -167,7 +167,7 @@ interface ILBFactory is IPendingOwnable {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated
+        uint24 maxVolatilityAccumulator
     ) external;
 
     function removePreset(uint8 binStep) external;
@@ -183,7 +183,7 @@ interface ILBFactory is IPendingOwnable {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated
+        uint24 maxVolatilityAccumulator
     ) external;
 
     function setFeeRecipient(address feeRecipient) external;

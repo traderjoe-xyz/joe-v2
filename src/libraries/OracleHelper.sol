@@ -14,7 +14,7 @@ import {PairParameterHelper} from "./PairParameterHelper.sol";
  * Each sample is encoded as follows:
  * 0 - 16: oracle length (16 bits)
  * 16 - 80: cumulative id (64 bits)
- * 80 - 144: cumulative volatility accumulated (64 bits)
+ * 80 - 144: cumulative volatility accumulator (64 bits)
  * 144 - 208: cumulative bin crossed (64 bits)
  * 208 - 216: sample lifetime (8 bits)
  * 216 - 256: sample creation timestamp (40 bits)
@@ -210,7 +210,7 @@ library OracleHelper {
 
         if (deltaTime > 0) {
             (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed) = sample.update(
-                deltaTime, activeId, parameters.getVolatilityAccumulated(), parameters.getDeltaId(activeId)
+                deltaTime, activeId, parameters.getVolatilityAccumulator(), parameters.getDeltaId(activeId)
             );
 
             uint16 length = sample.getOracleLength();

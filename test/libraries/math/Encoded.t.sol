@@ -25,11 +25,8 @@ contract EncodedTest is Test {
     }
 
     function testFuzz_SetAndDecode(bytes32 x, uint256 v, uint256 mask, uint256 offset) external {
-        console.log(vm.toString(x), vm.toString(v), vm.toString(mask), vm.toString(offset));
         bytes32 y = x.set(v, mask, offset);
-        console.log(vm.toString(y));
         uint256 v2 = y.decode(mask, offset);
-        console.log(vm.toString(v2));
 
         assertEq(v2, ((v << offset) >> offset) & mask, "test_SetAndDecode::1");
     }

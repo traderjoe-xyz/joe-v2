@@ -300,8 +300,6 @@ contract BinHelperTest is TestHelper {
         deal(address(usdc), pair, reserveX + sentX);
         deal(address(wavax), pair, reserveY + sentY);
 
-        console.log(usdc.balanceOf(pair), wavax.balanceOf(pair));
-
         bytes32 reserves = reserveX.encode(reserveY);
 
         bytes32 received = reserves.received(IERC20(address(usdc)), IERC20(address(wavax)));

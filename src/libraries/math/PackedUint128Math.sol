@@ -17,10 +17,11 @@ library PackedUint128Math {
     error PackedUint128Math__AddOverflow();
     error PackedUint128Math__SubUnderflow();
     error PackedUint128Math__AddFirstSubSecondOverflow();
-    error PackedUint128Math__MultiplierBiggerThanMax();
+    error PackedUint128Math__MultiplierTooLarge();
 
     uint256 private constant OFFSET = 128;
     uint256 private constant MASK_128 = 0xffffffffffffffffffffffffffffffff;
+    uint256 private constant MASK_128_PLUS_ONE = MASK_128 + 1;
 
     /**
      * @dev Encodes two uint128 into a single bytes32
@@ -244,8 +245,7 @@ library PackedUint128Math {
     }
 
     /**
-     * @dev Multiplies an encoded bytes32 by a uint128 then shifts the result 128 bits to the right, rounding up
-     * The result can't overflow
+     * @dev Multiplies an encoded bytes32 by a uint256 then shifts the result 128 bits to the right, rounding up
      * @param x The bytes32 encoded as follows:
      * [0 - 128[: x1
      * [128 - 256[: x2
@@ -254,8 +254,9 @@ library PackedUint128Math {
      * [0 - 128[: ceil((x1 * multiplier) / 2**128)
      * [128 - 256[: ceil((x2 * multiplier) / 2**128)
      */
-    function scalarMulShift128RoundUp(bytes32 x, uint128 multiplier) internal pure returns (bytes32 z) {
+    function scalarMulShiftRoundUp(bytes32 x, uint256 multiplier) internal pure returns (bytes32 z) {
         if (multiplier == 0) return 0;
+        if (multiplier > MASK_128_PLUS_ONE) revert PackedUint128Math__MultiplierTooLarge();
 
         (uint128 x1, uint128 x2) = decode(x);
 
@@ -288,7 +289,7 @@ library PackedUint128Math {
         if (multiplier == 0) return 0;
 
         uint256 BASIS_POINT_MAX = Constants.BASIS_POINT_MAX;
-        if (multiplier > BASIS_POINT_MAX) revert PackedUint128Math__MultiplierBiggerThanMax();
+        if (multiplier > BASIS_POINT_MAX) revert PackedUint128Math__MultiplierTooLarge();
 
         (uint128 x1, uint128 x2) = decode(x);
 

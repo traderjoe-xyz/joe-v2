@@ -35,16 +35,49 @@ library OracleHelper {
     uint256 internal constant _MAX_SAMPLE_LIFETIME = 120 seconds;
 
     /**
+     * @dev Modifier to check that the oracle id is valid
+     * @param oracleId The oracle id
+     */
+    modifier checkOracleId(uint16 oracleId) {
+        if (oracleId == 0) revert OracleHelper__InvalidOracleId();
+        _;
+    }
+
+    /**
      * @dev Returns the sample at the given oracleId
      * @param oracle The oracle
      * @param oracleId The oracle id
      * @return sample The sample
      */
-    function getSample(Oracle storage oracle, uint16 oracleId) internal view returns (bytes32 sample) {
-        if (oracleId == 0) revert OracleHelper__InvalidOracleId();
-
+    function getSample(Oracle storage oracle, uint16 oracleId)
+        internal
+        view
+        checkOracleId(oracleId)
+        returns (bytes32 sample)
+    {
         unchecked {
             sample = oracle.samples[oracleId - 1];
+        }
+    }
+
+    /**
+     * @dev Returns the active sample and the active size of the oracle
+     * @param oracle The oracle
+     * @param oracleId The oracle id
+     * @return activeSample The active sample
+     * @return activeSize The active size of the oracle
+     */
+    function getActiveSampleAndSize(Oracle storage oracle, uint16 oracleId)
+        internal
+        view
+        returns (bytes32 activeSample, uint16 activeSize)
+    {
+        activeSample = getSample(oracle, oracleId);
+        activeSize = activeSample.getOracleLength();
+
+        if (oracleId != activeSize) {
+            activeSize = getSample(oracle, activeSize).getOracleLength();
+            activeSize = oracleId > activeSize ? oracleId : activeSize;
         }
     }
 
@@ -63,38 +96,31 @@ library OracleHelper {
         view
         returns (uint40 lastUpdate, uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed)
     {
-        bytes32 sample = getSample(oracle, oracleId);
-        uint16 length = sample.getOracleLength();
+        (bytes32 activeSample, uint16 activeSize) = getActiveSampleAndSize(oracle, oracleId);
 
-        assembly {
-            oracleId := mod(oracleId, length)
-        }
-        bytes32 oldestSample = oracle.samples[oracleId];
-
-        // Oreacle is not fully initialized yet
-        if (oldestSample >> SampleMath.OFFSET_CUMULATIVE_ID == 0) {
-            length = oracleId;
-            oldestSample = oracle.samples[0];
+        if (oracle.samples[oracleId % activeSize].getSampleLastUpdate() > lookUpTimestamp) {
+            revert OracleHelper__LookUpTimestampTooOld();
         }
 
-        if (oldestSample.getSampleLastUpdate() > lookUpTimestamp) revert OracleHelper__LookUpTimestampTooOld();
-
-        lastUpdate = sample.getSampleLastUpdate();
+        lastUpdate = activeSample.getSampleLastUpdate();
         if (lastUpdate <= lookUpTimestamp) {
             return (
-                lastUpdate, sample.getCumulativeId(), sample.getCumulativeVolatility(), sample.getCumulativeBinCrossed()
+                lastUpdate,
+                activeSample.getCumulativeId(),
+                activeSample.getCumulativeVolatility(),
+                activeSample.getCumulativeBinCrossed()
             );
         } else {
             lastUpdate = lookUpTimestamp;
         }
 
-        (bytes32 prevSample, bytes32 nextSample) = binarySearch(oracle, oracleId, lookUpTimestamp, length);
+        (bytes32 prevSample, bytes32 nextSample) = binarySearch(oracle, oracleId, lookUpTimestamp, activeSize);
 
         uint40 weightPrev = nextSample.getSampleLastUpdate() - lookUpTimestamp;
-        uint40 weightNext = lookUpTimestamp - sample.getSampleLastUpdate();
+        uint40 weightNext = lookUpTimestamp - prevSample.getSampleLastUpdate();
 
         (cumulativeId, cumulativeVolatility, cumulativeBinCrossed) =
-            sample.getWeightedAverage(prevSample, weightPrev, weightNext);
+            prevSample.getWeightedAverage(nextSample, weightPrev, weightNext);
     }
 
     /**
@@ -117,15 +143,16 @@ library OracleHelper {
         bytes32 sample;
         uint40 sampleLastUpdate;
 
-        while (low < high) {
-            uint16 mid = (low + high) / 2;
+        uint256 startId = oracleId; // oracleId is 1-based
+        while (low <= high) {
+            uint16 mid = (low + high) >> 1;
 
             assembly {
-                oracleId := addmod(oracleId, mid, length)
+                oracleId := addmod(startId, mid, length)
             }
 
             sample = oracle.samples[oracleId];
-            sampleLastUpdate = sample.getSampleCreation();
+            sampleLastUpdate = sample.getSampleLastUpdate();
 
             if (sampleLastUpdate > lookUpTimestamp) {
                 high = mid - 1;
@@ -159,9 +186,7 @@ library OracleHelper {
      * @param oracleId The oracle id
      * @param sample The sample
      */
-    function setSample(Oracle storage oracle, uint16 oracleId, bytes32 sample) internal {
-        if (oracleId == 0) revert OracleHelper__InvalidOracleId();
-
+    function setSample(Oracle storage oracle, uint16 oracleId, bytes32 sample) internal checkOracleId(oracleId) {
         unchecked {
             oracle.samples[oracleId - 1] = sample;
         }
@@ -172,10 +197,11 @@ library OracleHelper {
      * @param oracle The oracle
      * @param parameters The parameters
      * @param activeId The active id
+     * @return The updated parameters
      */
-    function update(Oracle storage oracle, bytes32 parameters, uint24 activeId) internal {
+    function update(Oracle storage oracle, bytes32 parameters, uint24 activeId) internal returns (bytes32) {
         uint16 oracleId = parameters.getOracleId();
-        if (oracleId == 0) return;
+        if (oracleId == 0) return parameters;
 
         bytes32 sample = getSample(oracle, oracleId);
 
@@ -190,19 +216,24 @@ library OracleHelper {
             uint16 length = sample.getOracleLength();
 
             if (deltaTime > _MAX_SAMPLE_LIFETIME) {
-                deltaTime = 0;
-                createdAt = uint40(block.timestamp);
                 assembly {
                     oracleId := add(mod(oracleId, length), 1)
                 }
+
+                deltaTime = 0;
+                createdAt = uint40(block.timestamp);
+
+                parameters = parameters.setOracleId(oracleId);
             }
 
             sample = SampleMath.encode(
                 length, cumulativeId, cumulativeVolatility, cumulativeBinCrossed, uint8(deltaTime), createdAt
             );
-
-            setSample(oracle, oracleId, sample);
         }
+
+        setSample(oracle, oracleId, sample);
+
+        return parameters;
     }
 
     /**
@@ -211,22 +242,25 @@ library OracleHelper {
      * @param oracleId The oracle id
      * @param newLength The new length
      */
-    function inreaseLength(Oracle storage oracle, uint16 oracleId, uint16 newLength) internal {
+    function increaseLength(Oracle storage oracle, uint16 oracleId, uint16 newLength) internal {
         bytes32 sample = getSample(oracle, oracleId);
         uint16 length = sample.getOracleLength();
 
         if (length >= newLength) revert OracleHelper__NewLengthTooSmall();
 
+        bytes32 lastSample = length == oracleId ? sample : length == 0 ? bytes32(0) : getSample(oracle, length);
+
+        uint256 activeSize = lastSample.getOracleLength();
+        activeSize = oracleId > activeSize ? oracleId : activeSize;
+
         for (uint256 i = length; i < newLength;) {
-            oracle.samples[i] = bytes32(uint256(newLength));
+            oracle.samples[i] = bytes32(uint256(activeSize));
 
             unchecked {
                 ++i;
             }
         }
 
-        if (oracleId != length) {
-            setSample(oracle, oracleId, (sample ^ bytes32(uint256(length))) | bytes32(uint256(newLength)));
-        }
+        setSample(oracle, oracleId, (sample ^ bytes32(uint256(length))) | bytes32(uint256(newLength)));
     }
 }

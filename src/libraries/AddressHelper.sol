@@ -3,14 +3,14 @@
 pragma solidity 0.8.10;
 
 /**
- * @title Liquidity Book Addresses Helper Library
+ * @title Liquidity Book Address Helper Library
  * @author Trader Joe
  * @notice This library contains functions to check if an address is a contract and
  * catch low level calls errors
  */
-library AddressesHelper {
-    error AddressesHelper__NonContract();
-    error AddressesHelper__CallFailed();
+library AddressHelper {
+    error AddressHelper__NonContract();
+    error AddressHelper__CallFailed();
 
     /**
      * @notice Private view function to perform a low level call on `target`
@@ -23,10 +23,10 @@ library AddressesHelper {
         (bool success, bytes memory returnData) = target.call(data);
 
         if (success) {
-            if (returnData.length == 0 && !isContract(target)) revert AddressesHelper__NonContract();
+            if (returnData.length == 0 && !isContract(target)) revert AddressHelper__NonContract();
         } else {
             if (returnData.length == 0) {
-                revert AddressesHelper__CallFailed();
+                revert AddressHelper__CallFailed();
             } else {
                 // Look for revert reason and bubble it up if present
                 assembly {

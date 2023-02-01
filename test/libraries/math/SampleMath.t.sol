@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/math/SampleMath.sol";
+import "../../../src/libraries/math/SampleMath.sol";
 
 contract SampleMathTest is Test {
     using SampleMath for bytes32;

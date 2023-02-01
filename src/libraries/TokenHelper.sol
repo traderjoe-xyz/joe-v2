@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-import {AddressesHelper} from "./AddressesHelper.sol";
+import {AddressHelper} from "./AddressHelper.sol";
 
 /**
  * @title Liquidity Book Token Helper Library
@@ -17,7 +17,7 @@ import {AddressesHelper} from "./AddressesHelper.sol";
  * which allows you to call the safe operation as `token.safeTransfer(...)`
  */
 library TokenHelper {
-    using AddressesHelper for address;
+    using AddressHelper for address;
 
     error TokenHelper__TransferFailed();
 

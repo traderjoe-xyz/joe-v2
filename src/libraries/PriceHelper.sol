@@ -3,6 +3,7 @@
 pragma solidity 0.8.10;
 
 import {Uint128x128Math} from "./math/Uint128x128Math.sol";
+import {Uint256x256Math} from "./math/Uint256x256Math.sol";
 import {SafeCast} from "./math/SafeCast.sol";
 import {Constants} from "./Constants.sol";
 
@@ -13,6 +14,7 @@ import {Constants} from "./Constants.sol";
  */
 library PriceHelper {
     using Uint128x128Math for uint256;
+    using Uint256x256Math for uint256;
     using SafeCast for uint256;
 
     int256 private constant REAL_ID_SHIFT = 1 << 23;
@@ -21,7 +23,7 @@ library PriceHelper {
      * @dev Calculates the price from the id and the bin step
      * @param id The id
      * @param binStep The bin step
-     * @return price The price
+     * @return price The price as a 128.128-binary fixed-point number
      */
     function getPriceFromId(uint24 id, uint8 binStep) internal pure returns (uint256 price) {
         uint256 base = getBase(binStep);
@@ -32,7 +34,7 @@ library PriceHelper {
 
     /**
      * @dev Calculates the id from the price and the bin step
-     * @param price The price
+     * @param price The price as a 128.128-binary fixed-point number
      * @param binStep The bin step
      * @return id The id
      */
@@ -52,7 +54,7 @@ library PriceHelper {
      */
     function getBase(uint8 binStep) internal pure returns (uint256) {
         unchecked {
-            return Constants.SCALE + (uint256(binStep) << Constants.SCALE_OFFSET) / Constants.BASIS_POINT_MAX;
+            return Constants.SCALE + (uint256(binStep) << Constants.SCALE_OFFSET) / Constants.TWO_BASIS_POINT_MAX;
         }
     }
 
@@ -65,5 +67,23 @@ library PriceHelper {
         unchecked {
             return int256(uint256(id)) - REAL_ID_SHIFT;
         }
+    }
+
+    /**
+     * @dev Converts a price with 18 decimals to a 128.128-binary fixed-point number
+     * @param price The price with 18 decimals
+     * @return price128x128 The 128.128-binary fixed-point number
+     */
+    function convertDecimalPriceTo128x128(uint256 price) internal pure returns (uint256) {
+        return price.shiftDivRoundDown(Constants.SCALE_OFFSET, Constants.PRECISION);
+    }
+
+    /**
+     * @dev Converts a 128.128-binary fixed-point number to a price with 18 decimals
+     * @param price128x128 The 128.128-binary fixed-point number
+     * @return price The price with 18 decimals
+     */
+    function convert128x128PriceToDecimal(uint256 price128x128) internal pure returns (uint256) {
+        return price128x128.mulShiftRoundDown(Constants.PRECISION, Constants.SCALE_OFFSET);
     }
 }

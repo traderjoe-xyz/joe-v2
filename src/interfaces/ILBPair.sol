@@ -65,6 +65,8 @@ interface ILBPair is ILBToken {
         bytes32 protocolFees
     );
 
+    event OracleLengthIncreased(address indexed sender, uint16 oracleLength);
+
     event ForcedDecay(address indexed sender, uint24 idReference, uint24 volatilityReference);
 
     function initialize(

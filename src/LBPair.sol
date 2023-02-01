@@ -17,12 +17,17 @@ import {OracleHelper} from "./libraries/OracleHelper.sol";
 import {PackedUint128Math} from "./libraries/math/PackedUint128Math.sol";
 import {PairParameterHelper} from "./libraries/PairParameterHelper.sol";
 import {PriceHelper} from "./libraries/PriceHelper.sol";
-import {ReentrancyGuardUpgradeable} from "./libraries/ReentrancyGuardUpgradeable.sol";
+import {ReentrancyGuard} from "./libraries/ReentrancyGuard.sol";
 import {SafeCast} from "./libraries/math/SafeCast.sol";
 import {TreeMath} from "./libraries/math/TreeMath.sol";
 import {Uint256x256Math} from "./libraries/math/Uint256x256Math.sol";
 
-contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
+/**
+ * @title Liquidity Book Pair
+ * @author Trader Joe
+ * @notice The Liquidity Book Pair contract is the core contract of the Liquidity Book protocol
+ */
+contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
     using BinHelper for bytes32;
     using FeeHelper for uint128;
     using LiquidityConfigurations for bytes32;
@@ -491,7 +496,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
 
         if (amountsOut == 0) revert LBPair__InsufficientAmountOut();
 
-        _oracle.update(parameters, activeId);
+        parameters = _oracle.update(parameters, activeId);
 
         _reserves = reserves.sub(amountsOut);
         _parameters = parameters.setActiveId(activeId);
@@ -698,8 +703,19 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
      * @param newLength The new length of the oracle
      */
     function increaseOracleLength(uint16 newLength) external override {
-        uint16 oracleId = _parameters.getOracleId();
-        _oracle.inreaseLength(oracleId, newLength);
+        bytes32 parameters = _parameters;
+
+        uint16 oracleId = parameters.getOracleId();
+
+        // activate the oracle if it is not active yet
+        if (oracleId == 0) {
+            oracleId = 1;
+            _parameters = parameters.setOracleId(oracleId);
+        }
+
+        _oracle.increaseLength(oracleId, newLength);
+
+        emit OracleLengthIncreased(msg.sender, newLength);
     }
 
     /**
@@ -888,8 +904,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
                     _protocolFees = _protocolFees.add(protocolCFees);
                 }
 
+                parameters = _oracle.update(parameters, id);
                 _parameters = parameters;
-                _oracle.update(parameters, id);
 
                 emit CompositionFees(msg.sender, id, fees, protocolCFees);
             }

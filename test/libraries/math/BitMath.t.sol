@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/math/BitMath.sol";
+import "../../../src/libraries/math/BitMath.sol";
 
 contract BitMathTest is Test {
     using BitMath for uint256;

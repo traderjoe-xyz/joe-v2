@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/math/Uint128x128Math.sol";
+import "../../../src/libraries/math/Uint128x128Math.sol";
 
 contract Uint128x128MathTest is Test {
     using Uint128x128Math for uint256;

@@ -76,14 +76,28 @@ library BinHelper {
     {
         uint256 userLiquidity = getLiquidity(amountsIn, price);
         if (totalSupply == 0) return (userLiquidity, amountsIn);
+        if (userLiquidity == 0) return (0, 0);
 
         uint256 binLiquidity = getLiquidity(binReserves, price);
+        if (binLiquidity == 0) return (userLiquidity, amountsIn);
 
         shares = userLiquidity.mulDivRoundDown(totalSupply, binLiquidity);
-        uint256 effectiveLiquidity = shares.mulDivRoundDown(binLiquidity, totalSupply);
+        uint256 effectiveLiquidity = shares.mulDivRoundUp(binLiquidity, totalSupply);
 
-        uint256 ratioLiquidity = effectiveLiquidity.shiftDivRoundUp(Constants.SCALE_OFFSET, userLiquidity);
-        effectiveAmountsIn = amountsIn.scalarMulShift128RoundUp(ratioLiquidity.safe128());
+        if (userLiquidity == effectiveLiquidity) return (shares, amountsIn);
+
+        uint256 deltaLiquidity = userLiquidity - effectiveLiquidity;
+
+        (uint128 amountX, uint128 amountY) = amountsIn.decode();
+
+        if (amountY > deltaLiquidity) {
+            amountY -= uint128(deltaLiquidity);
+        } else {
+            amountY = 0;
+            amountX = effectiveLiquidity.shiftDivRoundUp(Constants.SCALE_OFFSET, price).safe128();
+        }
+
+        effectiveAmountsIn = amountX.encode(amountY);
     }
 
     /**
@@ -109,10 +123,9 @@ library BinHelper {
      * @param id The id of the bin
      */
     function verifyAmounts(bytes32 amounts, uint24 activeId, uint24 id) internal pure {
-        if (
-            uint256(amounts) <= type(uint128).max && id < activeId
-                || uint256(amounts) > type(uint128).max && id > activeId
-        ) revert BinMath__CompositionFactorFlawed(id);
+        if (id < activeId && (amounts << 128) > 0 || id > activeId && uint256(amounts) > type(uint128).max) {
+            revert BinMath__CompositionFactorFlawed(id);
+        }
     }
 
     /**
@@ -134,6 +147,8 @@ library BinHelper {
         uint256 totalSupply,
         uint256 shares
     ) internal pure returns (bytes32 fees) {
+        if (shares == 0) return 0;
+
         (uint128 amountX, uint128 amountY) = amountsIn.decode();
         (uint128 receivedAmountX, uint128 receivedAmountY) =
             getAmountOutOfBin(binReserves.add(amountsIn), shares, totalSupply + shares).decode();
@@ -167,7 +182,7 @@ library BinHelper {
      * @param binStep The step of the bin
      * @param swapForY Whether the swap is for Y (true) or for X (false)
      * @param activeId The id of the active bin
-     * @param amountsLeft The amounts of tokens left to swap
+     * @param amountsInLeft The amounts of tokens left to swap
      * @return amountsInToBin The encoded amounts of tokens that will be added to the bin
      * @return amountsOutOfBin The encoded amounts of tokens that will be removed from the bin
      * @return totalFees The encoded fees that will be charged
@@ -178,7 +193,7 @@ library BinHelper {
         uint8 binStep,
         bool swapForY, // swap `swapForY` and `activeId` to avoid stack too deep
         uint24 activeId,
-        bytes32 amountsLeft
+        bytes32 amountsInLeft
     ) internal pure returns (bytes32 amountsInToBin, bytes32 amountsOutOfBin, bytes32 totalFees) {
         uint256 price = activeId.getPriceFromId(binStep);
 
@@ -191,26 +206,22 @@ library BinHelper {
         uint128 totalFee = parameters.getTotalFee(binStep);
         uint128 maxFee = maxAmountIn.getFeeAmount(totalFee);
 
+        uint128 amountIn128 = amountsInLeft.decode(swapForY);
         uint128 fee128;
-        uint128 amountIn128;
         uint128 amountOut128;
 
-        uint128 amountIn = amountsLeft.decode(swapForY);
-
-        if (amountIn >= maxAmountIn + maxFee) {
+        if (amountIn128 >= maxAmountIn + maxFee) {
             fee128 = maxFee;
 
-            amountIn128 = maxAmountIn + maxFee;
+            amountIn128 = maxAmountIn;
             amountOut128 = binReserveOut;
         } else {
-            fee128 = amountIn.getFeeAmountFrom(totalFee);
-
-            amountIn -= fee128;
-            amountIn128 = amountIn;
+            fee128 = amountIn128.getFeeAmountFrom(totalFee);
+            amountIn128 -= fee128;
 
             amountOut128 = swapForY
-                ? uint256(amountIn).mulShiftRoundDown(price, Constants.SCALE_OFFSET).safe128()
-                : uint256(amountIn).shiftDivRoundDown(Constants.SCALE_OFFSET, price).safe128();
+                ? uint256(amountIn128).mulShiftRoundDown(price, Constants.SCALE_OFFSET).safe128()
+                : uint256(amountIn128).shiftDivRoundDown(Constants.SCALE_OFFSET, price).safe128();
 
             if (amountOut128 > binReserveOut) amountOut128 = binReserveOut;
         }

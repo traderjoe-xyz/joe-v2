@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/math/PackedUint128Math.sol";
+import "../../../src/libraries/math/PackedUint128Math.sol";
 
 contract PackedUint128MathTest is Test {
     using PackedUint128Math for bytes32;
@@ -148,7 +148,7 @@ contract PackedUint128MathTest is Test {
         assertEq(x.gt(y), x1 > y1 || x2 > y2, "testFuzz_GreaterThan::1");
     }
 
-    function testFuzz_ScalarMulShift128RoundUp(bytes32 x, uint128 multiplier) external {
+    function testFuzz_ScalarMulShiftRoundUp(bytes32 x, uint128 multiplier) external {
         (uint128 x1, uint128 x2) = x.decode();
 
         uint256 y1 = uint256(x1) * multiplier;
@@ -157,14 +157,19 @@ contract PackedUint128MathTest is Test {
         uint256 z1 = y1 == 0 ? 0 : ((y1 - 1) >> 128) + 1;
         uint256 z2 = y2 == 0 ? 0 : ((y2 - 1) >> 128) + 1;
 
-        assertLe(z1, type(uint128).max, "testFuzz_ScalarMulShift128RoundUp::1");
-        assertLe(z2, type(uint128).max, "testFuzz_ScalarMulShift128RoundUp::2");
+        assertLe(z1, type(uint128).max, "testFuzz_ScalarMulShiftRoundUp::1");
+        assertLe(z2, type(uint128).max, "testFuzz_ScalarMulShiftRoundUp::2");
 
         assertEq(
-            x.scalarMulShift128RoundUp(multiplier),
-            uint128(z1).encode(uint128(z2)),
-            "testFuzz_ScalarMulShift128RoundUp::3"
+            x.scalarMulShiftRoundUp(multiplier), uint128(z1).encode(uint128(z2)), "testFuzz_ScalarMulShiftRoundUp::3"
         );
+    }
+
+    function testFuzz_revert_ScalarMulShiftRoundUp(bytes32 x, uint256 multiplier) external {
+        vm.assume(multiplier > uint256(type(uint128).max) + 1);
+
+        vm.expectRevert(PackedUint128Math.PackedUint128Math__MultiplierTooLarge.selector);
+        x.scalarMulShiftRoundUp(multiplier);
     }
 
     function testFuzz_ScalarMulDivBasisPointRoundDown(bytes32 x, uint128 multipilier) external {
@@ -177,7 +182,7 @@ contract PackedUint128MathTest is Test {
         uint256 z2 = y2 / Constants.BASIS_POINT_MAX;
 
         if (multipilier > Constants.BASIS_POINT_MAX) {
-            vm.expectRevert(PackedUint128Math.PackedUint128Math__MultiplierBiggerThanMax.selector);
+            vm.expectRevert(PackedUint128Math.PackedUint128Math__MultiplierTooLarge.selector);
             x.scalarMulDivBasisPointRoundDown(multipilier);
         } else {
             assertLe(z1, type(uint128).max, "testFuzz_ScalarMulDivBasisPointRoundDown::1");

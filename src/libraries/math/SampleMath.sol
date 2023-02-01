@@ -130,7 +130,6 @@ library SampleMath {
      * [216 - 256[: sample creation timestamp (40 bits)
      * @return lastUpdate The sample last update timestamp
      */
-    //TODO lastupdate 48 bits?
     function getSampleLastUpdate(bytes32 sample) internal pure returns (uint40 lastUpdate) {
         lastUpdate = getSampleCreation(sample) + getSampleLifetime(sample);
     }

@@ -26,13 +26,13 @@ contract LBQuoter {
     error LBQuoter_InvalidLength();
 
     /// @notice Dex V2 router address
-    address public immutable routerV2;
+    address private immutable _routerV2;
     /// @notice Dex V1 factory address
-    address public immutable factoryV1;
+    address private immutable _factoryV1;
     /// @notice Dex V2 factory address
-    address public immutable legacyFactoryV2;
+    address private immutable _legacyFactoryV2;
     /// @notice Dex V2.1 factory address
-    address public immutable factoryV2;
+    address private immutable _factoryV2;
 
     struct Quote {
         address[] route;
@@ -45,15 +45,39 @@ contract LBQuoter {
     }
 
     /// @notice Constructor
-    /// @param routerV2_ Dex V2 router address
-    /// @param factoryV1_ Dex V1 factory address
-    /// @param legacyFactoryV2_ Dex V2 factory address
-    /// @param factoryV2_ Dex V2.1 factory address
-    constructor(address factoryV1_, address legacyFactoryV2_, address factoryV2_, address routerV2_) {
-        factoryV1 = factoryV1_;
-        legacyFactoryV2 = legacyFactoryV2_;
-        factoryV2 = factoryV2_;
-        routerV2 = routerV2_;
+    /// @param routerV2 Dex V2 router address
+    /// @param factoryV1 Dex V1 factory address
+    /// @param legacyFactoryV2 Dex V2 factory address
+    /// @param factoryV2 Dex V2.1 factory address
+    constructor(address factoryV1, address legacyFactoryV2, address factoryV2, address routerV2) {
+        _factoryV1 = factoryV1;
+        _legacyFactoryV2 = legacyFactoryV2;
+        _factoryV2 = factoryV2;
+        _routerV2 = routerV2;
+    }
+
+    /// @notice Returns the Dex V1 factory address
+    /// @return factoryV1 Dex V1 factory address
+    function getFactoryV1() public view returns (address factoryV1) {
+        factoryV1 = _factoryV1;
+    }
+
+    /// @notice Returns the Dex V2 factory address
+    /// @return legacyFactoryV2 Dex V2 factory address
+    function getLegacyFactoryV2() public view returns (address legacyFactoryV2) {
+        legacyFactoryV2 = _legacyFactoryV2;
+    }
+
+    /// @notice Returns the Dex V2.1 factory address
+    /// @return factoryV2 Dex V2.1 factory address
+    function getFactoryV2() public view returns (address factoryV2) {
+        factoryV2 = _factoryV2;
+    }
+
+    /// @notice Returns the Dex V2 router address
+    /// @return routerV2 Dex V2 router address
+    function getRouterV2() public view returns (address routerV2) {
+        routerV2 = _routerV2;
     }
 
     /// @notice Finds the best path given a list of tokens and the input amount wanted from the swap
@@ -84,7 +108,7 @@ contract LBQuoter {
 
         for (uint256 i; i < swapLength; i++) {
             // Fetch swap for V1
-            quote.pairs[i] = IJoeFactory(factoryV1).getPair(route[i], route[i + 1]);
+            quote.pairs[i] = IJoeFactory(_factoryV1).getPair(route[i], route[i + 1]);
 
             if (quote.pairs[i] != address(0) && quote.amounts[i] > 0) {
                 (uint256 reserveIn, uint256 reserveOut) = _getReserves(quote.pairs[i], route[i], route[i + 1]);
@@ -103,10 +127,10 @@ contract LBQuoter {
 
             for (uint256 k = 0; k < 2; k++) {
                 if (k == 0) {
-                    LBPairsAvailable = ILBFactory(factoryV2).getAllLBPairs(IERC20(route[i]), IERC20(route[i + 1]));
+                    LBPairsAvailable = ILBFactory(_factoryV2).getAllLBPairs(IERC20(route[i]), IERC20(route[i + 1]));
                 } else {
                     ILBLegacyFactory.LBPairInformation[] memory LBPairsAvailableLegacy =
-                        ILBLegacyFactory(legacyFactoryV2).getAllLBPairs(IERC20(route[i]), IERC20(route[i + 1]));
+                        ILBLegacyFactory(_legacyFactoryV2).getAllLBPairs(IERC20(route[i]), IERC20(route[i + 1]));
 
                     LBPairsAvailable = new ILBFactory.LBPairInformation[](LBPairsAvailableLegacy.length);
                     for (uint256 l = 0; l < LBPairsAvailableLegacy.length; l++) {
@@ -130,7 +154,7 @@ contract LBQuoter {
                                     : ILBLegacyPair(address(LBPairsAvailable[j].LBPair)).tokenY()
                             ) == route[i + 1];
 
-                            try ILBRouter(routerV2).getSwapOut(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
+                            try ILBRouter(_routerV2).getSwapOut(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
                             returns (uint128, uint128 swapAmountOut, uint128 fees) {
                                 if (swapAmountOut > quote.amounts[i + 1]) {
                                     quote.amounts[i + 1] = swapAmountOut;
@@ -186,7 +210,7 @@ contract LBQuoter {
 
         for (uint256 i = swapLength; i > 0; i--) {
             // Fetch swap for V1
-            quote.pairs[i - 1] = IJoeFactory(factoryV1).getPair(route[i - 1], route[i]);
+            quote.pairs[i - 1] = IJoeFactory(_factoryV1).getPair(route[i - 1], route[i]);
             if (quote.pairs[i - 1] != address(0) && quote.amounts[i] > 0) {
                 (uint256 reserveIn, uint256 reserveOut) = _getReserves(quote.pairs[i - 1], route[i - 1], route[i]);
 
@@ -205,9 +229,10 @@ contract LBQuoter {
 
             for (uint256 k = 0; k < 2; k++) {
                 if (k == 0) {
-                    LBPairsAvailable = ILBFactory(factoryV2).getAllLBPairs(IERC20(route[i - 1]), IERC20(route[i]));
+                    LBPairsAvailable = ILBFactory(_factoryV2).getAllLBPairs(IERC20(route[i - 1]), IERC20(route[i]));
                 } else {
-                    LBPairsAvailable = ILBFactory(legacyFactoryV2).getAllLBPairs(IERC20(route[i - 1]), IERC20(route[i]));
+                    LBPairsAvailable =
+                        ILBFactory(_legacyFactoryV2).getAllLBPairs(IERC20(route[i - 1]), IERC20(route[i]));
                 }
 
                 if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
@@ -218,7 +243,7 @@ contract LBQuoter {
                                     ? LBPairsAvailable[j].LBPair.getTokenY()
                                     : ILBLegacyPair(address(LBPairsAvailable[j].LBPair)).tokenY()
                             ) == route[i];
-                            try ILBRouter(routerV2).getSwapIn(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
+                            try ILBRouter(_routerV2).getSwapIn(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
                             returns (uint128 swapAmountIn, uint128, uint128 fees) {
                                 if (
                                     swapAmountIn != 0

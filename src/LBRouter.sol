@@ -223,7 +223,7 @@ contract LBRouter is ILBRouter {
     /// @param amountXMin The min amount to receive of token X
     /// @param amountYMin The min amount to receive of token Y
     /// @param ids The list of ids to burn
-    /// @param amounts The list of amounts to burn of each id in `_ids`
+    /// @param amounts The list of amounts to burn of each id in `ids`
     /// @param to The address of the recipient
     /// @param deadline The deadline of the tx
     /// @return amountX Amount of token X returned
@@ -259,7 +259,7 @@ contract LBRouter is ILBRouter {
     /// @param amountTokenMin The min amount to receive of token
     /// @param amountAVAXMin The min amount to receive of AVAX
     /// @param ids The list of ids to burn
-    /// @param amounts The list of amounts to burn of each id in `_ids`
+    /// @param amounts The list of amounts to burn of each id in `ids`
     /// @param to The address of the recipient
     /// @param deadline The deadline of the tx
     /// @return amountToken Amount of token returned
@@ -594,14 +594,14 @@ contract LBRouter is ILBRouter {
                 revert LBRouter__IdDesiredOverflows(liq.activeIdDesired, liq.idSlippage);
             }
 
-            uint256 _activeId = pair.getActiveId();
-            if (liq.activeIdDesired + liq.idSlippage < _activeId || _activeId + liq.idSlippage < liq.activeIdDesired) {
-                revert LBRouter__IdSlippageCaught(liq.activeIdDesired, liq.idSlippage, _activeId);
+            uint256 activeId = pair.getActiveId();
+            if (liq.activeIdDesired + liq.idSlippage < activeId || activeId + liq.idSlippage < liq.activeIdDesired) {
+                revert LBRouter__IdSlippageCaught(liq.activeIdDesired, liq.idSlippage, activeId);
             }
 
             liquidityConfigs = new bytes32[](liq.deltaIds.length);
             for (uint256 i; i < liquidityConfigs.length; ++i) {
-                int256 id = int256(_activeId) + liq.deltaIds[i];
+                int256 id = int256(activeId) + liq.deltaIds[i];
                 if (id < 0 || uint256(id) > type(uint24).max) revert LBRouter__IdOverflows(id);
                 liquidityConfigs[i] = LiquidityConfigurations.encodeParams(
                     uint64(liq.distributionX[i]), uint64(liq.distributionY[i]), uint24(uint256(id))
@@ -662,7 +662,7 @@ contract LBRouter is ILBRouter {
     /// @param amountXMin The min amount to receive of token X
     /// @param amountYMin The min amount to receive of token Y
     /// @param ids The list of ids to burn
-    /// @param amounts The list of amounts to burn of each id in `_ids`
+    /// @param amounts The list of amounts to burn of each id in `ids`
     /// @param to The address of the recipient
     /// @return amountX The amount of token X sent by the pair
     /// @return amountY The amount of token Y sent by the pair

@@ -88,9 +88,10 @@ contract LiquidityBinQuoterTest is TestHelper {
     }
 
     function test_Constructor() public {
-        assertEq(address(quoter.routerV2()), address(router));
-        assertEq(address(quoter.factoryV1()), AvalancheAddresses.JOE_V1_FACTORY);
-        assertEq(address(quoter.factoryV2()), address(factory));
+        assertEq(address(quoter.getRouterV2()), address(router));
+        assertEq(address(quoter.getFactoryV1()), AvalancheAddresses.JOE_V1_FACTORY);
+        assertEq(address(quoter.getLegacyFactoryV2()), AvalancheAddresses.JOE_V2_FACTORY);
+        assertEq(address(quoter.getFactoryV2()), address(factory));
     }
 
     function test_InvalidLength() public {

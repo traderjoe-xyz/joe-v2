@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.10;
 
-import "openzeppelin/token/ERC20/IERC20.sol";
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-import "./ILBPair.sol";
-import "./IPendingOwnable.sol";
+import {ILBPair} from "./ILBPair.sol";
+import {IPendingOwnable} from "./IPendingOwnable.sol";
 
 /// @title Liquidity Book Factory Interface
 /// @author Trader Joe
@@ -24,11 +24,7 @@ interface ILBLegacyFactory is IPendingOwnable {
     }
 
     event LBPairCreated(
-        IERC20 indexed tokenX,
-        IERC20 indexed tokenY,
-        uint256 indexed binStep,
-        ILBPair LBPair,
-        uint256 pid
+        IERC20 indexed tokenX, IERC20 indexed tokenY, uint256 indexed binStep, ILBPair LBPair, uint256 pid
     );
 
     event FeeRecipientSet(address oldRecipient, address newRecipient);
@@ -98,15 +94,12 @@ interface ILBLegacyFactory is IPendingOwnable {
 
     function getNumberOfLBPairs() external view returns (uint256);
 
-    function getLBPairInformation(
-        IERC20 tokenX,
-        IERC20 tokenY,
-        uint256 binStep
-    ) external view returns (LBPairInformation memory);
+    function getLBPairInformation(IERC20 tokenX, IERC20 tokenY, uint256 binStep)
+        external
+        view
+        returns (LBPairInformation memory);
 
-    function getPreset(
-        uint16 binStep
-    )
+    function getPreset(uint16 binStep)
         external
         view
         returns (
@@ -122,19 +115,16 @@ interface ILBLegacyFactory is IPendingOwnable {
 
     function getAllBinSteps() external view returns (uint256[] memory presetsBinStep);
 
-    function getAllLBPairs(
-        IERC20 tokenX,
-        IERC20 tokenY
-    ) external view returns (LBPairInformation[] memory LBPairsBinStep);
+    function getAllLBPairs(IERC20 tokenX, IERC20 tokenY)
+        external
+        view
+        returns (LBPairInformation[] memory LBPairsBinStep);
 
     function setLBPairImplementation(address LBPairImplementation) external;
 
-    function createLBPair(
-        IERC20 tokenX,
-        IERC20 tokenY,
-        uint24 activeId,
-        uint16 binStep
-    ) external returns (ILBPair pair);
+    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
+        external
+        returns (ILBPair pair);
 
     function setLBPairIgnored(IERC20 tokenX, IERC20 tokenY, uint256 binStep, bool ignored) external;
 

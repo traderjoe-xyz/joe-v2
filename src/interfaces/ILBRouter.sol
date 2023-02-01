@@ -2,10 +2,14 @@
 
 pragma solidity 0.8.10;
 
-import "./IJoeFactory.sol";
-import "./ILBPair.sol";
-import "./ILBToken.sol";
-import "./IWAVAX.sol";
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+
+import {IJoeFactory} from "./IJoeFactory.sol";
+import {ILBFactory} from "./ILBFactory.sol";
+import {ILBLegacyFactory} from "./ILBLegacyFactory.sol";
+import {ILBPair} from "./ILBPair.sol";
+import {ILBToken} from "./ILBToken.sol";
+import {IWAVAX} from "./IWAVAX.sol";
 
 /// @title Liquidity Book Router Interface
 /// @author Trader Joe
@@ -80,11 +84,13 @@ interface ILBRouter {
         IERC20[] tokenPath;
     }
 
-    function factory() external view returns (ILBFactory);
+    function getFactory() external view returns (ILBFactory);
 
-    function oldFactory() external view returns (IJoeFactory);
+    function getLegacyFactory() external view returns (ILBLegacyFactory);
 
-    function wavax() external view returns (IWAVAX);
+    function getOldFactory() external view returns (IJoeFactory);
+
+    function getWAVAX() external view returns (IWAVAX);
 
     function getIdFromPrice(ILBPair LBPair, uint256 price) external view returns (uint24);
 
@@ -100,7 +106,7 @@ interface ILBRouter {
         view
         returns (uint128 amountInLeft, uint128 amountOut, uint128 fee);
 
-    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
+    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint8 binStep)
         external
         returns (ILBPair pair);
 
@@ -116,7 +122,7 @@ interface ILBRouter {
     function removeLiquidity(
         IERC20 tokenX,
         IERC20 tokenY,
-        uint16 binStep,
+        uint8 binStep,
         uint256 revision,
         uint256 amountXMin,
         uint256 amountYMin,
@@ -128,7 +134,7 @@ interface ILBRouter {
 
     function removeLiquidityAVAX(
         IERC20 token,
-        uint16 binStep,
+        uint8 binStep,
         uint256 revision,
         uint256 amountTokenMin,
         uint256 amountAVAXMin,

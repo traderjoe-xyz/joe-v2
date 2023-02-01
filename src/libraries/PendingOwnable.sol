@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.10;
 
-import "../interfaces/IPendingOwnable.sol";
+import {IPendingOwnable} from "../interfaces/IPendingOwnable.sol";
 
 /**
  * @title Pending Ownable

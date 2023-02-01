@@ -2,21 +2,26 @@
 
 pragma solidity 0.8.10;
 
-import "openzeppelin/token/ERC20/IERC20.sol";
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-import "./libraries/BinHelper.sol";
-import "./libraries/Constants.sol";
-import "./libraries/FeeHelper.sol";
-import "./libraries/JoeLibrary.sol";
-import "./libraries/math/Uint256x256Math.sol";
-import "./libraries/math/PackedUint128Math.sol";
-import "./libraries/TokenHelper.sol";
-import "./interfaces/IJoePair.sol";
-import "./interfaces/ILBToken.sol";
-import "./interfaces/ILBRouter.sol";
-import "./interfaces/ILBLegacyFactory.sol";
-
+import {BinHelper} from "./libraries/BinHelper.sol";
+import {Constants} from "./libraries/Constants.sol";
+import {Encoded} from "./libraries/math/Encoded.sol";
+import {FeeHelper} from "./libraries/FeeHelper.sol";
+import {JoeLibrary} from "./libraries/JoeLibrary.sol";
 import {LiquidityConfigurations} from "./libraries/math/LiquidityConfigurations.sol";
+import {PackedUint128Math} from "./libraries/math/PackedUint128Math.sol";
+import {TokenHelper} from "./libraries/TokenHelper.sol";
+import {Uint256x256Math} from "./libraries/math/Uint256x256Math.sol";
+
+import {IJoePair} from "./interfaces/IJoePair.sol";
+import {ILBPair} from "./interfaces/ILBPair.sol";
+import {ILBToken} from "./interfaces/ILBToken.sol";
+import {ILBRouter} from "./interfaces/ILBRouter.sol";
+import {IJoeFactory} from "./interfaces/IJoeFactory.sol";
+import {ILBLegacyFactory} from "./interfaces/ILBLegacyFactory.sol";
+import {ILBFactory} from "./interfaces/ILBFactory.sol";
+import {IWAVAX} from "./interfaces/IWAVAX.sol";
 
 /// @title Liquidity Book Router
 /// @author Trader Joe
@@ -24,788 +29,811 @@ import {LiquidityConfigurations} from "./libraries/math/LiquidityConfigurations.
 contract LBRouter is ILBRouter {
     using TokenHelper for IERC20;
     using TokenHelper for IWAVAX;
-    using Uint256x256Math for uint256;
-    using LiquidityConfigurations for bytes32;
-    // using SwapHelper for ILBPair.Bin;
+    // using Uint256x256Math for uint256;
+    using Encoded for bytes32;
     using JoeLibrary for uint256;
     using PackedUint128Math for bytes32;
 
-    ILBFactory public immutable override factory;
-    ILBLegacyFactory public immutable legacyFactory;
-    IJoeFactory public immutable override oldFactory;
-    IWAVAX public immutable override wavax;
+    ILBFactory private immutable _factory;
+    ILBLegacyFactory private immutable _legacyFactory;
+    IJoeFactory private immutable _oldFactory;
+    IWAVAX private immutable _wavax;
 
     modifier onlyFactoryOwner() {
-        if (msg.sender != factory.owner()) revert LBRouter__NotFactoryOwner();
+        if (msg.sender != _factory.owner()) revert LBRouter__NotFactoryOwner();
         _;
     }
 
-    modifier ensure(uint256 _deadline) {
-        if (block.timestamp > _deadline) revert LBRouter__DeadlineExceeded(_deadline, block.timestamp);
+    modifier ensure(uint256 deadline) {
+        if (block.timestamp > deadline) revert LBRouter__DeadlineExceeded(deadline, block.timestamp);
         _;
     }
 
-    modifier verifyPathValidity(Path memory _path) {
+    modifier verifyPathValidity(Path memory path) {
         if (
-            _path.pairBinSteps.length == 0 || _path.revisions.length != _path.pairBinSteps.length
-                || _path.pairBinSteps.length + 1 != _path.tokenPath.length
+            path.pairBinSteps.length == 0 || path.revisions.length != path.pairBinSteps.length
+                || path.pairBinSteps.length + 1 != path.tokenPath.length
         ) revert LBRouter__LengthsMismatch();
         _;
     }
 
     /// @notice Constructor
-    /// @param _factory LBFactory address
-    /// @param _oldFactory Address of old factory (Joe V1)
-    /// @param _wavax Address of WAVAX
-    constructor(ILBFactory _factory, ILBLegacyFactory _legacyFactory, IJoeFactory _oldFactory, IWAVAX _wavax) {
-        factory = _factory;
-        legacyFactory = _legacyFactory;
-        oldFactory = _oldFactory;
-        wavax = _wavax;
+    /// @param factory_ LBFactory address
+    /// @param legacyFactory_ V2 LBFactory address
+    /// @param oldFactory_ Address of old factory (Joe V1)
+    /// @param wavax_ Address of WAVAX
+    constructor(ILBFactory factory_, ILBLegacyFactory legacyFactory_, IJoeFactory oldFactory_, IWAVAX wavax_) {
+        _factory = factory_;
+        _legacyFactory = legacyFactory_;
+        _oldFactory = oldFactory_;
+        _wavax = wavax_;
     }
 
     /// @dev Receive function that only accept AVAX from the WAVAX contract
     receive() external payable {
-        if (msg.sender != address(wavax)) revert LBRouter__SenderIsNotWAVAX();
+        if (msg.sender != address(_wavax)) revert LBRouter__SenderIsNotWAVAX();
+    }
+
+    function getFactory() external view override returns (ILBFactory) {
+        return _factory;
+    }
+
+    function getLegacyFactory() external view override returns (ILBLegacyFactory) {
+        return _legacyFactory;
+    }
+
+    function getOldFactory() external view override returns (IJoeFactory) {
+        return _oldFactory;
+    }
+
+    function getWAVAX() external view override returns (IWAVAX) {
+        return _wavax;
     }
 
     /// @notice Returns the approximate id corresponding to the inputted price.
     /// Warning, the returned id may be inaccurate close to the start price of a bin
-    /// @param _LBPair The address of the LBPair
-    /// @param _price The price of y per x (multiplied by 1e36)
+    /// @param pair The address of the LBPair
+    /// @param price The price of y per x (multiplied by 1e36)
     /// @return The id corresponding to this price
-    function getIdFromPrice(ILBPair _LBPair, uint256 _price) external view override returns (uint24) {
-        return _LBPair.getIdFromPrice(_price);
+    function getIdFromPrice(ILBPair pair, uint256 price) external view override returns (uint24) {
+        return pair.getIdFromPrice(price);
     }
 
     /// @notice Returns the price corresponding to the inputted id
-    /// @param _LBPair The address of the LBPair
-    /// @param _id The id
+    /// @param pair The address of the LBPair
+    /// @param id The id
     /// @return The price corresponding to this id
-    function getPriceFromId(ILBPair _LBPair, uint24 _id) external view override returns (uint256) {
-        return _LBPair.getPriceFromId(_id);
+    function getPriceFromId(ILBPair pair, uint24 id) external view override returns (uint256) {
+        return pair.getPriceFromId(id);
     }
 
     /// @notice Simulate a swap in
-    /// @param _LBPair The address of the LBPair
-    /// @param _amountOut The amount of token to receive
-    /// @param _swapForY Whether you swap X for Y (true), or Y for X (false)
-    /// @return amountIn The amount of token to send in order to receive _amountOut token
+    /// @param pair The address of the LBPair
+    /// @param amountOut The amount of token to receive
+    /// @param swapForY Whether you swap X for Y (true), or Y for X (false)
+    /// @return amountIn The amount of token to send in order to receive amountOut token
     /// @return amountOutLeft The amount of token Out that can't be returned due to a lack of liquidity
     /// @return fee The amount of fees paid in token sent
-    function getSwapIn(ILBPair _LBPair, uint128 _amountOut, bool _swapForY)
+    function getSwapIn(ILBPair pair, uint128 amountOut, bool swapForY)
         public
         view
         override
         returns (uint128 amountIn, uint128 amountOutLeft, uint128 fee)
     {
-        (amountIn, amountOutLeft, fee) = _LBPair.getSwapIn(_amountOut, _swapForY);
+        (amountIn, amountOutLeft, fee) = pair.getSwapIn(amountOut, swapForY);
     }
 
     /// @notice Simulate a swap out
-    /// @param _LBPair The address of the LBPair
-    /// @param _amountIn The amount of token sent
-    /// @param _swapForY Whether you swap X for Y (true), or Y for X (false)
+    /// @param pair The address of the LBPair
+    /// @param amountIn The amount of token sent
+    /// @param swapForY Whether you swap X for Y (true), or Y for X (false)
     /// @return amountInLeft The amount of token In that can't be swapped due to a lack of liquidity
-    /// @return amountOut The amount of token received if _amountIn tokenX are sent
+    /// @return amountOut The amount of token received if amountIn tokenX are sent
     /// @return fee The amount of fees paid in token sent
-    function getSwapOut(ILBPair _LBPair, uint128 _amountIn, bool _swapForY)
+    function getSwapOut(ILBPair pair, uint128 amountIn, bool swapForY)
         external
         view
         override
         returns (uint128 amountInLeft, uint128 amountOut, uint128 fee)
     {
-        (amountInLeft, amountOut, fee) = _LBPair.getSwapOut(_amountIn, _swapForY);
+        (amountInLeft, amountOut, fee) = pair.getSwapOut(amountIn, swapForY);
     }
 
-    /// @notice Create a liquidity bin LBPair for _tokenX and _tokenY using the factory
-    /// @param _tokenX The address of the first token
-    /// @param _tokenY The address of the second token
-    /// @param _activeId The active id of the pair
-    /// @param _binStep The bin step in basis point, used to calculate log(1 + binStep)
+    /// @notice Create a liquidity bin LBPair for tokenX and tokenY using the factory
+    /// @param tokenX The address of the first token
+    /// @param tokenY The address of the second token
+    /// @param activeId The active id of the pair
+    /// @param binStep The bin step in basis point, used to calculate log(1 + binStep)
     /// @return pair The address of the newly created LBPair
-    function createLBPair(IERC20 _tokenX, IERC20 _tokenY, uint24 _activeId, uint16 _binStep)
+    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint8 binStep)
         external
         override
         returns (ILBPair pair)
     {
-        pair = factory.createLBPair(_tokenX, _tokenY, _activeId, _binStep);
+        pair = _factory.createLBPair(tokenX, tokenY, activeId, binStep);
     }
 
     /// @notice Add liquidity while performing safety checks
     /// @dev This function is compliant with fee on transfer tokens
-    /// @param _liquidityParameters The liquidity parameters
+    /// @param liquidityParameters The liquidity parameters
     /// @return depositIds Bin ids where the liquidity was actually deposited
     /// @return liquidityMinted Amounts of LBToken minted for each bin
-    function addLiquidity(LiquidityParameters calldata _liquidityParameters)
+    function addLiquidity(LiquidityParameters calldata liquidityParameters)
         external
         override
         returns (bytes32[] memory depositIds, uint256[] memory liquidityMinted)
     {
-        ILBPair _LBPair = _getLBPairInformation(
-            _liquidityParameters.tokenX,
-            _liquidityParameters.tokenY,
-            _liquidityParameters.binStep,
-            _liquidityParameters.revision
+        ILBPair lbPair = _getLBPairInformation(
+            liquidityParameters.tokenX,
+            liquidityParameters.tokenY,
+            liquidityParameters.binStep,
+            liquidityParameters.revision
         );
-        if (_liquidityParameters.tokenX != _LBPair.getTokenX()) revert LBRouter__WrongTokenOrder();
+        if (liquidityParameters.tokenX != lbPair.getTokenX()) revert LBRouter__WrongTokenOrder();
 
-        _liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(_LBPair), _liquidityParameters.amountX);
-        _liquidityParameters.tokenY.safeTransferFrom(msg.sender, address(_LBPair), _liquidityParameters.amountY);
+        liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(lbPair), liquidityParameters.amountX);
+        liquidityParameters.tokenY.safeTransferFrom(msg.sender, address(lbPair), liquidityParameters.amountY);
 
-        (depositIds, liquidityMinted) = _addLiquidity(_liquidityParameters, _LBPair);
+        (depositIds, liquidityMinted) = _addLiquidity(liquidityParameters, lbPair);
     }
 
     /// @notice Add liquidity with AVAX while performing safety checks
     /// @dev This function is compliant with fee on transfer tokens
-    /// @param _liquidityParameters The liquidity parameters
+    /// @param liquidityParameters The liquidity parameters
     /// @return depositIds Bin ids where the liquidity was actually deposited
     /// @return liquidityMinted Amounts of LBToken minted for each bin
-    function addLiquidityAVAX(LiquidityParameters calldata _liquidityParameters)
+    function addLiquidityAVAX(LiquidityParameters calldata liquidityParameters)
         external
         payable
         override
         returns (bytes32[] memory depositIds, uint256[] memory liquidityMinted)
     {
-        ILBPair _LBPair = _getLBPairInformation(
-            _liquidityParameters.tokenX,
-            _liquidityParameters.tokenY,
-            _liquidityParameters.binStep,
-            _liquidityParameters.revision
+        ILBPair lbPair = _getLBPairInformation(
+            liquidityParameters.tokenX,
+            liquidityParameters.tokenY,
+            liquidityParameters.binStep,
+            liquidityParameters.revision
         );
-        if (_liquidityParameters.tokenX != _LBPair.getTokenX()) revert LBRouter__WrongTokenOrder();
+        if (liquidityParameters.tokenX != lbPair.getTokenX()) revert LBRouter__WrongTokenOrder();
 
-        if (_liquidityParameters.tokenX == wavax && _liquidityParameters.amountX == msg.value) {
-            _wavaxDepositAndTransfer(address(_LBPair), msg.value);
-            _liquidityParameters.tokenY.safeTransferFrom(msg.sender, address(_LBPair), _liquidityParameters.amountY);
-        } else if (_liquidityParameters.tokenY == wavax && _liquidityParameters.amountY == msg.value) {
-            _liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(_LBPair), _liquidityParameters.amountX);
-            _wavaxDepositAndTransfer(address(_LBPair), msg.value);
+        if (liquidityParameters.tokenX == _wavax && liquidityParameters.amountX == msg.value) {
+            _wavaxDepositAndTransfer(address(lbPair), msg.value);
+            liquidityParameters.tokenY.safeTransferFrom(msg.sender, address(lbPair), liquidityParameters.amountY);
+        } else if (liquidityParameters.tokenY == _wavax && liquidityParameters.amountY == msg.value) {
+            liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(lbPair), liquidityParameters.amountX);
+            _wavaxDepositAndTransfer(address(lbPair), msg.value);
         } else {
             revert LBRouter__WrongAvaxLiquidityParameters(
-                address(_liquidityParameters.tokenX),
-                address(_liquidityParameters.tokenY),
-                _liquidityParameters.amountX,
-                _liquidityParameters.amountY,
+                address(liquidityParameters.tokenX),
+                address(liquidityParameters.tokenY),
+                liquidityParameters.amountX,
+                liquidityParameters.amountY,
                 msg.value
             );
         }
 
-        (depositIds, liquidityMinted) = _addLiquidity(_liquidityParameters, _LBPair);
+        (depositIds, liquidityMinted) = _addLiquidity(liquidityParameters, lbPair);
     }
 
     /// @notice Remove liquidity while performing safety checks
     /// @dev This function is compliant with fee on transfer tokens
-    /// @param _tokenX The address of token X
-    /// @param _tokenY The address of token Y
-    /// @param _binStep The bin step of the LBPair
-    /// @param _amountXMin The min amount to receive of token X
-    /// @param _amountYMin The min amount to receive of token Y
-    /// @param _ids The list of ids to burn
-    /// @param _amounts The list of amounts to burn of each id in `_ids`
-    /// @param _to The address of the recipient
-    /// @param _deadline The deadline of the tx
+    /// @param tokenX The address of token X
+    /// @param tokenY The address of token Y
+    /// @param binStep The bin step of the LBPair
+    /// @param amountXMin The min amount to receive of token X
+    /// @param amountYMin The min amount to receive of token Y
+    /// @param ids The list of ids to burn
+    /// @param amounts The list of amounts to burn of each id in `ids`
+    /// @param to The address of the recipient
+    /// @param deadline The deadline of the tx
     /// @return amountX Amount of token X returned
     /// @return amountY Amount of token Y returned
     function removeLiquidity(
-        IERC20 _tokenX,
-        IERC20 _tokenY,
-        uint16 _binStep,
-        uint256 _revision,
-        uint256 _amountXMin,
-        uint256 _amountYMin,
-        uint256[] memory _ids,
-        uint256[] memory _amounts,
-        address _to,
-        uint256 _deadline
-    ) external override ensure(_deadline) returns (uint256 amountX, uint256 amountY) {
-        ILBPair _LBPair = _getLBPairInformation(_tokenX, _tokenY, _binStep, _revision);
-        bool _isWrongOrder = _tokenX != _LBPair.getTokenX();
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint8 binStep,
+        uint256 revision,
+        uint256 amountXMin,
+        uint256 amountYMin,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        address to,
+        uint256 deadline
+    ) external override ensure(deadline) returns (uint256 amountX, uint256 amountY) {
+        ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep, revision);
+        bool isWrongOrder = tokenX != lbPair.getTokenX();
 
-        if (_isWrongOrder) (_amountXMin, _amountYMin) = (_amountYMin, _amountXMin);
+        if (isWrongOrder) (amountXMin, amountYMin) = (amountYMin, amountXMin);
 
-        (amountX, amountY) = _removeLiquidity(_LBPair, _amountXMin, _amountYMin, _ids, _amounts, _to);
+        (amountX, amountY) = _removeLiquidity(lbPair, amountXMin, amountYMin, ids, amounts, to);
 
-        if (_isWrongOrder) (amountX, amountY) = (amountY, amountX);
+        if (isWrongOrder) (amountX, amountY) = (amountY, amountX);
     }
 
     /// @notice Remove AVAX liquidity while performing safety checks
     /// @dev This function is **NOT** compliant with fee on transfer tokens.
     /// This is wanted as it would make users pays the fee on transfer twice,
     /// use the `removeLiquidity` function to remove liquidity with fee on transfer tokens.
-    /// @param _token The address of token
-    /// @param _binStep The bin step of the LBPair
-    /// @param _amountTokenMin The min amount to receive of token
-    /// @param _amountAVAXMin The min amount to receive of AVAX
-    /// @param _ids The list of ids to burn
-    /// @param _amounts The list of amounts to burn of each id in `_ids`
-    /// @param _to The address of the recipient
-    /// @param _deadline The deadline of the tx
+    /// @param token The address of token
+    /// @param binStep The bin step of the LBPair
+    /// @param amountTokenMin The min amount to receive of token
+    /// @param amountAVAXMin The min amount to receive of AVAX
+    /// @param ids The list of ids to burn
+    /// @param amounts The list of amounts to burn of each id in `ids`
+    /// @param to The address of the recipient
+    /// @param deadline The deadline of the tx
     /// @return amountToken Amount of token returned
     /// @return amountAVAX Amount of AVAX returned
     function removeLiquidityAVAX(
-        IERC20 _token,
-        uint16 _binStep,
-        uint256 _revision,
-        uint256 _amountTokenMin,
-        uint256 _amountAVAXMin,
-        uint256[] memory _ids,
-        uint256[] memory _amounts,
-        address payable _to,
-        uint256 _deadline
-    ) external override ensure(_deadline) returns (uint256 amountToken, uint256 amountAVAX) {
-        ILBPair _LBPair = _getLBPairInformation(_token, IERC20(wavax), _binStep, _revision);
+        IERC20 token,
+        uint8 binStep,
+        uint256 revision,
+        uint256 amountTokenMin,
+        uint256 amountAVAXMin,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        address payable to,
+        uint256 deadline
+    ) external override ensure(deadline) returns (uint256 amountToken, uint256 amountAVAX) {
+        // TODO - avoid stack too deep and cache wavax
+        // IWAVAX wavax_ = _wavax;
+
+        ILBPair lbPair = _getLBPairInformation(token, IERC20(_wavax), binStep, revision);
 
         {
-            bool _isAVAXTokenY = IERC20(wavax) == _LBPair.getTokenY();
+            bool isAVAXTokenY = IERC20(_wavax) == lbPair.getTokenY();
 
-            if (!_isAVAXTokenY) {
-                (_amountTokenMin, _amountAVAXMin) = (_amountAVAXMin, _amountTokenMin);
+            if (!isAVAXTokenY) {
+                (amountTokenMin, amountAVAXMin) = (amountAVAXMin, amountTokenMin);
             }
 
-            (uint256 _amountX, uint256 _amountY) =
-                _removeLiquidity(_LBPair, _amountTokenMin, _amountAVAXMin, _ids, _amounts, address(this));
+            (uint256 amountX, uint256 amountY) =
+                _removeLiquidity(lbPair, amountTokenMin, amountAVAXMin, ids, amounts, address(this));
 
-            (amountToken, amountAVAX) = _isAVAXTokenY ? (_amountX, _amountY) : (_amountY, _amountX);
+            (amountToken, amountAVAX) = isAVAXTokenY ? (amountX, amountY) : (amountY, amountX);
         }
 
-        _token.safeTransfer(_to, amountToken);
+        token.safeTransfer(to, amountToken);
 
-        wavax.withdraw(amountAVAX);
-        _safeTransferAVAX(_to, amountAVAX);
+        _wavax.withdraw(amountAVAX);
+        _safeTransferAVAX(to, amountAVAX);
     }
 
     /// @notice Swaps exact tokens for tokens while performing safety checks
-    /// @param _amountIn The amount of token to send
-    /// @param _amountOutMin The min amount of token to receive
-    /// @param _to The address of the recipient
-    /// @param _deadline The deadline of the tx
+    /// @param amountIn The amount of token to send
+    /// @param amountOutMin The min amount of token to receive
+    /// @param to The address of the recipient
+    /// @param deadline The deadline of the tx
     /// @return amountOut Output amount of the swap
     function swapExactTokensForTokens(
-        uint256 _amountIn,
-        uint256 _amountOutMin,
-        Path memory _path,
-        address _to,
-        uint256 _deadline
-    ) external override ensure(_deadline) verifyPathValidity(_path) returns (uint256 amountOut) {
-        address[] memory _pairs = _getPairs(_path.pairBinSteps, _path.revisions, _path.tokenPath);
+        uint256 amountIn,
+        uint256 amountOutMin,
+        Path memory path,
+        address to,
+        uint256 deadline
+    ) external override ensure(deadline) verifyPathValidity(path) returns (uint256 amountOut) {
+        address[] memory pairs = _getPairs(path.pairBinSteps, path.revisions, path.tokenPath);
 
-        _path.tokenPath[0].safeTransferFrom(msg.sender, _pairs[0], _amountIn);
+        path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountIn);
 
-        amountOut = _swapExactTokensForTokens(_amountIn, _pairs, _path.pairBinSteps, _path.tokenPath, _to);
+        amountOut = _swapExactTokensForTokens(amountIn, pairs, path.pairBinSteps, path.tokenPath, to);
 
-        if (_amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMin, amountOut);
+        if (amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMin, amountOut);
     }
 
     /// @notice Swaps exact tokens for AVAX while performing safety checks
-    /// @param _amountIn The amount of token to send
-    /// @param _amountOutMinAVAX The min amount of AVAX to receive
-    /// @param _to The address of the recipient
-    /// @param _deadline The deadline of the tx
+    /// @param amountIn The amount of token to send
+    /// @param amountOutMinAVAX The min amount of AVAX to receive
+    /// @param to The address of the recipient
+    /// @param deadline The deadline of the tx
     /// @return amountOut Output amount of the swap
     function swapExactTokensForAVAX(
-        uint256 _amountIn,
-        uint256 _amountOutMinAVAX,
-        Path memory _path,
-        address payable _to,
-        uint256 _deadline
-    ) external override ensure(_deadline) verifyPathValidity(_path) returns (uint256 amountOut) {
-        if (_path.tokenPath[_path.pairBinSteps.length] != IERC20(wavax)) {
-            revert LBRouter__InvalidTokenPath(address(_path.tokenPath[_path.pairBinSteps.length]));
+        uint256 amountIn,
+        uint256 amountOutMinAVAX,
+        Path memory path,
+        address payable to,
+        uint256 deadline
+    ) external override ensure(deadline) verifyPathValidity(path) returns (uint256 amountOut) {
+        if (path.tokenPath[path.pairBinSteps.length] != IERC20(_wavax)) {
+            revert LBRouter__InvalidTokenPath(address(path.tokenPath[path.pairBinSteps.length]));
         }
 
-        address[] memory _pairs = _getPairs(_path.pairBinSteps, _path.revisions, _path.tokenPath);
+        address[] memory pairs = _getPairs(path.pairBinSteps, path.revisions, path.tokenPath);
 
-        _path.tokenPath[0].safeTransferFrom(msg.sender, _pairs[0], _amountIn);
+        path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountIn);
 
-        amountOut = _swapExactTokensForTokens(_amountIn, _pairs, _path.pairBinSteps, _path.tokenPath, address(this));
+        amountOut = _swapExactTokensForTokens(amountIn, pairs, path.pairBinSteps, path.tokenPath, address(this));
 
-        if (_amountOutMinAVAX > amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMinAVAX, amountOut);
+        if (amountOutMinAVAX > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMinAVAX, amountOut);
 
-        wavax.withdraw(amountOut);
-        _safeTransferAVAX(_to, amountOut);
+        _wavax.withdraw(amountOut);
+        _safeTransferAVAX(to, amountOut);
     }
 
     /// @notice Swaps exact AVAX for tokens while performing safety checks
-    /// @param _amountOutMin The min amount of token to receive
-    /// @param _to The address of the recipient
-    /// @param _deadline The deadline of the tx
+    /// @param amountOutMin The min amount of token to receive
+    /// @param to The address of the recipient
+    /// @param deadline The deadline of the tx
     /// @return amountOut Output amount of the swap
-    function swapExactAVAXForTokens(uint256 _amountOutMin, Path memory _path, address _to, uint256 _deadline)
+    function swapExactAVAXForTokens(uint256 amountOutMin, Path memory path, address to, uint256 deadline)
         external
         payable
         override
-        ensure(_deadline)
-        verifyPathValidity(_path)
+        ensure(deadline)
+        verifyPathValidity(path)
         returns (uint256 amountOut)
     {
-        if (_path.tokenPath[0] != IERC20(wavax)) revert LBRouter__InvalidTokenPath(address(_path.tokenPath[0]));
+        if (path.tokenPath[0] != IERC20(_wavax)) revert LBRouter__InvalidTokenPath(address(path.tokenPath[0]));
 
-        address[] memory _pairs = _getPairs(_path.pairBinSteps, _path.revisions, _path.tokenPath);
+        address[] memory pairs = _getPairs(path.pairBinSteps, path.revisions, path.tokenPath);
 
-        _wavaxDepositAndTransfer(_pairs[0], msg.value);
+        _wavaxDepositAndTransfer(pairs[0], msg.value);
 
-        amountOut = _swapExactTokensForTokens(msg.value, _pairs, _path.pairBinSteps, _path.tokenPath, _to);
+        amountOut = _swapExactTokensForTokens(msg.value, pairs, path.pairBinSteps, path.tokenPath, to);
 
-        if (_amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMin, amountOut);
+        if (amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMin, amountOut);
     }
 
     /// @notice Swaps tokens for exact tokens while performing safety checks
     function swapTokensForExactTokens(
-        uint256 _amountOut,
-        uint256 _amountInMax,
-        Path memory _path,
-        address _to,
-        uint256 _deadline
-    ) external override ensure(_deadline) verifyPathValidity(_path) returns (uint256[] memory amountsIn) {
-        address[] memory _pairs = _getPairs(_path.pairBinSteps, _path.revisions, _path.tokenPath);
+        uint256 amountOut,
+        uint256 amountInMax,
+        Path memory path,
+        address to,
+        uint256 deadline
+    ) external override ensure(deadline) verifyPathValidity(path) returns (uint256[] memory amountsIn) {
+        address[] memory pairs = _getPairs(path.pairBinSteps, path.revisions, path.tokenPath);
 
         {
-            amountsIn = _getAmountsIn(_path.pairBinSteps, _pairs, _path.tokenPath, _amountOut);
+            amountsIn = _getAmountsIn(path.pairBinSteps, pairs, path.tokenPath, amountOut);
 
-            if (amountsIn[0] > _amountInMax) revert LBRouter__MaxAmountInExceeded(_amountInMax, amountsIn[0]);
+            if (amountsIn[0] > amountInMax) revert LBRouter__MaxAmountInExceeded(amountInMax, amountsIn[0]);
 
-            _path.tokenPath[0].safeTransferFrom(msg.sender, _pairs[0], amountsIn[0]);
+            path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountsIn[0]);
 
-            uint256 _amountOutReal =
-                _swapTokensForExactTokens(_pairs, _path.pairBinSteps, _path.tokenPath, amountsIn, _to);
+            uint256 amountOutReal = _swapTokensForExactTokens(pairs, path.pairBinSteps, path.tokenPath, amountsIn, to);
 
-            if (_amountOutReal < _amountOut) revert LBRouter__InsufficientAmountOut(_amountOut, _amountOutReal);
+            if (amountOutReal < amountOut) revert LBRouter__InsufficientAmountOut(amountOut, amountOutReal);
         }
     }
 
     /// @notice Swaps tokens for exact AVAX while performing safety checks
-    /// @param _amountAVAXOut The amount of AVAX to receive
-    /// @param _amountInMax The max amount of token to send
-    /// @param _to The address of the recipient
-    /// @param _deadline The deadline of the tx
-    /// @return amountsIn _path amounts for every step of the swap
+    /// @param amountAVAXOut The amount of AVAX to receive
+    /// @param amountInMax The max amount of token to send
+    /// @param to The address of the recipient
+    /// @param deadline The deadline of the tx
+    /// @return amountsIn path amounts for every step of the swap
     function swapTokensForExactAVAX(
-        uint256 _amountAVAXOut,
-        uint256 _amountInMax,
-        Path memory _path,
-        address payable _to,
-        uint256 _deadline
-    ) external override ensure(_deadline) verifyPathValidity(_path) returns (uint256[] memory amountsIn) {
-        if (_path.tokenPath[_path.pairBinSteps.length] != IERC20(wavax)) {
-            revert LBRouter__InvalidTokenPath(address(_path.tokenPath[_path.pairBinSteps.length]));
+        uint256 amountAVAXOut,
+        uint256 amountInMax,
+        Path memory path,
+        address payable to,
+        uint256 deadline
+    ) external override ensure(deadline) verifyPathValidity(path) returns (uint256[] memory amountsIn) {
+        if (path.tokenPath[path.pairBinSteps.length] != IERC20(_wavax)) {
+            revert LBRouter__InvalidTokenPath(address(path.tokenPath[path.pairBinSteps.length]));
         }
 
-        address[] memory _pairs = _getPairs(_path.pairBinSteps, _path.revisions, _path.tokenPath);
-        amountsIn = _getAmountsIn(_path.pairBinSteps, _pairs, _path.tokenPath, _amountAVAXOut);
+        address[] memory pairs = _getPairs(path.pairBinSteps, path.revisions, path.tokenPath);
+        amountsIn = _getAmountsIn(path.pairBinSteps, pairs, path.tokenPath, amountAVAXOut);
 
-        if (amountsIn[0] > _amountInMax) revert LBRouter__MaxAmountInExceeded(_amountInMax, amountsIn[0]);
+        if (amountsIn[0] > amountInMax) revert LBRouter__MaxAmountInExceeded(amountInMax, amountsIn[0]);
 
-        _path.tokenPath[0].safeTransferFrom(msg.sender, _pairs[0], amountsIn[0]);
+        path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountsIn[0]);
 
-        uint256 _amountOutReal =
-            _swapTokensForExactTokens(_pairs, _path.pairBinSteps, _path.tokenPath, amountsIn, address(this));
+        uint256 amountOutReal =
+            _swapTokensForExactTokens(pairs, path.pairBinSteps, path.tokenPath, amountsIn, address(this));
 
-        if (_amountOutReal < _amountAVAXOut) revert LBRouter__InsufficientAmountOut(_amountAVAXOut, _amountOutReal);
+        if (amountOutReal < amountAVAXOut) revert LBRouter__InsufficientAmountOut(amountAVAXOut, amountOutReal);
 
-        wavax.withdraw(_amountOutReal);
-        _safeTransferAVAX(_to, _amountOutReal);
+        _wavax.withdraw(amountOutReal);
+        _safeTransferAVAX(to, amountOutReal);
     }
 
     /// @notice Swaps AVAX for exact tokens while performing safety checks
     /// @dev Will refund any AVAX amount sent in excess to `msg.sender`
-    /// @param _amountOut The amount of tokens to receive
-    /// @param _to The address of the recipient
-    /// @param _deadline The deadline of the tx
-    /// @return amountsIn _path amounts for every step of the swap
-    function swapAVAXForExactTokens(uint256 _amountOut, Path memory _path, address _to, uint256 _deadline)
+    /// @param amountOut The amount of tokens to receive
+    /// @param to The address of the recipient
+    /// @param deadline The deadline of the tx
+    /// @return amountsIn path amounts for every step of the swap
+    function swapAVAXForExactTokens(uint256 amountOut, Path memory path, address to, uint256 deadline)
         external
         payable
         override
-        ensure(_deadline)
-        verifyPathValidity(_path)
+        ensure(deadline)
+        verifyPathValidity(path)
         returns (uint256[] memory amountsIn)
     {
-        if (_path.tokenPath[0] != IERC20(wavax)) revert LBRouter__InvalidTokenPath(address(_path.tokenPath[0]));
+        if (path.tokenPath[0] != IERC20(_wavax)) revert LBRouter__InvalidTokenPath(address(path.tokenPath[0]));
 
-        address[] memory _pairs = _getPairs(_path.pairBinSteps, _path.revisions, _path.tokenPath);
-        amountsIn = _getAmountsIn(_path.pairBinSteps, _pairs, _path.tokenPath, _amountOut);
+        address[] memory pairs = _getPairs(path.pairBinSteps, path.revisions, path.tokenPath);
+        amountsIn = _getAmountsIn(path.pairBinSteps, pairs, path.tokenPath, amountOut);
 
         if (amountsIn[0] > msg.value) revert LBRouter__MaxAmountInExceeded(msg.value, amountsIn[0]);
 
-        _wavaxDepositAndTransfer(_pairs[0], amountsIn[0]);
+        _wavaxDepositAndTransfer(pairs[0], amountsIn[0]);
 
-        uint256 _amountOutReal = _swapTokensForExactTokens(_pairs, _path.pairBinSteps, _path.tokenPath, amountsIn, _to);
+        uint256 amountOutReal = _swapTokensForExactTokens(pairs, path.pairBinSteps, path.tokenPath, amountsIn, to);
 
-        if (_amountOutReal < _amountOut) revert LBRouter__InsufficientAmountOut(_amountOut, _amountOutReal);
+        if (amountOutReal < amountOut) revert LBRouter__InsufficientAmountOut(amountOut, amountOutReal);
 
         if (msg.value > amountsIn[0]) _safeTransferAVAX(msg.sender, msg.value - amountsIn[0]);
     }
 
     /// @notice Swaps exact tokens for tokens while performing safety checks supporting for fee on transfer tokens
-    /// @param _amountIn The amount of token to send
-    /// @param _amountOutMin The min amount of token to receive
-    /// @param _to The address of the recipient
-    /// @param _deadline The deadline of the tx
+    /// @param amountIn The amount of token to send
+    /// @param amountOutMin The min amount of token to receive
+    /// @param to The address of the recipient
+    /// @param deadline The deadline of the tx
     /// @return amountOut Output amount of the swap
     function swapExactTokensForTokensSupportingFeeOnTransferTokens(
-        uint256 _amountIn,
-        uint256 _amountOutMin,
-        Path memory _path,
-        address _to,
-        uint256 _deadline
-    ) external override ensure(_deadline) verifyPathValidity(_path) returns (uint256 amountOut) {
-        address[] memory _pairs = _getPairs(_path.pairBinSteps, _path.revisions, _path.tokenPath);
+        uint256 amountIn,
+        uint256 amountOutMin,
+        Path memory path,
+        address to,
+        uint256 deadline
+    ) external override ensure(deadline) verifyPathValidity(path) returns (uint256 amountOut) {
+        address[] memory pairs = _getPairs(path.pairBinSteps, path.revisions, path.tokenPath);
 
-        IERC20 _targetToken = _path.tokenPath[_pairs.length];
+        IERC20 targetToken = path.tokenPath[pairs.length];
 
-        uint256 _balanceBefore = _targetToken.balanceOf(_to);
+        uint256 balanceBefore = targetToken.balanceOf(to);
 
-        _path.tokenPath[0].safeTransferFrom(msg.sender, _pairs[0], _amountIn);
+        path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountIn);
 
-        _swapSupportingFeeOnTransferTokens(_pairs, _path.pairBinSteps, _path.tokenPath, _to);
+        _swapSupportingFeeOnTransferTokens(pairs, path.pairBinSteps, path.tokenPath, to);
 
-        amountOut = _targetToken.balanceOf(_to) - _balanceBefore;
-        if (_amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMin, amountOut);
+        amountOut = targetToken.balanceOf(to) - balanceBefore;
+        if (amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMin, amountOut);
     }
 
     /// @notice Swaps exact tokens for AVAX while performing safety checks supporting for fee on transfer tokens
-    /// @param _amountIn The amount of token to send
-    /// @param _amountOutMinAVAX The min amount of AVAX to receive
-    /// @param _to The address of the recipient
-    /// @param _deadline The deadline of the tx
+    /// @param amountIn The amount of token to send
+    /// @param amountOutMinAVAX The min amount of AVAX to receive
+    /// @param to The address of the recipient
+    /// @param deadline The deadline of the tx
     /// @return amountOut Output amount of the swap
     function swapExactTokensForAVAXSupportingFeeOnTransferTokens(
-        uint256 _amountIn,
-        uint256 _amountOutMinAVAX,
-        Path memory _path,
-        address payable _to,
-        uint256 _deadline
-    ) external override ensure(_deadline) verifyPathValidity(_path) returns (uint256 amountOut) {
-        if (_path.tokenPath[_path.pairBinSteps.length] != IERC20(wavax)) {
-            revert LBRouter__InvalidTokenPath(address(_path.tokenPath[_path.pairBinSteps.length]));
+        uint256 amountIn,
+        uint256 amountOutMinAVAX,
+        Path memory path,
+        address payable to,
+        uint256 deadline
+    ) external override ensure(deadline) verifyPathValidity(path) returns (uint256 amountOut) {
+        if (path.tokenPath[path.pairBinSteps.length] != IERC20(_wavax)) {
+            revert LBRouter__InvalidTokenPath(address(path.tokenPath[path.pairBinSteps.length]));
         }
 
-        address[] memory _pairs = _getPairs(_path.pairBinSteps, _path.revisions, _path.tokenPath);
+        address[] memory pairs = _getPairs(path.pairBinSteps, path.revisions, path.tokenPath);
 
-        uint256 _balanceBefore = wavax.balanceOf(address(this));
+        uint256 balanceBefore = _wavax.balanceOf(address(this));
 
-        _path.tokenPath[0].safeTransferFrom(msg.sender, _pairs[0], _amountIn);
+        path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountIn);
 
-        _swapSupportingFeeOnTransferTokens(_pairs, _path.pairBinSteps, _path.tokenPath, address(this));
+        _swapSupportingFeeOnTransferTokens(pairs, path.pairBinSteps, path.tokenPath, address(this));
 
-        amountOut = wavax.balanceOf(address(this)) - _balanceBefore;
-        if (_amountOutMinAVAX > amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMinAVAX, amountOut);
+        amountOut = _wavax.balanceOf(address(this)) - balanceBefore;
+        if (amountOutMinAVAX > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMinAVAX, amountOut);
 
-        wavax.withdraw(amountOut);
-        _safeTransferAVAX(_to, amountOut);
+        _wavax.withdraw(amountOut);
+        _safeTransferAVAX(to, amountOut);
     }
 
     /// @notice Swaps exact AVAX for tokens while performing safety checks supporting for fee on transfer tokens
-    /// @param _amountOutMin The min amount of token to receive
-    /// @param _to The address of the recipient
-    /// @param _deadline The deadline of the tx
+    /// @param amountOutMin The min amount of token to receive
+    /// @param to The address of the recipient
+    /// @param deadline The deadline of the tx
     /// @return amountOut Output amount of the swap
     function swapExactAVAXForTokensSupportingFeeOnTransferTokens(
-        uint256 _amountOutMin,
-        Path memory _path,
-        address _to,
-        uint256 _deadline
-    ) external payable override ensure(_deadline) verifyPathValidity(_path) returns (uint256 amountOut) {
-        if (_path.tokenPath[0] != IERC20(wavax)) revert LBRouter__InvalidTokenPath(address(_path.tokenPath[0]));
+        uint256 amountOutMin,
+        Path memory path,
+        address to,
+        uint256 deadline
+    ) external payable override ensure(deadline) verifyPathValidity(path) returns (uint256 amountOut) {
+        if (path.tokenPath[0] != IERC20(_wavax)) revert LBRouter__InvalidTokenPath(address(path.tokenPath[0]));
 
-        address[] memory _pairs = _getPairs(_path.pairBinSteps, _path.revisions, _path.tokenPath);
+        address[] memory pairs = _getPairs(path.pairBinSteps, path.revisions, path.tokenPath);
 
-        IERC20 _targetToken = _path.tokenPath[_pairs.length];
+        IERC20 targetToken = path.tokenPath[pairs.length];
 
-        uint256 _balanceBefore = _targetToken.balanceOf(_to);
+        uint256 balanceBefore = targetToken.balanceOf(to);
 
-        _wavaxDepositAndTransfer(_pairs[0], msg.value);
+        _wavaxDepositAndTransfer(pairs[0], msg.value);
 
-        _swapSupportingFeeOnTransferTokens(_pairs, _path.pairBinSteps, _path.tokenPath, _to);
+        _swapSupportingFeeOnTransferTokens(pairs, path.pairBinSteps, path.tokenPath, to);
 
-        amountOut = _targetToken.balanceOf(_to) - _balanceBefore;
-        if (_amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(_amountOutMin, amountOut);
+        amountOut = targetToken.balanceOf(to) - balanceBefore;
+        if (amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMin, amountOut);
     }
 
     /// @notice Unstuck tokens that are sent to this contract by mistake
     /// @dev Only callable by the factory owner
-    /// @param _token The address of the token
-    /// @param _to The address of the user to send back the tokens
-    /// @param _amount The amount to send
-    function sweep(IERC20 _token, address _to, uint256 _amount) external override onlyFactoryOwner {
-        if (address(_token) == address(0)) {
-            if (_amount == type(uint256).max) _amount = address(this).balance;
-            _safeTransferAVAX(_to, _amount);
+    /// @param token The address of the token
+    /// @param to The address of the user to send back the tokens
+    /// @param amount The amount to send
+    function sweep(IERC20 token, address to, uint256 amount) external override onlyFactoryOwner {
+        if (address(token) == address(0)) {
+            if (amount == type(uint256).max) amount = address(this).balance;
+            _safeTransferAVAX(to, amount);
         } else {
-            if (_amount == type(uint256).max) _amount = _token.balanceOf(address(this));
-            _token.safeTransfer(_to, _amount);
+            if (amount == type(uint256).max) amount = token.balanceOf(address(this));
+            token.safeTransfer(to, amount);
         }
     }
 
     /// @notice Unstuck LBTokens that are sent to this contract by mistake
     /// @dev Only callable by the factory owner
-    /// @param _lbToken The address of the LBToken
-    /// @param _to The address of the user to send back the tokens
-    /// @param _ids The list of token ids
-    /// @param _amounts The list of amounts to send
-    function sweepLBToken(ILBToken _lbToken, address _to, uint256[] calldata _ids, uint256[] calldata _amounts)
+    /// @param lbToken The address of the LBToken
+    /// @param to The address of the user to send back the tokens
+    /// @param ids The list of token ids
+    /// @param amounts The list of amounts to send
+    function sweepLBToken(ILBToken lbToken, address to, uint256[] calldata ids, uint256[] calldata amounts)
         external
         override
         onlyFactoryOwner
     {
-        _lbToken.batchTransferFrom(address(this), _to, _ids, _amounts);
+        lbToken.batchTransferFrom(address(this), to, ids, amounts);
     }
 
     /// @notice Helper function to add liquidity
-    /// @param _liq The liquidity parameter
-    /// @param _LBPair LBPair where liquidity is deposited
+    /// @param liq The liquidity parameter
+    /// @param pair LBPair where liquidity is deposited
     /// @return liquidityConfigs Bin ids where the liquidity was actually deposited
     /// @return liquidityMinted Amounts of LBToken minted for each bin
-    function _addLiquidity(LiquidityParameters calldata _liq, ILBPair _LBPair)
+    function _addLiquidity(LiquidityParameters calldata liq, ILBPair pair)
         private
-        ensure(_liq.deadline)
+        ensure(liq.deadline)
         returns (bytes32[] memory liquidityConfigs, uint256[] memory liquidityMinted)
     {
         unchecked {
-            if (_liq.deltaIds.length != _liq.distributionX.length && _liq.deltaIds.length != _liq.distributionY.length)
-            {
+            if (liq.deltaIds.length != liq.distributionX.length && liq.deltaIds.length != liq.distributionY.length) {
                 revert LBRouter__LengthsMismatch();
             }
 
-            if (_liq.activeIdDesired > type(uint24).max || _liq.idSlippage > type(uint24).max) {
-                revert LBRouter__IdDesiredOverflows(_liq.activeIdDesired, _liq.idSlippage);
+            if (liq.activeIdDesired > type(uint24).max || liq.idSlippage > type(uint24).max) {
+                revert LBRouter__IdDesiredOverflows(liq.activeIdDesired, liq.idSlippage);
             }
 
-            uint256 _activeId = _LBPair.getActiveId();
-            if (
-                _liq.activeIdDesired + _liq.idSlippage < _activeId || _activeId + _liq.idSlippage < _liq.activeIdDesired
-            ) revert LBRouter__IdSlippageCaught(_liq.activeIdDesired, _liq.idSlippage, _activeId);
+            uint256 activeId = pair.getActiveId();
+            if (liq.activeIdDesired + liq.idSlippage < activeId || activeId + liq.idSlippage < liq.activeIdDesired) {
+                revert LBRouter__IdSlippageCaught(liq.activeIdDesired, liq.idSlippage, activeId);
+            }
 
-            liquidityConfigs = new bytes32[](_liq.deltaIds.length);
+            liquidityConfigs = new bytes32[](liq.deltaIds.length);
             for (uint256 i; i < liquidityConfigs.length; ++i) {
-                int256 _id = int256(_activeId) + _liq.deltaIds[i];
-                if (_id < 0 || uint256(_id) > type(uint24).max) revert LBRouter__IdOverflows(_id);
+                int256 id = int256(activeId) + liq.deltaIds[i];
+                if (id < 0 || uint256(id) > type(uint24).max) revert LBRouter__IdOverflows(id);
                 liquidityConfigs[i] = LiquidityConfigurations.encodeParams(
-                    uint64(_liq.distributionX[i]), uint64(_liq.distributionY[i]), uint24(uint256(_id))
+                    uint64(liq.distributionX[i]), uint64(liq.distributionY[i]), uint24(uint256(id))
                 );
             }
 
-            uint256 _amountXAdded;
-            uint256 _amountYAdded;
+            bytes32 amountsReceived;
+            (amountsReceived,, liquidityMinted) = pair.mint(msg.sender, liquidityConfigs, liq.to);
 
-            (bytes32 amountsReceived, bytes32 amountsLeft, uint256[] memory liquidityMinted) =
-                _LBPair.mint(msg.sender, liquidityConfigs, _liq.to);
+            uint256 amountXAdded = amountsReceived.decodeUint128(0);
+            uint256 amountYAdded = amountsReceived.decodeUint128(128);
 
-            if (_amountXAdded < _liq.amountXMin || _amountYAdded < _liq.amountYMin) {
-                revert LBRouter__AmountSlippageCaught(_liq.amountXMin, _amountXAdded, _liq.amountYMin, _amountYAdded);
+            if (amountXAdded < liq.amountXMin || amountYAdded < liq.amountYMin) {
+                revert LBRouter__AmountSlippageCaught(liq.amountXMin, amountXAdded, liq.amountYMin, amountYAdded);
             }
         }
     }
 
     /// @notice Helper function to return the amounts in
     /// @param pairBinSteps The bin step of the pairs (0: V1, other values will use V2)
-    /// @param _pairs The list of pairs
+    /// @param pairs The list of pairs
     /// @param tokenPath The swap path
-    /// @param _amountOut The amount out
+    /// @param amountOut The amount out
     /// @return amountsIn The list of amounts in
     function _getAmountsIn(
         uint256[] memory pairBinSteps,
-        address[] memory _pairs,
+        address[] memory pairs,
         IERC20[] memory tokenPath,
-        uint256 _amountOut
+        uint256 amountOut
     ) private view returns (uint256[] memory amountsIn) {
         amountsIn = new uint256[](tokenPath.length);
-        // Avoid doing -1, as `_pairs.length == pairBinSteps.length-1`
-        amountsIn[_pairs.length] = _amountOut;
+        // Avoid doing -1, as `pairs.length == pairBinSteps.length-1`
+        amountsIn[pairs.length] = amountOut;
 
-        for (uint256 i = _pairs.length; i != 0; i--) {
-            IERC20 _token = tokenPath[i - 1];
-            uint256 _binStep = pairBinSteps[i - 1];
+        for (uint256 i = pairs.length; i != 0; i--) {
+            IERC20 token = tokenPath[i - 1];
+            uint256 binStep = pairBinSteps[i - 1];
 
-            address _pair = _pairs[i - 1];
+            address pair = pairs[i - 1];
 
-            if (_binStep == 0) {
-                (uint256 _reserveIn, uint256 _reserveOut,) = IJoePair(_pair).getReserves();
-                if (_token > tokenPath[i]) {
-                    (_reserveIn, _reserveOut) = (_reserveOut, _reserveIn);
+            if (binStep == 0) {
+                (uint256 reserveIn, uint256 reserveOut,) = IJoePair(pair).getReserves();
+                if (token > tokenPath[i]) {
+                    (reserveIn, reserveOut) = (reserveOut, reserveIn);
                 }
 
                 uint256 amountOut_ = amountsIn[i];
-                amountsIn[i - 1] = uint128(uint256(amountOut_).getAmountIn(_reserveIn, _reserveOut));
+                amountsIn[i - 1] = uint128(uint256(amountOut_).getAmountIn(reserveIn, reserveOut));
             } else {
                 (amountsIn[i - 1],,) =
-                    getSwapIn(ILBPair(_pair), uint128(amountsIn[i]), ILBPair(_pair).getTokenX() == _token);
+                    getSwapIn(ILBPair(pair), uint128(amountsIn[i]), ILBPair(pair).getTokenX() == token);
             }
         }
     }
 
     /// @notice Helper function to remove liquidity
-    /// @param _LBPair The address of the LBPair
-    /// @param _amountXMin The min amount to receive of token X
-    /// @param _amountYMin The min amount to receive of token Y
-    /// @param _ids The list of ids to burn
-    /// @param _amounts The list of amounts to burn of each id in `_ids`
-    /// @param _to The address of the recipient
+    /// @param pair The address of the LBPair
+    /// @param amountXMin The min amount to receive of token X
+    /// @param amountYMin The min amount to receive of token Y
+    /// @param ids The list of ids to burn
+    /// @param amounts The list of amounts to burn of each id in `ids`
+    /// @param to The address of the recipient
     /// @return amountX The amount of token X sent by the pair
     /// @return amountY The amount of token Y sent by the pair
     function _removeLiquidity(
-        ILBPair _LBPair,
-        uint256 _amountXMin,
-        uint256 _amountYMin,
-        uint256[] memory _ids,
-        uint256[] memory _amounts,
-        address _to
+        ILBPair pair,
+        uint256 amountXMin,
+        uint256 amountYMin,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        address to
     ) private returns (uint256 amountX, uint256 amountY) {
-        ILBToken(address(_LBPair)).batchTransferFrom(msg.sender, address(_LBPair), _ids, _amounts);
-        (bytes32[] memory amounts) = _LBPair.burn(msg.sender, _to, _ids, _amounts);
-        if (amountX < _amountXMin || amountY < _amountYMin) {
-            revert LBRouter__AmountSlippageCaught(_amountXMin, amountX, _amountYMin, amountY);
+        ILBToken(address(pair)).batchTransferFrom(msg.sender, address(pair), ids, amounts);
+        (bytes32[] memory amountsBurned) = pair.burn(msg.sender, to, ids, amounts);
+
+        for (uint256 i; i < amountsBurned.length; ++i) {
+            amountX += amountsBurned[i].decodeUint128(0);
+            amountY += amountsBurned[i].decodeUint128(128);
+        }
+
+        if (amountX < amountXMin || amountY < amountYMin) {
+            revert LBRouter__AmountSlippageCaught(amountXMin, amountX, amountYMin, amountY);
         }
     }
 
     /// @notice Helper function to swap exact tokens for tokens
-    /// @param _amountIn The amount of token sent
-    /// @param _pairs The list of pairs
+    /// @param amountIn The amount of token sent
+    /// @param pairs The list of pairs
     /// @param pairBinSteps The bin step of the pairs (0: V1, other values will use V2)
     /// @param tokenPath The swap path using the binSteps following `pairBinSteps`
-    /// @param _to The address of the recipient
-    /// @return amountOut The amount of token sent to `_to`
+    /// @param to The address of the recipient
+    /// @return amountOut The amount of token sent to `to`
     function _swapExactTokensForTokens(
-        uint256 _amountIn,
-        address[] memory _pairs,
+        uint256 amountIn,
+        address[] memory pairs,
         uint256[] memory pairBinSteps,
         IERC20[] memory tokenPath,
-        address _to
+        address to
     ) private returns (uint256 amountOut) {
-        IERC20 _token;
-        uint256 _binStep;
-        address _recipient;
-        address _pair;
+        IERC20 token;
+        uint256 binStep;
+        address recipient;
+        address pair;
 
-        IERC20 _tokenNext = tokenPath[0];
-        amountOut = _amountIn;
+        IERC20 tokenNext = tokenPath[0];
+        amountOut = amountIn;
 
         unchecked {
-            for (uint256 i; i < _pairs.length; ++i) {
-                _pair = _pairs[i];
-                _binStep = pairBinSteps[i];
+            for (uint256 i; i < pairs.length; ++i) {
+                pair = pairs[i];
+                binStep = pairBinSteps[i];
 
-                _token = _tokenNext;
-                _tokenNext = tokenPath[i + 1];
+                token = tokenNext;
+                tokenNext = tokenPath[i + 1];
 
-                _recipient = i + 1 == _pairs.length ? _to : _pairs[i + 1];
+                recipient = i + 1 == pairs.length ? to : pairs[i + 1];
 
-                if (_binStep == 0) {
-                    (uint256 _reserve0, uint256 _reserve1,) = IJoePair(_pair).getReserves();
+                if (binStep == 0) {
+                    (uint256 reserve0, uint256 reserve1,) = IJoePair(pair).getReserves();
 
-                    if (_token < _tokenNext) {
-                        amountOut = amountOut.getAmountOut(_reserve0, _reserve1);
-                        IJoePair(_pair).swap(0, amountOut, _recipient, "");
+                    if (token < tokenNext) {
+                        amountOut = amountOut.getAmountOut(reserve0, reserve1);
+                        IJoePair(pair).swap(0, amountOut, recipient, "");
                     } else {
-                        amountOut = amountOut.getAmountOut(_reserve1, _reserve0);
-                        IJoePair(_pair).swap(amountOut, 0, _recipient, "");
+                        amountOut = amountOut.getAmountOut(reserve1, reserve0);
+                        IJoePair(pair).swap(amountOut, 0, recipient, "");
                     }
                 } else {
-                    bool _swapForY = _tokenNext == ILBPair(_pair).getTokenY();
+                    bool swapForY = tokenNext == ILBPair(pair).getTokenY();
 
-                    (uint256 _amountXOut, uint256 _amountYOut) = ILBPair(_pair).swap(_swapForY, _recipient).decode();
+                    (uint256 amountXOut, uint256 amountYOut) = ILBPair(pair).swap(swapForY, recipient).decode();
 
-                    if (_swapForY) amountOut = _amountYOut;
-                    else amountOut = _amountXOut;
+                    if (swapForY) amountOut = amountYOut;
+                    else amountOut = amountXOut;
                 }
             }
         }
     }
 
     /// @notice Helper function to swap tokens for exact tokens
-    /// @param _pairs The array of pairs
+    /// @param pairs The array of pairs
     /// @param pairBinSteps The bin step of the pairs (0: V1, other values will use V2)
     /// @param tokenPath The swap path using the binSteps following `pairBinSteps`
-    /// @param _amountsIn The list of amounts in
-    /// @param _to The address of the recipient
-    /// @return amountOut The amount of token sent to `_to`
+    /// @param amountsIn The list of amounts in
+    /// @param to The address of the recipient
+    /// @return amountOut The amount of token sent to `to`
     function _swapTokensForExactTokens(
-        address[] memory _pairs,
+        address[] memory pairs,
         uint256[] memory pairBinSteps,
         IERC20[] memory tokenPath,
-        uint256[] memory _amountsIn,
-        address _to
+        uint256[] memory amountsIn,
+        address to
     ) private returns (uint256 amountOut) {
-        IERC20 _token;
-        uint256 _binStep;
-        address _recipient;
-        address _pair;
+        IERC20 token;
+        uint256 binStep;
+        address recipient;
+        address pair;
 
-        IERC20 _tokenNext = tokenPath[0];
+        IERC20 tokenNext = tokenPath[0];
 
         unchecked {
-            for (uint256 i; i < _pairs.length; ++i) {
-                _pair = _pairs[i];
-                _binStep = pairBinSteps[i];
+            for (uint256 i; i < pairs.length; ++i) {
+                pair = pairs[i];
+                binStep = pairBinSteps[i];
 
-                _token = _tokenNext;
-                _tokenNext = tokenPath[i + 1];
+                token = tokenNext;
+                tokenNext = tokenPath[i + 1];
 
-                _recipient = i + 1 == _pairs.length ? _to : _pairs[i + 1];
+                recipient = i + 1 == pairs.length ? to : pairs[i + 1];
 
-                if (_binStep == 0) {
-                    amountOut = _amountsIn[i + 1];
-                    if (_token < _tokenNext) {
-                        IJoePair(_pair).swap(0, amountOut, _recipient, "");
+                if (binStep == 0) {
+                    amountOut = amountsIn[i + 1];
+                    if (token < tokenNext) {
+                        IJoePair(pair).swap(0, amountOut, recipient, "");
                     } else {
-                        IJoePair(_pair).swap(amountOut, 0, _recipient, "");
+                        IJoePair(pair).swap(amountOut, 0, recipient, "");
                     }
                 } else {
-                    bool _swapForY = _tokenNext == ILBPair(_pair).getTokenY();
+                    bool swapForY = tokenNext == ILBPair(pair).getTokenY();
 
-                    (uint256 _amountXOut, uint256 _amountYOut) = ILBPair(_pair).swap(_swapForY, _recipient).decode();
+                    (uint256 amountXOut, uint256 amountYOut) = ILBPair(pair).swap(swapForY, recipient).decode();
 
-                    if (_swapForY) amountOut = _amountYOut;
-                    else amountOut = _amountXOut;
+                    if (swapForY) amountOut = amountYOut;
+                    else amountOut = amountXOut;
                 }
             }
         }
     }
 
     /// @notice Helper function to swap exact tokens supporting for fee on transfer tokens
-    /// @param _pairs The list of pairs
+    /// @param pairs The list of pairs
     /// @param pairBinSteps The bin step of the pairs (0: V1, other values will use V2)
     /// @param tokenPath The swap path using the binSteps following `pairBinSteps`
-    /// @param _to The address of the recipient
+    /// @param to The address of the recipient
     function _swapSupportingFeeOnTransferTokens(
-        address[] memory _pairs,
+        address[] memory pairs,
         uint256[] memory pairBinSteps,
         IERC20[] memory tokenPath,
-        address _to
+        address to
     ) private {
-        IERC20 _token;
-        uint256 _binStep;
-        address _recipient;
-        address _pair;
+        IERC20 token;
+        uint256 binStep;
+        address recipient;
+        address pair;
 
-        IERC20 _tokenNext = tokenPath[0];
+        IERC20 tokenNext = tokenPath[0];
 
         unchecked {
-            for (uint256 i; i < _pairs.length; ++i) {
-                _pair = _pairs[i];
-                _binStep = pairBinSteps[i];
+            for (uint256 i; i < pairs.length; ++i) {
+                pair = pairs[i];
+                binStep = pairBinSteps[i];
 
-                _token = _tokenNext;
-                _tokenNext = tokenPath[i + 1];
+                token = tokenNext;
+                tokenNext = tokenPath[i + 1];
 
-                _recipient = i + 1 == _pairs.length ? _to : _pairs[i + 1];
+                recipient = i + 1 == pairs.length ? to : pairs[i + 1];
 
-                if (_binStep == 0) {
-                    (uint256 _reserve0, uint256 _reserve1,) = IJoePair(_pair).getReserves();
-                    if (_token < _tokenNext) {
-                        uint256 _amountIn = _token.balanceOf(_pair) - _reserve0;
-                        uint256 _amountOut = _amountIn.getAmountOut(_reserve0, _reserve1);
+                if (binStep == 0) {
+                    (uint256 reserve0, uint256 reserve1,) = IJoePair(pair).getReserves();
+                    if (token < tokenNext) {
+                        uint256 amountIn = token.balanceOf(pair) - reserve0;
+                        uint256 amountOut = amountIn.getAmountOut(reserve0, reserve1);
 
-                        IJoePair(_pair).swap(0, _amountOut, _recipient, "");
+                        IJoePair(pair).swap(0, amountOut, recipient, "");
                     } else {
-                        uint256 _amountIn = _token.balanceOf(_pair) - _reserve1;
-                        uint256 _amountOut = _amountIn.getAmountOut(_reserve1, _reserve0);
+                        uint256 amountIn = token.balanceOf(pair) - reserve1;
+                        uint256 amountOut = amountIn.getAmountOut(reserve1, reserve0);
 
-                        IJoePair(_pair).swap(_amountOut, 0, _recipient, "");
+                        IJoePair(pair).swap(amountOut, 0, recipient, "");
                     }
                 } else {
-                    ILBPair(_pair).swap(_tokenNext == ILBPair(_pair).getTokenY(), _recipient);
+                    ILBPair(pair).swap(tokenNext == ILBPair(pair).getTokenY(), recipient);
                 }
             }
         }
@@ -813,44 +841,44 @@ contract LBRouter is ILBRouter {
 
     /// @notice Helper function to return the address of the LBPair
     /// @dev Revert if the pair is not created yet
-    /// @param _tokenX The address of the tokenX
-    /// @param _tokenY The address of the tokenY
-    /// @param _binStep The bin step of the LBPair
+    /// @param tokenX The address of the tokenX
+    /// @param tokenY The address of the tokenY
+    /// @param binStep The bin step of the LBPair
     /// @return The address of the LBPair
-    function _getLBPairInformation(IERC20 _tokenX, IERC20 _tokenY, uint256 _binStep, uint256 _revision)
+    function _getLBPairInformation(IERC20 tokenX, IERC20 tokenY, uint256 binStep, uint256 revision)
         private
         view
         returns (ILBPair)
     {
-        ILBPair _LBPair;
-        if (_revision == 0) {
-            _LBPair = legacyFactory.getLBPairInformation(_tokenX, _tokenY, _binStep).LBPair;
+        ILBPair pair;
+        if (revision == 0) {
+            pair = _legacyFactory.getLBPairInformation(tokenX, tokenY, binStep).LBPair;
         } else {
-            _LBPair = factory.getLBPairInformation(_tokenX, _tokenY, _binStep, _revision).LBPair;
+            pair = _factory.getLBPairInformation(tokenX, tokenY, binStep, revision).LBPair;
         }
 
-        if (address(_LBPair) == address(0)) {
-            revert LBRouter__PairNotCreated(address(_tokenX), address(_tokenY), _binStep);
+        if (address(pair) == address(0)) {
+            revert LBRouter__PairNotCreated(address(tokenX), address(tokenY), binStep);
         }
-        return _LBPair;
+        return pair;
     }
 
-    /// @notice Helper function to return the address of the pair (v1 or v2, according to `_binStep`)
+    /// @notice Helper function to return the address of the pair (v1 or v2, according to `binStep`)
     /// @dev Revert if the pair is not created yet
-    /// @param _binStep The bin step of the LBPair, 0 means using V1 pair, any other value will use V2
-    /// @param _tokenX The address of the tokenX
-    /// @param _tokenY The address of the tokenY
-    /// @return _pair The address of the pair of binStep `_binStep`
-    function _getPair(IERC20 _tokenX, IERC20 _tokenY, uint256 _binStep, uint256 _revision)
+    /// @param binStep The bin step of the LBPair, 0 means using V1 pair, any other value will use V2
+    /// @param tokenX The address of the tokenX
+    /// @param tokenY The address of the tokenY
+    /// @return pair The address of the pair of binStep `binStep`
+    function _getPair(IERC20 tokenX, IERC20 tokenY, uint256 binStep, uint256 revision)
         private
         view
-        returns (address _pair)
+        returns (address pair)
     {
-        if (_binStep == 0) {
-            _pair = oldFactory.getPair(address(_tokenX), address(_tokenY));
-            if (_pair == address(0)) revert LBRouter__PairNotCreated(address(_tokenX), address(_tokenY), _binStep);
+        if (binStep == 0) {
+            pair = _oldFactory.getPair(address(tokenX), address(tokenY));
+            if (pair == address(0)) revert LBRouter__PairNotCreated(address(tokenX), address(tokenY), binStep);
         } else {
-            _pair = address(_getLBPairInformation(_tokenX, _tokenY, _binStep, _revision));
+            pair = address(_getLBPairInformation(tokenX, tokenY, binStep, revision));
         }
     }
 
@@ -861,31 +889,31 @@ contract LBRouter is ILBRouter {
     {
         pairs = new address[](pairBinSteps.length);
 
-        IERC20 _token;
-        IERC20 _tokenNext = tokenPath[0];
+        IERC20 token;
+        IERC20 tokenNext = tokenPath[0];
         unchecked {
             for (uint256 i; i < pairs.length; ++i) {
-                _token = _tokenNext;
-                _tokenNext = tokenPath[i + 1];
+                token = tokenNext;
+                tokenNext = tokenPath[i + 1];
 
-                pairs[i] = _getPair(_token, _tokenNext, pairBinSteps[i], revisions[i]);
+                pairs[i] = _getPair(token, tokenNext, pairBinSteps[i], revisions[i]);
             }
         }
     }
 
     /// @notice Helper function to transfer AVAX
-    /// @param _to The address of the recipient
-    /// @param _amount The AVAX amount to send
-    function _safeTransferAVAX(address _to, uint256 _amount) private {
-        (bool success,) = _to.call{value: _amount}("");
-        if (!success) revert LBRouter__FailedToSendAVAX(_to, _amount);
+    /// @param to The address of the recipient
+    /// @param amount The AVAX amount to send
+    function _safeTransferAVAX(address to, uint256 amount) private {
+        (bool success,) = to.call{value: amount}("");
+        if (!success) revert LBRouter__FailedToSendAVAX(to, amount);
     }
 
-    /// @notice Helper function to deposit and transfer wavax
-    /// @param _to The address of the recipient
-    /// @param _amount The AVAX amount to wrap
-    function _wavaxDepositAndTransfer(address _to, uint256 _amount) private {
-        wavax.deposit{value: _amount}();
-        wavax.safeTransfer(_to, _amount);
+    /// @notice Helper function to deposit and transfer _wavax
+    /// @param to The address of the recipient
+    /// @param amount The AVAX amount to wrap
+    function _wavaxDepositAndTransfer(address to, uint256 amount) private {
+        _wavax.deposit{value: amount}();
+        _wavax.safeTransfer(to, amount);
     }
 }

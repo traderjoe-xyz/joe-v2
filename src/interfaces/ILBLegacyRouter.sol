@@ -2,10 +2,13 @@
 
 pragma solidity 0.8.10;
 
-import "./IJoeFactory.sol";
-import "./ILBPair.sol";
-import "./ILBToken.sol";
-import "./IWAVAX.sol";
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+
+import {ILBFactory} from "./ILBFactory.sol";
+import {IJoeFactory} from "./IJoeFactory.sol";
+import {ILBPair} from "./ILBPair.sol";
+import {ILBToken} from "./ILBToken.sol";
+import {IWAVAX} from "./IWAVAX.sol";
 
 /// @title Liquidity Book Router Interface
 /// @author Trader Joe

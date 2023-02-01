@@ -2,8 +2,8 @@
 
 pragma solidity 0.8.10;
 
-import "../Constants.sol";
-import "./SafeCast.sol";
+import {Constants} from "../Constants.sol";
+import {SafeCast} from "./SafeCast.sol";
 
 /**
  * @title Liquidity Book Packed Uint128 Math Library

@@ -2,9 +2,9 @@
 
 pragma solidity 0.8.10;
 
-import "openzeppelin/token/ERC20/IERC20.sol";
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-import "./AddressesHelper.sol";
+import {AddressesHelper} from "./AddressesHelper.sol";
 
 /**
  * @title Liquidity Book Token Helper Library

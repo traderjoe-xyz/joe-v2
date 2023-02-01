@@ -116,6 +116,11 @@ interface ILBPair is ILBToken {
         view
         returns (uint24 volatilityAccumulator, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate);
 
+    function getOracleParameters()
+        external
+        view
+        returns (uint8 sampleLifetime, uint16 size, uint16 activeSize, uint40 lastUpdated, uint40 firstTimestamp);
+
     function getOracleSampleAt(uint40 lookupTimestamp)
         external
         view

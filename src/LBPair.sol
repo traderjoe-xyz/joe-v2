@@ -19,6 +19,7 @@ import {PairParameterHelper} from "./libraries/PairParameterHelper.sol";
 import {PriceHelper} from "./libraries/PriceHelper.sol";
 import {ReentrancyGuard} from "./libraries/ReentrancyGuard.sol";
 import {SafeCast} from "./libraries/math/SafeCast.sol";
+import {SampleMath} from "./libraries/math/SampleMath.sol";
 import {TreeMath} from "./libraries/math/TreeMath.sol";
 import {Uint256x256Math} from "./libraries/math/Uint256x256Math.sol";
 
@@ -38,6 +39,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
     using PriceHelper for uint256;
     using PriceHelper for uint24;
     using SafeCast for uint256;
+    using SampleMath for bytes32;
     using TreeMath for TreeMath.TreeUint24;
     using Uint256x256Math for uint256;
 
@@ -254,6 +256,41 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         volatilityReference = parameters.getVolatilityReference();
         idReference = parameters.getIdReference();
         timeOfLastUpdate = parameters.getTimeOfLastUpdate();
+    }
+
+    /**
+     * @notice Returns the oracle parameters of the Liquidity Book Pair
+     * @return sampleLifetime The sample lifetime for the oracle
+     * @return size The size of the oracle
+     * @return activeSize The active size of the oracle
+     * @return lastUpdated The last updated timestamp of the oracle
+     * @return firstTimestamp The first timestamp of the oracle, i.e. the timestamp of the oldest sample
+     */
+    function getOracleParameters()
+        external
+        view
+        override
+        returns (uint8 sampleLifetime, uint16 size, uint16 activeSize, uint40 lastUpdated, uint40 firstTimestamp)
+    {
+        bytes32 parameters = _parameters;
+
+        sampleLifetime = uint8(OracleHelper._MAX_SAMPLE_LIFETIME);
+
+        uint16 oracleId = parameters.getOracleId();
+        if (oracleId > 0) {
+            bytes32 sample;
+            (sample, activeSize) = _oracle.getActiveSampleAndSize(oracleId);
+
+            size = sample.getOracleLength();
+            lastUpdated = sample.getSampleLastUpdate();
+
+            if (activeSize > 0) {
+                unchecked {
+                    sample = _oracle.getSample(1 + (oracleId % activeSize));
+                }
+                firstTimestamp = sample.getSampleLastUpdate();
+            }
+        }
     }
 
     /**

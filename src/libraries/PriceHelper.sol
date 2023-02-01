@@ -3,6 +3,7 @@
 pragma solidity 0.8.10;
 
 import {Uint128x128Math} from "./math/Uint128x128Math.sol";
+import {Uint256x256Math} from "./math/Uint256x256Math.sol";
 import {SafeCast} from "./math/SafeCast.sol";
 import {Constants} from "./Constants.sol";
 

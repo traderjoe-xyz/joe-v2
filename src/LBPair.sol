@@ -698,8 +698,19 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @param newLength The new length of the oracle
      */
     function increaseOracleLength(uint16 newLength) external override {
-        uint16 oracleId = _parameters.getOracleId();
-        _oracle.inreaseLength(oracleId, newLength);
+        bytes32 parameters = _parameters;
+
+        uint16 oracleId = parameters.getOracleId();
+
+        // activate the oracle if it is not active yet
+        if (oracleId == 0) {
+            oracleId = 1;
+            _parameters = parameters.setOracleId(oracleId);
+        }
+
+        _oracle.increaseLength(oracleId, newLength);
+
+        emit OracleLengthIncreased(msg.sender, newLength);
     }
 
     /**

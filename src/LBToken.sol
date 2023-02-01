@@ -125,7 +125,7 @@ contract LBToken is ILBToken {
     }
 
     /**
-     * @notice Grants or revokes permission to `spender` to transfer the caller's tokens, according to `approved`.
+     * @notice Grants or revokes permission to `spender` to transfer the caller's lbTokens, according to `approved`.
      * @param spender The address of the spender.
      * @param approved The boolean value to grant or revoke permission.
      */

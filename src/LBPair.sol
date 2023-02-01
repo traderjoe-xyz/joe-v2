@@ -308,12 +308,13 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         returns (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed)
     {
         bytes32 parameters = _parameters;
+        uint16 oracleId = parameters.getOracleId();
 
-        if (lookupTimestamp > block.timestamp) return (0, 0, 0);
+        if (oracleId == 0 || lookupTimestamp > block.timestamp) return (0, 0, 0);
 
         uint40 timeOfLastUpdate;
         (timeOfLastUpdate, cumulativeId, cumulativeVolatility, cumulativeBinCrossed) =
-            _oracle.getSampleAt(parameters.getOracleId(), lookupTimestamp);
+            _oracle.getSampleAt(oracleId, lookupTimestamp);
 
         if (timeOfLastUpdate < lookupTimestamp) {
             parameters.updateVolatilityParameters(parameters.getActiveId());

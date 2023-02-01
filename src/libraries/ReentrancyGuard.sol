@@ -3,12 +3,12 @@
 pragma solidity 0.8.10;
 
 /**
- * @title Liquidity Book Reentrancy Guard Upgradeable Library
+ * @title Liquidity Book Reentrancy Guard Library
  * @author Trader Joe
  * @notice This library contains functions to prevent reentrant calls to a function
  */
-abstract contract ReentrancyGuardUpgradeable {
-    error ReentrancyGuardUpgradeable__ReentrantCall();
+abstract contract ReentrancyGuard {
+    error ReentrancyGuard__ReentrantCall();
 
     /**
      * Booleans are more expensive than uint256 or any type that takes up a full
@@ -46,7 +46,7 @@ abstract contract ReentrancyGuardUpgradeable {
      */
     modifier nonReentrant() {
         // On the first call to nonReentrant, _notEntered will be true
-        if (_status != _NOT_ENTERED) revert ReentrancyGuardUpgradeable__ReentrantCall();
+        if (_status != _NOT_ENTERED) revert ReentrancyGuard__ReentrantCall();
 
         // Any calls to nonReentrant after this point will fail
         _status = _ENTERED;

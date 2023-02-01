@@ -461,7 +461,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             }
         }
 
-        amountInLeft = amountsInLeft.decode(!swapForY);
+        amountInLeft = amountsInLeft.decode(swapForY);
     }
 
     /**

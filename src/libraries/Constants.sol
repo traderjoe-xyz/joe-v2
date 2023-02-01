@@ -12,7 +12,13 @@ library Constants {
     uint256 internal constant SCALE = 1 << SCALE_OFFSET;
 
     uint256 internal constant PRECISION = 1e18;
+    uint256 internal constant SQUARED_PRECISION = PRECISION * PRECISION;
+
+    uint256 internal constant MAX_FEE = 0.1e18; // 10%
+    uint256 internal constant MAX_PROTOCOL_SHARE = 2_500; // 25% of the fee
+
     uint256 internal constant BASIS_POINT_MAX = 10_000;
+    uint256 internal constant TWO_BASIS_POINT_MAX = 2 * BASIS_POINT_MAX;
 
     /// @dev The expected return after a successful flash loan
     bytes32 internal constant CALLBACK_SUCCESS = keccak256("LBPair.onFlashLoan");

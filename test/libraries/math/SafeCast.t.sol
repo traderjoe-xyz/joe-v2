@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/math/SafeCast.sol";
+import "../../../src/libraries/math/SafeCast.sol";
 
 contract SafeCastTest is Test {
     using SafeCast for uint256;

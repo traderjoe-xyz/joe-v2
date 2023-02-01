@@ -4,8 +4,8 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/FeeHelper.sol";
-import "../src/libraries/math/Uint256x256Math.sol";
+import "../../src/libraries/FeeHelper.sol";
+import "../../src/libraries/math/Uint256x256Math.sol";
 
 contract FeeHelperTest is Test {
     using FeeHelper for uint128;

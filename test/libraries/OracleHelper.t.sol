@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/OracleHelper.sol";
+import "../../src/libraries/OracleHelper.sol";
 
 contract OracleHelperTest is Test {
     using OracleHelper for OracleHelper.Oracle;

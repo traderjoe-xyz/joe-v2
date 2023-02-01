@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/PendingOwnable.sol";
+import "../../src/libraries/PendingOwnable.sol";
 
 contract PendingOwnableTest is Test {
     Foo foo;

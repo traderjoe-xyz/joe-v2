@@ -4,8 +4,8 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/Clone.sol";
-import "../src/libraries/ImmutableClone.sol";
+import "../../src/libraries/Clone.sol";
+import "../../src/libraries/ImmutableClone.sol";
 
 contract TestImmutableClone is Test {
     function testFuzz_CloneDeterministic(bytes32 salt) public {

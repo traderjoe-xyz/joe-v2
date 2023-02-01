@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/PriceHelper.sol";
+import "../../src/libraries/PriceHelper.sol";
 
 contract PriceHelperTest is Test {
     using Uint256x256Math for uint256;

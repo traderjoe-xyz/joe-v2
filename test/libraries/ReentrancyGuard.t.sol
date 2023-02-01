@@ -4,8 +4,8 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/ReentrancyGuard.sol";
-import "../src/libraries/AddressHelper.sol";
+import "../../src/libraries/ReentrancyGuard.sol";
+import "../../src/libraries/AddressHelper.sol";
 
 contract ReentrancyGuardTest is Test {
     Foo foo;

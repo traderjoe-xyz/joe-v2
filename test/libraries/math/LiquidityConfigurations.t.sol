@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/math/LiquidityConfigurations.sol";
+import "../../../src/libraries/math/LiquidityConfigurations.sol";
 
 contract LiquidityConfigurationsTest is Test {
     using PackedUint128Math for bytes32;

@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/TokenHelper.sol";
+import "../../src/libraries/TokenHelper.sol";
 
 contract TokenHelperTest is Test {
     using TokenHelper for IERC20;

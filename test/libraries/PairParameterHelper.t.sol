@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/PairParameterHelper.sol";
+import "../../src/libraries/PairParameterHelper.sol";
 
 contract PairParameterHelperTest is Test {
     using PairParameterHelper for bytes32;

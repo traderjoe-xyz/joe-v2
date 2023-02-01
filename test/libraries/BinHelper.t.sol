@@ -2,13 +2,13 @@
 
 pragma solidity 0.8.10;
 
-import "./helpers/TestHelper.sol";
+import "../helpers/TestHelper.sol";
 
-import "../src/libraries/BinHelper.sol";
-import "../src/libraries/math/PackedUint128Math.sol";
-import "../src/libraries/math/Uint256x256Math.sol";
-import "../src/libraries/math/Uint128x128Math.sol";
-import "../src/libraries/PairParameterHelper.sol";
+import "../../src/libraries/BinHelper.sol";
+import "../../src/libraries/math/PackedUint128Math.sol";
+import "../../src/libraries/math/Uint256x256Math.sol";
+import "../../src/libraries/math/Uint128x128Math.sol";
+import "../../src/libraries/PairParameterHelper.sol";
 
 contract BinHelperTest is TestHelper {
     using BinHelper for bytes32;

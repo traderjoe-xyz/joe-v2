@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/AddressHelper.sol";
+import "../../src/libraries/AddressHelper.sol";
 
 contract AddressHelperTest is Test {
     using AddressHelper for address;

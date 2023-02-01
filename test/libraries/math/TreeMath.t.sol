@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/libraries/math/TreeMath.sol";
+import "../../../src/libraries/math/TreeMath.sol";
 
 contract TreeMathTest is Test {
     using TreeMath for TreeMath.TreeUint24;

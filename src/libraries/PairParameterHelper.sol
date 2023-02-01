@@ -46,7 +46,7 @@ library PairParameterHelper {
 
     uint256 internal constant MASK_STATIC_PARAMETER = 0xffffffffffffffffffffffffffff;
 
-    uint256 internal constant MAX_OFFSET_PROTOCOL_SHARE = 2_500;
+    uint256 internal constant MAX_PROTOCOL_SHARE = 2_500;
 
     /**
      * @dev Get the base factor from the encoded pair parameters
@@ -218,6 +218,50 @@ library PairParameterHelper {
     }
 
     /**
+     * @dev Calculates the base fee, with 18 decimals
+     * @param params The encoded pair parameters
+     * @param binStep The bin step (in 20_000th)
+     * @return baseFee The base fee
+     */
+    function getBaseFee(bytes32 params, uint8 binStep) internal pure returns (uint256) {
+        unchecked {
+            // Base factor is in basis points, binStep is in 20_000th, so we multiply by 5e9
+            return uint256(getBaseFactor(params)) * binStep * 5e9;
+        }
+    }
+
+    /**
+     * @dev Calculates the variable fee
+     * @param params The encoded pair parameters
+     * @param binStep The bin step (in 20_000th)
+     * @return variableFee The variable fee
+     */
+    function getVariableFee(bytes32 params, uint8 binStep) internal pure returns (uint256 variableFee) {
+        uint256 variableFeeControl = getVariableFeeControl(params);
+
+        if (variableFeeControl != 0) {
+            unchecked {
+                // The volatility accumulated is in basis points, binStep is in 20_000th,
+                // and the variable fee control is in basis points, so the result is in 400e18th
+                uint256 prod = uint256(getVolatilityAccumulated(params)) * binStep;
+                variableFee = (prod * prod * variableFeeControl + 399) / 400;
+            }
+        }
+    }
+
+    /**
+     * @dev Calculates the total fee, which is the sum of the base fee and the variable fee
+     * @param params The encoded pair parameters
+     * @param binStep The bin step (in 20_000th)
+     * @return totalFee The total fee
+     */
+    function getTotalFee(bytes32 params, uint8 binStep) internal pure returns (uint128) {
+        unchecked {
+            return (getBaseFee(params, binStep) + getVariableFee(params, binStep)).safe128();
+        }
+    }
+
+    /**
      * @dev Set the oracle id in the encoded pair parameters
      * @param params The encoded pair parameters
      * @param oracleId The oracle id
@@ -273,7 +317,7 @@ library PairParameterHelper {
     ) internal pure returns (bytes32) {
         if (
             filterPeriod > decayPeriod || decayPeriod > Encoded.MASK_UINT12
-                || reductionFactor > Constants.BASIS_POINT_MAX || protocolShare > MAX_OFFSET_PROTOCOL_SHARE
+                || reductionFactor > Constants.BASIS_POINT_MAX || protocolShare > MAX_PROTOCOL_SHARE
                 || maxVolatilityAccumulated > Encoded.MASK_UINT20
         ) revert PairParametersHelper__InvalidParameter();
 
@@ -326,50 +370,6 @@ library PairParameterHelper {
         }
 
         return setVolatilityReference(params, volRef);
-    }
-
-    /**
-     * @dev Calculates the base fee, with 18 decimals
-     * @param params The encoded pair parameters
-     * @param binStep The bin step (in 20_000th)
-     * @return baseFee The base fee
-     */
-    function getBaseFee(bytes32 params, uint8 binStep) internal pure returns (uint256) {
-        unchecked {
-            // Base factor is in basis points, binStep is in 20_000th, so we multiply by 5e9
-            return uint256(getBaseFactor(params)) * binStep * 5e9;
-        }
-    }
-
-    /**
-     * @dev Calculates the variable fee
-     * @param params The encoded pair parameters
-     * @param binStep The bin step (in 20_000th)
-     * @return variableFee The variable fee
-     */
-    function getVariableFee(bytes32 params, uint8 binStep) internal pure returns (uint256 variableFee) {
-        uint256 variableFeeControl = getVariableFeeControl(params);
-
-        if (variableFeeControl != 0) {
-            unchecked {
-                // The volatility accumulated is in basis points, binStep is in 20_000th,
-                // and the variable fee control is in basis points, so the result is in 400e18th
-                uint256 prod = uint256(getVolatilityAccumulated(params)) * binStep;
-                variableFee = (prod * prod * variableFeeControl + 399) / 400;
-            }
-        }
-    }
-
-    /**
-     * @dev Calculates the total fee, which is the sum of the base fee and the variable fee
-     * @param params The encoded pair parameters
-     * @param binStep The bin step (in 20_000th)
-     * @return totalFee The total fee
-     */
-    function getTotalFee(bytes32 params, uint8 binStep) internal pure returns (uint128) {
-        unchecked {
-            return (getBaseFee(params, binStep) + getVariableFee(params, binStep)).safe128();
-        }
     }
 
     /**

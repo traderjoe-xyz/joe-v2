@@ -128,7 +128,8 @@ abstract contract TestHelper is Test {
         router = new LBRouter(factory, legacyFactoryV2, factoryV1, IWAVAX(address(wavax)));
 
         // Create quoter
-        quoter = new LBQuoter( address(factoryV1), address(legacyFactoryV2), address(factory),address(router));
+        quoter =
+        new LBQuoter( address(factoryV1), address(legacyFactoryV2), address(factory), address(legacyRouterV2), address(router));
 
         // Label deployed contracts
         vm.label(address(router), "router");

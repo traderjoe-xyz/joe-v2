@@ -188,20 +188,20 @@ contract LBRouter is ILBRouter {
         override
         returns (bytes32[] memory depositIds, uint256[] memory liquidityMinted)
     {
-        ILBPair lbPair = _getLBPairInformation(
+        ILBPair _LBPair = _getLBPairInformation(
             liquidityParameters.tokenX,
             liquidityParameters.tokenY,
             liquidityParameters.binStep,
             liquidityParameters.revision
         );
-        if (liquidityParameters.tokenX != lbPair.getTokenX()) revert LBRouter__WrongTokenOrder();
+        if (liquidityParameters.tokenX != _LBPair.getTokenX()) revert LBRouter__WrongTokenOrder();
 
         if (liquidityParameters.tokenX == _wavax && liquidityParameters.amountX == msg.value) {
-            _wavaxDepositAndTransfer(address(lbPair), msg.value);
-            liquidityParameters.tokenY.safeTransferFrom(msg.sender, address(lbPair), liquidityParameters.amountY);
+            _wavaxDepositAndTransfer(address(_LBPair), msg.value);
+            liquidityParameters.tokenY.safeTransferFrom(msg.sender, address(_LBPair), liquidityParameters.amountY);
         } else if (liquidityParameters.tokenY == _wavax && liquidityParameters.amountY == msg.value) {
-            liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(lbPair), liquidityParameters.amountX);
-            _wavaxDepositAndTransfer(address(lbPair), msg.value);
+            liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(_LBPair), liquidityParameters.amountX);
+            _wavaxDepositAndTransfer(address(_LBPair), msg.value);
         } else {
             revert LBRouter__WrongAvaxLiquidityParameters(
                 address(liquidityParameters.tokenX),
@@ -212,7 +212,7 @@ contract LBRouter is ILBRouter {
             );
         }
 
-        (depositIds, liquidityMinted) = _addLiquidity(liquidityParameters, lbPair);
+        (depositIds, liquidityMinted) = _addLiquidity(liquidityParameters, _LBPair);
     }
 
     /// @notice Remove liquidity while performing safety checks
@@ -223,7 +223,7 @@ contract LBRouter is ILBRouter {
     /// @param amountXMin The min amount to receive of token X
     /// @param amountYMin The min amount to receive of token Y
     /// @param ids The list of ids to burn
-    /// @param amounts The list of amounts to burn of each id in `ids`
+    /// @param amounts The list of amounts to burn of each id in `_ids`
     /// @param to The address of the recipient
     /// @param deadline The deadline of the tx
     /// @return amountX Amount of token X returned
@@ -240,12 +240,12 @@ contract LBRouter is ILBRouter {
         address to,
         uint256 deadline
     ) external override ensure(deadline) returns (uint256 amountX, uint256 amountY) {
-        ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep, revision);
-        bool isWrongOrder = tokenX != lbPair.getTokenX();
+        ILBPair _LBPair = _getLBPairInformation(tokenX, tokenY, binStep, revision);
+        bool isWrongOrder = tokenX != _LBPair.getTokenX();
 
         if (isWrongOrder) (amountXMin, amountYMin) = (amountYMin, amountXMin);
 
-        (amountX, amountY) = _removeLiquidity(lbPair, amountXMin, amountYMin, ids, amounts, to);
+        (amountX, amountY) = _removeLiquidity(_LBPair, amountXMin, amountYMin, ids, amounts, to);
 
         if (isWrongOrder) (amountX, amountY) = (amountY, amountX);
     }
@@ -259,7 +259,7 @@ contract LBRouter is ILBRouter {
     /// @param amountTokenMin The min amount to receive of token
     /// @param amountAVAXMin The min amount to receive of AVAX
     /// @param ids The list of ids to burn
-    /// @param amounts The list of amounts to burn of each id in `ids`
+    /// @param amounts The list of amounts to burn of each id in `_ids`
     /// @param to The address of the recipient
     /// @param deadline The deadline of the tx
     /// @return amountToken Amount of token returned
@@ -391,9 +391,9 @@ contract LBRouter is ILBRouter {
 
             path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountsIn[0]);
 
-            uint256 amountOutReal = _swapTokensForExactTokens(pairs, path.pairBinSteps, path.tokenPath, amountsIn, to);
+            uint256 _amountOutReal = _swapTokensForExactTokens(pairs, path.pairBinSteps, path.tokenPath, amountsIn, to);
 
-            if (amountOutReal < amountOut) revert LBRouter__InsufficientAmountOut(amountOut, amountOutReal);
+            if (_amountOutReal < amountOut) revert LBRouter__InsufficientAmountOut(amountOut, _amountOutReal);
         }
     }
 
@@ -421,13 +421,13 @@ contract LBRouter is ILBRouter {
 
         path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountsIn[0]);
 
-        uint256 amountOutReal =
+        uint256 _amountOutReal =
             _swapTokensForExactTokens(pairs, path.pairBinSteps, path.tokenPath, amountsIn, address(this));
 
-        if (amountOutReal < amountAVAXOut) revert LBRouter__InsufficientAmountOut(amountAVAXOut, amountOutReal);
+        if (_amountOutReal < amountAVAXOut) revert LBRouter__InsufficientAmountOut(amountAVAXOut, _amountOutReal);
 
-        _wavax.withdraw(amountOutReal);
-        _safeTransferAVAX(to, amountOutReal);
+        _wavax.withdraw(_amountOutReal);
+        _safeTransferAVAX(to, _amountOutReal);
     }
 
     /// @notice Swaps AVAX for exact tokens while performing safety checks
@@ -594,17 +594,17 @@ contract LBRouter is ILBRouter {
                 revert LBRouter__IdDesiredOverflows(liq.activeIdDesired, liq.idSlippage);
             }
 
-            uint256 activeId = pair.getActiveId();
-            if (liq.activeIdDesired + liq.idSlippage < activeId || activeId + liq.idSlippage < liq.activeIdDesired) {
-                revert LBRouter__IdSlippageCaught(liq.activeIdDesired, liq.idSlippage, activeId);
+            uint256 _activeId = pair.getActiveId();
+            if (liq.activeIdDesired + liq.idSlippage < _activeId || _activeId + liq.idSlippage < liq.activeIdDesired) {
+                revert LBRouter__IdSlippageCaught(liq.activeIdDesired, liq.idSlippage, _activeId);
             }
 
             liquidityConfigs = new bytes32[](liq.deltaIds.length);
             for (uint256 i; i < liquidityConfigs.length; ++i) {
-                int256 id = int256(activeId) + liq.deltaIds[i];
-                if (id < 0 || uint256(id) > type(uint24).max) revert LBRouter__IdOverflows(id);
+                int256 _id = int256(_activeId) + liq.deltaIds[i];
+                if (_id < 0 || uint256(_id) > type(uint24).max) revert LBRouter__IdOverflows(_id);
                 liquidityConfigs[i] = LiquidityConfigurations.encodeParams(
-                    uint64(liq.distributionX[i]), uint64(liq.distributionY[i]), uint24(uint256(id))
+                    uint64(liq.distributionX[i]), uint64(liq.distributionY[i]), uint24(uint256(_id))
                 );
             }
 
@@ -662,7 +662,7 @@ contract LBRouter is ILBRouter {
     /// @param amountXMin The min amount to receive of token X
     /// @param amountYMin The min amount to receive of token Y
     /// @param ids The list of ids to burn
-    /// @param amounts The list of amounts to burn of each id in `ids`
+    /// @param amounts The list of amounts to burn of each id in `_ids`
     /// @param to The address of the recipient
     /// @return amountX The amount of token X sent by the pair
     /// @return amountY The amount of token Y sent by the pair
@@ -820,15 +820,15 @@ contract LBRouter is ILBRouter {
                 recipient = i + 1 == pairs.length ? to : pairs[i + 1];
 
                 if (binStep == 0) {
-                    (uint256 reserve0, uint256 reserve1,) = IJoePair(pair).getReserves();
+                    (uint256 _reserve0, uint256 _reserve1,) = IJoePair(pair).getReserves();
                     if (token < tokenNext) {
-                        uint256 amountIn = token.balanceOf(pair) - reserve0;
-                        uint256 amountOut = amountIn.getAmountOut(reserve0, reserve1);
+                        uint256 amountIn = token.balanceOf(pair) - _reserve0;
+                        uint256 amountOut = amountIn.getAmountOut(_reserve0, _reserve1);
 
                         IJoePair(pair).swap(0, amountOut, recipient, "");
                     } else {
-                        uint256 amountIn = token.balanceOf(pair) - reserve1;
-                        uint256 amountOut = amountIn.getAmountOut(reserve1, reserve0);
+                        uint256 amountIn = token.balanceOf(pair) - _reserve1;
+                        uint256 amountOut = amountIn.getAmountOut(_reserve1, _reserve0);
 
                         IJoePair(pair).swap(amountOut, 0, recipient, "");
                     }
@@ -850,17 +850,12 @@ contract LBRouter is ILBRouter {
         view
         returns (ILBPair)
     {
-        ILBPair pair;
-        if (revision == 0) {
-            pair = _legacyFactory.getLBPairInformation(tokenX, tokenY, binStep).LBPair;
-        } else {
-            pair = _factory.getLBPairInformation(tokenX, tokenY, binStep, revision).LBPair;
-        }
+        ILBPair lbPair = _factory.getLBPairInformation(tokenX, tokenY, binStep, revision).LBPair;
 
-        if (address(pair) == address(0)) {
+        if (address(lbPair) == address(0)) {
             revert LBRouter__PairNotCreated(address(tokenX), address(tokenY), binStep);
         }
-        return pair;
+        return lbPair;
     }
 
     /// @notice Helper function to return the address of the pair (v1 or v2, according to `binStep`)

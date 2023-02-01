@@ -378,7 +378,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
         override
         returns (uint128 amountInLeft, uint128 amountOut, uint128 fee)
     {
-        bytes32 amountsInLeft = amountIn.encode(!swapForY);
+        bytes32 amountsInLeft = amountIn.encode(swapForY);
 
         bytes32 parameters = _parameters;
         uint8 binStep = _binStep();
@@ -397,9 +397,10 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
 
                 if (amountsInToBin > 0) {
                     amountsInLeft = amountsInLeft.sub(amountsInToBin.add(totalFees));
-                    amountOut += amountsOutOfBin.decode(swapForY);
 
-                    fee += totalFees.decode(!swapForY);
+                    amountOut += amountsOutOfBin.decode(!swapForY);
+
+                    fee += totalFees.decode(swapForY);
                 }
             }
 

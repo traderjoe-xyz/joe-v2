@@ -451,6 +451,49 @@ contract LiquidityBinRouterTest is TestHelper {
         );
     }
 
+    function test_SweepERC20() public {
+        uint256 amount = 1e18;
+        usdc.mint(address(router), amount);
+
+        uint256 balanceBefore = usdc.balanceOf(address(this));
+        router.sweep(usdc, address(this), amount);
+        assertEq(usdc.balanceOf(address(this)), balanceBefore + amount, "balanceAfter");
+
+        // Can't sweep if non owner
+        usdc.mint(address(router), amount);
+        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__NotFactoryOwner.selector));
+        vm.prank(ALICE);
+        router.sweep(usdc, address(this), amount);
+    }
+
+    function test_SweepLBTokens() public {
+        ILBRouter.LiquidityParameters memory liquidityParameters =
+            getLiquidityParameters(usdt, usdc, 1e18, ID_ONE, 1, 0);
+
+        liquidityParameters.to = address(router);
+        (,,,, uint256[] memory depositIds, uint256[] memory liquidityMinted) = router.addLiquidity(liquidityParameters);
+
+        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP, 1).LBPair;
+
+        uint256[] memory balancesBefore = new uint256[](depositIds.length);
+        for (uint256 i = 0; i < depositIds.length; i++) {
+            balancesBefore[i] = pair.balanceOf(DEV, depositIds[i]);
+        }
+
+        router.sweepLBToken(pair, DEV, depositIds, liquidityMinted);
+
+        for (uint256 i = 0; i < depositIds.length; i++) {
+            assertEq(pair.balanceOf(DEV, depositIds[i]), balancesBefore[i] + liquidityMinted[i], "balanceAfter");
+        }
+
+        (,,,, depositIds, liquidityMinted) = router.addLiquidity(liquidityParameters);
+
+        // Can't sweep if non owner
+        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__NotFactoryOwner.selector));
+        vm.prank(ALICE);
+        router.sweepLBToken(pair, DEV, depositIds, liquidityMinted);
+    }
+
     receive() external payable {
         if (blockReceive) {
             revert("No receive function on the contract");

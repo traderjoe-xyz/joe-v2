@@ -634,7 +634,7 @@ contract LBRouter is ILBRouter {
 
             bytes32 amountsReceived;
             bytes32 amountsLeft;
-            (amountsReceived, amountsLeft, liquidityMinted) = pair.mint(msg.sender, liquidityConfigs, liq.to);
+            (amountsReceived, amountsLeft, liquidityMinted) = pair.mint(liq.to, liquidityConfigs, msg.sender);
 
             amountXAdded = amountsReceived.decodeUint128(0);
             amountYAdded = amountsReceived.decodeUint128(128);

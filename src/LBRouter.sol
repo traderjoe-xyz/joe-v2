@@ -667,7 +667,6 @@ contract LBRouter is ILBRouter {
         for (uint256 i = pairs.length; i != 0; i--) {
             IERC20 token = tokenPath[i - 1];
             uint256 binStep = pairBinSteps[i - 1];
-
             address pair = pairs[i - 1];
 
             if (binStep == 0) {
@@ -677,7 +676,7 @@ contract LBRouter is ILBRouter {
                 }
 
                 uint256 amountOut_ = amountsIn[i];
-                amountsIn[i - 1] = uint128(uint256(amountOut_).getAmountIn(reserveIn, reserveOut));
+                amountsIn[i - 1] = uint128(amountOut_.getAmountIn(reserveIn, reserveOut));
             } else {
                 (amountsIn[i - 1],,) =
                     getSwapIn(ILBPair(pair), uint128(amountsIn[i]), ILBPair(pair).getTokenX() == token);

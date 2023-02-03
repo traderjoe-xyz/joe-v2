@@ -187,9 +187,10 @@ contract PairParameterHelperTest is Test {
     }
 
     function testFuzz_UpdateVolatilityAccumulator(bytes32 params, uint24 activeId) external {
-        uint256 deltaId = params.getDeltaId(activeId);
+        uint256 idReference = params.getIdReference();
+        uint256 deltaId = activeId > idReference ? activeId - idReference : idReference - activeId;
 
-        uint256 volAccumulator = params.getVolatilityAccumulator() + deltaId * Constants.BASIS_POINT_MAX;
+        uint256 volAccumulator = params.getVolatilityReference() + deltaId * Constants.BASIS_POINT_MAX;
         volAccumulator = volAccumulator > params.getMaxVolatilityAccumulator()
             ? params.getMaxVolatilityAccumulator()
             : volAccumulator;

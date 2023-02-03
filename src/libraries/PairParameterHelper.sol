@@ -379,11 +379,12 @@ library PairParameterHelper {
      * @return The updated encoded pair parameters
      */
     function updateVolatilityAccumulator(bytes32 params, uint24 activeId) internal pure returns (bytes32) {
-        uint256 deltaId = getDeltaId(params, activeId);
+        uint256 idReference = getIdReference(params);
+        uint256 deltaId = activeId > idReference ? activeId - idReference : idReference - activeId;
 
         uint256 volAcc;
         unchecked {
-            volAcc = (uint256(getVolatilityAccumulator(params)) + deltaId * Constants.BASIS_POINT_MAX);
+            volAcc = (uint256(getVolatilityReference(params)) + deltaId * Constants.BASIS_POINT_MAX);
         }
 
         uint256 maxVolAcc = getMaxVolatilityAccumulator(params);

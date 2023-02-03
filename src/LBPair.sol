@@ -562,6 +562,8 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         override
         nonReentrant
     {
+        if (amounts == 0) revert LBPair__ZeroBorrowAmount();
+
         bytes32 reservesBefore = _reserves;
         bytes32 parameters = _parameters;
 
@@ -580,7 +582,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         if (balancesAfter.lt(reservesBefore.add(totalFees))) revert LBPair__FlashLoanInsufficientAmount();
 
-        totalFees = reservesBefore.sub(balancesAfter);
+        totalFees = balancesAfter.sub(reservesBefore);
 
         bytes32 protocolFees = totalFees.scalarMulDivBasisPointRoundDown(parameters.getProtocolShare());
         uint24 activeId = parameters.getActiveId();

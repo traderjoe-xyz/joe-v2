@@ -294,7 +294,7 @@ contract OracleHelperTest is Test {
     }
 
     function testFuzz_IncreaseOracleLength(uint16 length, uint16 newLength) external {
-        vm.assume(length > 0 && newLength > length);
+        vm.assume(length > 0 && newLength > length && newLength <= 100); // 100 is arbitrary to avoid tests taking too long
 
         uint16 oracleId = 1;
 

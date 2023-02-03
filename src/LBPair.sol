@@ -104,7 +104,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         __ReentrancyGuard_init();
 
         _setStaticFeeParameters(
-            parameters.setActiveId(activeId),
+            parameters.setActiveId(activeId).updateIdReference(),
             baseFactor,
             filterPeriod,
             decayPeriod,
@@ -284,6 +284,8 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             size = sample.getOracleLength();
             lastUpdated = sample.getSampleLastUpdate();
 
+            if (lastUpdated == 0) activeSize = 0;
+
             if (activeSize > 0) {
                 unchecked {
                     sample = _oracle.getSample(1 + (oracleId % activeSize));
@@ -353,7 +355,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * and the maximum amount that can be swapped from `amountIn` is `amountOut - amountOutLeft`.
      * @param amountOut The amount of token X or Y to swap in
      * @param swapForY Whether the swap is for token Y (true) or token X (false)
-     * @return amountIn The amount of token X or Y that can be swapped in
+     * @return amountIn The amount of token X or Y that can be swapped in, including the fee
      * @return amountOutLeft The amount of token Y or X that cannot be swapped out
      * @return fee The fee of the swap
      */
@@ -373,24 +375,24 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         parameters = parameters.updateReferences();
 
         while (true) {
-            uint128 binReserves = _bins[id].decode(swapForY);
+            uint128 binReserves = _bins[id].decode(!swapForY);
             if (binReserves > 0) {
                 uint256 price = id.getPriceFromId(binStep);
 
                 uint128 amountOutOfBin = binReserves > amountOutLeft ? amountOutLeft : binReserves;
 
-                parameters.updateVolatilityParameters(id);
+                parameters = parameters.updateVolatilityParameters(id);
 
-                uint128 amountInToBin = uint128(
+                uint128 amountInWithoutFee = uint128(
                     swapForY
                         ? uint256(amountOutOfBin).shiftDivRoundUp(Constants.SCALE_OFFSET, price)
                         : uint256(amountOutOfBin).mulShiftRoundUp(price, Constants.SCALE_OFFSET)
                 );
 
                 uint128 totalFee = parameters.getTotalFee(binStep);
-                uint128 feeAmount = amountOutOfBin.getFeeAmount(totalFee);
+                uint128 feeAmount = amountInWithoutFee.getFeeAmount(totalFee);
 
-                amountIn += amountInToBin + feeAmount;
+                amountIn += amountInWithoutFee + feeAmount;
                 amountOutLeft -= amountOutOfBin;
 
                 fee += feeAmount;
@@ -435,14 +437,14 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         while (true) {
             bytes32 binReserves = _bins[id];
-            if (!binReserves.isEmpty(swapForY)) {
+            if (!binReserves.isEmpty(!swapForY)) {
                 parameters = parameters.updateVolatilityAccumulator(id);
 
-                (bytes32 amountsInToBin, bytes32 amountsOutOfBin, bytes32 totalFees) =
+                (bytes32 amountsInWithFees, bytes32 amountsOutOfBin, bytes32 totalFees) =
                     binReserves.getAmounts(parameters, binStep, swapForY, id, amountsInLeft);
 
-                if (amountsInToBin > 0) {
-                    amountsInLeft = amountsInLeft.sub(amountsInToBin.add(totalFees));
+                if (amountsInWithFees > 0) {
+                    amountsInLeft = amountsInLeft.sub(amountsInWithFees);
 
                     amountOut += amountsOutOfBin.decode(!swapForY);
 
@@ -482,6 +484,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         bytes32 protocolFees = _protocolFees;
 
         bytes32 amountsLeft = swapForY ? reserves.receivedX(_tokenX()) : reserves.receivedY(_tokenY());
+        reserves = reserves.add(amountsLeft);
 
         if (amountsLeft == 0) revert LBPair__InsufficientAmountIn();
 
@@ -494,28 +497,30 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         while (true) {
             bytes32 binReserves = _bins[activeId];
-            if (!binReserves.isEmpty(swapForY)) {
+            if (!binReserves.isEmpty(!swapForY)) {
                 parameters = parameters.updateVolatilityAccumulator(activeId);
 
-                (bytes32 amountsInToBin, bytes32 amountsOutOfBin, bytes32 totalFees) =
+                (bytes32 amountsInWithFees, bytes32 amountsOutOfBin, bytes32 totalFees) =
                     binReserves.getAmounts(parameters, binStep, swapForY, activeId, amountsLeft);
 
-                if (amountsInToBin > 0) {
-                    amountsLeft = amountsLeft.sub(amountsInToBin);
-                    reserves.add(amountsInToBin.add(totalFees));
-
+                if (amountsInWithFees > 0) {
+                    amountsLeft = amountsLeft.sub(amountsInWithFees);
                     amountsOut = amountsOut.add(amountsOutOfBin);
 
                     bytes32 pFees = totalFees.scalarMulDivBasisPointRoundDown(parameters.getProtocolShare());
-                    protocolFees = protocolFees.add(pFees);
 
-                    _bins[activeId] = binReserves.add(amountsInToBin).sub(amountsOutOfBin);
+                    if (pFees > 0) {
+                        protocolFees = protocolFees.add(pFees);
+                        amountsInWithFees = amountsInWithFees.sub(pFees);
+                    }
+
+                    _bins[activeId] = binReserves.add(amountsInWithFees).sub(amountsOutOfBin);
 
                     emit Swap(
                         msg.sender,
                         to,
                         activeId,
-                        amountsInToBin,
+                        amountsInWithFees,
                         amountsOutOfBin,
                         parameters.getVolatilityAccumulator(),
                         totalFees,
@@ -537,9 +542,10 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         if (amountsOut == 0) revert LBPair__InsufficientAmountOut();
 
-        parameters = _oracle.update(parameters, activeId);
-
         _reserves = reserves.sub(amountsOut);
+        _protocolFees = protocolFees;
+
+        parameters = _oracle.update(parameters, activeId);
         _parameters = parameters.setActiveId(activeId);
 
         if (swapForY) {
@@ -727,13 +733,13 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         bytes32 protocolFees = _protocolFees;
 
         (uint128 x, uint128 y) = protocolFees.decode();
-        bytes32 ones = uint128(x > 1 ? 1 : 0).encode(uint128(y > 1 ? 1 : 0));
+        bytes32 ones = uint128(x > 0 ? 1 : 0).encode(uint128(y > 0 ? 1 : 0));
 
         collectedProtocolFees = protocolFees.sub(ones);
 
         if (collectedProtocolFees != 0) {
             _protocolFees = ones;
-            _reserves.sub(collectedProtocolFees);
+            _reserves = _reserves.sub(collectedProtocolFees);
 
             collectedProtocolFees.transfer(_tokenX(), _tokenY(), msg.sender);
 

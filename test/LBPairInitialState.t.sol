@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 import "./helpers/TestHelper.sol";
 
-contract LBPairInitialState is TestHelper {
+contract LBPairInitialStateTest is TestHelper {
     function setUp() public override {
         super.setUp();
 
@@ -86,7 +86,7 @@ contract LBPairInitialState is TestHelper {
 
         assertEq(volatilityAccumulator, 0, "test_GetParameters::1");
         assertEq(volatilityReference, 0, "test_GetParameters::2");
-        assertEq(idReference, 0, "test_GetParameters::3");
+        assertEq(idReference, ID_ONE, "test_GetParameters::3");
         assertEq(timeOfLastUpdate, 0, "test_GetParameters::4");
     }
 
@@ -109,22 +109,97 @@ contract LBPairInitialState is TestHelper {
         assertEq(cumulativeBinCrossed, 0, "test_GetParameters::3");
     }
 
-    function testFuzz_GetPriceAndId(uint24 deltaId) external {
-        // 82_834 is the maximum deltaId that can be used to get a valid price
-        vm.assume(deltaId < 82_834);
-        uint24 id = ID_ONE + deltaId;
+    function test_GetPriceFromId() external {
+        uint256 delta = uint256(DEFAULT_BIN_STEP) * 5e13;
 
-        uint256 price = pairWavax.getPriceFromId(id);
-        uint24 calculatedId = pairWavax.getIdFromPrice(price);
+        assertApproxEqRel(
+            pairWavax.getPriceFromId(1_000 + 2 ** 23),
+            924521306405372907020063908180274956666,
+            delta,
+            "test_GetPriceFromId::1"
+        );
+        assertApproxEqRel(
+            pairWavax.getPriceFromId(2 ** 23 - 1_000),
+            125245452360126660303600960578690115355,
+            delta,
+            "test_GetPriceFromId::2"
+        );
+        assertApproxEqRel(
+            pairWavax.getPriceFromId(2 ** 23 + 10_000),
+            7457860201113570250644758522304565438757805,
+            delta,
+            "test_GetPriceFromId::3"
+        );
+        assertApproxEqRel(
+            pairWavax.getPriceFromId(2 ** 23 - 10_000),
+            15526181252368702469753297095319515,
+            delta,
+            "test_GetPriceFromId::4"
+        );
+        // avoid overflow of assertApproxEqRel with a too high price
+        assertLe(
+            pairWavax.getPriceFromId(2 ** 23 + 80_000),
+            18133092123953330812316154041959812232388892985347108730495479426840526848,
+            "test_GetPriceFromId::5"
+        );
+        assertGe(
+            pairWavax.getPriceFromId(2 ** 23 + 80_000),
+            18096880266539986845478224721407196147811144510344442837666495029900738560,
+            "test_GetPriceFromId::6"
+        );
+        assertApproxEqRel(pairWavax.getPriceFromId(2 ** 23 - 80_000), 6392, 1e8, "test_GetPriceFromId::7");
+        assertApproxEqRel(
+            pairWavax.getPriceFromId(2 ** 23 + 12_345),
+            77718771515321296819382407317364352468140333,
+            delta,
+            "test_GetPriceFromId::8"
+        );
+        assertApproxEqRel(
+            pairWavax.getPriceFromId(2 ** 23 - 12_345),
+            1489885737765286392982993705955521,
+            delta,
+            "test_GetPriceFromId::9"
+        );
+    }
 
-        assertApproxEqAbs(calculatedId, id, 1, "testFuzz_GetPriceFromid::1");
-
-        id = ID_ONE - deltaId;
-
-        price = pairWavax.getPriceFromId(id);
-        calculatedId = pairWavax.getIdFromPrice(price);
-
-        assertApproxEqAbs(calculatedId, id, 1, "testFuzz_GetPriceFromid::2");
+    function test_GetIdFromPrice() external {
+        assertApproxEqAbs(
+            pairWavax.getIdFromPrice(924521306405372907020063908180274956666),
+            1_000 + 2 ** 23,
+            1,
+            "test_GetPriceFromId::1"
+        );
+        assertApproxEqAbs(
+            pairWavax.getIdFromPrice(125245452360126660303600960578690115355),
+            2 ** 23 - 1_000,
+            1,
+            "test_GetPriceFromId::2"
+        );
+        assertApproxEqAbs(
+            pairWavax.getIdFromPrice(7457860201113570250644758522304565438757805),
+            2 ** 23 + 10_000,
+            1,
+            "test_GetPriceFromId::3"
+        );
+        assertApproxEqAbs(
+            pairWavax.getIdFromPrice(15526181252368702469753297095319515), 2 ** 23 - 10_000, 1, "test_GetPriceFromId::4"
+        );
+        assertApproxEqAbs(
+            pairWavax.getIdFromPrice(18114977146806524168130684952726477124021312024291123319263609183005067158),
+            2 ** 23 + 80_000,
+            1,
+            "test_GetPriceFromId::5"
+        );
+        assertApproxEqAbs(pairWavax.getIdFromPrice(6392), 2 ** 23 - 80_000, 1, "test_GetPriceFromId::6");
+        assertApproxEqAbs(
+            pairWavax.getIdFromPrice(77718771515321296819382407317364352468140333),
+            2 ** 23 + 12_345,
+            1,
+            "test_GetPriceFromId::7"
+        );
+        assertApproxEqAbs(
+            pairWavax.getIdFromPrice(1489885737765286392982993705955521), 2 ** 23 - 12_345, 1, "test_GetPriceFromId::8"
+        );
     }
 
     function testFuzz_GetSwapOut(uint128 amountOut, bool swapForY) external {
@@ -141,5 +216,11 @@ contract LBPairInitialState is TestHelper {
         assertEq(amountInLeft, amountIn, "testFuzz_GetSwapInOut::1");
         assertEq(amountOut, 0, "testFuzz_GetSwapInOut::2");
         assertEq(fee, 0, "testFuzz_GetSwapInOut::3");
+    }
+
+    function test_revert_SetStaticFeeParameters() external {
+        vm.expectRevert(ILBPair.LBPair__InvalidStaticFeeParameters.selector);
+        vm.prank(address(factory));
+        pairWavax.setStaticFeeParameters(0, 0, 0, 0, 0, 0, 0);
     }
 }

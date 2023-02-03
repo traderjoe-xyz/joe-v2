@@ -24,7 +24,7 @@ import "./Utils.sol";
 
 import "test/mocks/WAVAX.sol";
 import "test/mocks/ERC20.sol";
-import "test/mocks/FlashloanBorrower.sol";
+import "test/mocks/FlashBorrower.sol";
 import "test/mocks/ERC20TransferTax.sol";
 
 import {AvalancheAddresses} from "../integration/Addresses.sol";
@@ -33,6 +33,7 @@ abstract contract TestHelper is Test {
     using Uint256x256Math for uint256;
     using Utils for uint256[];
     using Utils for int256[];
+    using SafeCast for uint256;
 
     uint24 internal constant ID_ONE = 2 ** 23;
     uint256 internal constant BASIS_POINT_MAX = 10_000;
@@ -288,5 +289,77 @@ abstract contract TestHelper is Test {
                     : 0;
             }
         }
+    }
+
+    function addLiquidity(
+        address from,
+        address to,
+        LBPair lbPair,
+        uint24 activeId,
+        uint256 amountX,
+        uint256 amountY,
+        uint8 nbBinX,
+        uint8 nbBinY
+    ) public {
+        deal(address(wavax), from, amountX);
+        deal(address(usdc), from, amountY);
+
+        uint256 total = getTotalBins(nbBinX, nbBinY);
+
+        bytes32[] memory liquidityConfigurations = new bytes32[](total);
+
+        for (uint256 i; i < total; ++i) {
+            uint24 id = getId(activeId, i, nbBinY);
+
+            uint64 distribX = id >= activeId && nbBinX > 0 ? (Constants.PRECISION / nbBinX).safe64() : 0;
+            uint64 distribY = id <= activeId && nbBinY > 0 ? (Constants.PRECISION / nbBinY).safe64() : 0;
+
+            liquidityConfigurations[i] = LiquidityConfigurations.encodeParams(distribX, distribY, id);
+        }
+
+        vm.startPrank(from);
+        wavax.transfer(address(lbPair), amountX);
+        usdc.transfer(address(lbPair), amountY);
+        vm.stopPrank();
+
+        lbPair.mint(to, liquidityConfigurations, from);
+    }
+
+    function removeLiquidity(
+        address from,
+        address to,
+        LBPair lbPair,
+        uint24 activeId,
+        uint256 percentToBurn,
+        uint8 nbBinX,
+        uint8 nbBinY
+    ) public {
+        require(percentToBurn <= Constants.PRECISION, "Percent to burn too high");
+
+        uint256 total = getTotalBins(nbBinX, nbBinY);
+
+        uint256[] memory ids = new uint256[](total);
+        uint256[] memory amounts = new uint256[](total);
+
+        for (uint256 i; i < total; ++i) {
+            uint24 id = getId(activeId, i, nbBinY);
+
+            ids[i] = id;
+            amounts[i] = lbPair.balanceOf(from, id) * percentToBurn / Constants.PRECISION;
+        }
+
+        vm.prank(from);
+        lbPair.burn(from, to, ids, amounts);
+    }
+
+    function getTotalBins(uint8 nbBinX, uint8 nbBinY) public pure returns (uint256) {
+        return nbBinX > 0 && nbBinY > 0 ? nbBinX + nbBinY - 1 : nbBinX + nbBinY;
+    }
+
+    function getId(uint24 activeId, uint256 i, uint8 nbBinY) public pure returns (uint24) {
+        uint256 id = activeId + i;
+        id = nbBinY > 0 ? id - nbBinY + 1 : id;
+
+        return id.safe24();
     }
 }

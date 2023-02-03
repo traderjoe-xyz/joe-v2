@@ -78,7 +78,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
     function test_constructor() public {
         assertEq(factory.getFeeRecipient(), DEV);
-        assertEq(factory.getFlashloanFee(), DEFAULT_FLASHLOAN_FEE);
+        assertEq(factory.getFlashLoanFee(), DEFAULT_FLASHLOAN_FEE);
 
         vm.expectEmit(true, true, true, true);
         emit FlashLoanFeeSet(0, DEFAULT_FLASHLOAN_FEE);
@@ -775,7 +775,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         emit FlashLoanFeeSet(DEFAULT_FLASHLOAN_FEE, newFlashLoanFee);
         factory.setFlashLoanFee(newFlashLoanFee);
 
-        assertEq(factory.getFlashloanFee(), newFlashLoanFee);
+        assertEq(factory.getFlashLoanFee(), newFlashLoanFee);
 
         // Can't set if not the owner
         vm.prank(ALICE);

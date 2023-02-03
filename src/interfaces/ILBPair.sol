@@ -19,7 +19,7 @@ interface ILBPair is ILBToken {
     error LBPair__InvalidInput();
     error LBPair__InvalidStaticFeeParameters();
     error LBPair__OnlyFactory();
-    error LBPair__OnlyProtocolFeeReceiver();
+    error LBPair__OnlyProtocolFeeRecipient();
     error LBPair__OutOfLiquidity();
     error LBPair__TokenNotSupported();
     error LBPair__ZeroAmount(uint24 id);

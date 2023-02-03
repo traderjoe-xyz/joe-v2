@@ -98,7 +98,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         return _MAX_PROTOCOL_SHARE;
     }
 
-    function getFlashloanFee() external view returns (uint256 flashloanFee) {
+    function getFlashLoanFee() external view returns (uint256 flashloanFee) {
         return _flashLoanFee;
     }
 

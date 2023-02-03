@@ -48,8 +48,8 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         _;
     }
 
-    modifier onlyProtocolFeeReceiver() {
-        if (msg.sender != _factory.getFeeRecipient()) revert LBPair__OnlyProtocolFeeReceiver();
+    modifier onlyProtocolFeeRecipient() {
+        if (msg.sender != _factory.getFeeRecipient()) revert LBPair__OnlyProtocolFeeRecipient();
         _;
     }
 
@@ -719,7 +719,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         external
         override
         nonReentrant
-        onlyProtocolFeeReceiver
+        onlyProtocolFeeRecipient
         returns (bytes32 collectedProtocolFees)
     {
         bytes32 protocolFees = _protocolFees;
@@ -843,7 +843,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @return The encoded fees amounts
      */
     function _getFlashLoanFees(bytes32 amounts) private view returns (bytes32) {
-        uint128 fee = uint128(_factory.getFlashloanFee());
+        uint128 fee = uint128(_factory.getFlashLoanFee());
         (uint128 x, uint128 y) = amounts.decode();
 
         unchecked {

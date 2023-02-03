@@ -114,7 +114,7 @@ interface ILBFactory is IPendingOwnable {
 
     function getFeeRecipient() external view returns (address);
 
-    function getFlashloanFee() external view returns (uint256);
+    function getFlashLoanFee() external view returns (uint256);
 
     function isCreationUnlocked() external view returns (bool);
 

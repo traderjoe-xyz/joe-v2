@@ -105,6 +105,26 @@ contract PairParameterHelperTest is Test {
         params.setVolatilityReference(volatilityReference);
     }
 
+    function testFuzz_SetVolatilityAccumulator(bytes32 params, uint24 volatilityAccumulator) external {
+        vm.assume(volatilityAccumulator <= Encoded.MASK_UINT20);
+
+        bytes32 newParams = params.setVolatilityAccumulator(volatilityAccumulator);
+
+        assertEq(newParams.getVolatilityAccumulator(), volatilityAccumulator, "testFuzz_SetVolatilityAccumulator::1");
+        assertEq(
+            newParams & bytes32(~Encoded.MASK_UINT20 << PairParameterHelper.OFFSET_VOL_ACC),
+            params & bytes32(~Encoded.MASK_UINT20 << PairParameterHelper.OFFSET_VOL_ACC),
+            "testFuzz_SetVolatilityAccumulator::2"
+        );
+    }
+
+    function testFuzz_revert_SetVolatilityAccumulator(bytes32 params, uint24 volatilityAccumulator) external {
+        vm.assume(volatilityAccumulator > Encoded.MASK_UINT20);
+
+        vm.expectRevert(PairParameterHelper.PairParametersHelper__InvalidParameter.selector);
+        params.setVolatilityAccumulator(volatilityAccumulator);
+    }
+
     function testFuzz_SetActiveId(bytes32 params, uint24 activeId) external {
         uint24 previousActiveId = params.getActiveId();
         uint24 deltaId = previousActiveId > activeId ? previousActiveId - activeId : activeId - previousActiveId;

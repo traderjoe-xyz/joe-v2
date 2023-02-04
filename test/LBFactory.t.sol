@@ -65,6 +65,8 @@ contract LiquidityBinFactoryTest is TestHelper {
 
     event FactoryLockedStatusUpdated(bool unlocked);
 
+    event OpenPresetChanged(uint8 indexed binStep, bool open);
+
     struct LBPairInformation {
         uint256 binStep;
         ILBPair LBPair;
@@ -181,7 +183,14 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function test_createLBPairFactoryUnlocked() public {
-        factory.setFactoryLockedState(false);
+        // Users should not be able to create pairs by default
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBFactory.LBFactory__FunctionIsLockedForUsers.selector, ALICE, DEFAULT_BIN_STEP)
+        );
+        factory.createLBPair(link, usdc, ID_ONE, DEFAULT_BIN_STEP);
+
+        factory.setOpenPreset(DEFAULT_BIN_STEP, true);
 
         // Any user should be able to create pairs
         vm.prank(ALICE);
@@ -199,10 +208,12 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertTrue(factory.getLBPairInformation(bnb, usdc, DEFAULT_BIN_STEP).createdByOwner);
 
         // Should close pair creations again
-        factory.setFactoryLockedState(true);
+        factory.setOpenPreset(DEFAULT_BIN_STEP, false);
 
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__FunctionIsLockedForUsers.selector, ALICE));
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBFactory.LBFactory__FunctionIsLockedForUsers.selector, ALICE, DEFAULT_BIN_STEP)
+        );
         factory.createLBPair(link, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
         factory.createLBPair(wbtc, usdc, ID_ONE, DEFAULT_BIN_STEP);
@@ -211,7 +222,9 @@ contract LiquidityBinFactoryTest is TestHelper {
     function test_reverts_createLBPair() public {
         // Alice can't create a pair if the factory is locked
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__FunctionIsLockedForUsers.selector, ALICE));
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBFactory.LBFactory__FunctionIsLockedForUsers.selector, ALICE, DEFAULT_BIN_STEP)
+        );
         factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
         // Can't create pair if the implementation is not set
@@ -696,26 +709,60 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setFlashLoanFee(maxFlashLoanFee + 1);
     }
 
-    function test_setFactoryLockedState() public {
-        assertEq(factory.isCreationUnlocked(), false);
+    function testFuzz_openPresets(uint8 binStep) public {
+        uint256 minBinStep = factory.getMinBinStep();
+        uint256 maxBinStep = factory.getMaxBinStep();
 
+        binStep = uint8(bound(binStep, minBinStep, maxBinStep));
+
+        // Preset are not open to the public by default
+        assertFalse(factory.getIsPresetOpen(binStep));
+
+        // Can be opened
         vm.expectEmit(true, true, true, true);
-        emit FactoryLockedStatusUpdated(false);
-        factory.setFactoryLockedState(false);
+        emit OpenPresetChanged(binStep, true);
+        factory.setOpenPreset(binStep, true);
 
-        assertEq(factory.isCreationUnlocked(), true);
+        for (uint256 i = minBinStep; i < maxBinStep; i++) {
+            if (i == binStep) {
+                assertTrue(factory.getIsPresetOpen(uint8(i)));
+            } else {
+                assertFalse(factory.getIsPresetOpen(uint8(i)));
+            }
+        }
 
-        factory.setFactoryLockedState(true);
-        assertEq(factory.isCreationUnlocked(), false);
+        // Setting neighboring presets to true does not change the state of the preset
+        uint8 nextBinStep = uint8(bound(binStep + 1, minBinStep, maxBinStep));
+        uint8 previousBinStep = uint8(bound(binStep + maxBinStep - minBinStep - 1, minBinStep, maxBinStep));
 
-        // Can't set if not the owner
-        vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
-        factory.setFactoryLockedState(true);
+        factory.setOpenPreset(nextBinStep, true);
+        factory.setOpenPreset(previousBinStep, true);
+
+        assertTrue(factory.getIsPresetOpen(binStep));
+        assertTrue(factory.getIsPresetOpen(nextBinStep));
+        assertTrue(factory.getIsPresetOpen(previousBinStep));
 
         // Can't set to the same state
-        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__FactoryLockIsAlreadyInTheSameState.selector));
-        factory.setFactoryLockedState(true);
+        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SamePresetOpenState.selector));
+        factory.setOpenPreset(binStep, true);
+
+        // Can be closed
+        vm.expectEmit(true, true, true, true);
+        emit OpenPresetChanged(binStep, false);
+        factory.setOpenPreset(binStep, false);
+
+        assertFalse(factory.getIsPresetOpen(binStep));
+        assertTrue(factory.getIsPresetOpen(nextBinStep));
+        assertTrue(factory.getIsPresetOpen(previousBinStep));
+
+        // Can't open if not the owner
+        vm.prank(ALICE);
+        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        factory.setOpenPreset(binStep, true);
+
+        // Can't set to the same state
+        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SamePresetOpenState.selector));
+        factory.setOpenPreset(binStep, false);
     }
 
     function test_addQuoteAsset() public {

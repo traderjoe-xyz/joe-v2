@@ -26,8 +26,7 @@ interface ILBFactory is IPendingOwnable {
     error LBFactory__FlashLoanFeeAboveMax(uint256 fees, uint256 maxFees);
     error LBFactory__BinStepRequirementsBreached(uint256 lowerBound, uint16 binStep, uint256 higherBound);
     error LBFactory__ProtocolShareOverflows(uint16 protocolShare, uint256 max);
-    error LBFactory__FunctionIsLockedForUsers(address user);
-    error LBFactory__FactoryLockIsAlreadyInTheSameState();
+    error LBFactory__FunctionIsLockedForUsers(address user, uint8 binStep);
     error LBFactory__LBPairIgnoredIsAlreadyInTheSameState();
     error LBFactory__BinStepHasNoPreset(uint256 binStep);
     error LBFactory__SameFeeRecipient(address feeRecipient);
@@ -35,6 +34,7 @@ interface ILBFactory is IPendingOwnable {
     error LBFactory__LBPairSafetyCheckFailed(address LBPairImplementation);
     error LBFactory__SameImplementation(address LBPairImplementation);
     error LBFactory__ImplementationNotSet();
+    error LBFactory__SamePresetOpenState();
 
     /// @dev Structure to store the LBPair information, such as:
     /// - binStep: The bin step of the LBPair
@@ -71,8 +71,6 @@ interface ILBFactory is IPendingOwnable {
         uint256 maxVolatilityAccumulator
     );
 
-    event FactoryLockedStatusUpdated(bool unlocked);
-
     event LBPairImplementationSet(address oldLBPairImplementation, address LBPairImplementation);
 
     event LBPairIgnoredStateChanged(ILBPair indexed LBPair, bool ignored);
@@ -94,6 +92,8 @@ interface ILBFactory is IPendingOwnable {
 
     event QuoteAssetRemoved(IERC20 indexed quoteAsset);
 
+    event OpenPresetChanged(uint8 indexed binStep, bool open);
+
     function getMaxFee() external pure returns (uint256);
 
     function getMinBinStep() external pure returns (uint256);
@@ -113,8 +113,6 @@ interface ILBFactory is IPendingOwnable {
     function getFeeRecipient() external view returns (address);
 
     function getFlashLoanFee() external view returns (uint256);
-
-    function isCreationUnlocked() external view returns (bool);
 
     function getLBPairAtIndex(uint256 id) external returns (ILBPair);
 
@@ -182,8 +180,6 @@ interface ILBFactory is IPendingOwnable {
     function setFeeRecipient(address feeRecipient) external;
 
     function setFlashLoanFee(uint256 flashLoanFee) external;
-
-    function setFactoryLockedState(bool locked) external;
 
     function addQuoteAsset(IERC20 quoteAsset) external;
 

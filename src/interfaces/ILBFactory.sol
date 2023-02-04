@@ -48,8 +48,6 @@ interface ILBFactory is IPendingOwnable {
         ILBPair LBPair;
         bool createdByOwner;
         bool ignoredForRouting;
-        uint16 revisionIndex;
-        address implementation;
     }
 
     event LBPairCreated(
@@ -122,9 +120,7 @@ interface ILBFactory is IPendingOwnable {
 
     function getNumberOfLBPairs() external view returns (uint256);
 
-    function getNumberOfRevisions(IERC20 tokenX, IERC20 tokenY, uint256 binStep) external view returns (uint256);
-
-    function getLBPairInformation(IERC20 tokenX, IERC20 tokenY, uint256 binStep, uint256 revision)
+    function getLBPairInformation(IERC20 tokenX, IERC20 tokenY, uint256 binStep)
         external
         view
         returns (LBPairInformation memory);
@@ -155,9 +151,7 @@ interface ILBFactory is IPendingOwnable {
         external
         returns (ILBPair pair);
 
-    function createLBPairRevision(IERC20 tokenX, IERC20 tokenY, uint8 binStep) external returns (ILBPair pair);
-
-    function setLBPairIgnored(IERC20 tokenX, IERC20 tokenY, uint256 binStep, uint256 revision, bool ignored) external;
+    function setLBPairIgnored(IERC20 tokenX, IERC20 tokenY, uint256 binStep, bool ignored) external;
 
     function setPreset(
         uint8 binStep,
@@ -176,7 +170,6 @@ interface ILBFactory is IPendingOwnable {
         IERC20 tokenX,
         IERC20 tokenY,
         uint8 binStep,
-        uint16 revision,
         uint16 baseFactor,
         uint16 filterPeriod,
         uint16 decayPeriod,

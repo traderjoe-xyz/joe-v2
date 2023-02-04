@@ -13,4 +13,6 @@ interface ILBLegacyPair {
     function tokenY() external view returns (IERC20);
 
     function getReservesAndId() external view returns (uint256 reserveX, uint256 reserveY, uint256 activeId);
+
+    function swap(bool sentTokenY, address to) external returns (uint256 amountXOut, uint256 amountYOut);
 }

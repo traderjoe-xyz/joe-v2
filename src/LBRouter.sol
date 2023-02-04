@@ -16,8 +16,10 @@ import {Uint256x256Math} from "./libraries/math/Uint256x256Math.sol";
 
 import {IJoePair} from "./interfaces/IJoePair.sol";
 import {ILBPair} from "./interfaces/ILBPair.sol";
+import {ILBLegacyPair} from "./interfaces/ILBLegacyPair.sol";
 import {ILBToken} from "./interfaces/ILBToken.sol";
 import {ILBRouter} from "./interfaces/ILBRouter.sol";
+import {ILBLegacyRouter} from "./interfaces/ILBLegacyRouter.sol";
 import {IJoeFactory} from "./interfaces/IJoeFactory.sol";
 import {ILBLegacyFactory} from "./interfaces/ILBLegacyFactory.sol";
 import {ILBFactory} from "./interfaces/ILBFactory.sol";
@@ -33,8 +35,9 @@ contract LBRouter is ILBRouter {
     using PackedUint128Math for bytes32;
 
     ILBFactory private immutable _factory;
+    IJoeFactory private immutable _factoryV1;
     ILBLegacyFactory private immutable _legacyFactory;
-    IJoeFactory private immutable _oldFactory;
+    ILBLegacyRouter private immutable _legacyRouter;
     IWAVAX private immutable _wavax;
 
     modifier onlyFactoryOwner() {
@@ -56,15 +59,22 @@ contract LBRouter is ILBRouter {
     }
 
     /// @notice Constructor
-    /// @param factory_ LBFactory address
-    /// @param legacyFactory_ V2 LBFactory address
-    /// @param oldFactory_ Address of old factory (Joe V1)
-    /// @param wavax_ Address of WAVAX
-    constructor(ILBFactory factory_, ILBLegacyFactory legacyFactory_, IJoeFactory oldFactory_, IWAVAX wavax_) {
-        _factory = factory_;
-        _legacyFactory = legacyFactory_;
-        _oldFactory = oldFactory_;
-        _wavax = wavax_;
+    /// @param factory Address of Joe V2.1 factory
+    /// @param factoryV1 Address of Joe V1 factory
+    /// @param legacyFactory Address of Joe V2 factory
+    /// @param wavax Address of WAVAX
+    constructor(
+        ILBFactory factory,
+        IJoeFactory factoryV1,
+        ILBLegacyFactory legacyFactory,
+        ILBLegacyRouter legacyRouter,
+        IWAVAX wavax
+    ) {
+        _factory = factory;
+        _factoryV1 = factoryV1;
+        _legacyFactory = legacyFactory;
+        _legacyRouter = legacyRouter;
+        _wavax = wavax;
     }
 
     /// @dev Receive function that only accept AVAX from the WAVAX contract
@@ -80,8 +90,12 @@ contract LBRouter is ILBRouter {
         return _legacyFactory;
     }
 
-    function getOldFactory() external view override returns (IJoeFactory) {
-        return _oldFactory;
+    function getV1Factory() external view override returns (IJoeFactory) {
+        return _factoryV1;
+    }
+
+    function getLegacyRouter() external view override returns (ILBLegacyRouter) {
+        return _legacyRouter;
     }
 
     function getWAVAX() external view override returns (IWAVAX) {
@@ -166,8 +180,10 @@ contract LBRouter is ILBRouter {
             uint256[] memory liquidityMinted
         )
     {
-        ILBPair lbPair = _getLBPairInformation(
-            liquidityParameters.tokenX, liquidityParameters.tokenY, liquidityParameters.binStep, Version.V3
+        ILBPair lbPair = ILBPair(
+            _getLBPairInformation(
+                liquidityParameters.tokenX, liquidityParameters.tokenY, liquidityParameters.binStep, Version.V3
+            )
         );
         if (liquidityParameters.tokenX != lbPair.getTokenX()) revert LBRouter__WrongTokenOrder();
 
@@ -194,8 +210,10 @@ contract LBRouter is ILBRouter {
             uint256[] memory liquidityMinted
         )
     {
-        ILBPair _LBPair = _getLBPairInformation(
-            liquidityParameters.tokenX, liquidityParameters.tokenY, liquidityParameters.binStep, Version.V3
+        ILBPair _LBPair = ILBPair(
+            _getLBPairInformation(
+                liquidityParameters.tokenX, liquidityParameters.tokenY, liquidityParameters.binStep, Version.V3
+            )
         );
         if (liquidityParameters.tokenX != _LBPair.getTokenX()) revert LBRouter__WrongTokenOrder();
 
@@ -243,7 +261,7 @@ contract LBRouter is ILBRouter {
         address to,
         uint256 deadline
     ) external override ensure(deadline) returns (uint256 amountX, uint256 amountY) {
-        ILBPair _LBPair = _getLBPairInformation(tokenX, tokenY, binStep, Version.V3);
+        ILBPair _LBPair = ILBPair(_getLBPairInformation(tokenX, tokenY, binStep, Version.V3));
         bool isWrongOrder = tokenX != _LBPair.getTokenX();
 
         if (isWrongOrder) (amountXMin, amountYMin) = (amountYMin, amountXMin);
@@ -280,7 +298,7 @@ contract LBRouter is ILBRouter {
         // TODO - avoid stack too deep and cache wavax
         // IWAVAX wavax_ = _wavax;
 
-        ILBPair lbPair = _getLBPairInformation(token, IERC20(_wavax), binStep, Version.V3);
+        ILBPair lbPair = ILBPair(_getLBPairInformation(token, IERC20(_wavax), binStep, Version.V3));
 
         {
             bool isAVAXTokenY = IERC20(_wavax) == lbPair.getTokenY();
@@ -318,7 +336,7 @@ contract LBRouter is ILBRouter {
 
         path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountIn);
 
-        amountOut = _swapExactTokensForTokens(amountIn, pairs, path.pairBinSteps, path.tokenPath, to);
+        amountOut = _swapExactTokensForTokens(amountIn, pairs, path.versions, path.tokenPath, to);
 
         if (amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMin, amountOut);
     }
@@ -344,7 +362,7 @@ contract LBRouter is ILBRouter {
 
         path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountIn);
 
-        amountOut = _swapExactTokensForTokens(amountIn, pairs, path.pairBinSteps, path.tokenPath, address(this));
+        amountOut = _swapExactTokensForTokens(amountIn, pairs, path.versions, path.tokenPath, address(this));
 
         if (amountOutMinAVAX > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMinAVAX, amountOut);
 
@@ -371,7 +389,7 @@ contract LBRouter is ILBRouter {
 
         _wavaxDepositAndTransfer(pairs[0], msg.value);
 
-        amountOut = _swapExactTokensForTokens(msg.value, pairs, path.pairBinSteps, path.tokenPath, to);
+        amountOut = _swapExactTokensForTokens(msg.value, pairs, path.versions, path.tokenPath, to);
 
         if (amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMin, amountOut);
     }
@@ -387,13 +405,13 @@ contract LBRouter is ILBRouter {
         address[] memory pairs = _getPairs(path.pairBinSteps, path.versions, path.tokenPath);
 
         {
-            amountsIn = _getAmountsIn(path.pairBinSteps, pairs, path.tokenPath, amountOut);
+            amountsIn = _getAmountsIn(path.versions, pairs, path.tokenPath, amountOut);
 
             if (amountsIn[0] > amountInMax) revert LBRouter__MaxAmountInExceeded(amountInMax, amountsIn[0]);
 
             path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountsIn[0]);
 
-            uint256 _amountOutReal = _swapTokensForExactTokens(pairs, path.pairBinSteps, path.tokenPath, amountsIn, to);
+            uint256 _amountOutReal = _swapTokensForExactTokens(pairs, path.versions, path.tokenPath, amountsIn, to);
 
             if (_amountOutReal < amountOut) revert LBRouter__InsufficientAmountOut(amountOut, _amountOutReal);
         }
@@ -417,14 +435,14 @@ contract LBRouter is ILBRouter {
         }
 
         address[] memory pairs = _getPairs(path.pairBinSteps, path.versions, path.tokenPath);
-        amountsIn = _getAmountsIn(path.pairBinSteps, pairs, path.tokenPath, amountAVAXOut);
+        amountsIn = _getAmountsIn(path.versions, pairs, path.tokenPath, amountAVAXOut);
 
         if (amountsIn[0] > amountInMax) revert LBRouter__MaxAmountInExceeded(amountInMax, amountsIn[0]);
 
         path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountsIn[0]);
 
         uint256 _amountOutReal =
-            _swapTokensForExactTokens(pairs, path.pairBinSteps, path.tokenPath, amountsIn, address(this));
+            _swapTokensForExactTokens(pairs, path.versions, path.tokenPath, amountsIn, address(this));
 
         if (_amountOutReal < amountAVAXOut) revert LBRouter__InsufficientAmountOut(amountAVAXOut, _amountOutReal);
 
@@ -449,13 +467,13 @@ contract LBRouter is ILBRouter {
         if (path.tokenPath[0] != IERC20(_wavax)) revert LBRouter__InvalidTokenPath(address(path.tokenPath[0]));
 
         address[] memory pairs = _getPairs(path.pairBinSteps, path.versions, path.tokenPath);
-        amountsIn = _getAmountsIn(path.pairBinSteps, pairs, path.tokenPath, amountOut);
+        amountsIn = _getAmountsIn(path.versions, pairs, path.tokenPath, amountOut);
 
         if (amountsIn[0] > msg.value) revert LBRouter__MaxAmountInExceeded(msg.value, amountsIn[0]);
 
         _wavaxDepositAndTransfer(pairs[0], amountsIn[0]);
 
-        uint256 amountOutReal = _swapTokensForExactTokens(pairs, path.pairBinSteps, path.tokenPath, amountsIn, to);
+        uint256 amountOutReal = _swapTokensForExactTokens(pairs, path.versions, path.tokenPath, amountsIn, to);
 
         if (amountOutReal < amountOut) revert LBRouter__InsufficientAmountOut(amountOut, amountOutReal);
 
@@ -483,7 +501,7 @@ contract LBRouter is ILBRouter {
 
         path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountIn);
 
-        _swapSupportingFeeOnTransferTokens(pairs, path.pairBinSteps, path.tokenPath, to);
+        _swapSupportingFeeOnTransferTokens(pairs, path.versions, path.tokenPath, to);
 
         amountOut = targetToken.balanceOf(to) - balanceBefore;
         if (amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMin, amountOut);
@@ -512,7 +530,7 @@ contract LBRouter is ILBRouter {
 
         path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountIn);
 
-        _swapSupportingFeeOnTransferTokens(pairs, path.pairBinSteps, path.tokenPath, address(this));
+        _swapSupportingFeeOnTransferTokens(pairs, path.versions, path.tokenPath, address(this));
 
         amountOut = _wavax.balanceOf(address(this)) - balanceBefore;
         if (amountOutMinAVAX > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMinAVAX, amountOut);
@@ -542,7 +560,7 @@ contract LBRouter is ILBRouter {
 
         _wavaxDepositAndTransfer(pairs[0], msg.value);
 
-        _swapSupportingFeeOnTransferTokens(pairs, path.pairBinSteps, path.tokenPath, to);
+        _swapSupportingFeeOnTransferTokens(pairs, path.versions, path.tokenPath, to);
 
         amountOut = targetToken.balanceOf(to) - balanceBefore;
         if (amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMin, amountOut);
@@ -639,13 +657,12 @@ contract LBRouter is ILBRouter {
     }
 
     /// @notice Helper function to return the amounts in
-    /// @param pairBinSteps The bin step of the pairs (0: V1, other values will use V2)
     /// @param pairs The list of pairs
     /// @param tokenPath The swap path
     /// @param amountOut The amount out
     /// @return amountsIn The list of amounts in
     function _getAmountsIn(
-        uint256[] memory pairBinSteps,
+        Version[] memory versions,
         address[] memory pairs,
         IERC20[] memory tokenPath,
         uint256 amountOut
@@ -656,10 +673,10 @@ contract LBRouter is ILBRouter {
 
         for (uint256 i = pairs.length; i != 0; i--) {
             IERC20 token = tokenPath[i - 1];
-            uint256 binStep = pairBinSteps[i - 1];
+            Version version = versions[i - 1];
             address pair = pairs[i - 1];
 
-            if (binStep == 0) {
+            if (version == Version.V1) {
                 (uint256 reserveIn, uint256 reserveOut,) = IJoePair(pair).getReserves();
                 if (token > tokenPath[i]) {
                     (reserveIn, reserveOut) = (reserveOut, reserveIn);
@@ -667,6 +684,10 @@ contract LBRouter is ILBRouter {
 
                 uint256 amountOut_ = amountsIn[i];
                 amountsIn[i - 1] = uint128(amountOut_.getAmountIn(reserveIn, reserveOut));
+            } else if (version == Version.V2) {
+                (amountsIn[i - 1],) = _legacyRouter.getSwapIn(
+                    ILBLegacyPair(pair), uint128(amountsIn[i]), ILBLegacyPair(pair).tokenX() == token
+                );
             } else {
                 (amountsIn[i - 1],,) =
                     getSwapIn(ILBPair(pair), uint128(amountsIn[i]), ILBPair(pair).getTokenX() == token);
@@ -706,19 +727,18 @@ contract LBRouter is ILBRouter {
     /// @notice Helper function to swap exact tokens for tokens
     /// @param amountIn The amount of token sent
     /// @param pairs The list of pairs
-    /// @param pairBinSteps The bin step of the pairs (0: V1, other values will use V2)
     /// @param tokenPath The swap path using the binSteps following `pairBinSteps`
     /// @param to The address of the recipient
     /// @return amountOut The amount of token sent to `to`
     function _swapExactTokensForTokens(
         uint256 amountIn,
         address[] memory pairs,
-        uint256[] memory pairBinSteps,
+        Version[] memory versions,
         IERC20[] memory tokenPath,
         address to
     ) private returns (uint256 amountOut) {
         IERC20 token;
-        uint256 binStep;
+        Version version;
         address recipient;
         address pair;
 
@@ -728,14 +748,14 @@ contract LBRouter is ILBRouter {
         unchecked {
             for (uint256 i; i < pairs.length; ++i) {
                 pair = pairs[i];
-                binStep = pairBinSteps[i];
+                version = versions[i];
 
                 token = tokenNext;
                 tokenNext = tokenPath[i + 1];
 
                 recipient = i + 1 == pairs.length ? to : pairs[i + 1];
 
-                if (binStep == 0) {
+                if (version == Version.V1) {
                     (uint256 reserve0, uint256 reserve1,) = IJoePair(pair).getReserves();
 
                     if (token < tokenNext) {
@@ -745,6 +765,13 @@ contract LBRouter is ILBRouter {
                         amountOut = amountOut.getAmountOut(reserve1, reserve0);
                         IJoePair(pair).swap(amountOut, 0, recipient, "");
                     }
+                } else if (version == Version.V2) {
+                    bool swapForY = tokenNext == ILBLegacyPair(pair).tokenY();
+
+                    (uint256 amountXOut, uint256 amountYOut) = ILBLegacyPair(pair).swap(swapForY, recipient);
+
+                    if (swapForY) amountOut = amountYOut;
+                    else amountOut = amountXOut;
                 } else {
                     bool swapForY = tokenNext == ILBPair(pair).getTokenY();
 
@@ -759,42 +786,48 @@ contract LBRouter is ILBRouter {
 
     /// @notice Helper function to swap tokens for exact tokens
     /// @param pairs The array of pairs
-    /// @param pairBinSteps The bin step of the pairs (0: V1, other values will use V2)
     /// @param tokenPath The swap path using the binSteps following `pairBinSteps`
     /// @param amountsIn The list of amounts in
     /// @param to The address of the recipient
     /// @return amountOut The amount of token sent to `to`
     function _swapTokensForExactTokens(
         address[] memory pairs,
-        uint256[] memory pairBinSteps,
+        Version[] memory versions,
         IERC20[] memory tokenPath,
         uint256[] memory amountsIn,
         address to
     ) private returns (uint256 amountOut) {
         IERC20 token;
-        uint256 binStep;
         address recipient;
         address pair;
+        Version version;
 
         IERC20 tokenNext = tokenPath[0];
 
         unchecked {
             for (uint256 i; i < pairs.length; ++i) {
                 pair = pairs[i];
-                binStep = pairBinSteps[i];
+                version = versions[i];
 
                 token = tokenNext;
                 tokenNext = tokenPath[i + 1];
 
                 recipient = i + 1 == pairs.length ? to : pairs[i + 1];
 
-                if (binStep == 0) {
+                if (version == Version.V1) {
                     amountOut = amountsIn[i + 1];
                     if (token < tokenNext) {
                         IJoePair(pair).swap(0, amountOut, recipient, "");
                     } else {
                         IJoePair(pair).swap(amountOut, 0, recipient, "");
                     }
+                } else if (version == Version.V2) {
+                    bool swapForY = tokenNext == ILBLegacyPair(pair).tokenY();
+
+                    (uint256 amountXOut, uint256 amountYOut) = ILBLegacyPair(pair).swap(swapForY, recipient);
+
+                    if (swapForY) amountOut = amountYOut;
+                    else amountOut = amountXOut;
                 } else {
                     bool swapForY = tokenNext == ILBPair(pair).getTokenY();
 
@@ -809,17 +842,16 @@ contract LBRouter is ILBRouter {
 
     /// @notice Helper function to swap exact tokens supporting for fee on transfer tokens
     /// @param pairs The list of pairs
-    /// @param pairBinSteps The bin step of the pairs (0: V1, other values will use V2)
     /// @param tokenPath The swap path using the binSteps following `pairBinSteps`
     /// @param to The address of the recipient
     function _swapSupportingFeeOnTransferTokens(
         address[] memory pairs,
-        uint256[] memory pairBinSteps,
+        Version[] memory versions,
         IERC20[] memory tokenPath,
         address to
     ) private {
         IERC20 token;
-        uint256 binStep;
+        Version version;
         address recipient;
         address pair;
 
@@ -828,14 +860,14 @@ contract LBRouter is ILBRouter {
         unchecked {
             for (uint256 i; i < pairs.length; ++i) {
                 pair = pairs[i];
-                binStep = pairBinSteps[i];
+                version = versions[i];
 
                 token = tokenNext;
                 tokenNext = tokenPath[i + 1];
 
                 recipient = i + 1 == pairs.length ? to : pairs[i + 1];
 
-                if (binStep == 0) {
+                if (version == Version.V1) {
                     (uint256 _reserve0, uint256 _reserve1,) = IJoePair(pair).getReserves();
                     if (token < tokenNext) {
                         uint256 amountIn = token.balanceOf(pair) - _reserve0;
@@ -848,6 +880,8 @@ contract LBRouter is ILBRouter {
 
                         IJoePair(pair).swap(amountOut, 0, recipient, "");
                     }
+                } else if (version == Version.V2) {
+                    ILBLegacyPair(pair).swap(tokenNext == ILBLegacyPair(pair).tokenY(), recipient);
                 } else {
                     ILBPair(pair).swap(tokenNext == ILBPair(pair).getTokenY(), recipient);
                 }
@@ -860,18 +894,21 @@ contract LBRouter is ILBRouter {
     /// @param tokenX The address of the tokenX
     /// @param tokenY The address of the tokenY
     /// @param binStep The bin step of the LBPair
-    /// @return The address of the LBPair
+    /// @return lbPair The address of the LBPair
     function _getLBPairInformation(IERC20 tokenX, IERC20 tokenY, uint256 binStep, Version version)
         private
         view
-        returns (ILBPair)
+        returns (address lbPair)
     {
-        ILBPair lbPair = _factory.getLBPairInformation(tokenX, tokenY, binStep).LBPair;
+        if (version == Version.V2) {
+            lbPair = address(_legacyFactory.getLBPairInformation(tokenX, tokenY, binStep).LBPair);
+        } else {
+            lbPair = address(_factory.getLBPairInformation(tokenX, tokenY, binStep).LBPair);
+        }
 
-        if (address(lbPair) == address(0)) {
+        if (lbPair == address(0)) {
             revert LBRouter__PairNotCreated(address(tokenX), address(tokenY), binStep);
         }
-        return lbPair;
     }
 
     /// @notice Helper function to return the address of the pair (v1 or v2, according to `binStep`)
@@ -885,8 +922,8 @@ contract LBRouter is ILBRouter {
         view
         returns (address pair)
     {
-        if (binStep == 0) {
-            pair = _oldFactory.getPair(address(tokenX), address(tokenY));
+        if (version == Version.V1) {
+            pair = _factoryV1.getPair(address(tokenX), address(tokenY));
             if (pair == address(0)) revert LBRouter__PairNotCreated(address(tokenX), address(tokenY), binStep);
         } else {
             pair = address(_getLBPairInformation(tokenX, tokenY, binStep, version));

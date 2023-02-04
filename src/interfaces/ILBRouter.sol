@@ -7,6 +7,7 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {IJoeFactory} from "./IJoeFactory.sol";
 import {ILBFactory} from "./ILBFactory.sol";
 import {ILBLegacyFactory} from "./ILBLegacyFactory.sol";
+import {ILBLegacyRouter} from "./ILBLegacyRouter.sol";
 import {ILBPair} from "./ILBPair.sol";
 import {ILBToken} from "./ILBToken.sol";
 import {IWAVAX} from "./IWAVAX.sol";
@@ -94,7 +95,9 @@ interface ILBRouter {
 
     function getLegacyFactory() external view returns (ILBLegacyFactory);
 
-    function getOldFactory() external view returns (IJoeFactory);
+    function getV1Factory() external view returns (IJoeFactory);
+
+    function getLegacyRouter() external view returns (ILBLegacyRouter);
 
     function getWAVAX() external view returns (IWAVAX);
 

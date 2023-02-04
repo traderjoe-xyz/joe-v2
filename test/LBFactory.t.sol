@@ -169,17 +169,31 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(address(pair.getTokenX()), address(usdt), "test_createLBPair::7");
         assertEq(address(pair.getTokenY()), address(usdc), "test_createLBPair::8");
 
-        // FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();
-        // assertEq(feeParameters.volatilityAccumulator, 0, "test_createLBPair::9");
-        // assertEq(feeParameters.volatilityReference, 0, "test_createLBPair::10");
-        // assertEq(feeParameters.indexRef, 0, "test_createLBPair::11");
-        // assertEq(feeParameters.time, 0, "test_createLBPair::12");
-        // assertEq(feeParameters.maxVolatilityAccumulator, DEFAULT_MAX_VOLATILITY_ACCUMULATOR, "test_createLBPair::13");
-        // assertEq(feeParameters.filterPeriod, DEFAULT_FILTER_PERIOD, "test_createLBPair::14");
-        // assertEq(feeParameters.decayPeriod, DEFAULT_DECAY_PERIOD, "test_createLBPair::15");
-        // assertEq(feeParameters.binStep, DEFAULT_BIN_STEP, "test_createLBPair::16");
-        // assertEq(feeParameters.baseFactor, DEFAULT_BASE_FACTOR, "test_createLBPair::17");
-        // assertEq(feeParameters.protocolShare, DEFAULT_PROTOCOL_SHARE, "test_createLBPair::18");
+        (
+            uint16 baseFactor,
+            uint16 filterPeriod,
+            uint16 decayPeriod,
+            uint16 reductionFactor,
+            uint24 variableFeeControl,
+            uint16 protocolShare,
+            uint24 maxVolatilityAccumulator
+        ) = pair.getStaticFeeParameters();
+
+        assertEq(baseFactor, DEFAULT_BASE_FACTOR, "test_createLBPair::9");
+        assertEq(filterPeriod, DEFAULT_FILTER_PERIOD, "test_createLBPair::10");
+        assertEq(decayPeriod, DEFAULT_DECAY_PERIOD, "test_createLBPair::11");
+        assertEq(reductionFactor, DEFAULT_REDUCTION_FACTOR, "test_createLBPair::12");
+        assertEq(variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL, "test_createLBPair::13");
+        assertEq(protocolShare, DEFAULT_PROTOCOL_SHARE, "test_createLBPair::14");
+        assertEq(maxVolatilityAccumulator, DEFAULT_MAX_VOLATILITY_ACCUMULATOR, "test_createLBPair::15");
+
+        (uint24 volatilityAccumulator, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate) =
+            pair.getVariableFeeParameters();
+
+        assertEq(volatilityAccumulator, 0, "test_createLBPair::16");
+        assertEq(volatilityReference, 0, "test_createLBPair::17");
+        assertEq(idReference, ID_ONE, "test_createLBPair::18");
+        assertEq(timeOfLastUpdate, 0, "test_createLBPair::19");
     }
 
     function test_createLBPairFactoryUnlocked() public {
@@ -242,7 +256,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__IdenticalAddresses.selector, usdc));
         newFactory.createLBPair(usdc, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
-        // Can't create a pair with an invalid bin step
+        // TODO Can't create a pair with an invalid bin step
         // vm.expectRevert(abi.encodeWithSelector(ILBFactory.BinHelper__BinStepOverflows.selector, type(uint16).max));
         // newFactory.createLBPair(usdt, usdc, ID_ONE, type(uint16).max);
 
@@ -574,73 +588,103 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function test_setFeesParametersOnPair() public {
-        uint16 newBaseFactor = DEFAULT_BASE_FACTOR * 2;
-        uint16 newFilterPeriod = DEFAULT_FILTER_PERIOD * 2;
-        uint16 newDecayPeriod = DEFAULT_DECAY_PERIOD * 2;
-        uint16 newReductionFactor = DEFAULT_REDUCTION_FACTOR * 2;
-        uint24 newVariableFeeControl = DEFAULT_VARIABLE_FEE_CONTROL * 2;
-        uint16 newProtocolShare = DEFAULT_PROTOCOL_SHARE * 2;
-        uint24 newMaxVolatilityAccumulator = DEFAULT_MAX_VOLATILITY_ACCUMULATOR * 2;
+        ILBPair pair = factory.createLBPair(wavax, usdc, ID_ONE, DEFAULT_BIN_STEP);
+        addLiquidity(DEV, DEV, LBPair(address(pair)), ID_ONE, 100e18, 100e18, 10, 10);
 
-        factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
+        // Do swaps to increase the variable fee parameters
+        {
+            deal(address(usdc), DEV, 60e18);
+            ILBRouter.Path memory path;
+            path.pairBinSteps = new uint256[](1);
+            path.pairBinSteps[0] = DEFAULT_BIN_STEP;
 
-        // FeeHelper.FeeParameters memory oldFeeParameters = pair.feeParameters();
+            path.versions = new ILBRouter.Version[](1);
+            path.versions[0] = ILBRouter.Version.V3;
+
+            path.tokenPath = new IERC20[](2);
+            path.tokenPath[0] = usdc;
+            path.tokenPath[1] = wavax;
+            router.swapExactTokensForTokens(50e18, 0, path, address(this), block.timestamp + 1);
+            vm.warp(100);
+            router.swapExactTokensForTokens(10e18, 0, path, address(this), block.timestamp + 1);
+        }
+
+        (
+            uint24 oldVolatilityAccumulator,
+            uint24 oldVolatilityReference,
+            uint24 oldIdReference,
+            uint40 oldTimeOfLastUpdate
+        ) = pair.getVariableFeeParameters();
 
         vm.expectEmit(true, true, true, true);
         emit StaticFeeParametersSet(
             address(factory),
-            newBaseFactor,
-            newFilterPeriod,
-            newDecayPeriod,
-            newReductionFactor,
-            newVariableFeeControl,
-            newProtocolShare,
-            newMaxVolatilityAccumulator
+            DEFAULT_BASE_FACTOR * 2,
+            DEFAULT_FILTER_PERIOD * 2,
+            DEFAULT_DECAY_PERIOD * 2,
+            DEFAULT_REDUCTION_FACTOR * 2,
+            DEFAULT_VARIABLE_FEE_CONTROL * 2,
+            DEFAULT_PROTOCOL_SHARE * 2,
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR * 2
             );
 
         factory.setFeesParametersOnPair(
-            usdt,
+            wavax,
             usdc,
             DEFAULT_BIN_STEP,
-            newBaseFactor,
-            newFilterPeriod,
-            newDecayPeriod,
-            newReductionFactor,
-            newVariableFeeControl,
-            newProtocolShare,
-            newMaxVolatilityAccumulator
+            DEFAULT_BASE_FACTOR * 2,
+            DEFAULT_FILTER_PERIOD * 2,
+            DEFAULT_DECAY_PERIOD * 2,
+            DEFAULT_REDUCTION_FACTOR * 2,
+            DEFAULT_VARIABLE_FEE_CONTROL * 2,
+            DEFAULT_PROTOCOL_SHARE * 2,
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR * 2
         );
 
-        // FeeHelper.FeeParameters memory feeParameters = pair.feeParameters();
-        // // Paramters should be updated
-        // assertEq(feeParameters.baseFactor, newBaseFactor);
-        // assertEq(feeParameters.filterPeriod, newFilterPeriod);
-        // assertEq(feeParameters.decayPeriod, newDecayPeriod);
-        // assertEq(feeParameters.reductionFactor, newReductionFactor);
-        // assertEq(feeParameters.variableFeeControl, newVariableFeeControl);
-        // assertEq(feeParameters.protocolShare, newProtocolShare);
-        // assertEq(feeParameters.maxVolatilityAccumulator, newMaxVolatilityAccumulator);
+        {
+            (
+                uint16 baseFactor,
+                uint16 filterPeriod,
+                uint16 decayPeriod,
+                uint16 reductionFactor,
+                uint24 variableFeeControl,
+                uint16 protocolShare,
+                uint24 maxVolatilityAccumulator
+            ) = pair.getStaticFeeParameters();
 
-        // // Rest of the fee parameters slot should be the same
-        // assertEq(feeParameters.volatilityAccumulator, oldFeeParameters.volatilityAccumulator);
-        // assertEq(feeParameters.volatilityReference, oldFeeParameters.volatilityReference);
-        // assertEq(feeParameters.indexRef, oldFeeParameters.indexRef);
-        // assertEq(feeParameters.time, oldFeeParameters.time);
+            assertEq(baseFactor, DEFAULT_BASE_FACTOR * 2);
+            assertEq(filterPeriod, DEFAULT_FILTER_PERIOD * 2);
+            assertEq(decayPeriod, DEFAULT_DECAY_PERIOD * 2);
+            assertEq(reductionFactor, DEFAULT_REDUCTION_FACTOR * 2);
+            assertEq(variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL * 2);
+            assertEq(protocolShare, DEFAULT_PROTOCOL_SHARE * 2);
+            assertEq(maxVolatilityAccumulator, DEFAULT_MAX_VOLATILITY_ACCUMULATOR * 2);
+        }
+
+        {
+            (uint24 volatilityAccumulator, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate) =
+                pair.getVariableFeeParameters();
+
+            assertEq(volatilityAccumulator, oldVolatilityAccumulator);
+            assertEq(volatilityReference, oldVolatilityReference);
+            assertEq(idReference, oldIdReference);
+            assertEq(timeOfLastUpdate, oldTimeOfLastUpdate);
+        }
 
         // Can't update if not the owner
         vm.prank(ALICE);
         vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
         factory.setFeesParametersOnPair(
-            usdt,
+            wavax,
             usdc,
             DEFAULT_BIN_STEP,
-            newBaseFactor,
-            newFilterPeriod,
-            newDecayPeriod,
-            newReductionFactor,
-            newVariableFeeControl,
-            newProtocolShare,
-            newMaxVolatilityAccumulator
+            DEFAULT_BASE_FACTOR * 2,
+            DEFAULT_FILTER_PERIOD * 2,
+            DEFAULT_DECAY_PERIOD * 2,
+            DEFAULT_REDUCTION_FACTOR * 2,
+            DEFAULT_VARIABLE_FEE_CONTROL * 2,
+            DEFAULT_PROTOCOL_SHARE * 2,
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR * 2
         );
 
         // Can't update a pair that does not exist
@@ -651,13 +695,13 @@ contract LiquidityBinFactoryTest is TestHelper {
             weth,
             usdc,
             DEFAULT_BIN_STEP,
-            newBaseFactor,
-            newFilterPeriod,
-            newDecayPeriod,
-            newReductionFactor,
-            newVariableFeeControl,
-            newProtocolShare,
-            newMaxVolatilityAccumulator
+            DEFAULT_BASE_FACTOR * 2,
+            DEFAULT_FILTER_PERIOD * 2,
+            DEFAULT_DECAY_PERIOD * 2,
+            DEFAULT_REDUCTION_FACTOR * 2,
+            DEFAULT_VARIABLE_FEE_CONTROL * 2,
+            DEFAULT_PROTOCOL_SHARE * 2,
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR * 2
         );
     }
 

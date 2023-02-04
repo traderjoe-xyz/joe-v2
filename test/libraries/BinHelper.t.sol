@@ -76,31 +76,39 @@ contract BinHelperTest is TestHelper {
         assertEq(shares, expectedShares, "test_GetShareAndEffectiveAmountsIn::2");
     }
 
-    function testFuzz_TryExploitShares(uint128 amountX, uint128 amountY, uint256 price) external {
-        vm.assume(price > 0 && amountX > 0 && amountX < type(uint128).max && amountY > 0 && amountY < type(uint128).max);
+    function testFuzz_TryExploitShares(
+        uint128 amountX1,
+        uint128 amountY1,
+        uint128 amountX2,
+        uint128 amountY2,
+        uint256 price
+    ) external {
+        vm.assume(
+            price > 0 && amountX1 > 0 && amountY1 > 0 && amountX2 > 0 && amountY2 > 0
+                && type(uint128).max >= uint256(amountY1) + amountY2 && type(uint128).max >= uint256(amountX1) + amountX2
+                && price.mulShiftRoundDown(uint256(amountX1) + amountX2, Constants.SCALE_OFFSET)
+                    <= type(uint128).max - amountY1 - amountY2
+        );
 
-        // exploiter front run the tx and mint 1 of liquidity
-        uint256 totalSupply = 1;
+        // exploiter front run the tx and mint the min amount of shares, so the total supply is 2^128
+        uint256 totalSupply = 1 << 128;
+        bytes32 binReserves = amountX1.encode(amountY1);
 
-        // exploiter increase the reserve to amounts added by user + 1
-        bytes32 binReserves = uint128(amountX + 1).encode(uint128(amountY + 1));
-
-        // user add liquidity
+        bytes32 amountsIn = amountX2.encode(amountY2);
         (uint256 shares, bytes32 effectiveAmountsIn) =
-            binReserves.getShareAndEffectiveAmountsIn(amountX.encode(amountY), price, totalSupply);
+            binReserves.getShareAndEffectiveAmountsIn(amountsIn, price, totalSupply);
 
-        assertEq(shares, 0, "test_TryExploitShares::1");
+        binReserves = binReserves.add(effectiveAmountsIn);
+        totalSupply += shares;
 
-        (uint128 effectiveX, uint128 effectiveY) = effectiveAmountsIn.decode();
-        assertEq(effectiveX, 0, "test_TryExploitShares::2");
-        assertEq(effectiveY, 0, "test_TryExploitShares::3");
+        uint256 userReceivedX = shares.mulDivRoundDown(binReserves.decodeFirst(), totalSupply);
+        uint256 userReceivedY = shares.mulDivRoundDown(binReserves.decodeSecond(), totalSupply);
 
-        // If user added liquidity with 1 wei more, he will get 1 share
-        (shares, effectiveAmountsIn) =
-            binReserves.getShareAndEffectiveAmountsIn((amountX + 1).encode(amountY + 1), price, totalSupply);
+        uint256 receivedInY = userReceivedX.mulShiftRoundDown(price, Constants.SCALE_OFFSET) + userReceivedY;
+        uint256 sentInY = price.mulShiftRoundDown(effectiveAmountsIn.decodeFirst(), Constants.SCALE_OFFSET)
+            + effectiveAmountsIn.decodeSecond();
 
-        assertEq(shares, 1, "test_TryExploitShares::3");
-        assertEq(effectiveAmountsIn, (amountX + 1).encode(amountY + 1), "test_TryExploitShares::4");
+        assertApproxEqAbs(receivedInY, sentInY, ((price - 1) >> 128) + 2, "test_TryExploitShares::1");
     }
 
     function testFuzz_VerifyAmountsNeqIds(uint128 amountX, uint128 amountY, uint24 activeId, uint24 id) external {
@@ -109,7 +117,7 @@ contract BinHelperTest is TestHelper {
         bytes32 amounts = amountX.encode(amountY);
 
         if (id < activeId && amountX > 0 || id > activeId && amountY > 0) {
-            vm.expectRevert(abi.encodeWithSelector(BinHelper.BinMath__CompositionFactorFlawed.selector, id));
+            vm.expectRevert(abi.encodeWithSelector(BinHelper.BinHelper__CompositionFactorFlawed.selector, id));
         }
 
         amounts.verifyAmounts(activeId, id);

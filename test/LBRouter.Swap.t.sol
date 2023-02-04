@@ -21,7 +21,7 @@ contract LiquidityBinRouterSwapTest is TestHelper {
     function setUp() public override {
         super.setUp();
 
-        factory.setFactoryLockedState(false);
+        factory.setOpenPreset(DEFAULT_BIN_STEP, true);
 
         // Create necessary pairs
         router.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);

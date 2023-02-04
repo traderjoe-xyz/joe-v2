@@ -152,7 +152,7 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__IdOverflows.selector, uint256(type(uint24).max) + 1));
         router.addLiquidity(liquidityParameters);
 
-        // Revert is slip^page is too high
+        // Revert is slippage is too high
         liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
         liquidityParameters.amountXMin = liquidityParameters.amountX + 1;
 

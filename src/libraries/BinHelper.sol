@@ -183,7 +183,7 @@ library BinHelper {
      * @param swapForY Whether the swap is for Y (true) or for X (false)
      * @param activeId The id of the active bin
      * @param amountsInLeft The amounts of tokens left to swap
-     * @return amountsInToBin The encoded amounts of tokens that will be added to the bin
+     * @return amountsInWithFees The encoded amounts of tokens that will be added to the bin, including fees
      * @return amountsOutOfBin The encoded amounts of tokens that will be removed from the bin
      * @return totalFees The encoded fees that will be charged
      */
@@ -194,7 +194,7 @@ library BinHelper {
         bool swapForY, // swap `swapForY` and `activeId` to avoid stack too deep
         uint24 activeId,
         bytes32 amountsInLeft
-    ) internal pure returns (bytes32 amountsInToBin, bytes32 amountsOutOfBin, bytes32 totalFees) {
+    ) internal pure returns (bytes32 amountsInWithFees, bytes32 amountsOutOfBin, bytes32 totalFees) {
         uint256 price = activeId.getPriceFromId(binStep);
 
         uint128 binReserveOut = binReserves.decode(!swapForY);
@@ -206,27 +206,30 @@ library BinHelper {
         uint128 totalFee = parameters.getTotalFee(binStep);
         uint128 maxFee = maxAmountIn.getFeeAmount(totalFee);
 
+        maxAmountIn += maxFee;
+
         uint128 amountIn128 = amountsInLeft.decode(swapForY);
         uint128 fee128;
         uint128 amountOut128;
 
-        if (amountIn128 >= maxAmountIn + maxFee) {
+        if (amountIn128 >= maxAmountIn) {
             fee128 = maxFee;
 
             amountIn128 = maxAmountIn;
             amountOut128 = binReserveOut;
         } else {
             fee128 = amountIn128.getFeeAmountFrom(totalFee);
-            amountIn128 -= fee128;
+
+            uint256 amountIn = amountIn128 - fee128;
 
             amountOut128 = swapForY
-                ? uint256(amountIn128).mulShiftRoundDown(price, Constants.SCALE_OFFSET).safe128()
-                : uint256(amountIn128).shiftDivRoundDown(Constants.SCALE_OFFSET, price).safe128();
+                ? uint256(amountIn).mulShiftRoundDown(price, Constants.SCALE_OFFSET).safe128()
+                : uint256(amountIn).shiftDivRoundDown(Constants.SCALE_OFFSET, price).safe128();
 
             if (amountOut128 > binReserveOut) amountOut128 = binReserveOut;
         }
 
-        (amountsInToBin, amountsOutOfBin, totalFees) = swapForY
+        (amountsInWithFees, amountsOutOfBin, totalFees) = swapForY
             ? (amountIn128.encodeFirst(), amountOut128.encodeSecond(), fee128.encodeFirst())
             : (amountIn128.encodeSecond(), amountOut128.encodeFirst(), fee128.encodeSecond());
     }

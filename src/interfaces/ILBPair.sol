@@ -9,6 +9,7 @@ import {ILBFlashLoanCallback} from "./ILBFlashLoanCallback.sol";
 import {ILBToken} from "./ILBToken.sol";
 
 interface ILBPair is ILBToken {
+    error LBPair__ZeroBorrowAmount();
     error LBPair__AddressZero();
     error LBPair__AlreadyInitialized();
     error LBPair__EmptyMarketConfigs();
@@ -19,7 +20,7 @@ interface ILBPair is ILBToken {
     error LBPair__InvalidInput();
     error LBPair__InvalidStaticFeeParameters();
     error LBPair__OnlyFactory();
-    error LBPair__OnlyProtocolFeeReceiver();
+    error LBPair__OnlyProtocolFeeRecipient();
     error LBPair__OutOfLiquidity();
     error LBPair__TokenNotSupported();
     error LBPair__ZeroAmount(uint24 id);
@@ -40,7 +41,7 @@ interface ILBPair is ILBToken {
         uint24 id,
         bytes32 amountsIn,
         bytes32 amountsOut,
-        uint24 volatilityAccumulated,
+        uint24 volatilityAccumulator,
         bytes32 totalFees,
         bytes32 protocolFees
     );
@@ -53,7 +54,7 @@ interface ILBPair is ILBToken {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated
+        uint24 maxVolatilityAccumulator
     );
 
     event FlashLoan(
@@ -76,7 +77,7 @@ interface ILBPair is ILBToken {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated,
+        uint24 maxVolatilityAccumulator,
         uint24 activeId
     ) external;
 
@@ -108,13 +109,18 @@ interface ILBPair is ILBToken {
             uint16 reductionFactor,
             uint24 variableFeeControl,
             uint16 protocolShare,
-            uint24 maxVolatilityAccumulated
+            uint24 maxVolatilityAccumulator
         );
 
     function getVariableFeeParameters()
         external
         view
-        returns (uint24 volatilityAccumulated, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate);
+        returns (uint24 volatilityAccumulator, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate);
+
+    function getOracleParameters()
+        external
+        view
+        returns (uint8 sampleLifetime, uint16 size, uint16 activeSize, uint40 lastUpdated, uint40 firstTimestamp);
 
     function getOracleSampleAt(uint40 lookupTimestamp)
         external
@@ -158,7 +164,7 @@ interface ILBPair is ILBToken {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated
+        uint24 maxVolatilityAccumulator
     ) external;
 
     function forceDecay() external;

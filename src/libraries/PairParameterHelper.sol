@@ -17,8 +17,8 @@ import {Encoded} from "./math/Encoded.sol";
  * [40 - 54[: reduction factor (14 bits)
  * [54 - 78[: variable fee control (24 bits)
  * [78 - 92[: protocol share (14 bits)
- * [92 - 112[: max volatility accumulated (20 bits)
- * [112 - 132[: volatility accumulated (20 bits)
+ * [92 - 112[: max volatility accumulator (20 bits)
+ * [112 - 132[: volatility accumulator (20 bits)
  * [132 - 152[: volatility reference (20 bits)
  * [152 - 176[: index reference (24 bits)
  * [176 - 216[: time of last update (40 bits)
@@ -120,27 +120,27 @@ library PairParameterHelper {
     }
 
     /**
-     * @dev Get the max volatility accumulated from the encoded pair parameters
+     * @dev Get the max volatility accumulator from the encoded pair parameters
      * @param params The encoded pair parameters, as follows:
      * [0 - 92[: other parameters
-     * [92 - 112[: max volatility accumulated (20 bits)
+     * [92 - 112[: max volatility accumulator (20 bits)
      * [112 - 256[: other parameters
-     * @return maxVolatilityAccumulated The max volatility accumulated
+     * @return maxVolatilityAccumulator The max volatility accumulator
      */
-    function getMaxVolatilityAccumulated(bytes32 params) internal pure returns (uint24 maxVolatilityAccumulated) {
-        maxVolatilityAccumulated = params.decodeUint20(OFFSET_MAX_VOL_ACC);
+    function getMaxVolatilityAccumulator(bytes32 params) internal pure returns (uint24 maxVolatilityAccumulator) {
+        maxVolatilityAccumulator = params.decodeUint20(OFFSET_MAX_VOL_ACC);
     }
 
     /**
-     * @dev Get the volatility accumulated from the encoded pair parameters
+     * @dev Get the volatility accumulator from the encoded pair parameters
      * @param params The encoded pair parameters, as follows:
      * [0 - 112[: other parameters
-     * [112 - 132[: volatility accumulated (20 bits)
+     * [112 - 132[: volatility accumulator (20 bits)
      * [132 - 256[: other parameters
-     * @return volatilityAccumulated The volatility accumulated
+     * @return volatilityAccumulator The volatility accumulator
      */
-    function getVolatilityAccumulated(bytes32 params) internal pure returns (uint24 volatilityAccumulated) {
-        volatilityAccumulated = params.decodeUint20(OFFSET_VOL_ACC);
+    function getVolatilityAccumulator(bytes32 params) internal pure returns (uint24 volatilityAccumulator) {
+        volatilityAccumulator = params.decodeUint20(OFFSET_VOL_ACC);
     }
 
     /**
@@ -241,9 +241,9 @@ library PairParameterHelper {
 
         if (variableFeeControl != 0) {
             unchecked {
-                // The volatility accumulated is in basis points, binStep is in 20_000th,
+                // The volatility accumulator is in basis points, binStep is in 20_000th,
                 // and the variable fee control is in basis points, so the result is in 400e18th
-                uint256 prod = uint256(getVolatilityAccumulated(params)) * binStep;
+                uint256 prod = uint256(getVolatilityAccumulator(params)) * binStep;
                 variableFee = (prod * prod * variableFeeControl + 399) / 400;
             }
         }
@@ -302,7 +302,7 @@ library PairParameterHelper {
      * @param reductionFactor The reduction factor
      * @param variableFeeControl The variable fee control
      * @param protocolShare The protocol share
-     * @param maxVolatilityAccumulated The max volatility accumulated
+     * @param maxVolatilityAccumulator The max volatility accumulator
      * @return The updated encoded pair parameters
      */
     function setStaticFeeParameters(
@@ -313,12 +313,12 @@ library PairParameterHelper {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated
+        uint24 maxVolatilityAccumulator
     ) internal pure returns (bytes32) {
         if (
             filterPeriod > decayPeriod || decayPeriod > Encoded.MASK_UINT12
                 || reductionFactor > Constants.BASIS_POINT_MAX || protocolShare > MAX_PROTOCOL_SHARE
-                || maxVolatilityAccumulated > Encoded.MASK_UINT20
+                || maxVolatilityAccumulator > Encoded.MASK_UINT20
         ) revert PairParametersHelper__InvalidParameter();
 
         uint256 staticParams;
@@ -329,7 +329,7 @@ library PairParameterHelper {
             staticParams := or(staticParams, shl(OFFSET_REDUCTION_FACTOR, reductionFactor))
             staticParams := or(staticParams, shl(OFFSET_VAR_FEE_CONTROL, variableFeeControl))
             staticParams := or(staticParams, shl(OFFSET_PROTOCOL_SHARE, protocolShare))
-            staticParams := or(staticParams, shl(OFFSET_MAX_VOL_ACC, maxVolatilityAccumulated))
+            staticParams := or(staticParams, shl(OFFSET_MAX_VOL_ACC, maxVolatilityAccumulator))
         }
 
         return params.set(staticParams, MASK_STATIC_PARAMETER, 0);
@@ -361,7 +361,7 @@ library PairParameterHelper {
      * @return The updated encoded pair parameters
      */
     function updateVolatilityReference(bytes32 params) internal pure returns (bytes32) {
-        uint256 volAcc = getVolatilityAccumulated(params);
+        uint256 volAcc = getVolatilityAccumulator(params);
         uint256 reductionFactor = getReductionFactor(params);
 
         uint24 volRef;
@@ -373,20 +373,21 @@ library PairParameterHelper {
     }
 
     /**
-     * @dev Updates the volatility accumulated in the encoded pair parameters
+     * @dev Updates the volatility accumulator in the encoded pair parameters
      * @param params The encoded pair parameters
      * @param activeId The active id
      * @return The updated encoded pair parameters
      */
-    function updateVolatilityAccumulated(bytes32 params, uint24 activeId) internal pure returns (bytes32) {
-        uint256 deltaId = getDeltaId(params, activeId);
+    function updateVolatilityAccumulator(bytes32 params, uint24 activeId) internal pure returns (bytes32) {
+        uint256 idReference = getIdReference(params);
+        uint256 deltaId = activeId > idReference ? activeId - idReference : idReference - activeId;
 
         uint256 volAcc;
         unchecked {
-            volAcc = (uint256(getVolatilityAccumulated(params)) + deltaId * Constants.BASIS_POINT_MAX);
+            volAcc = (uint256(getVolatilityReference(params)) + deltaId * Constants.BASIS_POINT_MAX);
         }
 
-        uint256 maxVolAcc = getMaxVolatilityAccumulated(params);
+        uint256 maxVolAcc = getMaxVolatilityAccumulator(params);
 
         volAcc = volAcc > maxVolAcc ? maxVolAcc : volAcc;
 
@@ -394,7 +395,7 @@ library PairParameterHelper {
     }
 
     /**
-     * @dev Updates the volatility reference and the volatility accumulated in the encoded pair parameters
+     * @dev Updates the volatility reference and the volatility accumulator in the encoded pair parameters
      * @param params The encoded pair parameters
      * @return The updated encoded pair parameters
      */
@@ -410,13 +411,13 @@ library PairParameterHelper {
     }
 
     /**
-     * @dev Updates the volatility reference and the volatility accumulated in the encoded pair parameters
+     * @dev Updates the volatility reference and the volatility accumulator in the encoded pair parameters
      * @param params The encoded pair parameters
      * @param activeId The active id
      * @return The updated encoded pair parameters
      */
     function updateVolatilityParameters(bytes32 params, uint24 activeId) internal view returns (bytes32) {
         params = updateReferences(params);
-        return updateVolatilityAccumulated(params, activeId);
+        return updateVolatilityAccumulator(params, activeId);
     }
 }

@@ -98,7 +98,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         return _MAX_PROTOCOL_SHARE;
     }
 
-    function getFlashloanFee() external view returns (uint256 flashloanFee) {
+    function getFlashLoanFee() external view returns (uint256 flashloanFee) {
         return _flashLoanFee;
     }
 
@@ -174,7 +174,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @return reductionFactor The reduction factor of the preset
     /// @return variableFeeControl The variable fee control of the preset
     /// @return protocolShare The protocol share of the preset
-    /// @return maxVolatilityAccumulated The max volatility accumulated of the preset
+    /// @return maxVolatilityAccumulator The max volatility accumulator of the preset
     function getPreset(uint256 binStep)
         external
         view
@@ -186,7 +186,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             uint256 reductionFactor,
             uint256 variableFeeControl,
             uint256 protocolShare,
-            uint256 maxVolatilityAccumulated
+            uint256 maxVolatilityAccumulator
         )
     {
         bytes32 preset = _presets[binStep];
@@ -198,7 +198,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         reductionFactor = preset.getReductionFactor();
         variableFeeControl = preset.getVariableFeeControl();
         protocolShare = preset.getProtocolShare();
-        maxVolatilityAccumulated = preset.getMaxVolatilityAccumulated();
+        maxVolatilityAccumulator = preset.getMaxVolatilityAccumulator();
     }
 
     /// @notice View function to return the list of available binStep with a preset
@@ -350,7 +350,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
                 preset.getReductionFactor(),
                 preset.getVariableFeeControl(),
                 preset.getProtocolShare(),
-                preset.getMaxVolatilityAccumulated(),
+                preset.getMaxVolatilityAccumulator(),
                 activeId
             );
         }
@@ -426,7 +426,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
                 preset.getReductionFactor(),
                 preset.getVariableFeeControl(),
                 preset.getProtocolShare(),
-                preset.getMaxVolatilityAccumulated(),
+                preset.getMaxVolatilityAccumulator(),
                 oldLBPair.getActiveId()
             );
 
@@ -483,7 +483,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param reductionFactor The reduction factor, used to calculate the reduction of the accumulator
     /// @param variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable it
     /// @param protocolShare The share of the fees received by the protocol
-    /// @param maxVolatilityAccumulated The max value of the volatility accumulated
+    /// @param maxVolatilityAccumulator The max value of the volatility accumulator
     function setPreset(
         uint8 binStep,
         uint16 baseFactor,
@@ -492,7 +492,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated
+        uint24 maxVolatilityAccumulator
     ) external override onlyOwner {
         bytes32 packedFeeParameters = _getPackedFeeParameters(
             binStep,
@@ -502,7 +502,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             reductionFactor,
             variableFeeControl,
             protocolShare,
-            maxVolatilityAccumulated
+            maxVolatilityAccumulator
         );
 
         bytes32 preset = bytes32((uint256(packedFeeParameters)));
@@ -529,7 +529,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             reductionFactor,
             variableFeeControl,
             protocolShare,
-            maxVolatilityAccumulated
+            maxVolatilityAccumulator
             );
     }
 
@@ -562,7 +562,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param reductionFactor The reduction factor, used to calculate the reduction of the accumulator
     /// @param variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable it
     /// @param protocolShare The share of the fees received by the protocol
-    /// @param maxVolatilityAccumulated The max value of volatility accumulated
+    /// @param maxVolatilityAccumulator The max value of volatility accumulator
     function setFeesParametersOnPair(
         IERC20 tokenX,
         IERC20 tokenY,
@@ -574,7 +574,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated
+        uint24 maxVolatilityAccumulator
     ) external override onlyOwner {
         ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep, revision).LBPair;
 
@@ -585,7 +585,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             reductionFactor,
             variableFeeControl,
             protocolShare,
-            maxVolatilityAccumulated
+            maxVolatilityAccumulator
         );
 
         emit FeeParametersSet(
@@ -598,7 +598,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             reductionFactor,
             variableFeeControl,
             protocolShare,
-            maxVolatilityAccumulated
+            maxVolatilityAccumulator
             );
     }
 
@@ -670,7 +670,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @param reductionFactor The reduction factor, used to calculate the reduction of the accumulator
     /// @param variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable it
     /// @param protocolShare The share of the fees received by the protocol
-    /// @param maxVolatilityAccumulated The max value of volatility accumulated
+    /// @param maxVolatilityAccumulator The max value of volatility accumulator
     function _getPackedFeeParameters(
         uint8 binStep,
         uint16 baseFactor,
@@ -679,7 +679,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated
+        uint24 maxVolatilityAccumulator
     ) private pure returns (bytes32 preset) {
         if (binStep < _MIN_BIN_STEP || binStep > _MAX_BIN_STEP) {
             revert LBFactory__BinStepRequirementsBreached(_MIN_BIN_STEP, binStep, _MAX_BIN_STEP);
@@ -700,8 +700,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
             // Can't overflow as the max value is `max(uint24) * (max(uint24) * max(uint16)) ** 2 < max(uint104)`
             // It returns 18 decimals as:
-            // decimals(variableFeeControl * (volatilityAccumulated * binStep)**2 / 100) = 4 + (4 + 4) * 2 - 2 = 18
-            uint256 prod = uint256(maxVolatilityAccumulated) * binStep;
+            // decimals(variableFeeControl * (volatilityAccumulator * binStep)**2 / 100) = 4 + (4 + 4) * 2 - 2 = 18
+            uint256 prod = uint256(maxVolatilityAccumulator) * binStep;
             uint256 maxVariableFee = (prod * prod * variableFeeControl) / 100;
 
             if (baseFee + maxVariableFee > _MAX_FEE) {
@@ -716,7 +716,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             reductionFactor,
             variableFeeControl,
             protocolShare,
-            maxVolatilityAccumulated
+            maxVolatilityAccumulator
         );
     }
 

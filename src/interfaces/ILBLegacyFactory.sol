@@ -41,7 +41,7 @@ interface ILBLegacyFactory is IPendingOwnable {
         uint256 reductionFactor,
         uint256 variableFeeControl,
         uint256 protocolShare,
-        uint256 maxVolatilityAccumulated
+        uint256 maxVolatilityAccumulator
     );
 
     event FactoryLockedStatusUpdated(bool unlocked);
@@ -58,7 +58,7 @@ interface ILBLegacyFactory is IPendingOwnable {
         uint256 reductionFactor,
         uint256 variableFeeControl,
         uint256 protocolShare,
-        uint256 maxVolatilityAccumulated,
+        uint256 maxVolatilityAccumulator,
         uint256 sampleLifetime
     );
 
@@ -136,7 +136,7 @@ interface ILBLegacyFactory is IPendingOwnable {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated,
+        uint24 maxVolatilityAccumulator,
         uint16 sampleLifetime
     ) external;
 
@@ -152,7 +152,7 @@ interface ILBLegacyFactory is IPendingOwnable {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated
+        uint24 maxVolatilityAccumulator
     ) external;
 
     function setFeeRecipient(address feeRecipient) external;

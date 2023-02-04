@@ -19,6 +19,7 @@ import {PairParameterHelper} from "./libraries/PairParameterHelper.sol";
 import {PriceHelper} from "./libraries/PriceHelper.sol";
 import {ReentrancyGuard} from "./libraries/ReentrancyGuard.sol";
 import {SafeCast} from "./libraries/math/SafeCast.sol";
+import {SampleMath} from "./libraries/math/SampleMath.sol";
 import {TreeMath} from "./libraries/math/TreeMath.sol";
 import {Uint256x256Math} from "./libraries/math/Uint256x256Math.sol";
 
@@ -38,6 +39,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
     using PriceHelper for uint256;
     using PriceHelper for uint24;
     using SafeCast for uint256;
+    using SampleMath for bytes32;
     using TreeMath for TreeMath.TreeUint24;
     using Uint256x256Math for uint256;
 
@@ -46,8 +48,8 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         _;
     }
 
-    modifier onlyProtocolFeeReceiver() {
-        if (msg.sender != _factory.getFeeRecipient()) revert LBPair__OnlyProtocolFeeReceiver();
+    modifier onlyProtocolFeeRecipient() {
+        if (msg.sender != _factory.getFeeRecipient()) revert LBPair__OnlyProtocolFeeRecipient();
         _;
     }
 
@@ -69,6 +71,9 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      */
     constructor(ILBFactory factory_) {
         _factory = factory_;
+
+        // Disable the initialize function
+        _parameters = bytes32(uint256(1));
     }
 
     /**
@@ -80,7 +85,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @param reductionFactor The reduction factor for the static fee
      * @param variableFeeControl The variable fee control for the static fee
      * @param protocolShare The protocol share for the static fee
-     * @param maxVolatilityAccumulated The max volatility accumulated for the static fee
+     * @param maxVolatilityAccumulator The max volatility accumulator for the static fee
      * @param activeId The active id of the Liquidity Book Pair
      */
     function initialize(
@@ -90,7 +95,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated,
+        uint24 maxVolatilityAccumulator,
         uint24 activeId
     ) external override onlyFactory {
         bytes32 parameters = _parameters;
@@ -99,14 +104,14 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         __ReentrancyGuard_init();
 
         _setStaticFeeParameters(
-            parameters.setActiveId(activeId),
+            parameters.setActiveId(activeId).updateIdReference(),
             baseFactor,
             filterPeriod,
             decayPeriod,
             reductionFactor,
             variableFeeControl,
             protocolShare,
-            maxVolatilityAccumulated
+            maxVolatilityAccumulator
         );
     }
 
@@ -205,7 +210,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @return reductionFactor The reduction factor for the static fee
      * @return variableFeeControl The variable fee control for the static fee
      * @return protocolShare The protocol share for the static fee
-     * @return maxVolatilityAccumulated The maximum volatility accumulated for the static fee
+     * @return maxVolatilityAccumulator The maximum volatility accumulator for the static fee
      */
     function getStaticFeeParameters()
         external
@@ -218,7 +223,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             uint16 reductionFactor,
             uint24 variableFeeControl,
             uint16 protocolShare,
-            uint24 maxVolatilityAccumulated
+            uint24 maxVolatilityAccumulator
         )
     {
         bytes32 parameters = _parameters;
@@ -229,12 +234,12 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         reductionFactor = parameters.getReductionFactor();
         variableFeeControl = parameters.getVariableFeeControl();
         protocolShare = parameters.getProtocolShare();
-        maxVolatilityAccumulated = parameters.getMaxVolatilityAccumulated();
+        maxVolatilityAccumulator = parameters.getMaxVolatilityAccumulator();
     }
 
     /**
      * @notice Returns the variable fee parameters of the Liquidity Book Pair
-     * @return volatilityAccumulated The volatility accumulated for the variable fee
+     * @return volatilityAccumulator The volatility accumulator for the variable fee
      * @return volatilityReference The volatility reference for the variable fee
      * @return idReference The id reference for the variable fee
      * @return timeOfLastUpdate The time of last update for the variable fee
@@ -243,14 +248,51 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         external
         view
         override
-        returns (uint24 volatilityAccumulated, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate)
+        returns (uint24 volatilityAccumulator, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate)
     {
         bytes32 parameters = _parameters;
 
-        volatilityAccumulated = parameters.getVolatilityAccumulated();
+        volatilityAccumulator = parameters.getVolatilityAccumulator();
         volatilityReference = parameters.getVolatilityReference();
         idReference = parameters.getIdReference();
         timeOfLastUpdate = parameters.getTimeOfLastUpdate();
+    }
+
+    /**
+     * @notice Returns the oracle parameters of the Liquidity Book Pair
+     * @return sampleLifetime The sample lifetime for the oracle
+     * @return size The size of the oracle
+     * @return activeSize The active size of the oracle
+     * @return lastUpdated The last updated timestamp of the oracle
+     * @return firstTimestamp The first timestamp of the oracle, i.e. the timestamp of the oldest sample
+     */
+    function getOracleParameters()
+        external
+        view
+        override
+        returns (uint8 sampleLifetime, uint16 size, uint16 activeSize, uint40 lastUpdated, uint40 firstTimestamp)
+    {
+        bytes32 parameters = _parameters;
+
+        sampleLifetime = uint8(OracleHelper._MAX_SAMPLE_LIFETIME);
+
+        uint16 oracleId = parameters.getOracleId();
+        if (oracleId > 0) {
+            bytes32 sample;
+            (sample, activeSize) = _oracle.getActiveSampleAndSize(oracleId);
+
+            size = sample.getOracleLength();
+            lastUpdated = sample.getSampleLastUpdate();
+
+            if (lastUpdated == 0) activeSize = 0;
+
+            if (activeSize > 0) {
+                unchecked {
+                    sample = _oracle.getSample(1 + (oracleId % activeSize));
+                }
+                firstTimestamp = sample.getSampleLastUpdate();
+            }
+        }
     }
 
     /**
@@ -268,12 +310,13 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         returns (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed)
     {
         bytes32 parameters = _parameters;
+        uint16 oracleId = parameters.getOracleId();
 
-        if (lookupTimestamp > block.timestamp) return (0, 0, 0);
+        if (oracleId == 0 || lookupTimestamp > block.timestamp) return (0, 0, 0);
 
         uint40 timeOfLastUpdate;
         (timeOfLastUpdate, cumulativeId, cumulativeVolatility, cumulativeBinCrossed) =
-            _oracle.getSampleAt(parameters.getOracleId(), lookupTimestamp);
+            _oracle.getSampleAt(oracleId, lookupTimestamp);
 
         if (timeOfLastUpdate < lookupTimestamp) {
             parameters.updateVolatilityParameters(parameters.getActiveId());
@@ -281,7 +324,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             uint40 deltaTime = lookupTimestamp - timeOfLastUpdate;
 
             cumulativeId += uint64(parameters.getIdReference()) * deltaTime;
-            cumulativeVolatility += uint64(parameters.getVolatilityAccumulated()) * deltaTime;
+            cumulativeVolatility += uint64(parameters.getVolatilityAccumulator()) * deltaTime;
         }
     }
 
@@ -312,7 +355,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * and the maximum amount that can be swapped from `amountIn` is `amountOut - amountOutLeft`.
      * @param amountOut The amount of token X or Y to swap in
      * @param swapForY Whether the swap is for token Y (true) or token X (false)
-     * @return amountIn The amount of token X or Y that can be swapped in
+     * @return amountIn The amount of token X or Y that can be swapped in, including the fee
      * @return amountOutLeft The amount of token Y or X that cannot be swapped out
      * @return fee The fee of the swap
      */
@@ -332,24 +375,24 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         parameters = parameters.updateReferences();
 
         while (true) {
-            uint128 binReserves = _bins[id].decode(swapForY);
+            uint128 binReserves = _bins[id].decode(!swapForY);
             if (binReserves > 0) {
                 uint256 price = id.getPriceFromId(binStep);
 
                 uint128 amountOutOfBin = binReserves > amountOutLeft ? amountOutLeft : binReserves;
 
-                parameters.updateVolatilityParameters(id);
+                parameters = parameters.updateVolatilityParameters(id);
 
-                uint128 amountInToBin = uint128(
+                uint128 amountInWithoutFee = uint128(
                     swapForY
                         ? uint256(amountOutOfBin).shiftDivRoundUp(Constants.SCALE_OFFSET, price)
                         : uint256(amountOutOfBin).mulShiftRoundUp(price, Constants.SCALE_OFFSET)
                 );
 
                 uint128 totalFee = parameters.getTotalFee(binStep);
-                uint128 feeAmount = amountOutOfBin.getFeeAmount(totalFee);
+                uint128 feeAmount = amountInWithoutFee.getFeeAmount(totalFee);
 
-                amountIn += amountInToBin + feeAmount;
+                amountIn += amountInWithoutFee + feeAmount;
                 amountOutLeft -= amountOutOfBin;
 
                 fee += feeAmount;
@@ -394,14 +437,14 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         while (true) {
             bytes32 binReserves = _bins[id];
-            if (!binReserves.isEmpty(swapForY)) {
-                parameters = parameters.updateVolatilityAccumulated(id);
+            if (!binReserves.isEmpty(!swapForY)) {
+                parameters = parameters.updateVolatilityAccumulator(id);
 
-                (bytes32 amountsInToBin, bytes32 amountsOutOfBin, bytes32 totalFees) =
+                (bytes32 amountsInWithFees, bytes32 amountsOutOfBin, bytes32 totalFees) =
                     binReserves.getAmounts(parameters, binStep, swapForY, id, amountsInLeft);
 
-                if (amountsInToBin > 0) {
-                    amountsInLeft = amountsInLeft.sub(amountsInToBin.add(totalFees));
+                if (amountsInWithFees > 0) {
+                    amountsInLeft = amountsInLeft.sub(amountsInWithFees);
 
                     amountOut += amountsOutOfBin.decode(!swapForY);
 
@@ -420,7 +463,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             }
         }
 
-        amountInLeft = amountsInLeft.decode(!swapForY);
+        amountInLeft = amountsInLeft.decode(swapForY);
     }
 
     /**
@@ -441,6 +484,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         bytes32 protocolFees = _protocolFees;
 
         bytes32 amountsLeft = swapForY ? reserves.receivedX(_tokenX()) : reserves.receivedY(_tokenY());
+        reserves = reserves.add(amountsLeft);
 
         if (amountsLeft == 0) revert LBPair__InsufficientAmountIn();
 
@@ -453,30 +497,32 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         while (true) {
             bytes32 binReserves = _bins[activeId];
-            if (!binReserves.isEmpty(swapForY)) {
-                parameters = parameters.updateVolatilityAccumulated(activeId);
+            if (!binReserves.isEmpty(!swapForY)) {
+                parameters = parameters.updateVolatilityAccumulator(activeId);
 
-                (bytes32 amountsInToBin, bytes32 amountsOutOfBin, bytes32 totalFees) =
+                (bytes32 amountsInWithFees, bytes32 amountsOutOfBin, bytes32 totalFees) =
                     binReserves.getAmounts(parameters, binStep, swapForY, activeId, amountsLeft);
 
-                if (amountsInToBin > 0) {
-                    amountsLeft = amountsLeft.sub(amountsInToBin);
-                    reserves.add(amountsInToBin.add(totalFees));
-
+                if (amountsInWithFees > 0) {
+                    amountsLeft = amountsLeft.sub(amountsInWithFees);
                     amountsOut = amountsOut.add(amountsOutOfBin);
 
                     bytes32 pFees = totalFees.scalarMulDivBasisPointRoundDown(parameters.getProtocolShare());
-                    protocolFees = protocolFees.add(pFees);
 
-                    _bins[activeId] = binReserves.add(amountsInToBin).sub(amountsOutOfBin);
+                    if (pFees > 0) {
+                        protocolFees = protocolFees.add(pFees);
+                        amountsInWithFees = amountsInWithFees.sub(pFees);
+                    }
+
+                    _bins[activeId] = binReserves.add(amountsInWithFees).sub(amountsOutOfBin);
 
                     emit Swap(
                         msg.sender,
                         to,
                         activeId,
-                        amountsInToBin,
+                        amountsInWithFees,
                         amountsOutOfBin,
-                        parameters.getVolatilityAccumulated(),
+                        parameters.getVolatilityAccumulator(),
                         totalFees,
                         pFees
                         );
@@ -496,9 +542,10 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         if (amountsOut == 0) revert LBPair__InsufficientAmountOut();
 
-        parameters = _oracle.update(parameters, activeId);
-
         _reserves = reserves.sub(amountsOut);
+        _protocolFees = protocolFees;
+
+        parameters = _oracle.update(parameters, activeId);
         _parameters = parameters.setActiveId(activeId);
 
         if (swapForY) {
@@ -521,6 +568,8 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         override
         nonReentrant
     {
+        if (amounts == 0) revert LBPair__ZeroBorrowAmount();
+
         bytes32 reservesBefore = _reserves;
         bytes32 parameters = _parameters;
 
@@ -539,7 +588,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         if (balancesAfter.lt(reservesBefore.add(totalFees))) revert LBPair__FlashLoanInsufficientAmount();
 
-        totalFees = reservesBefore.sub(balancesAfter);
+        totalFees = balancesAfter.sub(reservesBefore);
 
         bytes32 protocolFees = totalFees.scalarMulDivBasisPointRoundDown(parameters.getProtocolShare());
         uint24 activeId = parameters.getActiveId();
@@ -678,19 +727,19 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         external
         override
         nonReentrant
-        onlyProtocolFeeReceiver
+        onlyProtocolFeeRecipient
         returns (bytes32 collectedProtocolFees)
     {
         bytes32 protocolFees = _protocolFees;
 
         (uint128 x, uint128 y) = protocolFees.decode();
-        bytes32 ones = uint128(x > 1 ? 1 : 0).encode(uint128(y > 1 ? 1 : 0));
+        bytes32 ones = uint128(x > 0 ? 1 : 0).encode(uint128(y > 0 ? 1 : 0));
 
         collectedProtocolFees = protocolFees.sub(ones);
 
         if (collectedProtocolFees != 0) {
             _protocolFees = ones;
-            _reserves.sub(collectedProtocolFees);
+            _reserves = _reserves.sub(collectedProtocolFees);
 
             collectedProtocolFees.transfer(_tokenX(), _tokenY(), msg.sender);
 
@@ -727,7 +776,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @param reductionFactor The reduction factor of the static fee
      * @param variableFeeControl The variable fee control of the static fee
      * @param protocolShare The protocol share of the static fee
-     * @param maxVolatilityAccumulated The max volatility accumulated of the static fee
+     * @param maxVolatilityAccumulator The max volatility accumulator of the static fee
      */
     function setStaticFeeParameters(
         uint16 baseFactor,
@@ -736,7 +785,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated
+        uint24 maxVolatilityAccumulator
     ) external override onlyFactory {
         _setStaticFeeParameters(
             _parameters,
@@ -746,7 +795,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             reductionFactor,
             variableFeeControl,
             protocolShare,
-            maxVolatilityAccumulated
+            maxVolatilityAccumulator
         );
     }
 
@@ -802,7 +851,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @return The encoded fees amounts
      */
     function _getFlashLoanFees(bytes32 amounts) private view returns (bytes32) {
-        uint128 fee = uint128(_factory.getFlashloanFee());
+        uint128 fee = uint128(_factory.getFlashLoanFee());
         (uint128 x, uint128 y) = amounts.decode();
 
         unchecked {
@@ -823,7 +872,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @param reductionFactor The reduction factor of the static fee
      * @param variableFeeControl The variable fee control of the static fee
      * @param protocolShare The protocol share of the static fee
-     * @param maxVolatilityAccumulated The max volatility accumulated of the static fee
+     * @param maxVolatilityAccumulator The max volatility accumulator of the static fee
      */
     function _setStaticFeeParameters(
         bytes32 parameters,
@@ -833,11 +882,11 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulated
+        uint24 maxVolatilityAccumulator
     ) internal {
         if (
             baseFactor == 0 && filterPeriod == 0 && decayPeriod == 0 && reductionFactor == 0 && variableFeeControl == 0
-                && protocolShare == 0 && maxVolatilityAccumulated == 0
+                && protocolShare == 0 && maxVolatilityAccumulator == 0
         ) {
             revert LBPair__InvalidStaticFeeParameters();
         }
@@ -849,7 +898,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             reductionFactor,
             variableFeeControl,
             protocolShare,
-            maxVolatilityAccumulated
+            maxVolatilityAccumulator
         );
 
         emit StaticFeeParametersSet(
@@ -860,7 +909,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             reductionFactor,
             variableFeeControl,
             protocolShare,
-            maxVolatilityAccumulated
+            maxVolatilityAccumulator
             );
     }
 

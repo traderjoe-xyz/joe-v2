@@ -20,7 +20,7 @@ import {ILBPair} from "./interfaces/ILBPair.sol";
 /// @author Trader Joe
 /// @notice Contract used to deploy and register new LBPairs.
 /// Enables setting fee parameters, flashloan fees and LBPair implementation.
-/// Unless the `_creationUnlocked` is `true`, only the owner of the factory can create pairs.
+/// Unless the `_isPresetOpen` is `true`, only the owner of the factory can create pairs.
 contract LBFactory is PendingOwnable, ILBFactory {
     using SafeCast for uint256;
     using Encoded for bytes32;
@@ -29,9 +29,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     uint256 private constant _MIN_BIN_STEP = 1; // 0.01%
     uint256 private constant _MAX_BIN_STEP = 200; // 1%, can't be greater than 247 for indexing reasons
-
-    /// @notice Whether the createLBPair function is unlocked and can be called by anyone (true) or only by owner (false)
-    bool private _creationUnlocked;
 
     uint256 private constant _MAX_FEE = 0.1e18; // 10%
     uint256 private constant _MAX_PROTOCOL_SHARE = 2_500; // 25%
@@ -49,6 +46,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /// @dev Whether a preset was set or not, if the bit at `index` is 1, it means that the binStep `index` was set
     /// The max binStep set is 247. We use this method instead of an array to keep it ordered and to reduce gas
     bytes32 private _availablePresets;
+
+    bytes32 private _openPresets;
 
     // The parameters presets
     mapping(uint256 => bytes32) private _presets;
@@ -72,9 +71,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
     }
 
     // TODO: Natspecs
-    function isCreationUnlocked() external view returns (bool unlocked) {
-        return _creationUnlocked;
-    }
 
     function getMinBinStep() external pure returns (uint256 minBinStep) {
         return _MIN_BIN_STEP;
@@ -183,6 +179,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
         maxVolatilityAccumulator = preset.getMaxVolatilityAccumulator();
     }
 
+    function getIsPresetOpen(uint8 binStep) external view returns (bool) {
+        bytes32 openPresets = _openPresets;
+
+        return _isPresetOpen(openPresets, binStep);
+    }
+
     /// @notice View function to return the list of available binStep with a preset
     /// @return presetsBinStep The list of binStep
     function getAllBinSteps() external view override returns (uint256[] memory presetsBinStep) {
@@ -270,7 +272,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
         override
         returns (ILBPair pair)
     {
-        if (!_creationUnlocked && msg.sender != owner()) revert LBFactory__FunctionIsLockedForUsers(msg.sender);
+        if (!_isPresetOpen(_openPresets, binStep) && msg.sender != owner()) {
+            revert LBFactory__FunctionIsLockedForUsers(msg.sender, binStep);
+        }
 
         address implementation = _lbPairImplementation;
 
@@ -420,6 +424,25 @@ contract LBFactory is PendingOwnable, ILBFactory {
             );
     }
 
+    function setOpenPreset(uint8 binStep, bool isOpen) external onlyOwner {
+        bytes32 openPresets = _openPresets;
+        bool isPresetOpen = _isPresetOpen(openPresets, binStep);
+
+        if (isOpen) {
+            if (isPresetOpen) revert LBFactory__SamePresetOpenState();
+
+            // We add a 1 at bit `binStep` as this binStep is now open
+            _openPresets = bytes32(uint256(openPresets) | (1 << binStep));
+        } else {
+            if (!isPresetOpen) revert LBFactory__SamePresetOpenState();
+
+            // We remove a 1 at bit `binStep` as this binStep is now closed
+            _openPresets = bytes32(uint256(openPresets) & ~(1 << binStep));
+        }
+
+        emit OpenPresetChanged(binStep, isOpen);
+    }
+
     /// @notice Remove the preset linked to a binStep
     /// @param binStep The bin step to remove
     function removePreset(uint8 binStep) external override onlyOwner {
@@ -507,14 +530,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
         emit FlashLoanFeeSet(oldFlashLoanFee, flashLoanFee);
     }
 
-    /// @notice Function to set the creation restriction of the Factory
-    /// @param locked If the creation is restricted (true) or not (false)
-    function setFactoryLockedState(bool locked) external override onlyOwner {
-        if (_creationUnlocked != locked) revert LBFactory__FactoryLockIsAlreadyInTheSameState();
-        _creationUnlocked = !locked;
-        emit FactoryLockedStatusUpdated(locked);
-    }
-
     /// @notice Function to add an asset to the whitelist of quote assets
     /// @param quoteAsset The quote asset (e.g: AVAX, USDC...)
     function addQuoteAsset(IERC20 quoteAsset) external override onlyOwner {
@@ -531,6 +546,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
         if (!_quoteAssetWhitelist.remove(address(quoteAsset))) revert LBFactory__QuoteAssetNotWhitelisted(quoteAsset);
 
         emit QuoteAssetRemoved(quoteAsset);
+    }
+
+    function _isPresetOpen(bytes32 openPresets, uint8 binStep) internal pure returns (bool) {
+        return openPresets.decode(1, binStep) == 1;
     }
 
     /// @notice Internal function to set the recipient of the fee

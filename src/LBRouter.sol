@@ -29,8 +29,6 @@ import {IWAVAX} from "./interfaces/IWAVAX.sol";
 contract LBRouter is ILBRouter {
     using TokenHelper for IERC20;
     using TokenHelper for IWAVAX;
-    // using Uint256x256Math for uint256;
-    using Encoded for bytes32;
     using JoeLibrary for uint256;
     using PackedUint128Math for bytes32;
 
@@ -626,17 +624,17 @@ contract LBRouter is ILBRouter {
 
             bytes32 amountsReceived;
             bytes32 amountsLeft;
-            (amountsReceived, amountsLeft, liquidityMinted) = pair.mint(liq.to, liquidityConfigs, msg.sender);
+            (amountsReceived, amountsLeft, liquidityMinted) = pair.mint(liq.to, liquidityConfigs, liq.refundTo);
 
-            amountXAdded = amountsReceived.decodeUint128(0);
-            amountYAdded = amountsReceived.decodeUint128(128);
+            amountXAdded = amountsReceived.decodeFirst();
+            amountYAdded = amountsReceived.decodeSecond();
 
             if (amountXAdded < liq.amountXMin || amountYAdded < liq.amountYMin) {
                 revert LBRouter__AmountSlippageCaught(liq.amountXMin, amountXAdded, liq.amountYMin, amountYAdded);
             }
 
-            amountXLeft = amountsLeft.decodeUint128(0);
-            amountYLeft = amountsLeft.decodeUint128(128);
+            amountXLeft = amountsLeft.decodeFirst();
+            amountYLeft = amountsLeft.decodeSecond();
         }
     }
 
@@ -696,8 +694,8 @@ contract LBRouter is ILBRouter {
         (bytes32[] memory amountsBurned) = pair.burn(msg.sender, to, ids, amounts);
 
         for (uint256 i; i < amountsBurned.length; ++i) {
-            amountX += amountsBurned[i].decodeUint128(0);
-            amountY += amountsBurned[i].decodeUint128(128);
+            amountX += amountsBurned[i].decodeFirst();
+            amountY += amountsBurned[i].decodeSecond();
         }
 
         if (amountX < amountXMin || amountY < amountYMin) {

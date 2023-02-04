@@ -284,6 +284,18 @@ library PairParameterHelper {
     }
 
     /**
+     * @dev Set the volatility accumulator in the encoded pair parameters
+     * @param params The encoded pair parameters
+     * @param volAcc The volatility accumulator
+     * @return The updated encoded pair parameters
+     */
+    function setVolatilityAccumulator(bytes32 params, uint24 volAcc) internal pure returns (bytes32) {
+        if (volAcc > Encoded.MASK_UINT20) revert PairParametersHelper__InvalidParameter();
+
+        return params.set(volAcc, Encoded.MASK_UINT20, OFFSET_VOL_ACC);
+    }
+
+    /**
      * @dev Set the active id in the encoded pair parameters
      * @param params The encoded pair parameters
      * @param activeId The active id
@@ -391,7 +403,7 @@ library PairParameterHelper {
 
         volAcc = volAcc > maxVolAcc ? maxVolAcc : volAcc;
 
-        return params.set(volAcc, Encoded.MASK_UINT20, OFFSET_VOL_ACC);
+        return setVolatilityAccumulator(params, uint24(volAcc));
     }
 
     /**

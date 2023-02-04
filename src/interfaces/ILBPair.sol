@@ -26,6 +26,7 @@ interface ILBPair is ILBToken {
     error LBPair__ZeroAmount(uint24 id);
     error LBPair__ZeroAmountsOut(uint24 id);
     error LBPair__ZeroShares(uint24 id);
+    error LBPair__MaxTotalFeeExceeded();
 
     event DepositedToBins(address indexed sender, address indexed to, uint256[] ids, bytes32[] amounts);
 

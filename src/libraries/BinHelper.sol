@@ -28,7 +28,8 @@ library BinHelper {
     using FeeHelper for uint128;
     using TokenHelper for IERC20;
 
-    error BinMath__CompositionFactorFlawed(uint24 id);
+    error BinHelper__CompositionFactorFlawed(uint24 id);
+    error BinHelper__LiquidityOverflow();
 
     /**
      * @dev Returns the amount of tokens that will be received when burning the given amount of liquidity
@@ -69,14 +70,13 @@ library BinHelper {
      * This is the amount of tokens that the user will actually add to the liquidity book,
      * and will always be less than or equal to the amountsIn.
      */
-    function getShareAndEffectiveAmountsIn(bytes32 binReserves, bytes32 amountsIn, uint256 price, uint256 totalSupply)
+    function getSharesAndEffectiveAmountsIn(bytes32 binReserves, bytes32 amountsIn, uint256 price, uint256 totalSupply)
         internal
         pure
         returns (uint256 shares, bytes32 effectiveAmountsIn)
     {
         uint256 userLiquidity = getLiquidity(amountsIn, price);
-        if (totalSupply == 0) return (userLiquidity, amountsIn);
-        if (userLiquidity == 0) return (0, 0);
+        if (totalSupply == 0 || userLiquidity == 0) return (userLiquidity, amountsIn);
 
         uint256 binLiquidity = getLiquidity(binReserves, price);
         if (binLiquidity == 0) return (userLiquidity, amountsIn);
@@ -84,20 +84,31 @@ library BinHelper {
         shares = userLiquidity.mulDivRoundDown(totalSupply, binLiquidity);
         uint256 effectiveLiquidity = shares.mulDivRoundUp(binLiquidity, totalSupply);
 
-        if (userLiquidity == effectiveLiquidity) return (shares, amountsIn);
+        if (userLiquidity > effectiveLiquidity) {
+            uint256 deltaLiquidity = userLiquidity - effectiveLiquidity;
 
-        uint256 deltaLiquidity = userLiquidity - effectiveLiquidity;
+            (uint256 x, uint256 y) = amountsIn.decode();
 
-        (uint128 amountX, uint128 amountY) = amountsIn.decode();
+            // The other way might be more efficient, but as y is the quote asset, it is more valuable
+            if (deltaLiquidity >= Constants.SCALE) {
+                uint256 deltaY = deltaLiquidity >> Constants.SCALE_OFFSET;
+                deltaY = deltaY > y ? y : deltaY;
 
-        if (amountY > deltaLiquidity) {
-            amountY -= uint128(deltaLiquidity);
-        } else {
-            amountY = 0;
-            amountX = effectiveLiquidity.shiftDivRoundUp(Constants.SCALE_OFFSET, price).safe128();
+                y -= deltaY;
+                deltaLiquidity -= deltaY << Constants.SCALE_OFFSET;
+            }
+
+            if (deltaLiquidity >= price) {
+                uint256 deltaX = deltaLiquidity / price;
+                deltaX = deltaX > x ? x : deltaX;
+
+                x -= deltaX;
+            }
+
+            amountsIn = uint128(x).encode(uint128(y));
         }
 
-        effectiveAmountsIn = amountX.encode(amountY);
+        return (shares, amountsIn);
     }
 
     /**
@@ -107,13 +118,23 @@ library BinHelper {
      * @return liquidity The amount of liquidity
      */
     function getLiquidity(bytes32 amounts, uint256 price) internal pure returns (uint256 liquidity) {
-        (uint128 x, uint128 y) = amounts.decode();
+        (uint256 x, uint256 y) = amounts.decode();
         if (x > 0) {
-            liquidity = price.mulShiftRoundDown(x, Constants.SCALE_OFFSET);
+            unchecked {
+                liquidity = price * x;
+                if (x != 0 && liquidity / x != price) revert BinHelper__LiquidityOverflow();
+            }
         }
         if (y > 0) {
-            liquidity += y;
+            unchecked {
+                y <<= Constants.SCALE_OFFSET;
+                liquidity += y;
+
+                if (liquidity < y) revert BinHelper__LiquidityOverflow();
+            }
         }
+
+        return liquidity;
     }
 
     /**
@@ -124,7 +145,7 @@ library BinHelper {
      */
     function verifyAmounts(bytes32 amounts, uint24 activeId, uint24 id) internal pure {
         if (id < activeId && (amounts << 128) > 0 || id > activeId && uint256(amounts) > type(uint128).max) {
-            revert BinMath__CompositionFactorFlawed(id);
+            revert BinHelper__CompositionFactorFlawed(id);
         }
     }
 

@@ -69,6 +69,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
         ILBRouter.LiquidityParameters memory liquidityParameters =
             getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+        liquidityParameters.refundTo = BOB;
 
         // Add liquidity
         (
@@ -85,6 +86,9 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(amountYAdded, liquidityParameters.amountY, "amountYAdded");
         assertLt(amountXLeft, amountXAdded, "amountXLeft");
         assertLt(amountYLeft, amountYAdded, "amountYLeft");
+
+        assertEq(usdt.balanceOf(BOB), amountXLeft, "usdt balance");
+        assertEq(usdc.balanceOf(BOB), amountYLeft, "usdc balance");
 
         // Check liquidity minted
         assertEq(liquidityMinted.length, binNumber);
@@ -154,7 +158,7 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__IdOverflows.selector, uint256(type(uint24).max) + 1));
         router.addLiquidity(liquidityParameters);
 
-        // Revert is slip^page is too high
+        // Revert is slippage is too high
         liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
         liquidityParameters.amountXMin = liquidityParameters.amountX + 1;
 

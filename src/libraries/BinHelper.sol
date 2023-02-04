@@ -122,12 +122,14 @@ library BinHelper {
         if (x > 0) {
             unchecked {
                 liquidity = price * x;
-                if (liquidity / x != price) revert BinHelper__LiquidityOverflow();
+                if (x != 0 && liquidity / x != price) revert BinHelper__LiquidityOverflow();
             }
         }
         if (y > 0) {
             unchecked {
-                liquidity += (y <<= Constants.SCALE_OFFSET);
+                y <<= Constants.SCALE_OFFSET;
+                liquidity += y;
+
                 if (liquidity < y) revert BinHelper__LiquidityOverflow();
             }
         }

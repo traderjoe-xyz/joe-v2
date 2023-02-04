@@ -71,6 +71,7 @@ interface ILBRouter {
         uint256[] distributionX;
         uint256[] distributionY;
         address to;
+        address refundTo;
         uint256 deadline;
     }
 

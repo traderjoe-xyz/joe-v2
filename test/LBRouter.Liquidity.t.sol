@@ -67,6 +67,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
         ILBRouter.LiquidityParameters memory liquidityParameters =
             getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+        liquidityParameters.refundTo = BOB;
 
         // Add liquidity
         (
@@ -83,6 +84,9 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(amountYAdded, liquidityParameters.amountY, "amountYAdded");
         assertLt(amountXLeft, amountXAdded, "amountXLeft");
         assertLt(amountYLeft, amountYAdded, "amountYLeft");
+
+        assertEq(usdt.balanceOf(BOB), amountXLeft, "usdt balance");
+        assertEq(usdc.balanceOf(BOB), amountYLeft, "usdc balance");
 
         // Check liquidity minted
         assertEq(liquidityMinted.length, binNumber);

@@ -53,6 +53,8 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         _;
     }
 
+    uint256 private constant _MAX_TOTAL_FEE = 0.1e18; // 10%
+
     ILBFactory private immutable _factory;
 
     bytes32 private _parameters;
@@ -891,7 +893,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             revert LBPair__InvalidStaticFeeParameters();
         }
 
-        _parameters = parameters.setStaticFeeParameters(
+        parameters = parameters.setStaticFeeParameters(
             baseFactor,
             filterPeriod,
             decayPeriod,
@@ -900,6 +902,17 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             protocolShare,
             maxVolatilityAccumulator
         );
+
+        {
+            uint8 binStep = _binStep();
+            bytes32 maxParameters = parameters.setVolatilityAccumulator(maxVolatilityAccumulator);
+            uint256 totalFee = maxParameters.getBaseFee(binStep) + maxParameters.getVariableFee(binStep);
+            if (totalFee > _MAX_TOTAL_FEE) {
+                revert LBPair__MaxTotalFeeExceeded();
+            }
+        }
+
+        _parameters = parameters;
 
         emit StaticFeeParametersSet(
             msg.sender,
@@ -933,7 +946,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         uint256 price = id.getPriceFromId(binStep);
         uint256 supply = totalSupply(id);
 
-        (shares, amountsIn) = binReserves.getShareAndEffectiveAmountsIn(maxAmountsInToBin, price, supply);
+        (shares, amountsIn) = binReserves.getSharesAndEffectiveAmountsIn(maxAmountsInToBin, price, supply);
         amountsInToBin = amountsIn;
 
         if (id == activeId) {

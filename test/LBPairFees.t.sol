@@ -3,6 +3,7 @@
 pragma solidity 0.8.10;
 
 import "./helpers/TestHelper.sol";
+import "../src/libraries/ImmutableClone.sol";
 
 contract LBPairFeesTest is TestHelper {
     using PackedUint128Math for uint128;
@@ -542,5 +543,27 @@ contract LBPairFeesTest is TestHelper {
 
         assertEq(wavax.balanceOf(feeRecipient), previousProtocolFeeX - 1, "test_CollectProtocolFees::19");
         assertEq(usdc.balanceOf(feeRecipient), previousProtocolFeeY - 1, "test_CollectProtocolFees::20");
+    }
+
+    function test_revert_TotalFeeExceeded(
+        uint8 binStep,
+        uint16 baseFactor,
+        uint24 variableFeeControl,
+        uint24 maxVolatilityAccumulator
+    ) external {
+        vm.assume(maxVolatilityAccumulator <= Encoded.MASK_UINT20);
+
+        uint256 baseFee = uint256(baseFactor) * binStep * 5e9;
+        uint256 varFee = ((uint256(binStep) * maxVolatilityAccumulator) ** 2 * variableFeeControl + 399) / 400;
+
+        vm.assume(baseFee + varFee > 1e17);
+
+        bytes memory data = abi.encodePacked(wavax, usdc, binStep);
+
+        pairWavax = LBPair(ImmutableClone.cloneDeterministic(address(pairImplementation), data, keccak256(data)));
+
+        vm.expectRevert(ILBPair.LBPair__MaxTotalFeeExceeded.selector);
+        vm.prank(address(factory));
+        pairWavax.setStaticFeeParameters(baseFactor, 1, 1, 1, variableFeeControl, 1, maxVolatilityAccumulator);
     }
 }

@@ -262,4 +262,14 @@ contract LBPairOracleTest is TestHelper {
         assertEq(cumulativeVolatilityNow, (newActiveId - activeId) * 10_000 * 1000, "Test_MaxLengthOracle::19");
         assertEq(cumulativeBinCrossedNow, (newActiveId - activeId) * 1000, "Test_MaxLengthOracle::20");
     }
+
+    function test_GetOracleParametersEmptyOracle() external {
+        (, uint256 size, uint256 activeSize, uint256 lastUpdated, uint256 firstTimestamp) =
+            pairWavax.getOracleParameters();
+
+        assertEq(size, 0, "Test_GetOracleParametersEmptyOracle::1");
+        assertEq(activeSize, 0, "Test_GetOracleParametersEmptyOracle::2");
+        assertEq(lastUpdated, 0, "Test_GetOracleParametersEmptyOracle::3");
+        assertEq(firstTimestamp, 0, "Test_GetOracleParametersEmptyOracle::4");
+    }
 }

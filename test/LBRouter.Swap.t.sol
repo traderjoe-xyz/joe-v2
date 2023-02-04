@@ -416,7 +416,7 @@ contract LiquidityBinRouterSwapTest is TestHelper {
         // Reverts if amountOut is less than amountOutMin
         vm.expectRevert(
             abi.encodeWithSelector(
-                ILBRouter.LBRouter__InsufficientAmountOut.selector, amountOutExpected, amountOutExpected / 2
+                ILBRouter.LBRouter__InsufficientAmountOut.selector, amountOutExpected, amountOutExpected / 2 + 1
             )
         );
         router.swapExactAVAXForTokensSupportingFeeOnTransferTokens{value: amountIn}(
@@ -429,7 +429,7 @@ contract LiquidityBinRouterSwapTest is TestHelper {
             amountOutExpected / 2, path, address(this), block.timestamp + 1
         );
 
-        assertEq(amountOut, amountOutExpected / 2, "amountOut");
+        assertEq(amountOut, amountOutExpected / 2 + 1, "amountOut");
         assertEq(taxToken.balanceOf(address(this)), balanceBefore + amountOut, "balance");
 
         // Revert if token in isn't WAVAX

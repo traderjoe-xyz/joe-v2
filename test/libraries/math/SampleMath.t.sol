@@ -118,14 +118,14 @@ contract SampleMathTest is Test {
         }
     }
 
-    function testFuzz_update(uint40 deltaTime, uint24 activeId, uint24 volatilityAccumulated, uint24 binCrossed)
+    function testFuzz_update(uint40 deltaTime, uint24 activeId, uint24 volatilityAccumulator, uint24 binCrossed)
         external
     {
         (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed) =
-            bytes32(0).update(deltaTime, activeId, volatilityAccumulated, binCrossed);
+            bytes32(0).update(deltaTime, activeId, volatilityAccumulator, binCrossed);
 
         assertEq(cumulativeId, uint64(activeId) * deltaTime, "testFuzz_update::1");
-        assertEq(cumulativeVolatility, uint64(volatilityAccumulated) * deltaTime, "testFuzz_update::2");
+        assertEq(cumulativeVolatility, uint64(volatilityAccumulator) * deltaTime, "testFuzz_update::2");
         assertEq(cumulativeBinCrossed, uint64(binCrossed) * deltaTime, "testFuzz_update::3");
     }
 
@@ -133,7 +133,7 @@ contract SampleMathTest is Test {
         bytes32 sample,
         uint40 deltaTime,
         uint24 activeId,
-        uint24 volatilityAccumulated,
+        uint24 volatilityAccumulator,
         uint24 binCrossed
     ) external {
         uint64 currentCumulativeId = sample.getCumulativeId();
@@ -141,26 +141,26 @@ contract SampleMathTest is Test {
         uint64 currentCumulativeBinCrossed = sample.getCumulativeBinCrossed();
 
         uint64(deltaTime) * activeId;
-        uint64(deltaTime) * volatilityAccumulated;
+        uint64(deltaTime) * volatilityAccumulator;
         uint64(deltaTime) * binCrossed;
 
         if (
             uint64(deltaTime) * activeId > type(uint64).max - currentCumulativeId
-                || uint64(deltaTime) * volatilityAccumulated > type(uint64).max - currentCumulativeVolatility
+                || uint64(deltaTime) * volatilityAccumulator > type(uint64).max - currentCumulativeVolatility
                 || uint64(deltaTime) * binCrossed > type(uint64).max - currentCumulativeBinCrossed
         ) {
             vm.expectRevert();
-            sample.update(deltaTime, activeId, volatilityAccumulated, binCrossed);
+            sample.update(deltaTime, activeId, volatilityAccumulator, binCrossed);
         } else {
             (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed) =
-                sample.update(deltaTime, activeId, volatilityAccumulated, binCrossed);
+                sample.update(deltaTime, activeId, volatilityAccumulator, binCrossed);
 
             assertEq(
                 uint64(cumulativeId), currentCumulativeId + uint64(activeId) * deltaTime, "testFuzz_updateWithSample::1"
             );
             assertEq(
                 uint64(cumulativeVolatility),
-                currentCumulativeVolatility + uint64(volatilityAccumulated) * deltaTime,
+                currentCumulativeVolatility + uint64(volatilityAccumulator) * deltaTime,
                 "testFuzz_updateWithSample::2"
             );
             assertEq(

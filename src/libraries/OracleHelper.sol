@@ -14,7 +14,7 @@ import {PairParameterHelper} from "./PairParameterHelper.sol";
  * Each sample is encoded as follows:
  * 0 - 16: oracle length (16 bits)
  * 16 - 80: cumulative id (64 bits)
- * 80 - 144: cumulative volatility accumulated (64 bits)
+ * 80 - 144: cumulative volatility accumulator (64 bits)
  * 144 - 208: cumulative bin crossed (64 bits)
  * 208 - 216: sample lifetime (8 bits)
  * 216 - 256: sample creation timestamp (40 bits)
@@ -113,9 +113,7 @@ library OracleHelper {
         } else {
             lastUpdate = lookUpTimestamp;
         }
-
         (bytes32 prevSample, bytes32 nextSample) = binarySearch(oracle, oracleId, lookUpTimestamp, activeSize);
-
         uint40 weightPrev = nextSample.getSampleLastUpdate() - lookUpTimestamp;
         uint40 weightNext = lookUpTimestamp - prevSample.getSampleLastUpdate();
 
@@ -137,15 +135,15 @@ library OracleHelper {
         view
         returns (bytes32, bytes32)
     {
-        uint16 low = 0;
-        uint16 high = length - 1;
+        uint256 low = 0;
+        uint256 high = length - 1;
 
         bytes32 sample;
         uint40 sampleLastUpdate;
 
         uint256 startId = oracleId; // oracleId is 1-based
         while (low <= high) {
-            uint16 mid = (low + high) >> 1;
+            uint256 mid = (low + high) >> 1;
 
             assembly {
                 oracleId := addmod(startId, mid, length)
@@ -206,32 +204,38 @@ library OracleHelper {
         bytes32 sample = getSample(oracle, oracleId);
 
         uint40 createdAt = sample.getSampleCreation();
-        uint40 deltaTime = block.timestamp.safe40() - createdAt;
+        uint40 lastUpdatedAt = createdAt + sample.getSampleLifetime();
 
-        if (deltaTime > 0) {
-            (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed) = sample.update(
-                deltaTime, activeId, parameters.getVolatilityAccumulated(), parameters.getDeltaId(activeId)
-            );
+        if (block.timestamp.safe40() > lastUpdatedAt) {
+            unchecked {
+                (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed) = sample.update(
+                    uint40(block.timestamp - lastUpdatedAt),
+                    activeId,
+                    parameters.getVolatilityAccumulator(),
+                    parameters.getDeltaId(activeId)
+                );
 
-            uint16 length = sample.getOracleLength();
+                uint16 length = sample.getOracleLength();
+                uint256 lifetime = block.timestamp - createdAt;
 
-            if (deltaTime > _MAX_SAMPLE_LIFETIME) {
-                assembly {
-                    oracleId := add(mod(oracleId, length), 1)
+                if (lifetime > _MAX_SAMPLE_LIFETIME) {
+                    assembly {
+                        oracleId := add(mod(oracleId, length), 1)
+                    }
+
+                    lifetime = 0;
+                    createdAt = uint40(block.timestamp);
+
+                    parameters = parameters.setOracleId(oracleId);
                 }
 
-                deltaTime = 0;
-                createdAt = uint40(block.timestamp);
-
-                parameters = parameters.setOracleId(oracleId);
+                sample = SampleMath.encode(
+                    length, cumulativeId, cumulativeVolatility, cumulativeBinCrossed, uint8(lifetime), createdAt
+                );
             }
 
-            sample = SampleMath.encode(
-                length, cumulativeId, cumulativeVolatility, cumulativeBinCrossed, uint8(deltaTime), createdAt
-            );
+            setSample(oracle, oracleId, sample);
         }
-
-        setSample(oracle, oracleId, sample);
 
         return parameters;
     }

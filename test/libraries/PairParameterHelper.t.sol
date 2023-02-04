@@ -16,7 +16,7 @@ contract PairParameterHelperTest is Test {
         uint16 reductionFactor;
         uint24 variableFeeControl;
         uint16 protocolShare;
-        uint24 maxVolatilityAccumulated;
+        uint24 maxVolatilityAccumulator;
     }
 
     function testFuzz_StaticFeeParameters(bytes32 params, StaticFeeParameters memory sfp) external {
@@ -24,7 +24,7 @@ contract PairParameterHelperTest is Test {
             sfp.filterPeriod <= sfp.decayPeriod && sfp.decayPeriod <= Encoded.MASK_UINT12
                 && sfp.reductionFactor <= Constants.BASIS_POINT_MAX
                 && sfp.protocolShare <= PairParameterHelper.MAX_PROTOCOL_SHARE
-                && sfp.maxVolatilityAccumulated <= Encoded.MASK_UINT20
+                && sfp.maxVolatilityAccumulator <= Encoded.MASK_UINT20
         );
 
         bytes32 newParams = params.setStaticFeeParameters(
@@ -34,7 +34,7 @@ contract PairParameterHelperTest is Test {
             sfp.reductionFactor,
             sfp.variableFeeControl,
             sfp.protocolShare,
-            sfp.maxVolatilityAccumulated
+            sfp.maxVolatilityAccumulator
         );
 
         assertEq(
@@ -50,7 +50,7 @@ contract PairParameterHelperTest is Test {
         assertEq(newParams.getVariableFeeControl(), sfp.variableFeeControl, "testFuzz_StaticFeeParameters::6");
         assertEq(newParams.getProtocolShare(), sfp.protocolShare, "testFuzz_StaticFeeParameters::7");
         assertEq(
-            newParams.getMaxVolatilityAccumulated(), sfp.maxVolatilityAccumulated, "testFuzz_StaticFeeParameters::8"
+            newParams.getMaxVolatilityAccumulator(), sfp.maxVolatilityAccumulator, "testFuzz_StaticFeeParameters::8"
         );
     }
 
@@ -59,7 +59,7 @@ contract PairParameterHelperTest is Test {
             sfp.filterPeriod > sfp.decayPeriod || sfp.decayPeriod > Encoded.MASK_UINT12
                 || sfp.reductionFactor > Constants.BASIS_POINT_MAX
                 || sfp.protocolShare > PairParameterHelper.MAX_PROTOCOL_SHARE
-                || sfp.maxVolatilityAccumulated > Encoded.MASK_UINT20
+                || sfp.maxVolatilityAccumulator > Encoded.MASK_UINT20
         );
 
         vm.expectRevert(PairParameterHelper.PairParametersHelper__InvalidParameter.selector);
@@ -70,7 +70,7 @@ contract PairParameterHelperTest is Test {
             sfp.reductionFactor,
             sfp.variableFeeControl,
             sfp.protocolShare,
-            sfp.maxVolatilityAccumulated
+            sfp.maxVolatilityAccumulator
         );
     }
 
@@ -128,7 +128,7 @@ contract PairParameterHelperTest is Test {
 
         assertEq(baseFee, uint256(params.getBaseFactor()) * binStep * 5e9, "test_getBaseAndVariableFees::1");
 
-        uint256 prod = uint256(params.getVolatilityAccumulated()) * binStep;
+        uint256 prod = uint256(params.getVolatilityAccumulator()) * binStep;
         assertEq(
             variableFee, (prod * prod * params.getVariableFeeControl() + 399) / 400, "test_getBaseAndVariableFees::2"
         );
@@ -166,18 +166,18 @@ contract PairParameterHelperTest is Test {
     }
 
     function testFuzz_UpdateVolatilityReference(bytes32 params) external {
-        uint256 volAccumulated = params.getVolatilityAccumulated();
+        uint256 volAccumulator = params.getVolatilityAccumulator();
         uint256 reductionFactor = params.getReductionFactor();
 
-        uint256 newVolAccumulated = volAccumulated * reductionFactor / Constants.BASIS_POINT_MAX;
+        uint256 newVolAccumulator = volAccumulator * reductionFactor / Constants.BASIS_POINT_MAX;
 
-        if (newVolAccumulated > Encoded.MASK_UINT20) {
+        if (newVolAccumulator > Encoded.MASK_UINT20) {
             vm.expectRevert(PairParameterHelper.PairParametersHelper__InvalidParameter.selector);
             params.updateVolatilityReference();
         } else {
             bytes32 newParams = params.updateVolatilityReference();
 
-            assertEq(newParams.getVolatilityReference(), newVolAccumulated, "test_UpdateVolatilityReference::1");
+            assertEq(newParams.getVolatilityReference(), newVolAccumulator, "test_UpdateVolatilityReference::1");
             assertEq(
                 newParams & bytes32(~Encoded.MASK_UINT20 << PairParameterHelper.OFFSET_VOL_REF),
                 params & bytes32(~Encoded.MASK_UINT20 << PairParameterHelper.OFFSET_VOL_REF),
@@ -186,21 +186,22 @@ contract PairParameterHelperTest is Test {
         }
     }
 
-    function testFuzz_UpdateVolatilityAccumulated(bytes32 params, uint24 activeId) external {
-        uint256 deltaId = params.getDeltaId(activeId);
+    function testFuzz_UpdateVolatilityAccumulator(bytes32 params, uint24 activeId) external {
+        uint256 idReference = params.getIdReference();
+        uint256 deltaId = activeId > idReference ? activeId - idReference : idReference - activeId;
 
-        uint256 volAccumulated = params.getVolatilityAccumulated() + deltaId * Constants.BASIS_POINT_MAX;
-        volAccumulated = volAccumulated > params.getMaxVolatilityAccumulated()
-            ? params.getMaxVolatilityAccumulated()
-            : volAccumulated;
+        uint256 volAccumulator = params.getVolatilityReference() + deltaId * Constants.BASIS_POINT_MAX;
+        volAccumulator = volAccumulator > params.getMaxVolatilityAccumulator()
+            ? params.getMaxVolatilityAccumulator()
+            : volAccumulator;
 
-        bytes32 newParams = params.updateVolatilityAccumulated(activeId);
+        bytes32 newParams = params.updateVolatilityAccumulator(activeId);
 
-        assertEq(newParams.getVolatilityAccumulated(), volAccumulated, "test_UpdateVolatilityAccumulated::1");
+        assertEq(newParams.getVolatilityAccumulator(), volAccumulator, "test_UpdateVolatilityAccumulator::1");
         assertEq(
             newParams & bytes32(~Encoded.MASK_UINT20 << PairParameterHelper.OFFSET_VOL_ACC),
             params & bytes32(~Encoded.MASK_UINT20 << PairParameterHelper.OFFSET_VOL_ACC),
-            "test_UpdateVolatilityAccumulated::2"
+            "test_UpdateVolatilityAccumulator::2"
         );
     }
 
@@ -211,7 +212,7 @@ contract PairParameterHelperTest is Test {
             previousTime <= time && sfp.filterPeriod <= sfp.decayPeriod && sfp.decayPeriod <= Encoded.MASK_UINT12
                 && sfp.reductionFactor <= Constants.BASIS_POINT_MAX
                 && sfp.protocolShare <= PairParameterHelper.MAX_PROTOCOL_SHARE
-                && sfp.maxVolatilityAccumulated <= Encoded.MASK_UINT20
+                && sfp.maxVolatilityAccumulator <= Encoded.MASK_UINT20
         );
 
         vm.warp(previousTime);
@@ -223,7 +224,7 @@ contract PairParameterHelperTest is Test {
             sfp.reductionFactor,
             sfp.variableFeeControl,
             sfp.protocolShare,
-            sfp.maxVolatilityAccumulated
+            sfp.maxVolatilityAccumulator
         ).updateTimeOfLastUpdate();
 
         vm.warp(time);
@@ -275,7 +276,7 @@ contract PairParameterHelperTest is Test {
             previousTime <= time && sfp.filterPeriod <= sfp.decayPeriod && sfp.decayPeriod <= Encoded.MASK_UINT12
                 && sfp.reductionFactor <= Constants.BASIS_POINT_MAX
                 && sfp.protocolShare <= PairParameterHelper.MAX_PROTOCOL_SHARE
-                && sfp.maxVolatilityAccumulated <= Encoded.MASK_UINT20
+                && sfp.maxVolatilityAccumulator <= Encoded.MASK_UINT20
         );
 
         vm.warp(previousTime);
@@ -287,12 +288,12 @@ contract PairParameterHelperTest is Test {
             sfp.reductionFactor,
             sfp.variableFeeControl,
             sfp.protocolShare,
-            sfp.maxVolatilityAccumulated
+            sfp.maxVolatilityAccumulator
         ).updateTimeOfLastUpdate();
 
         vm.warp(time);
 
-        bytes32 trustedParams = params.updateReferences().updateVolatilityAccumulated(activeId);
+        bytes32 trustedParams = params.updateReferences().updateVolatilityAccumulator(activeId);
         bytes32 newParams = params.updateVolatilityParameters(activeId);
 
         assertEq(newParams.getIdReference(), trustedParams.getIdReference(), "test_UpdateVolatilityParameters::1");
@@ -302,8 +303,8 @@ contract PairParameterHelperTest is Test {
             "test_UpdateVolatilityParameters::2"
         );
         assertEq(
-            newParams.getVolatilityAccumulated(),
-            trustedParams.getVolatilityAccumulated(),
+            newParams.getVolatilityAccumulator(),
+            trustedParams.getVolatilityAccumulator(),
             "test_UpdateVolatilityParameters::3"
         );
         assertEq(newParams.getTimeOfLastUpdate(), time, "test_UpdateVolatilityParameters::4");

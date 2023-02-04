@@ -153,7 +153,7 @@ contract BinHelperTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATED
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
         );
 
         bytes32 compositionFees = binReserves.getCompositionFees(parameters, binStep, amountsIn, totalSupply, shares);
@@ -189,7 +189,7 @@ contract BinHelperTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATED
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
         );
 
         uint24 activeId = uint24(uint256(int256(uint256(ID_ONE)) + deltaId));
@@ -210,19 +210,25 @@ contract BinHelperTest is TestHelper {
         (bytes32 amountsInToBin, bytes32 amountsOutOfBin, bytes32 totalFees) =
             reserves.getAmounts(parameters, DEFAULT_BIN_STEP, swapForY, activeId, amountIn.encode(swapForY));
 
-        assertLe(amountsInToBin.add(totalFees).decode(swapForY), amountIn, "test_GetAmounts::1");
+        assertLe(amountsInToBin.decode(swapForY), amountIn, "test_GetAmounts::1");
 
-        uint256 amountInForSwap = amountsInToBin.add(totalFees).decode(swapForY);
+        uint256 amountInWithoutFees = amountsInToBin.sub(totalFees).decode(swapForY);
 
         (uint256 amountOutWithNoFees, uint256 amountOut) = swapForY
-            ? (price.mulShiftRoundDown(amountInForSwap, Constants.SCALE_OFFSET), amountsOutOfBin.decodeSecond())
-            : (uint256(amountInForSwap).shiftDivRoundDown(Constants.SCALE_OFFSET, price), amountsOutOfBin.decodeFirst());
+            ? (
+                price.mulShiftRoundDown(amountsInToBin.decodeFirst(), Constants.SCALE_OFFSET),
+                amountsOutOfBin.decodeSecond()
+            )
+            : (
+                uint256(amountsInToBin.decodeSecond()).shiftDivRoundDown(Constants.SCALE_OFFSET, price),
+                amountsOutOfBin.decodeFirst()
+            );
 
         assertGe(amountOutWithNoFees, amountOut, "test_GetAmounts::2");
 
         uint256 amountOutWithFees = swapForY
-            ? price.mulShiftRoundDown(amountsInToBin.decodeFirst(), Constants.SCALE_OFFSET)
-            : uint256(amountsInToBin.decodeSecond()).shiftDivRoundDown(Constants.SCALE_OFFSET, price);
+            ? price.mulShiftRoundDown(amountInWithoutFees, Constants.SCALE_OFFSET)
+            : amountInWithoutFees.shiftDivRoundDown(Constants.SCALE_OFFSET, price);
 
         assertEq(amountOut, amountOutWithFees, "test_GetAmounts::3");
     }
@@ -241,7 +247,7 @@ contract BinHelperTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATED
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
         );
 
         uint24 activeId = uint24(uint256(int256(uint256(ID_ONE)) + deltaId));
@@ -262,10 +268,10 @@ contract BinHelperTest is TestHelper {
         (bytes32 amountsInToBin, bytes32 amountsOutOfBin, bytes32 totalFees) =
             reserves.getAmounts(parameters, DEFAULT_BIN_STEP, swapForY, activeId, amountIn.encode(swapForY));
 
-        assertLe(amountsInToBin.add(totalFees).decode(swapForY), amountIn, "test_GetAmounts::1");
+        assertLe(amountsInToBin.decode(swapForY), amountIn, "test_GetAmounts::1");
 
         {
-            uint256 amountInForSwap = amountsInToBin.add(totalFees).decode(swapForY);
+            uint256 amountInForSwap = amountsInToBin.decode(swapForY);
 
             (uint256 amountOutWithNoFees, uint256 amountOut) = swapForY
                 ? (price.mulShiftRoundDown(amountInForSwap, Constants.SCALE_OFFSET), amountsOutOfBin.decodeSecond())
@@ -274,7 +280,7 @@ contract BinHelperTest is TestHelper {
             assertGe(amountOutWithNoFees, amountOut, "test_GetAmounts::2");
         }
 
-        uint128 amountInToBin = amountsInToBin.decode(swapForY);
+        uint128 amountInToBin = amountsInToBin.sub(totalFees).decode(swapForY);
 
         (uint256 amountOutWithFees, uint256 amountOutWithFeesAmountInSub1) = amountInToBin == 0
             ? (0, 0)

@@ -70,7 +70,7 @@ library BinHelper {
      * This is the amount of tokens that the user will actually add to the liquidity book,
      * and will always be less than or equal to the amountsIn.
      */
-    function getShareAndEffectiveAmountsIn(bytes32 binReserves, bytes32 amountsIn, uint256 price, uint256 totalSupply)
+    function getSharesAndEffectiveAmountsIn(bytes32 binReserves, bytes32 amountsIn, uint256 price, uint256 totalSupply)
         internal
         pure
         returns (uint256 shares, bytes32 effectiveAmountsIn)

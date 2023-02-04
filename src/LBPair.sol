@@ -933,7 +933,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         uint256 price = id.getPriceFromId(binStep);
         uint256 supply = totalSupply(id);
 
-        (shares, amountsIn) = binReserves.getShareAndEffectiveAmountsIn(maxAmountsInToBin, price, supply);
+        (shares, amountsIn) = binReserves.getSharesAndEffectiveAmountsIn(maxAmountsInToBin, price, supply);
         amountsInToBin = amountsIn;
 
         if (id == activeId) {

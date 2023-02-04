@@ -48,7 +48,7 @@ contract BinHelperTest is TestHelper {
         }
     }
 
-    function testFuzz_GetShareAndEffectiveAmountsIn(
+    function testFuzz_getSharesAndEffectiveAmountsIn(
         uint128 binReserveX,
         uint128 binReserveY,
         uint128 amountInX,
@@ -64,16 +64,16 @@ contract BinHelperTest is TestHelper {
         bytes32 amountsIn = amountInX.encode(amountInY);
 
         (uint256 shares, bytes32 effectiveAmountsIn) =
-            binReserves.getShareAndEffectiveAmountsIn(amountsIn, price, totalSupply);
+            binReserves.getSharesAndEffectiveAmountsIn(amountsIn, price, totalSupply);
 
-        assertLe(uint256(effectiveAmountsIn), uint256(amountsIn), "test_GetShareAndEffectiveAmountsIn::1");
+        assertLe(uint256(effectiveAmountsIn), uint256(amountsIn), "test_getSharesAndEffectiveAmountsIn::1");
 
         uint256 userLiquidity = amountsIn.getLiquidity(price);
         uint256 expectedShares = binLiquidity == 0 || totalSupply == 0
             ? userLiquidity
             : userLiquidity.mulDivRoundDown(totalSupply, binLiquidity);
 
-        assertEq(shares, expectedShares, "test_GetShareAndEffectiveAmountsIn::2");
+        assertEq(shares, expectedShares, "test_getSharesAndEffectiveAmountsIn::2");
     }
 
     function testFuzz_TryExploitShares(
@@ -96,7 +96,7 @@ contract BinHelperTest is TestHelper {
 
         bytes32 amountsIn = amountX2.encode(amountY2);
         (uint256 shares, bytes32 effectiveAmountsIn) =
-            binReserves.getShareAndEffectiveAmountsIn(amountsIn, price, totalSupply);
+            binReserves.getSharesAndEffectiveAmountsIn(amountsIn, price, totalSupply);
 
         binReserves = binReserves.add(effectiveAmountsIn);
         totalSupply += shares;
@@ -146,7 +146,7 @@ contract BinHelperTest is TestHelper {
         );
 
         (uint256 shares, bytes32 amountsIn) =
-            binReserves.getShareAndEffectiveAmountsIn(amountXIn.encode(amountYIn), price, totalSupply);
+            binReserves.getSharesAndEffectiveAmountsIn(amountXIn.encode(amountYIn), price, totalSupply);
 
         vm.assume(
             !binReserves.gt(bytes32(type(uint256).max).sub(amountsIn)) && totalSupply <= type(uint256).max - shares

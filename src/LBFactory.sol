@@ -385,8 +385,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 protocolShare,
         uint24 maxVolatilityAccumulator
     ) external override onlyOwner {
-        bytes32 packedFeeParameters = _getPackedFeeParameters(
-            binStep,
+        bytes32 preset;
+
+        _presets[binStep] = preset.setStaticFeeParameters(
             baseFactor,
             filterPeriod,
             decayPeriod,
@@ -395,10 +396,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
             protocolShare,
             maxVolatilityAccumulator
         );
-
-        bytes32 preset = bytes32((uint256(packedFeeParameters)));
-
-        _presets[binStep] = preset;
 
         bytes32 avPresets = _availablePresets;
         if (avPresets.decodeUint1(binStep) == 0) {
@@ -566,64 +563,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     function forceDecay(ILBPair pair) external override onlyOwner {
         pair.forceDecay();
-    }
-
-    /// @notice Internal function to set the fee parameter of a LBPair
-    /// @param binStep The bin step in basis point, used to calculate log(1 + binStep)
-    /// @param baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
-    /// @param filterPeriod The period where the accumulator value is untouched, prevent spam
-    /// @param decayPeriod The period where the accumulator value is halved
-    /// @param reductionFactor The reduction factor, used to calculate the reduction of the accumulator
-    /// @param variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable it
-    /// @param protocolShare The share of the fees received by the protocol
-    /// @param maxVolatilityAccumulator The max value of volatility accumulator
-    function _getPackedFeeParameters(
-        uint8 binStep,
-        uint16 baseFactor,
-        uint16 filterPeriod,
-        uint16 decayPeriod,
-        uint16 reductionFactor,
-        uint24 variableFeeControl,
-        uint16 protocolShare,
-        uint24 maxVolatilityAccumulator
-    ) private pure returns (bytes32 preset) {
-        if (binStep < _MIN_BIN_STEP || binStep > _MAX_BIN_STEP) {
-            revert LBFactory__BinStepRequirementsBreached(_MIN_BIN_STEP, binStep, _MAX_BIN_STEP);
-        }
-
-        if (filterPeriod >= decayPeriod) revert LBFactory__DecreasingPeriods(filterPeriod, decayPeriod);
-
-        if (reductionFactor > Constants.BASIS_POINT_MAX) {
-            revert LBFactory__ReductionFactorOverflows(reductionFactor, Constants.BASIS_POINT_MAX);
-        }
-
-        if (protocolShare > _MAX_PROTOCOL_SHARE) {
-            revert LBFactory__ProtocolShareOverflows(protocolShare, _MAX_PROTOCOL_SHARE);
-        }
-
-        {
-            uint256 baseFee = (uint256(baseFactor) * binStep) * 1e10;
-
-            // Can't overflow as the max value is `max(uint24) * (max(uint24) * max(uint16)) ** 2 < max(uint104)`
-            // It returns 18 decimals as:
-            // decimals(variableFeeControl * (volatilityAccumulator * binStep)**2 / 100) = 4 + (4 + 4) * 2 - 2 = 18
-            uint256 prod = uint256(maxVolatilityAccumulator) * binStep;
-            uint256 maxVariableFee = (prod * prod * variableFeeControl) / 100;
-
-            if (baseFee + maxVariableFee > _MAX_FEE) {
-                revert LBFactory__FeesAboveMax(baseFee + maxVariableFee, _MAX_FEE);
-            }
-        }
-
-        return preset.setStaticFeeParameters(
-            baseFactor,
-            filterPeriod,
-            decayPeriod,
-            reductionFactor,
-            variableFeeControl,
-            protocolShare,
-            maxVolatilityAccumulator
-        );
     }
 
     /// @notice Returns the LBPairInformation if it exists,

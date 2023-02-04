@@ -29,8 +29,6 @@ import {IWAVAX} from "./interfaces/IWAVAX.sol";
 contract LBRouter is ILBRouter {
     using TokenHelper for IERC20;
     using TokenHelper for IWAVAX;
-    // using Uint256x256Math for uint256;
-    using Encoded for bytes32;
     using JoeLibrary for uint256;
     using PackedUint128Math for bytes32;
 
@@ -156,12 +154,17 @@ contract LBRouter is ILBRouter {
     /// @notice Add liquidity while performing safety checks
     /// @dev This function is compliant with fee on transfer tokens
     /// @param liquidityParameters The liquidity parameters
-    /// @return depositIds Bin ids where the liquidity was actually deposited
-    /// @return liquidityMinted Amounts of LBToken minted for each bin
     function addLiquidity(LiquidityParameters calldata liquidityParameters)
         external
         override
-        returns (bytes32[] memory depositIds, uint256[] memory liquidityMinted)
+        returns (
+            uint256 amountXAdded,
+            uint256 amountYAdded,
+            uint256 amountXLeft,
+            uint256 amountYLeft,
+            uint256[] memory depositIds,
+            uint256[] memory liquidityMinted
+        )
     {
         ILBPair lbPair = _getLBPairInformation(
             liquidityParameters.tokenX,
@@ -174,19 +177,25 @@ contract LBRouter is ILBRouter {
         liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(lbPair), liquidityParameters.amountX);
         liquidityParameters.tokenY.safeTransferFrom(msg.sender, address(lbPair), liquidityParameters.amountY);
 
-        (depositIds, liquidityMinted) = _addLiquidity(liquidityParameters, lbPair);
+        (amountXAdded, amountYAdded, amountXLeft, amountYLeft, depositIds, liquidityMinted) =
+            _addLiquidity(liquidityParameters, lbPair);
     }
 
     /// @notice Add liquidity with AVAX while performing safety checks
     /// @dev This function is compliant with fee on transfer tokens
     /// @param liquidityParameters The liquidity parameters
-    /// @return depositIds Bin ids where the liquidity was actually deposited
-    /// @return liquidityMinted Amounts of LBToken minted for each bin
     function addLiquidityAVAX(LiquidityParameters calldata liquidityParameters)
         external
         payable
         override
-        returns (bytes32[] memory depositIds, uint256[] memory liquidityMinted)
+        returns (
+            uint256 amountXAdded,
+            uint256 amountYAdded,
+            uint256 amountXLeft,
+            uint256 amountYLeft,
+            uint256[] memory depositIds,
+            uint256[] memory liquidityMinted
+        )
     {
         ILBPair _LBPair = _getLBPairInformation(
             liquidityParameters.tokenX,
@@ -212,7 +221,8 @@ contract LBRouter is ILBRouter {
             );
         }
 
-        (depositIds, liquidityMinted) = _addLiquidity(liquidityParameters, _LBPair);
+        (amountXAdded, amountYAdded, amountXLeft, amountYLeft, depositIds, liquidityMinted) =
+            _addLiquidity(liquidityParameters, _LBPair);
     }
 
     /// @notice Remove liquidity while performing safety checks
@@ -578,15 +588,20 @@ contract LBRouter is ILBRouter {
     /// @notice Helper function to add liquidity
     /// @param liq The liquidity parameter
     /// @param pair LBPair where liquidity is deposited
-    /// @return liquidityConfigs Bin ids where the liquidity was actually deposited
-    /// @return liquidityMinted Amounts of LBToken minted for each bin
     function _addLiquidity(LiquidityParameters calldata liq, ILBPair pair)
         private
         ensure(liq.deadline)
-        returns (bytes32[] memory liquidityConfigs, uint256[] memory liquidityMinted)
+        returns (
+            uint256 amountXAdded,
+            uint256 amountYAdded,
+            uint256 amountXLeft,
+            uint256 amountYLeft,
+            uint256[] memory depositIds,
+            uint256[] memory liquidityMinted
+        )
     {
         unchecked {
-            if (liq.deltaIds.length != liq.distributionX.length && liq.deltaIds.length != liq.distributionY.length) {
+            if (liq.deltaIds.length != liq.distributionX.length || liq.deltaIds.length != liq.distributionY.length) {
                 revert LBRouter__LengthsMismatch();
             }
 
@@ -594,29 +609,40 @@ contract LBRouter is ILBRouter {
                 revert LBRouter__IdDesiredOverflows(liq.activeIdDesired, liq.idSlippage);
             }
 
-            uint256 _activeId = pair.getActiveId();
-            if (liq.activeIdDesired + liq.idSlippage < _activeId || _activeId + liq.idSlippage < liq.activeIdDesired) {
-                revert LBRouter__IdSlippageCaught(liq.activeIdDesired, liq.idSlippage, _activeId);
-            }
+            bytes32[] memory liquidityConfigs = new bytes32[](liq.deltaIds.length);
+            depositIds = new uint256[](liq.deltaIds.length);
+            {
+                uint256 _activeId = pair.getActiveId();
+                if (
+                    liq.activeIdDesired + liq.idSlippage < _activeId || _activeId + liq.idSlippage < liq.activeIdDesired
+                ) {
+                    revert LBRouter__IdSlippageCaught(liq.activeIdDesired, liq.idSlippage, _activeId);
+                }
 
-            liquidityConfigs = new bytes32[](liq.deltaIds.length);
-            for (uint256 i; i < liquidityConfigs.length; ++i) {
-                int256 _id = int256(_activeId) + liq.deltaIds[i];
-                if (_id < 0 || uint256(_id) > type(uint24).max) revert LBRouter__IdOverflows(_id);
-                liquidityConfigs[i] = LiquidityConfigurations.encodeParams(
-                    uint64(liq.distributionX[i]), uint64(liq.distributionY[i]), uint24(uint256(_id))
-                );
+                for (uint256 i; i < liquidityConfigs.length; ++i) {
+                    int256 _id = int256(_activeId) + liq.deltaIds[i];
+
+                    if (_id < 0 || uint256(_id) > type(uint24).max) revert LBRouter__IdOverflows(_id);
+                    depositIds[i] = uint256(_id);
+                    liquidityConfigs[i] = LiquidityConfigurations.encodeParams(
+                        uint64(liq.distributionX[i]), uint64(liq.distributionY[i]), uint24(uint256(_id))
+                    );
+                }
             }
 
             bytes32 amountsReceived;
-            (amountsReceived,, liquidityMinted) = pair.mint(msg.sender, liquidityConfigs, liq.to);
+            bytes32 amountsLeft;
+            (amountsReceived, amountsLeft, liquidityMinted) = pair.mint(liq.to, liquidityConfigs, liq.refundTo);
 
-            uint256 amountXAdded = amountsReceived.decodeUint128(0);
-            uint256 amountYAdded = amountsReceived.decodeUint128(128);
+            amountXAdded = amountsReceived.decodeFirst();
+            amountYAdded = amountsReceived.decodeSecond();
 
             if (amountXAdded < liq.amountXMin || amountYAdded < liq.amountYMin) {
                 revert LBRouter__AmountSlippageCaught(liq.amountXMin, amountXAdded, liq.amountYMin, amountYAdded);
             }
+
+            amountXLeft = amountsLeft.decodeFirst();
+            amountYLeft = amountsLeft.decodeSecond();
         }
     }
 
@@ -639,7 +665,6 @@ contract LBRouter is ILBRouter {
         for (uint256 i = pairs.length; i != 0; i--) {
             IERC20 token = tokenPath[i - 1];
             uint256 binStep = pairBinSteps[i - 1];
-
             address pair = pairs[i - 1];
 
             if (binStep == 0) {
@@ -649,7 +674,7 @@ contract LBRouter is ILBRouter {
                 }
 
                 uint256 amountOut_ = amountsIn[i];
-                amountsIn[i - 1] = uint128(uint256(amountOut_).getAmountIn(reserveIn, reserveOut));
+                amountsIn[i - 1] = uint128(amountOut_.getAmountIn(reserveIn, reserveOut));
             } else {
                 (amountsIn[i - 1],,) =
                     getSwapIn(ILBPair(pair), uint128(amountsIn[i]), ILBPair(pair).getTokenX() == token);
@@ -674,12 +699,11 @@ contract LBRouter is ILBRouter {
         uint256[] memory amounts,
         address to
     ) private returns (uint256 amountX, uint256 amountY) {
-        ILBToken(address(pair)).batchTransferFrom(msg.sender, address(pair), ids, amounts);
         (bytes32[] memory amountsBurned) = pair.burn(msg.sender, to, ids, amounts);
 
         for (uint256 i; i < amountsBurned.length; ++i) {
-            amountX += amountsBurned[i].decodeUint128(0);
-            amountY += amountsBurned[i].decodeUint128(128);
+            amountX += amountsBurned[i].decodeFirst();
+            amountY += amountsBurned[i].decodeSecond();
         }
 
         if (amountX < amountXMin || amountY < amountYMin) {

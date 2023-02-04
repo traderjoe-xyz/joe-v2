@@ -71,6 +71,7 @@ interface ILBRouter {
         uint256[] distributionX;
         uint256[] distributionY;
         address to;
+        address refundTo;
         uint256 deadline;
     }
 
@@ -112,12 +113,26 @@ interface ILBRouter {
 
     function addLiquidity(LiquidityParameters calldata liquidityParameters)
         external
-        returns (bytes32[] memory depositIds, uint256[] memory liquidityMinted);
+        returns (
+            uint256 amountXAdded,
+            uint256 amountYAdded,
+            uint256 amountXLeft,
+            uint256 amountYLeft,
+            uint256[] memory depositIds,
+            uint256[] memory liquidityMinted
+        );
 
     function addLiquidityAVAX(LiquidityParameters calldata liquidityParameters)
         external
         payable
-        returns (bytes32[] memory depositIds, uint256[] memory liquidityMinted);
+        returns (
+            uint256 amountXAdded,
+            uint256 amountYAdded,
+            uint256 amountXLeft,
+            uint256 amountYLeft,
+            uint256[] memory depositIds,
+            uint256[] memory liquidityMinted
+        );
 
     function removeLiquidity(
         IERC20 tokenX,

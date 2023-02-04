@@ -239,7 +239,6 @@ abstract contract TestHelper is Test {
             tokenX: tokenX,
             tokenY: tokenY,
             binStep: DEFAULT_BIN_STEP,
-            revision: 1,
             amountX: amountXIn,
             amountY: amountYIn,
             amountXMin: 0,

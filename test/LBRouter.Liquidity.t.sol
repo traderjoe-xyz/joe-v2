@@ -289,12 +289,12 @@ contract LiquidityBinRouterTest is TestHelper {
         (uint256 amountXAdded, uint256 amountYAdded,,, uint256[] memory depositIds, uint256[] memory liquidityMinted) =
             router.addLiquidity(liquidityParameters);
 
-        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP, 1).LBPair;
+        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).LBPair;
 
         pair.setApprovalForAll(address(router), true);
 
         (uint256 amountXOut, uint256 amountYOut) = router.removeLiquidity(
-            usdt, usdc, DEFAULT_BIN_STEP, 1, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp
+            usdt, usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp
         );
 
         assertApproxEqAbs(amountXOut, amountXAdded, 10, "amountXOut");
@@ -311,7 +311,7 @@ contract LiquidityBinRouterTest is TestHelper {
         (amountXAdded, amountYAdded,,, depositIds, liquidityMinted) = router.addLiquidity(liquidityParameters);
 
         (amountYOut, amountXOut) = router.removeLiquidity(
-            usdc, usdt, DEFAULT_BIN_STEP, 1, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp
+            usdc, usdt, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp
         );
 
         assertApproxEqAbs(amountXOut, amountXAdded, 10, "amountXOut");
@@ -325,7 +325,7 @@ contract LiquidityBinRouterTest is TestHelper {
         }
 
         (amountXOut, amountYOut) = router.removeLiquidity(
-            usdt, usdc, DEFAULT_BIN_STEP, 1, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp
+            usdt, usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp
         );
 
         assertApproxEqAbs(amountXOut, amountXAdded / 2, 10, "amountXOut");
@@ -344,7 +344,7 @@ contract LiquidityBinRouterTest is TestHelper {
         (uint256 amountXAdded, uint256 amountYAdded,,, uint256[] memory depositIds, uint256[] memory liquidityMinted) =
             router.addLiquidity(liquidityParameters);
 
-        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP, 1).LBPair;
+        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).LBPair;
         pair.setApprovalForAll(address(router), true);
 
         // Revert if the deadline is passed
@@ -352,7 +352,7 @@ contract LiquidityBinRouterTest is TestHelper {
             abi.encodeWithSelector(ILBRouter.LBRouter__DeadlineExceeded.selector, block.timestamp - 1, block.timestamp)
         );
         router.removeLiquidity(
-            usdt, usdc, DEFAULT_BIN_STEP, 1, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp - 1
+            usdt, usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp - 1
         );
 
         // Revert if the slippage is caught
@@ -365,7 +365,6 @@ contract LiquidityBinRouterTest is TestHelper {
             usdt,
             usdc,
             DEFAULT_BIN_STEP,
-            1,
             amountXAdded + 1,
             0,
             depositIds,
@@ -383,7 +382,6 @@ contract LiquidityBinRouterTest is TestHelper {
             usdt,
             usdc,
             DEFAULT_BIN_STEP,
-            1,
             0,
             amountYAdded + 1,
             depositIds,
@@ -405,14 +403,14 @@ contract LiquidityBinRouterTest is TestHelper {
         (uint256 amountXAdded, uint256 amountYAdded,,, uint256[] memory depositIds, uint256[] memory liquidityMinted) =
             router.addLiquidityAVAX{value: liquidityParameters.amountX}(liquidityParameters);
 
-        ILBPair pair = factory.getLBPairInformation(wavax, usdc, DEFAULT_BIN_STEP, 1).LBPair;
+        ILBPair pair = factory.getLBPairInformation(wavax, usdc, DEFAULT_BIN_STEP).LBPair;
         pair.setApprovalForAll(address(router), true);
 
         uint256 balanceAVAXBefore = address(this).balance;
         uint256 balanceUSDCBefore = usdc.balanceOf(address(this));
 
         (uint256 amountToken, uint256 amountAVAX) = router.removeLiquidityAVAX(
-            usdc, DEFAULT_BIN_STEP, 1, 0, 0, depositIds, liquidityMinted, payable(address(this)), block.timestamp
+            usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, payable(address(this)), block.timestamp
         );
 
         assertApproxEqAbs(amountAVAX, amountXAdded, 10, "amountXOut");
@@ -434,7 +432,7 @@ contract LiquidityBinRouterTest is TestHelper {
         (uint256 amountXAdded,,,, uint256[] memory depositIds, uint256[] memory liquidityMinted) =
             router.addLiquidityAVAX{value: liquidityParameters.amountX}(liquidityParameters);
 
-        ILBPair pair = factory.getLBPairInformation(wavax, usdc, DEFAULT_BIN_STEP, 1).LBPair;
+        ILBPair pair = factory.getLBPairInformation(wavax, usdc, DEFAULT_BIN_STEP).LBPair;
         pair.setApprovalForAll(address(router), true);
 
         // Revert if the deadline is passed
@@ -442,7 +440,7 @@ contract LiquidityBinRouterTest is TestHelper {
             abi.encodeWithSelector(ILBRouter.LBRouter__DeadlineExceeded.selector, block.timestamp - 1, block.timestamp)
         );
         router.removeLiquidityAVAX(
-            usdc, DEFAULT_BIN_STEP, 1, 0, 0, depositIds, liquidityMinted, payable(address(this)), block.timestamp - 1
+            usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, payable(address(this)), block.timestamp - 1
         );
 
         // Revert if the contract does not have a receive function
@@ -451,7 +449,7 @@ contract LiquidityBinRouterTest is TestHelper {
             abi.encodeWithSelector(ILBRouter.LBRouter__FailedToSendAVAX.selector, address(this), amountXAdded - 2)
         );
         router.removeLiquidityAVAX(
-            usdc, DEFAULT_BIN_STEP, 1, 0, 0, depositIds, liquidityMinted, payable(address(this)), block.timestamp
+            usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, payable(address(this)), block.timestamp
         );
     }
 
@@ -477,7 +475,7 @@ contract LiquidityBinRouterTest is TestHelper {
         liquidityParameters.to = address(router);
         (,,,, uint256[] memory depositIds, uint256[] memory liquidityMinted) = router.addLiquidity(liquidityParameters);
 
-        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP, 1).LBPair;
+        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).LBPair;
 
         uint256[] memory balancesBefore = new uint256[](depositIds.length);
         for (uint256 i = 0; i < depositIds.length; i++) {

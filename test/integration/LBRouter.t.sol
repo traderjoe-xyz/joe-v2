@@ -114,7 +114,7 @@ contract LiquidityBinRouterForkTest is TestHelper {
 
             path.versions[0] = ILBRouter.Version.V1;
             path.versions[1] = ILBRouter.Version.V2;
-            path.versions[2] = ILBRouter.Version.V3;
+            path.versions[2] = ILBRouter.Version.V2_1;
         } else {
             path.tokenPath[0] = tokenIn;
             path.tokenPath[1] = wavax;
@@ -125,7 +125,7 @@ contract LiquidityBinRouterForkTest is TestHelper {
             path.pairBinSteps[1] = DEFAULT_BIN_STEP;
             path.pairBinSteps[2] = 0;
 
-            path.versions[0] = ILBRouter.Version.V3;
+            path.versions[0] = ILBRouter.Version.V2_1;
             path.versions[1] = ILBRouter.Version.V2;
             path.versions[2] = ILBRouter.Version.V1;
         }

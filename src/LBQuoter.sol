@@ -188,7 +188,7 @@ contract LBQuoter {
                                 quote.amounts[i + 1] = swapAmountOut;
                                 quote.pairs[i] = address(LBPairsAvailable[j].LBPair);
                                 quote.binSteps[i] = uint8(LBPairsAvailable[j].binStep);
-                                quote.versions[i] = ILBRouter.Version.V3;
+                                quote.versions[i] = ILBRouter.Version.V2_1;
 
                                 // Getting current price
                                 uint24 activeId = LBPairsAvailable[j].LBPair.getActiveId();
@@ -304,7 +304,7 @@ contract LBQuoter {
                                 quote.amounts[i - 1] = swapAmountIn;
                                 quote.pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
                                 quote.binSteps[i - 1] = uint8(LBPairsAvailable[j].binStep);
-                                quote.versions[i - 1] = ILBRouter.Version.V3;
+                                quote.versions[i - 1] = ILBRouter.Version.V2_1;
 
                                 // Getting current price
                                 uint24 activeId = LBPairsAvailable[j].LBPair.getActiveId();

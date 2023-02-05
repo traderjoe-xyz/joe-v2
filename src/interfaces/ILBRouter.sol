@@ -44,7 +44,7 @@ interface ILBRouter {
     enum Version {
         V1,
         V2,
-        V3
+        V2_1
     }
 
     /// @dev The liquidity parameters, such as:

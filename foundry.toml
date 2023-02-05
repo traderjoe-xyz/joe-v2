@@ -5,8 +5,6 @@ libs = ['lib']
 optimizer = true
 optimizer_runs = 800
 
-no_match_contract = "TODO"
-
 [fuzz]
 runs = 1024
 

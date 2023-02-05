@@ -214,8 +214,6 @@ contract LiquidityBinRouterSwapTest is TestHelper {
         );
         router.swapTokensForExactTokens(amountOut, amountInExpected - 1, path, address(this), block.timestamp + 1);
 
-        // TODO - try to hit LBRouter__InsufficientAmountOut
-
         // Revert is dealine passed
         vm.expectRevert(
             abi.encodeWithSelector(ILBRouter.LBRouter__DeadlineExceeded.selector, block.timestamp - 1, block.timestamp)
@@ -254,8 +252,6 @@ contract LiquidityBinRouterSwapTest is TestHelper {
             )
         );
         router.swapTokensForExactTokens(amountOut, amountInExpected - 1, path, address(this), block.timestamp + 1);
-
-        // TODO - try to hit LBRouter__InsufficientAmountOut
 
         // Revert if token out isn't WAVAX
         path.tokenPath[1] = usdt;
@@ -301,8 +297,6 @@ contract LiquidityBinRouterSwapTest is TestHelper {
             )
         );
         router.swapAVAXForExactTokens{value: amountInExpected / 2}(amountOut, path, address(this), block.timestamp + 1);
-
-        // TODO - try to hit LBRouter__InsufficientAmountOut
 
         // Revert if token in isn't WAVAX
         path.tokenPath[0] = usdt;

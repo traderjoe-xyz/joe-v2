@@ -128,19 +128,6 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.expectEmit(true, true, true, true);
         emit LBPairCreated(usdt, usdc, DEFAULT_BIN_STEP, ILBPair(expectedPairAddress), 0);
 
-        // TODO - Check if can get the event from the pair
-        // vm.expectEmit(true, true, true, true);
-        // emit StaticFeeParametersSet(
-        //     address(factory),
-        //     DEFAULT_BASE_FACTOR,
-        //     DEFAULT_FILTER_PERIOD,
-        //     DEFAULT_DECAY_PERIOD,
-        //     DEFAULT_REDUCTION_FACTOR,
-        //     DEFAULT_VARIABLE_FEE_CONTROL,
-        //     DEFAULT_PROTOCOL_SHARE,
-        //     DEFAULT_MAX_VOLATILITY_ACCUMULATOR
-        //     );
-
         ILBPair pair = factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
         assertEq(factory.getNumberOfLBPairs(), 1, "test_CreateLBPair::1");
@@ -331,7 +318,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, true);
     }
 
-    function todoTestFuzz_setPreset(
+    function testFuzz_SetPreset(
         uint8 binStep,
         uint16 baseFactor,
         uint16 filterPeriod,
@@ -342,201 +329,67 @@ contract LiquidityBinFactoryTest is TestHelper {
         uint24 maxVolatilityAccumulator
     ) public {
         binStep = uint8(bound(binStep, factory.getMinBinStep(), factory.getMaxBinStep()));
-        filterPeriod = uint16(bound(filterPeriod, 0, type(uint16).max - 1));
-        decayPeriod = uint16(bound(decayPeriod, filterPeriod + 1, type(uint16).max));
+        filterPeriod = uint16(bound(filterPeriod, 0, Encoded.MASK_UINT12 - 1));
+        decayPeriod = uint16(bound(decayPeriod, filterPeriod + 1, Encoded.MASK_UINT12));
         reductionFactor = uint16(bound(reductionFactor, 0, Constants.BASIS_POINT_MAX));
-        protocolShare = uint16(bound(protocolShare, 0, factory.getMaxProtocolShare()));
         variableFeeControl = uint24(bound(variableFeeControl, 0, Constants.BASIS_POINT_MAX));
+        protocolShare = uint16(bound(protocolShare, 0, factory.getMaxProtocolShare()));
+        maxVolatilityAccumulator = uint24(bound(maxVolatilityAccumulator, 0, Encoded.MASK_UINT20));
 
-        // TODO: maxVolatilityAccumulator should be bounded but that's quite hard to calculate
-        uint256 totalFeesMax;
-        {
-            uint256 baseFee = (uint256(baseFactor) * binStep) * 1e10;
-            uint256 prod = uint256(maxVolatilityAccumulator) * binStep;
-            uint256 maxVariableFee = (prod * prod * variableFeeControl) / 100;
-            totalFeesMax = baseFee + maxVariableFee;
-        }
-
-        if (totalFeesMax > factory.getMaxFee()) {
-            vm.expectRevert();
-            factory.setPreset(
-                binStep,
-                baseFactor,
-                filterPeriod,
-                decayPeriod,
-                reductionFactor,
-                variableFeeControl,
-                protocolShare,
-                maxVolatilityAccumulator
-            );
-        } else {
-            vm.expectEmit(true, true, true, true);
-            emit PresetSet(
-                binStep,
-                baseFactor,
-                filterPeriod,
-                decayPeriod,
-                reductionFactor,
-                variableFeeControl,
-                protocolShare,
-                maxVolatilityAccumulator
-                );
-
-            factory.setPreset(
-                binStep,
-                baseFactor,
-                filterPeriod,
-                decayPeriod,
-                reductionFactor,
-                variableFeeControl,
-                protocolShare,
-                maxVolatilityAccumulator
+        vm.expectEmit(true, true, true, true);
+        emit PresetSet(
+            binStep,
+            baseFactor,
+            filterPeriod,
+            decayPeriod,
+            reductionFactor,
+            variableFeeControl,
+            protocolShare,
+            maxVolatilityAccumulator
             );
 
-            // Bin step DEFAULT_BIN_STEP is already there
-            if (binStep != DEFAULT_BIN_STEP) {
-                assertEq(factory.getAllBinSteps().length, 2, "1");
-                if (binStep < DEFAULT_BIN_STEP) {
-                    assertEq(factory.getAllBinSteps()[0], binStep, "2");
-                } else {
-                    assertEq(factory.getAllBinSteps()[1], binStep, "3");
-                }
+        factory.setPreset(
+            binStep,
+            baseFactor,
+            filterPeriod,
+            decayPeriod,
+            reductionFactor,
+            variableFeeControl,
+            protocolShare,
+            maxVolatilityAccumulator
+        );
+
+        // Bin step DEFAULT_BIN_STEP is already there
+        if (binStep != DEFAULT_BIN_STEP) {
+            assertEq(factory.getAllBinSteps().length, 2, "1");
+            if (binStep < DEFAULT_BIN_STEP) {
+                assertEq(factory.getAllBinSteps()[0], binStep, "2");
             } else {
-                assertEq(factory.getAllBinSteps().length, 1, "3");
-                assertEq(factory.getAllBinSteps()[0], binStep, "4");
+                assertEq(factory.getAllBinSteps()[1], binStep, "3");
             }
-
-            // Check splitted in two to avoid stack too deep errors
-            {
-                (
-                    uint256 baseFactorView,
-                    uint256 filterPeriodView,
-                    uint256 decayPeriodView,
-                    uint256 reductionFactorView,
-                    ,
-                    ,
-                ) = factory.getPreset(binStep);
-
-                assertEq(baseFactorView, baseFactor);
-                assertEq(filterPeriodView, filterPeriod);
-                assertEq(decayPeriodView, decayPeriod);
-                assertEq(reductionFactorView, reductionFactor);
-            }
-
-            {
-                (,,,, uint256 variableFeeControlView, uint256 protocolShareView, uint256 maxVolatilityAccumulatorView) =
-                    factory.getPreset(binStep);
-
-                assertEq(variableFeeControlView, variableFeeControl);
-                assertEq(protocolShareView, protocolShare);
-                assertEq(maxVolatilityAccumulatorView, maxVolatilityAccumulator);
-            }
-        }
-    }
-
-    // TODO - check after refactoring the checks on fee parameters
-    function todoTestFuzz_reverts_setPreset(
-        uint8 binStep,
-        uint16 baseFactor,
-        uint16 filterPeriod,
-        uint16 decayPeriod,
-        uint16 reductionFactor,
-        uint24 variableFeeControl,
-        uint16 protocolShare,
-        uint24 maxVolatilityAccumulator
-    ) public {
-        uint256 baseFee = (uint256(baseFactor) * binStep) * 1e10;
-        uint256 prod = uint256(maxVolatilityAccumulator) * binStep;
-        uint256 maxVariableFee = (prod * prod * variableFeeControl) / 100;
-
-        if (binStep < factory.getMinBinStep() || binStep > factory.getMaxBinStep()) {
-            vm.expectRevert(
-                abi.encodeWithSelector(
-                    ILBFactory.LBFactory__BinStepRequirementsBreached.selector,
-                    factory.getMinBinStep(),
-                    binStep,
-                    factory.getMaxBinStep()
-                )
-            );
-            factory.setPreset(
-                binStep,
-                baseFactor,
-                filterPeriod,
-                decayPeriod,
-                reductionFactor,
-                variableFeeControl,
-                protocolShare,
-                maxVolatilityAccumulator
-            );
-        } else if (filterPeriod >= decayPeriod) {
-            vm.expectRevert(
-                abi.encodeWithSelector(ILBFactory.LBFactory__DecreasingPeriods.selector, filterPeriod, decayPeriod)
-            );
-            factory.setPreset(
-                binStep,
-                baseFactor,
-                filterPeriod,
-                decayPeriod,
-                reductionFactor,
-                variableFeeControl,
-                protocolShare,
-                maxVolatilityAccumulator
-            );
-        } else if (reductionFactor > Constants.BASIS_POINT_MAX) {
-            vm.expectRevert(
-                abi.encodeWithSelector(
-                    ILBFactory.LBFactory__ReductionFactorOverflows.selector, reductionFactor, Constants.BASIS_POINT_MAX
-                )
-            );
-            factory.setPreset(
-                binStep,
-                baseFactor,
-                filterPeriod,
-                decayPeriod,
-                reductionFactor,
-                variableFeeControl,
-                protocolShare,
-                maxVolatilityAccumulator
-            );
-        } else if (protocolShare > factory.getMaxProtocolShare()) {
-            vm.expectRevert(
-                abi.encodeWithSelector(
-                    ILBFactory.LBFactory__ProtocolShareOverflows.selector, protocolShare, factory.getMaxProtocolShare()
-                )
-            );
-            factory.setPreset(
-                binStep,
-                baseFactor,
-                filterPeriod,
-                decayPeriod,
-                reductionFactor,
-                variableFeeControl,
-                protocolShare,
-                maxVolatilityAccumulator
-            );
-        } else if (baseFee + maxVariableFee > factory.getMaxFee()) {
-            vm.expectRevert();
-            factory.setPreset(
-                binStep,
-                baseFactor,
-                filterPeriod,
-                decayPeriod,
-                reductionFactor,
-                variableFeeControl,
-                protocolShare,
-                maxVolatilityAccumulator
-            );
         } else {
-            factory.setPreset(
-                binStep,
-                baseFactor,
-                filterPeriod,
-                decayPeriod,
-                reductionFactor,
-                variableFeeControl,
-                protocolShare,
-                maxVolatilityAccumulator
-            );
+            assertEq(factory.getAllBinSteps().length, 1, "3");
+            assertEq(factory.getAllBinSteps()[0], binStep, "4");
+        }
+
+        // Check splitted in two to avoid stack too deep errors
+        {
+            (uint256 baseFactorView, uint256 filterPeriodView, uint256 decayPeriodView, uint256 reductionFactorView,,,)
+            = factory.getPreset(binStep);
+
+            assertEq(baseFactorView, baseFactor);
+            assertEq(filterPeriodView, filterPeriod);
+            assertEq(decayPeriodView, decayPeriod);
+            assertEq(reductionFactorView, reductionFactor);
+        }
+
+        {
+            (,,,, uint256 variableFeeControlView, uint256 protocolShareView, uint256 maxVolatilityAccumulatorView) =
+                factory.getPreset(binStep);
+
+            assertEq(variableFeeControlView, variableFeeControl);
+            assertEq(protocolShareView, protocolShare);
+            assertEq(maxVolatilityAccumulatorView, maxVolatilityAccumulator);
         }
     }
 

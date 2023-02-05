@@ -217,7 +217,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         returns (LBPairInformation[] memory lbPairsAvailable)
     {
         unchecked {
-            (IERC20 tokenA, IERC20 tokenB) = _sortTokens(tokenX, tokenY);
+            (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(tokenX, tokenY);
 
             bytes32 avLBPairBinSteps = _availableLBPairBinSteps[tokenA][tokenB];
             uint256 nbAvailable = avLBPairBinSteps.decode(type(uint8).max, 248);
@@ -358,8 +358,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         LBPairInformation memory pairInformation = _lbPairsInfo[tokenA][tokenB][binStep];
         if (address(pairInformation.LBPair) == address(0)) revert LBFactory__AddressZero();
-
-        if (pairInformation.ignoredForRouting == ignored) revert LBFactory__LBPairIgnoredIsAlreadyInTheSameState();
 
         _lbPairsInfo[tokenA][tokenB][binStep].ignoredForRouting = ignored;
 

@@ -352,13 +352,12 @@ contract LBRouter is ILBRouter {
         address payable to,
         uint256 deadline
     ) external override ensure(deadline) returns (uint256 amountToken, uint256 amountAVAX) {
-        // TODO - avoid stack too deep and cache wavax
-        // IWAVAX wavax_ = _wavax;
+        IWAVAX wavax = _wavax;
 
-        ILBPair lbPair = ILBPair(_getLBPairInformation(token, IERC20(_wavax), binStep, Version.V2_1));
+        ILBPair lbPair = ILBPair(_getLBPairInformation(token, IERC20(wavax), binStep, Version.V2_1));
 
         {
-            bool isAVAXTokenY = IERC20(_wavax) == lbPair.getTokenY();
+            bool isAVAXTokenY = IERC20(wavax) == lbPair.getTokenY();
 
             if (!isAVAXTokenY) {
                 (amountTokenMin, amountAVAXMin) = (amountAVAXMin, amountTokenMin);
@@ -372,7 +371,7 @@ contract LBRouter is ILBRouter {
 
         token.safeTransfer(to, amountToken);
 
-        _wavax.withdraw(amountAVAX);
+        wavax.withdraw(amountAVAX);
         _safeTransferAVAX(to, amountAVAX);
     }
 

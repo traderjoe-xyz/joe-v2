@@ -41,7 +41,7 @@ contract LBQuoter {
         address[] route;
         address[] pairs;
         uint256[] binSteps;
-        uint256[] revisions;
+        ILBRouter.Version[] versions;
         uint128[] amounts;
         uint128[] virtualAmountsWithoutSlippage;
         uint128[] fees;
@@ -115,7 +115,7 @@ contract LBQuoter {
         uint256 swapLength = route.length - 1;
         quote.pairs = new address[](swapLength);
         quote.binSteps = new uint256[](swapLength);
-        quote.revisions = new uint256[](swapLength);
+        quote.versions = new ILBRouter.Version[](swapLength);
         quote.fees = new uint128[](swapLength);
         quote.amounts = new uint128[](route.length);
         quote.virtualAmountsWithoutSlippage = new uint128[](route.length);
@@ -136,6 +136,7 @@ contract LBQuoter {
                         JoeLibrary.quote(quote.virtualAmountsWithoutSlippage[i] * 997, reserveIn * 1000, reserveOut)
                     );
                     quote.fees[i] = 0.003e18; // 0.3%
+                    quote.versions[i] = ILBRouter.Version.V1;
                 }
             }
 
@@ -154,6 +155,7 @@ contract LBQuoter {
                                 quote.amounts[i + 1] = uint128(swapAmountOut);
                                 quote.pairs[i] = address(legacyLBPairsAvailable[j].LBPair);
                                 quote.binSteps[i] = legacyLBPairsAvailable[j].binStep;
+                                quote.versions[i] = ILBRouter.Version.V2;
 
                                 // Getting current price
                                 (,, uint256 activeId) = legacyLBPairsAvailable[j].LBPair.getReservesAndId();
@@ -186,7 +188,7 @@ contract LBQuoter {
                                 quote.amounts[i + 1] = swapAmountOut;
                                 quote.pairs[i] = address(LBPairsAvailable[j].LBPair);
                                 quote.binSteps[i] = uint8(LBPairsAvailable[j].binStep);
-                                quote.revisions[i] = LBPairsAvailable[j].revisionIndex;
+                                quote.versions[i] = ILBRouter.Version.V2_1;
 
                                 // Getting current price
                                 uint24 activeId = LBPairsAvailable[j].LBPair.getActiveId();
@@ -225,7 +227,7 @@ contract LBQuoter {
         uint256 swapLength = route.length - 1;
         quote.pairs = new address[](swapLength);
         quote.binSteps = new uint256[](swapLength);
-        quote.revisions = new uint256[](swapLength);
+        quote.versions = new ILBRouter.Version[](swapLength);
         quote.fees = new uint128[](swapLength);
         quote.amounts = new uint128[](route.length);
         quote.virtualAmountsWithoutSlippage = new uint128[](route.length);
@@ -246,6 +248,7 @@ contract LBQuoter {
                     );
 
                     quote.fees[i - 1] = 0.003e18; // 0.3%
+                    quote.versions[i - 1] = ILBRouter.Version.V1;
                 }
             }
 
@@ -265,6 +268,7 @@ contract LBQuoter {
                                 quote.amounts[i - 1] = uint128(swapAmountIn);
                                 quote.pairs[i - 1] = address(legacyLBPairsAvailable[j].LBPair);
                                 quote.binSteps[i - 1] = legacyLBPairsAvailable[j].binStep;
+                                quote.versions[i - 1] = ILBRouter.Version.V2;
 
                                 // Getting current price
                                 (,, uint256 activeId) = legacyLBPairsAvailable[j].LBPair.getReservesAndId();
@@ -300,7 +304,7 @@ contract LBQuoter {
                                 quote.amounts[i - 1] = swapAmountIn;
                                 quote.pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
                                 quote.binSteps[i - 1] = uint8(LBPairsAvailable[j].binStep);
-                                quote.revisions[i - 1] = LBPairsAvailable[j].revisionIndex;
+                                quote.versions[i - 1] = ILBRouter.Version.V2_1;
 
                                 // Getting current price
                                 uint24 activeId = LBPairsAvailable[j].LBPair.getActiveId();

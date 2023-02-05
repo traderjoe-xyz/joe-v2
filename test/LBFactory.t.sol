@@ -65,6 +65,8 @@ contract LiquidityBinFactoryTest is TestHelper {
 
     event FactoryLockedStatusUpdated(bool unlocked);
 
+    event OpenPresetChanged(uint8 indexed binStep, bool open);
+
     struct LBPairInformation {
         uint256 binStep;
         ILBPair LBPair;
@@ -129,7 +131,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         address expectedPairAddress = ImmutableClone.predictDeterministicAddress(
             address(pairImplementation),
             abi.encodePacked(usdt, usdc, DEFAULT_BIN_STEP),
-            keccak256(abi.encode(usdc, usdt, DEFAULT_BIN_STEP, 1)),
+            keccak256(abi.encode(usdc, usdt, DEFAULT_BIN_STEP)),
             address(factory)
         );
 
@@ -154,15 +156,12 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         assertEq(factory.getNumberOfLBPairs(), 1, "test_createLBPair::1");
 
-        LBFactory.LBPairInformation memory pairInfo = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP, 1);
+        LBFactory.LBPairInformation memory pairInfo = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP);
         assertEq(pairInfo.binStep, DEFAULT_BIN_STEP, "test_createLBPair::2");
         assertEq(address(pairInfo.LBPair), address(pair), "test_createLBPair::2");
         assertTrue(pairInfo.createdByOwner);
         assertFalse(pairInfo.ignoredForRouting);
-        assertEq(pairInfo.revisionIndex, 1);
-        assertEq(pairInfo.implementation, address(pairImplementation), "test_createLBPair::2");
 
-        assertEq(factory.getNumberOfRevisions(usdt, usdc, DEFAULT_BIN_STEP), 1, "test_createLBPair::3");
         assertEq(factory.getAllLBPairs(usdt, usdc).length, 1, "test_createLBPair::4");
         assertEq(address(factory.getAllLBPairs(usdt, usdc)[0].LBPair), address(pair), "test_createLBPair::5");
 
@@ -184,28 +183,37 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function test_createLBPairFactoryUnlocked() public {
-        factory.setFactoryLockedState(false);
+        // Users should not be able to create pairs by default
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBFactory.LBFactory__FunctionIsLockedForUsers.selector, ALICE, DEFAULT_BIN_STEP)
+        );
+        factory.createLBPair(link, usdc, ID_ONE, DEFAULT_BIN_STEP);
+
+        factory.setOpenPreset(DEFAULT_BIN_STEP, true);
 
         // Any user should be able to create pairs
         vm.prank(ALICE);
         factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
-        assertFalse(factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP, 1).createdByOwner);
+        assertFalse(factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).createdByOwner);
 
         vm.prank(BOB);
         factory.createLBPair(weth, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
-        assertFalse(factory.getLBPairInformation(weth, usdc, DEFAULT_BIN_STEP, 1).createdByOwner);
+        assertFalse(factory.getLBPairInformation(weth, usdc, DEFAULT_BIN_STEP).createdByOwner);
 
         factory.createLBPair(bnb, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
-        assertTrue(factory.getLBPairInformation(bnb, usdc, DEFAULT_BIN_STEP, 1).createdByOwner);
+        assertTrue(factory.getLBPairInformation(bnb, usdc, DEFAULT_BIN_STEP).createdByOwner);
 
         // Should close pair creations again
-        factory.setFactoryLockedState(true);
+        factory.setOpenPreset(DEFAULT_BIN_STEP, false);
 
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__FunctionIsLockedForUsers.selector, ALICE));
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBFactory.LBFactory__FunctionIsLockedForUsers.selector, ALICE, DEFAULT_BIN_STEP)
+        );
         factory.createLBPair(link, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
         factory.createLBPair(wbtc, usdc, ID_ONE, DEFAULT_BIN_STEP);
@@ -214,7 +222,9 @@ contract LiquidityBinFactoryTest is TestHelper {
     function test_reverts_createLBPair() public {
         // Alice can't create a pair if the factory is locked
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__FunctionIsLockedForUsers.selector, ALICE));
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBFactory.LBFactory__FunctionIsLockedForUsers.selector, ALICE, DEFAULT_BIN_STEP)
+        );
         factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
         // Can't create pair if the implementation is not set
@@ -263,119 +273,25 @@ contract LiquidityBinFactoryTest is TestHelper {
         newFactory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
     }
 
-    function test_CreateRevision() public {
-        ILBPair pair = factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
-
-        // Updates the pair implementation
-        pairImplementation = new LBPair(factory);
-        factory.setLBPairImplementation(address(pairImplementation));
-
-        address expectedPairAddress = ImmutableClone.predictDeterministicAddress(
-            address(pairImplementation),
-            abi.encodePacked(usdt, usdc, DEFAULT_BIN_STEP),
-            keccak256(abi.encode(usdc, usdt, DEFAULT_BIN_STEP, 2)),
-            address(factory)
-        );
-
-        // Check for the correct events
-        vm.expectEmit(true, true, true, true);
-        emit LBPairCreated(usdt, usdc, DEFAULT_BIN_STEP, ILBPair(expectedPairAddress), 1);
-
-        // vm.expectEmit(true, true, true, true, expectedPairAddress);
-        // emit StaticFeeParametersSet(
-        //     address(factory),
-        //     DEFAULT_BASE_FACTOR,
-        //     DEFAULT_FILTER_PERIOD,
-        //     DEFAULT_DECAY_PERIOD,
-        //     DEFAULT_REDUCTION_FACTOR,
-        //     DEFAULT_VARIABLE_FEE_CONTROL,
-        //     DEFAULT_PROTOCOL_SHARE,
-        //     DEFAULT_MAX_VOLATILITY_ACCUMULATOR
-        //     );
-
-        ILBPair revision = factory.createLBPairRevision(usdt, usdc, DEFAULT_BIN_STEP);
-
-        assertEq(factory.getNumberOfLBPairs(), 2, "test_createLBPair::1");
-
-        LBFactory.LBPairInformation memory pairInfo = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP, 2);
-        assertEq(pairInfo.binStep, DEFAULT_BIN_STEP, "test_createLBPair::2");
-        assertEq(address(pairInfo.LBPair), address(revision), "test_createLBPair::2");
-        assertTrue(pairInfo.createdByOwner);
-        assertFalse(pairInfo.ignoredForRouting);
-        assertEq(pairInfo.revisionIndex, 2);
-        assertEq(pairInfo.implementation, address(pairImplementation), "test_createLBPair::2");
-
-        // Revision and previous pair should have active bin
-        uint256 pairActiveId = pair.getActiveId();
-        uint256 revisionActiveId = revision.getActiveId();
-        assertEq(pairActiveId, revisionActiveId);
-
-        assertEq(factory.getNumberOfRevisions(usdt, usdc, DEFAULT_BIN_STEP), 2, "test_createLBPair::3");
-        assertEq(factory.getAllLBPairs(usdt, usdc).length, 2, "test_createLBPair::4");
-        assertEq(address(factory.getAllLBPairs(usdt, usdc)[0].LBPair), address(pair), "test_createLBPair::5");
-        assertEq(address(factory.getAllLBPairs(usdt, usdc)[1].LBPair), address(revision), "test_createLBPair::5");
-
-        assertEq(address(revision.getFactory()), address(factory), "test_createLBPair::6");
-        assertEq(address(revision.getTokenX()), address(usdt), "test_createLBPair::7");
-        assertEq(address(revision.getTokenY()), address(usdc), "test_createLBPair::8");
-
-        // FeeHelper.FeeParameters memory feeParameters = revision.feeParameters();
-        // assertEq(feeParameters.volatilityAccumulator, 0, "test_createLBPair::9");
-        // assertEq(feeParameters.volatilityReference, 0, "test_createLBPair::10");
-        // assertEq(feeParameters.indexRef, 0, "test_createLBPair::11");
-        // assertEq(feeParameters.time, 0, "test_createLBPair::12");
-        // assertEq(feeParameters.maxVolatilityAccumulator, DEFAULT_MAX_VOLATILITY_ACCUMULATOR, "test_createLBPair::13");
-        // assertEq(feeParameters.filterPeriod, DEFAULT_FILTER_PERIOD, "test_createLBPair::14");
-        // assertEq(feeParameters.decayPeriod, DEFAULT_DECAY_PERIOD, "test_createLBPair::15");
-        // assertEq(feeParameters.binStep, DEFAULT_BIN_STEP, "test_createLBPair::16");
-        // assertEq(feeParameters.baseFactor, DEFAULT_BASE_FACTOR, "test_createLBPair::17");
-        // assertEq(feeParameters.protocolShare, DEFAULT_PROTOCOL_SHARE, "test_createLBPair::18");
-    }
-
-    function test_reverts_CreateRevision() public {
-        // Can't create a revision if not the owner
-        vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
-        factory.createLBPairRevision(usdt, usdc, DEFAULT_BIN_STEP);
-
-        // Can't create a revision if the pair doesn't exist
-        vm.expectRevert(
-            abi.encodeWithSelector(ILBFactory.LBFactory__LBPairDoesNotExists.selector, usdt, usdc, DEFAULT_BIN_STEP)
-        );
-        factory.createLBPairRevision(usdt, usdc, DEFAULT_BIN_STEP);
-
-        factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
-
-        // Can't create a revision if the pair implementation hasn't changed
-        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SameImplementation.selector, pairImplementation));
-        factory.createLBPairRevision(usdt, usdc, DEFAULT_BIN_STEP);
-    }
-
     function test_setLBPairIgnored() public {
-        factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
-        factory.createLBPair(weth, usdc, ID_ONE, DEFAULT_BIN_STEP);
-        factory.setLBPairImplementation(address(new LBPair(factory)));
-        ILBPair revision2 = ILBPair(factory.createLBPairRevision(usdt, usdc, DEFAULT_BIN_STEP));
-        factory.setLBPairImplementation(address(new LBPair(factory)));
-        factory.createLBPairRevision(usdt, usdc, DEFAULT_BIN_STEP);
+        ILBPair pair = factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
         // Ignoring the USDT-USDC rev 2 pair
         vm.expectEmit(true, true, true, true);
-        emit LBPairIgnoredStateChanged(revision2, true);
-        factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, 2, true);
+        emit LBPairIgnoredStateChanged(pair, true);
+        factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, true);
 
-        ILBFactory.LBPairInformation memory revision2Info =
-            factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP, 2);
-        assertEq(address(revision2Info.LBPair), address(revision2), "test_setLBPairIgnored::0");
-        assertEq(revision2Info.ignoredForRouting, true, "test_setLBPairIgnored::1");
+        ILBFactory.LBPairInformation memory pairInfo = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP);
+        assertEq(address(pairInfo.LBPair), address(pair), "test_setLBPairIgnored::0");
+        assertEq(pairInfo.ignoredForRouting, true, "test_setLBPairIgnored::1");
 
         // Put it back to normal
         vm.expectEmit(true, true, true, true);
-        emit LBPairIgnoredStateChanged(revision2, false);
-        factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, 2, false);
+        emit LBPairIgnoredStateChanged(pair, false);
+        factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, false);
 
         assertEq(
-            factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP, 2).ignoredForRouting,
+            factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).ignoredForRouting,
             false,
             "test_setLBPairIgnored::1"
         );
@@ -385,22 +301,22 @@ contract LiquidityBinFactoryTest is TestHelper {
         // Can't ignore for routing if not the owner
         vm.prank(ALICE);
         vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
-        factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, 1, true);
+        factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, true);
 
         // Can't update a non existing pair
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__AddressZero.selector));
-        factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, 1, true);
+        factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, true);
 
         factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
         // Can't update a pair to the same state
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__LBPairIgnoredIsAlreadyInTheSameState.selector));
-        factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, 1, false);
+        factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, false);
 
-        factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, 1, true);
+        factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, true);
 
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__LBPairIgnoredIsAlreadyInTheSameState.selector));
-        factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, 1, true);
+        factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, true);
     }
 
     function todoTestFuzz_setPreset(
@@ -686,7 +602,6 @@ contract LiquidityBinFactoryTest is TestHelper {
             usdt,
             usdc,
             DEFAULT_BIN_STEP,
-            1,
             newBaseFactor,
             newFilterPeriod,
             newDecayPeriod,
@@ -719,7 +634,6 @@ contract LiquidityBinFactoryTest is TestHelper {
             usdt,
             usdc,
             DEFAULT_BIN_STEP,
-            1,
             newBaseFactor,
             newFilterPeriod,
             newDecayPeriod,
@@ -731,13 +645,12 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't update a pair that does not exist
         vm.expectRevert(
-            abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, usdc, weth, DEFAULT_BIN_STEP)
+            abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, weth, usdc, DEFAULT_BIN_STEP)
         );
         factory.setFeesParametersOnPair(
             weth,
             usdc,
             DEFAULT_BIN_STEP,
-            1,
             newBaseFactor,
             newFilterPeriod,
             newDecayPeriod,
@@ -796,26 +709,60 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setFlashLoanFee(maxFlashLoanFee + 1);
     }
 
-    function test_setFactoryLockedState() public {
-        assertEq(factory.isCreationUnlocked(), false);
+    function testFuzz_openPresets(uint8 binStep) public {
+        uint256 minBinStep = factory.getMinBinStep();
+        uint256 maxBinStep = factory.getMaxBinStep();
 
+        binStep = uint8(bound(binStep, minBinStep, maxBinStep));
+
+        // Preset are not open to the public by default
+        assertFalse(factory.getIsPresetOpen(binStep));
+
+        // Can be opened
         vm.expectEmit(true, true, true, true);
-        emit FactoryLockedStatusUpdated(false);
-        factory.setFactoryLockedState(false);
+        emit OpenPresetChanged(binStep, true);
+        factory.setOpenPreset(binStep, true);
 
-        assertEq(factory.isCreationUnlocked(), true);
+        for (uint256 i = minBinStep; i < maxBinStep; i++) {
+            if (i == binStep) {
+                assertTrue(factory.getIsPresetOpen(uint8(i)));
+            } else {
+                assertFalse(factory.getIsPresetOpen(uint8(i)));
+            }
+        }
 
-        factory.setFactoryLockedState(true);
-        assertEq(factory.isCreationUnlocked(), false);
+        // Setting neighboring presets to true does not change the state of the preset
+        uint8 nextBinStep = uint8(bound(binStep + 1, minBinStep, maxBinStep));
+        uint8 previousBinStep = uint8(bound(binStep + maxBinStep - minBinStep - 1, minBinStep, maxBinStep));
 
-        // Can't set if not the owner
-        vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
-        factory.setFactoryLockedState(true);
+        factory.setOpenPreset(nextBinStep, true);
+        factory.setOpenPreset(previousBinStep, true);
+
+        assertTrue(factory.getIsPresetOpen(binStep));
+        assertTrue(factory.getIsPresetOpen(nextBinStep));
+        assertTrue(factory.getIsPresetOpen(previousBinStep));
 
         // Can't set to the same state
-        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__FactoryLockIsAlreadyInTheSameState.selector));
-        factory.setFactoryLockedState(true);
+        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SamePresetOpenState.selector));
+        factory.setOpenPreset(binStep, true);
+
+        // Can be closed
+        vm.expectEmit(true, true, true, true);
+        emit OpenPresetChanged(binStep, false);
+        factory.setOpenPreset(binStep, false);
+
+        assertFalse(factory.getIsPresetOpen(binStep));
+        assertTrue(factory.getIsPresetOpen(nextBinStep));
+        assertTrue(factory.getIsPresetOpen(previousBinStep));
+
+        // Can't open if not the owner
+        vm.prank(ALICE);
+        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        factory.setOpenPreset(binStep, true);
+
+        // Can't set to the same state
+        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SamePresetOpenState.selector));
+        factory.setOpenPreset(binStep, false);
     }
 
     function test_addQuoteAsset() public {
@@ -880,7 +827,6 @@ contract LiquidityBinFactoryTest is TestHelper {
         /* Create pairs:
         - WETH/USDC with bin step = 5
         - WETH/USDC with bin step = 20
-        - WETH/USDC revision with bin step = 5
         - USDT/USDC with bin step = 5
         */
 
@@ -908,31 +854,18 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         ILBPair pair1 = factory.createLBPair(weth, usdc, ID_ONE, 5);
         ILBPair pair2 = factory.createLBPair(weth, usdc, ID_ONE, 20);
-
-        factory.setLBPairImplementation(address(new LBPair(factory)));
-        ILBPair pair3 = factory.createLBPairRevision(weth, usdc, 5);
         factory.createLBPair(usdt, usdc, ID_ONE, 5);
 
         ILBFactory.LBPairInformation[] memory LBPairsAvailable = factory.getAllLBPairs(weth, usdc);
 
-        assertEq(LBPairsAvailable.length, 3);
+        assertEq(LBPairsAvailable.length, 2);
 
         ILBFactory.LBPairInformation memory pair1Info = LBPairsAvailable[0];
         assertEq(address(pair1Info.LBPair), address(pair1));
         assertEq(pair1Info.binStep, 5);
-        assertEq(pair1Info.revisionIndex, 1);
-        assertEq(pair1Info.implementation, address(pairImplementation));
 
-        ILBFactory.LBPairInformation memory pair2Info = LBPairsAvailable[2];
+        ILBFactory.LBPairInformation memory pair2Info = LBPairsAvailable[1];
         assertEq(address(pair2Info.LBPair), address(pair2));
         assertEq(pair2Info.binStep, 20);
-        assertEq(pair2Info.revisionIndex, 1);
-        assertEq(pair2Info.implementation, address(pairImplementation));
-
-        ILBFactory.LBPairInformation memory pair3Info = LBPairsAvailable[1];
-        assertEq(address(pair3Info.LBPair), address(pair3));
-        assertEq(pair3Info.binStep, 5);
-        assertEq(pair3Info.revisionIndex, 2);
-        assertEq(pair3Info.implementation, address(factory.getLBPairImplementation()));
     }
 }

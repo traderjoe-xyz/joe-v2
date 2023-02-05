@@ -126,7 +126,7 @@ abstract contract TestHelper is Test {
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
 
         // Create router
-        router = new LBRouter(factory, legacyFactoryV2, factoryV1, IWAVAX(address(wavax)));
+        router = new LBRouter(factory, factoryV1, legacyFactoryV2, legacyRouterV2, IWAVAX(address(wavax)));
 
         // Create quoter
         quoter =
@@ -239,7 +239,6 @@ abstract contract TestHelper is Test {
             tokenX: tokenX,
             tokenY: tokenY,
             binStep: DEFAULT_BIN_STEP,
-            revision: 1,
             amountX: amountXIn,
             amountY: amountYIn,
             amountXMin: 0,

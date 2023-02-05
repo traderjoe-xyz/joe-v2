@@ -21,7 +21,7 @@ contract LiquidityBinRouterSwapTest is TestHelper {
     function setUp() public override {
         super.setUp();
 
-        factory.setFactoryLockedState(false);
+        factory.setOpenPreset(DEFAULT_BIN_STEP, true);
 
         // Create necessary pairs
         router.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
@@ -47,7 +47,7 @@ contract LiquidityBinRouterSwapTest is TestHelper {
     function test_SwapExactTokensForTokens() public {
         uint128 amountIn = 20e18;
 
-        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP, 1).LBPair;
+        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).LBPair;
         (, uint128 amountOutExpected,) = router.getSwapOut(pair, amountIn, true);
 
         ILBRouter.Path memory path = _buildPath(usdt, usdc);
@@ -84,7 +84,7 @@ contract LiquidityBinRouterSwapTest is TestHelper {
     function test_SwapExactTokensForAVAX() public {
         uint128 amountIn = 20e18;
 
-        ILBPair pair = factory.getLBPairInformation(wavax, usdc, DEFAULT_BIN_STEP, 1).LBPair;
+        ILBPair pair = factory.getLBPairInformation(wavax, usdc, DEFAULT_BIN_STEP).LBPair;
         (, uint128 amountOutExpected,) = router.getSwapOut(pair, amountIn, false);
 
         ILBRouter.Path memory path = _buildPath(usdc, wavax);
@@ -131,7 +131,7 @@ contract LiquidityBinRouterSwapTest is TestHelper {
     function test_SwapExactAVAXForTokens() public {
         uint128 amountIn = 20e18;
 
-        ILBPair pair = factory.getLBPairInformation(wavax, usdc, DEFAULT_BIN_STEP, 1).LBPair;
+        ILBPair pair = factory.getLBPairInformation(wavax, usdc, DEFAULT_BIN_STEP).LBPair;
         (, uint128 amountOutExpected,) = router.getSwapOut(pair, amountIn, true);
 
         ILBRouter.Path memory path = _buildPath(wavax, usdc);
@@ -174,7 +174,7 @@ contract LiquidityBinRouterSwapTest is TestHelper {
     function test_SwapTokensForExactTokens() public {
         uint128 amountOut = 20e18;
 
-        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP, 1).LBPair;
+        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).LBPair;
         (uint128 amountInExpected,,) = router.getSwapIn(pair, amountOut, true);
 
         ILBRouter.Path memory path = _buildPath(usdt, usdc);
@@ -214,7 +214,7 @@ contract LiquidityBinRouterSwapTest is TestHelper {
     function test_SwapTokensForExactAVAX() public {
         uint128 amountOut = 20e18;
 
-        ILBPair pair = factory.getLBPairInformation(wavax, usdc, DEFAULT_BIN_STEP, 1).LBPair;
+        ILBPair pair = factory.getLBPairInformation(wavax, usdc, DEFAULT_BIN_STEP).LBPair;
         (uint128 amountInExpected,,) = router.getSwapIn(pair, amountOut, false);
 
         ILBRouter.Path memory path = _buildPath(usdc, wavax);
@@ -260,7 +260,7 @@ contract LiquidityBinRouterSwapTest is TestHelper {
     function test_SwapAVAXForExactTokens() public {
         uint128 amountOut = 20e18;
 
-        ILBPair pair = factory.getLBPairInformation(wavax, usdc, DEFAULT_BIN_STEP, 1).LBPair;
+        ILBPair pair = factory.getLBPairInformation(wavax, usdc, DEFAULT_BIN_STEP).LBPair;
         (uint128 amountInExpected,,) = router.getSwapIn(pair, amountOut, true);
 
         ILBRouter.Path memory path = _buildPath(wavax, usdc);
@@ -307,7 +307,7 @@ contract LiquidityBinRouterSwapTest is TestHelper {
     function test_swapExactTokensForAVAXSupportingFeeOnTransferTokens() public {
         uint128 amountIn = 20e18;
 
-        ILBPair pair = factory.getLBPairInformation(taxToken, wavax, DEFAULT_BIN_STEP, 1).LBPair;
+        ILBPair pair = factory.getLBPairInformation(taxToken, wavax, DEFAULT_BIN_STEP).LBPair;
         (, uint128 amountOutExpected,) = router.getSwapOut(pair, amountIn, true);
 
         ILBRouter.Path memory path = _buildPath(taxToken, wavax);
@@ -358,7 +358,7 @@ contract LiquidityBinRouterSwapTest is TestHelper {
     function test_SwapExactTokensForAVAXSupportingFeeOnTransferTokens() public {
         uint128 amountIn = 20e18;
 
-        ILBPair pair = factory.getLBPairInformation(taxToken, wavax, DEFAULT_BIN_STEP, 1).LBPair;
+        ILBPair pair = factory.getLBPairInformation(taxToken, wavax, DEFAULT_BIN_STEP).LBPair;
         (, uint128 amountOutExpected,) = router.getSwapOut(pair, amountIn, true);
 
         ILBRouter.Path memory path = _buildPath(taxToken, wavax);
@@ -408,7 +408,7 @@ contract LiquidityBinRouterSwapTest is TestHelper {
     function test_SwapExactAVAXForTokensSupportingFeeOnTransferTokens() public {
         uint128 amountIn = 20e18;
 
-        ILBPair pair = factory.getLBPairInformation(taxToken, wavax, DEFAULT_BIN_STEP, 1).LBPair;
+        ILBPair pair = factory.getLBPairInformation(taxToken, wavax, DEFAULT_BIN_STEP).LBPair;
         (, uint128 amountOutExpected,) = router.getSwapOut(pair, amountIn, false);
 
         ILBRouter.Path memory path = _buildPath(wavax, taxToken);
@@ -459,8 +459,8 @@ contract LiquidityBinRouterSwapTest is TestHelper {
         path.pairBinSteps = new uint256[](1);
         path.pairBinSteps[0] = DEFAULT_BIN_STEP;
 
-        path.revisions = new uint256[](1);
-        path.revisions[0] = 1;
+        path.versions = new ILBRouter.Version[](1);
+        path.versions[0] = ILBRouter.Version.V2_1;
 
         path.tokenPath = new IERC20[](2);
         path.tokenPath[0] = tokenIn;

@@ -7,6 +7,7 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {IJoeFactory} from "./IJoeFactory.sol";
 import {ILBFactory} from "./ILBFactory.sol";
 import {ILBLegacyFactory} from "./ILBLegacyFactory.sol";
+import {ILBLegacyRouter} from "./ILBLegacyRouter.sol";
 import {ILBPair} from "./ILBPair.sol";
 import {ILBToken} from "./ILBToken.sol";
 import {IWAVAX} from "./IWAVAX.sol";
@@ -40,6 +41,12 @@ interface ILBRouter {
         address tokenX, address tokenY, uint256 amountX, uint256 amountY, uint256 msgValue
     );
 
+    enum Version {
+        V1,
+        V2,
+        V2_1
+    }
+
     /// @dev The liquidity parameters, such as:
     /// - tokenX: The address of token X
     /// - tokenY: The address of token Y
@@ -60,7 +67,6 @@ interface ILBRouter {
         IERC20 tokenX;
         IERC20 tokenY;
         uint256 binStep;
-        uint256 revision;
         uint256 amountX;
         uint256 amountY;
         uint256 amountXMin;
@@ -81,7 +87,7 @@ interface ILBRouter {
     /// - tokenPath: The list of tokens in the path to go through
     struct Path {
         uint256[] pairBinSteps;
-        uint256[] revisions;
+        Version[] versions;
         IERC20[] tokenPath;
     }
 
@@ -89,7 +95,9 @@ interface ILBRouter {
 
     function getLegacyFactory() external view returns (ILBLegacyFactory);
 
-    function getOldFactory() external view returns (IJoeFactory);
+    function getV1Factory() external view returns (IJoeFactory);
+
+    function getLegacyRouter() external view returns (ILBLegacyRouter);
 
     function getWAVAX() external view returns (IWAVAX);
 
@@ -138,7 +146,6 @@ interface ILBRouter {
         IERC20 tokenX,
         IERC20 tokenY,
         uint8 binStep,
-        uint256 revision,
         uint256 amountXMin,
         uint256 amountYMin,
         uint256[] memory ids,
@@ -150,7 +157,6 @@ interface ILBRouter {
     function removeLiquidityAVAX(
         IERC20 token,
         uint8 binStep,
-        uint256 revision,
         uint256 amountTokenMin,
         uint256 amountAVAXMin,
         uint256[] memory ids,

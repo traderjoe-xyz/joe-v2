@@ -102,6 +102,7 @@ contract LiquidityBinQuoterTest is TestHelper {
         assertEq(address(quoter.getFactoryV1()), AvalancheAddresses.JOE_V1_FACTORY, "test_Constructor::2");
         assertEq(address(quoter.getLegacyFactoryV2()), AvalancheAddresses.JOE_V2_FACTORY, "test_Constructor::3");
         assertEq(address(quoter.getFactoryV2()), address(factory), "test_Constructor::4");
+        assertEq(address(quoter.getLegacyRouterV2()), address(legacyRouterV2), "test_Constructor::5");
     }
 
     function test_InvalidLength() public {

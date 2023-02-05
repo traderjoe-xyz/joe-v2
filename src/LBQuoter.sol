@@ -104,7 +104,7 @@ contract LBQuoter {
      * @notice Returns the Dex V2 router address
      * @return legacyRouterV2 Dex V2 router address
      */
-    function getLEgacyRouteractoryV2() public view returns (address legacyRouterV2) {
+    function getLegacyRouterV2() public view returns (address legacyRouterV2) {
         legacyRouterV2 = _legacyRouterV2;
     }
 

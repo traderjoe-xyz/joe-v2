@@ -217,26 +217,26 @@ contract LBFactory is PendingOwnable, ILBFactory {
         returns (LBPairInformation[] memory lbPairsAvailable)
     {
         unchecked {
-            (IERC20 _tokenA, IERC20 _tokenB) = _sortTokens(tokenX, tokenY);
+            (IERC20 tokenA, IERC20 tokenB) = _sortTokens(tokenX, tokenY);
 
-            bytes32 _avLBPairBinSteps = _availableLBPairBinSteps[_tokenA][_tokenB];
-            uint256 _nbAvailable = _avLBPairBinSteps.decode(type(uint8).max, 248);
+            bytes32 avLBPairBinSteps = _availableLBPairBinSteps[tokenA][tokenB];
+            uint256 nbAvailable = avLBPairBinSteps.decode(type(uint8).max, 248);
 
-            if (_nbAvailable > 0) {
-                lbPairsAvailable = new LBPairInformation[](_nbAvailable);
+            if (nbAvailable > 0) {
+                lbPairsAvailable = new LBPairInformation[](nbAvailable);
 
-                uint256 _index;
+                uint256 index;
                 for (uint256 i = _MIN_BIN_STEP; i <= _MAX_BIN_STEP; ++i) {
-                    if (_avLBPairBinSteps.decode(1, i) == 1) {
-                        LBPairInformation memory _LBPairInformation = _lbPairsInfo[_tokenA][_tokenB][i];
+                    if (avLBPairBinSteps.decode(1, i) == 1) {
+                        LBPairInformation memory pairInformation = _lbPairsInfo[tokenA][tokenB][i];
 
-                        lbPairsAvailable[_index] = LBPairInformation({
+                        lbPairsAvailable[index] = LBPairInformation({
                             binStep: i.safe8(),
-                            LBPair: _LBPairInformation.LBPair,
-                            createdByOwner: _LBPairInformation.createdByOwner,
-                            ignoredForRouting: _LBPairInformation.ignoredForRouting
+                            LBPair: pairInformation.LBPair,
+                            createdByOwner: pairInformation.createdByOwner,
+                            ignoredForRouting: pairInformation.ignoredForRouting
                         });
-                        if (++_index == _nbAvailable) break;
+                        if (++index == nbAvailable) break;
                     }
                 }
             }
@@ -356,14 +356,14 @@ contract LBFactory is PendingOwnable, ILBFactory {
     {
         (IERC20 tokenA, IERC20 tokenB) = _sortTokens(tokenX, tokenY);
 
-        LBPairInformation memory _LBPairInformation = _lbPairsInfo[tokenA][tokenB][binStep];
-        if (address(_LBPairInformation.LBPair) == address(0)) revert LBFactory__AddressZero();
+        LBPairInformation memory pairInformation = _lbPairsInfo[tokenA][tokenB][binStep];
+        if (address(pairInformation.LBPair) == address(0)) revert LBFactory__AddressZero();
 
-        if (_LBPairInformation.ignoredForRouting == ignored) revert LBFactory__LBPairIgnoredIsAlreadyInTheSameState();
+        if (pairInformation.ignoredForRouting == ignored) revert LBFactory__LBPairIgnoredIsAlreadyInTheSameState();
 
         _lbPairsInfo[tokenA][tokenB][binStep].ignoredForRouting = ignored;
 
-        emit LBPairIgnoredStateChanged(_LBPairInformation.LBPair, ignored);
+        emit LBPairIgnoredStateChanged(pairInformation.LBPair, ignored);
     }
 
     /// @notice Sets the preset parameters of a bin step

@@ -6,24 +6,22 @@ import "./helpers/TestHelper.sol";
 
 import "src/libraries/ImmutableClone.sol";
 
-/*
-* Test scenarios:
-* 1. Constructor
-* 2. Set LBPair implementation
-* 3. Create LBPair
-* 4. Create revision
-* 5. Ignore LBPair for routing
-* 6. Set preset
-* 7. Remove preset
-* 8. Set fee parameters on pair
-* 9. Set fee recipient
-* 10. Set flash loan fee
-* 11. Set factory locked state
-* 12. Add quote asset to whitelist
-* 13. Remove quote asset from whitelist
-
-Invariant ideas:
-- Presets*/
+/**
+ * Test scenarios:
+ * 1. Constructor
+ * 2. Set LBPair implementation
+ * 3. Create LBPair
+ * 4. Create revision
+ * 5. Ignore LBPair for routing
+ * 6. Set preset
+ * 7. Remove preset
+ * 8. Set fee parameters on pair
+ * 9. Set fee recipient
+ * 10. Set flash loan fee
+ * 11. Set factory locked state
+ * 12. Add quote asset to whitelist
+ * 13. Remove quote asset from whitelist
+ */
 
 contract LiquidityBinFactoryTest is TestHelper {
     event QuoteAssetRemoved(IERC20 indexed _quoteAsset);
@@ -32,7 +30,6 @@ contract LiquidityBinFactoryTest is TestHelper {
     event LBPairCreated(
         IERC20 indexed tokenX, IERC20 indexed tokenY, uint256 indexed binStep, ILBPair LBPair, uint256 pid
     );
-
     event StaticFeeParametersSet(
         address indexed sender,
         uint16 baseFactor,
@@ -43,7 +40,6 @@ contract LiquidityBinFactoryTest is TestHelper {
         uint16 protocolShare,
         uint24 maxVolatilityAccumulator
     );
-
     event PresetSet(
         uint256 indexed binStep,
         uint256 baseFactor,
@@ -54,40 +50,26 @@ contract LiquidityBinFactoryTest is TestHelper {
         uint256 protocolShare,
         uint256 maxVolatilityAccumulator
     );
-
     event LBPairIgnoredStateChanged(ILBPair indexed LBPair, bool ignored);
-
     event PresetRemoved(uint256 indexed binStep);
-
     event FeeRecipientSet(address oldRecipient, address newRecipient);
-
     event FlashLoanFeeSet(uint256 oldFlashLoanFee, uint256 newFlashLoanFee);
-
-    event FactoryLockedStatusUpdated(bool unlocked);
-
     event OpenPresetChanged(uint8 indexed binStep, bool open);
-
-    struct LBPairInformation {
-        uint256 binStep;
-        ILBPair LBPair;
-        bool createdByOwner;
-        bool ignoredForRouting;
-    }
 
     function setUp() public override {
         super.setUp();
     }
 
-    function test_constructor() public {
-        assertEq(factory.getFeeRecipient(), DEV);
-        assertEq(factory.getFlashLoanFee(), DEFAULT_FLASHLOAN_FEE);
+    function test_Constructor() public {
+        assertEq(factory.getFeeRecipient(), DEV, "test_Constructor::1");
+        assertEq(factory.getFlashLoanFee(), DEFAULT_FLASHLOAN_FEE, "test_Constructor::2");
 
-        assertEq(factory.getLBPairImplementation(), address(pairImplementation));
-        assertEq(factory.getMinBinStep(), 1);
-        assertEq(factory.getMaxBinStep(), 200);
-        assertEq(factory.getFeeRecipient(), DEV);
-        assertEq(factory.getMaxFee(), 0.1e18);
-        assertEq(factory.getMaxProtocolShare(), 2_500);
+        assertEq(factory.getLBPairImplementation(), address(pairImplementation), "test_Constructor::3");
+        assertEq(factory.getMinBinStep(), 1, "test_Constructor::4");
+        assertEq(factory.getMaxBinStep(), 200, "test_Constructor::5");
+        assertEq(factory.getFeeRecipient(), DEV, "test_Constructor::6");
+        assertEq(factory.getMaxFee(), 0.1e18, "test_Constructor::7");
+        assertEq(factory.getMaxProtocolShare(), 2_500, "test_Constructor::8");
 
         vm.expectEmit(true, true, true, true);
         emit FlashLoanFeeSet(0, DEFAULT_FLASHLOAN_FEE);
@@ -109,7 +91,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(factory.getLBPairImplementation(), address(newImplementation), "test_setLBPairImplementation:1");
     }
 
-    function test_reverts_SetLBPairImplementation() public {
+    function test_revert_SetLBPairImplementation() public {
         ILBPair newImplementation = new LBPair(factory);
         factory.setLBPairImplementation(address(newImplementation));
 
@@ -134,7 +116,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setLBPairImplementation(address(newImplementationForAnotherFactory));
     }
 
-    function test_createLBPair() public {
+    function test_CreateLBPair() public {
         address expectedPairAddress = ImmutableClone.predictDeterministicAddress(
             address(pairImplementation),
             abi.encodePacked(usdt, usdc, DEFAULT_BIN_STEP),
@@ -161,20 +143,20 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         ILBPair pair = factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
-        assertEq(factory.getNumberOfLBPairs(), 1, "test_createLBPair::1");
+        assertEq(factory.getNumberOfLBPairs(), 1, "test_CreateLBPair::1");
 
         LBFactory.LBPairInformation memory pairInfo = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP);
-        assertEq(pairInfo.binStep, DEFAULT_BIN_STEP, "test_createLBPair::2");
-        assertEq(address(pairInfo.LBPair), address(pair), "test_createLBPair::2");
-        assertTrue(pairInfo.createdByOwner);
-        assertFalse(pairInfo.ignoredForRouting);
+        assertEq(pairInfo.binStep, DEFAULT_BIN_STEP, "test_CreateLBPair::2");
+        assertEq(address(pairInfo.LBPair), address(pair), "test_CreateLBPair::3");
+        assertTrue(pairInfo.createdByOwner, "test_CreateLBPair::4");
+        assertFalse(pairInfo.ignoredForRouting, "test_CreateLBPair::5");
 
-        assertEq(factory.getAllLBPairs(usdt, usdc).length, 1, "test_createLBPair::4");
-        assertEq(address(factory.getAllLBPairs(usdt, usdc)[0].LBPair), address(pair), "test_createLBPair::5");
+        assertEq(factory.getAllLBPairs(usdt, usdc).length, 1, "test_CreateLBPair::6");
+        assertEq(address(factory.getAllLBPairs(usdt, usdc)[0].LBPair), address(pair), "test_CreateLBPair::7");
 
-        assertEq(address(pair.getFactory()), address(factory), "test_createLBPair::6");
-        assertEq(address(pair.getTokenX()), address(usdt), "test_createLBPair::7");
-        assertEq(address(pair.getTokenY()), address(usdc), "test_createLBPair::8");
+        assertEq(address(pair.getFactory()), address(factory), "test_CreateLBPair::8");
+        assertEq(address(pair.getTokenX()), address(usdt), "test_CreateLBPair::9");
+        assertEq(address(pair.getTokenY()), address(usdc), "test_CreateLBPair::10");
 
         (
             uint16 baseFactor,
@@ -186,24 +168,24 @@ contract LiquidityBinFactoryTest is TestHelper {
             uint24 maxVolatilityAccumulator
         ) = pair.getStaticFeeParameters();
 
-        assertEq(baseFactor, DEFAULT_BASE_FACTOR, "test_createLBPair::9");
-        assertEq(filterPeriod, DEFAULT_FILTER_PERIOD, "test_createLBPair::10");
-        assertEq(decayPeriod, DEFAULT_DECAY_PERIOD, "test_createLBPair::11");
-        assertEq(reductionFactor, DEFAULT_REDUCTION_FACTOR, "test_createLBPair::12");
-        assertEq(variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL, "test_createLBPair::13");
-        assertEq(protocolShare, DEFAULT_PROTOCOL_SHARE, "test_createLBPair::14");
-        assertEq(maxVolatilityAccumulator, DEFAULT_MAX_VOLATILITY_ACCUMULATOR, "test_createLBPair::15");
+        assertEq(baseFactor, DEFAULT_BASE_FACTOR, "test_createLBPair::11");
+        assertEq(filterPeriod, DEFAULT_FILTER_PERIOD, "test_createLBPair::12");
+        assertEq(decayPeriod, DEFAULT_DECAY_PERIOD, "test_createLBPair::13");
+        assertEq(reductionFactor, DEFAULT_REDUCTION_FACTOR, "test_createLBPair::14");
+        assertEq(variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL, "test_createLBPair::15");
+        assertEq(protocolShare, DEFAULT_PROTOCOL_SHARE, "test_createLBPair::16");
+        assertEq(maxVolatilityAccumulator, DEFAULT_MAX_VOLATILITY_ACCUMULATOR, "test_createLBPair::17");
 
         (uint24 volatilityAccumulator, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate) =
             pair.getVariableFeeParameters();
 
-        assertEq(volatilityAccumulator, 0, "test_createLBPair::16");
-        assertEq(volatilityReference, 0, "test_createLBPair::17");
-        assertEq(idReference, ID_ONE, "test_createLBPair::18");
-        assertEq(timeOfLastUpdate, 0, "test_createLBPair::19");
+        assertEq(volatilityAccumulator, 0, "test_createLBPair::18");
+        assertEq(volatilityReference, 0, "test_createLBPair::19");
+        assertEq(idReference, ID_ONE, "test_createLBPair::20");
+        assertEq(timeOfLastUpdate, 0, "test_createLBPair::21");
     }
 
-    function test_createLBPairFactoryUnlocked() public {
+    function test_CreateLBPairFactoryUnlocked() public {
         // Users should not be able to create pairs by default
         vm.prank(ALICE);
         vm.expectRevert(
@@ -217,16 +199,25 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.prank(ALICE);
         factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
-        assertFalse(factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).createdByOwner);
+        assertFalse(
+            factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).createdByOwner,
+            "test_CreateLBPairFactoryUnlocked::1"
+        );
 
         vm.prank(BOB);
         factory.createLBPair(weth, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
-        assertFalse(factory.getLBPairInformation(weth, usdc, DEFAULT_BIN_STEP).createdByOwner);
+        assertFalse(
+            factory.getLBPairInformation(weth, usdc, DEFAULT_BIN_STEP).createdByOwner,
+            "test_CreateLBPairFactoryUnlocked::2"
+        );
 
         factory.createLBPair(bnb, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
-        assertTrue(factory.getLBPairInformation(bnb, usdc, DEFAULT_BIN_STEP).createdByOwner);
+        assertTrue(
+            factory.getLBPairInformation(bnb, usdc, DEFAULT_BIN_STEP).createdByOwner,
+            "test_CreateLBPairFactoryUnlocked::3"
+        );
 
         // Should close pair creations again
         factory.setOpenPreset(DEFAULT_BIN_STEP, false);
@@ -240,7 +231,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.createLBPair(wbtc, usdc, ID_ONE, DEFAULT_BIN_STEP);
     }
 
-    function test_reverts_createLBPair() public {
+    function test_revert_CreateLBPair() public {
         // Alice can't create a pair if the factory is locked
         vm.prank(ALICE);
         vm.expectRevert(
@@ -294,7 +285,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         newFactory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
     }
 
-    function test_setLBPairIgnored() public {
+    function test_SetLBPairIgnoredForRouting() public {
         ILBPair pair = factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
         // Ignoring the USDT-USDC rev 2 pair
@@ -303,8 +294,8 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, true);
 
         ILBFactory.LBPairInformation memory pairInfo = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP);
-        assertEq(address(pairInfo.LBPair), address(pair), "test_setLBPairIgnored::0");
-        assertEq(pairInfo.ignoredForRouting, true, "test_setLBPairIgnored::1");
+        assertEq(address(pairInfo.LBPair), address(pair), "test_SetLBPairIgnoredForRouting::1");
+        assertEq(pairInfo.ignoredForRouting, true, "test_SetLBPairIgnoredForRouting::2");
 
         // Put it back to normal
         vm.expectEmit(true, true, true, true);
@@ -314,11 +305,11 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(
             factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).ignoredForRouting,
             false,
-            "test_setLBPairIgnored::1"
+            "test_SetLBPairIgnoredForRouting::3"
         );
     }
 
-    function test_reverts_setLBPairIgnored() public {
+    function test_revert_SetLBPairIgnoredForRouting() public {
         // Can't ignore for routing if not the owner
         vm.prank(ALICE);
         vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
@@ -549,7 +540,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         }
     }
 
-    function test_removePreset() public {
+    function test_RemovePreset() public {
         factory.setPreset(
             DEFAULT_BIN_STEP + 1,
             DEFAULT_BASE_FACTOR,
@@ -572,13 +563,13 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_MAX_VOLATILITY_ACCUMULATOR
         );
 
-        assertEq(factory.getAllBinSteps().length, 3);
+        assertEq(factory.getAllBinSteps().length, 3, "test_RemovePreset::1");
 
         vm.expectEmit(true, true, true, true);
         emit PresetRemoved(DEFAULT_BIN_STEP);
         factory.removePreset(DEFAULT_BIN_STEP);
 
-        assertEq(factory.getAllBinSteps().length, 2);
+        assertEq(factory.getAllBinSteps().length, 2, "test_RemovePreset::2");
 
         // getPreset should revert for the removed bin step
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__BinStepHasNoPreset.selector, DEFAULT_BIN_STEP));
@@ -594,7 +585,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.removePreset(DEFAULT_BIN_STEP);
     }
 
-    function test_setFeesParametersOnPair() public {
+    function test_SetFeesParametersOnPair() public {
         ILBPair pair = factory.createLBPair(wavax, usdc, ID_ONE, DEFAULT_BIN_STEP);
         addLiquidity(DEV, DEV, LBPair(address(pair)), ID_ONE, 100e18, 100e18, 10, 10);
 
@@ -659,23 +650,25 @@ contract LiquidityBinFactoryTest is TestHelper {
                 uint24 maxVolatilityAccumulator
             ) = pair.getStaticFeeParameters();
 
-            assertEq(baseFactor, DEFAULT_BASE_FACTOR * 2);
-            assertEq(filterPeriod, DEFAULT_FILTER_PERIOD * 2);
-            assertEq(decayPeriod, DEFAULT_DECAY_PERIOD * 2);
-            assertEq(reductionFactor, DEFAULT_REDUCTION_FACTOR * 2);
-            assertEq(variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL * 2);
-            assertEq(protocolShare, DEFAULT_PROTOCOL_SHARE * 2);
-            assertEq(maxVolatilityAccumulator, DEFAULT_MAX_VOLATILITY_ACCUMULATOR * 2);
+            assertEq(baseFactor, DEFAULT_BASE_FACTOR * 2, "test_SetFeesParametersOnPair::1");
+            assertEq(filterPeriod, DEFAULT_FILTER_PERIOD * 2, "test_SetFeesParametersOnPair::2");
+            assertEq(decayPeriod, DEFAULT_DECAY_PERIOD * 2, "test_SetFeesParametersOnPair::3");
+            assertEq(reductionFactor, DEFAULT_REDUCTION_FACTOR * 2, "test_SetFeesParametersOnPair::4");
+            assertEq(variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL * 2, "test_SetFeesParametersOnPair::5");
+            assertEq(protocolShare, DEFAULT_PROTOCOL_SHARE * 2, "test_SetFeesParametersOnPair::6");
+            assertEq(
+                maxVolatilityAccumulator, DEFAULT_MAX_VOLATILITY_ACCUMULATOR * 2, "test_SetFeesParametersOnPair::7"
+            );
         }
 
         {
             (uint24 volatilityAccumulator, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate) =
                 pair.getVariableFeeParameters();
 
-            assertEq(volatilityAccumulator, oldVolatilityAccumulator);
-            assertEq(volatilityReference, oldVolatilityReference);
-            assertEq(idReference, oldIdReference);
-            assertEq(timeOfLastUpdate, oldTimeOfLastUpdate);
+            assertEq(volatilityAccumulator, oldVolatilityAccumulator, "test_SetFeesParametersOnPair::8");
+            assertEq(volatilityReference, oldVolatilityReference, "test_SetFeesParametersOnPair::9");
+            assertEq(idReference, oldIdReference, "test_SetFeesParametersOnPair::10");
+            assertEq(timeOfLastUpdate, oldTimeOfLastUpdate, "test_SetFeesParametersOnPair::11");
         }
 
         // Can't update if not the owner
@@ -712,12 +705,12 @@ contract LiquidityBinFactoryTest is TestHelper {
         );
     }
 
-    function test_setFeeRecipient() public {
+    function test_SetFeeRecipient() public {
         vm.expectEmit(true, true, true, true);
         emit FeeRecipientSet(address(this), ALICE);
         factory.setFeeRecipient(ALICE);
 
-        assertEq(factory.getFeeRecipient(), ALICE);
+        assertEq(factory.getFeeRecipient(), ALICE, "test_SetFeeRecipient::1");
 
         // Can't set if not the owner
         vm.prank(BOB);
@@ -733,13 +726,13 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setFeeRecipient(ALICE);
     }
 
-    function test_setFlashLoanFee() public {
+    function test_SetFlashLoanFee() public {
         uint256 newFlashLoanFee = 1_000;
         vm.expectEmit(true, true, true, true);
         emit FlashLoanFeeSet(DEFAULT_FLASHLOAN_FEE, newFlashLoanFee);
         factory.setFlashLoanFee(newFlashLoanFee);
 
-        assertEq(factory.getFlashLoanFee(), newFlashLoanFee);
+        assertEq(factory.getFlashLoanFee(), newFlashLoanFee, "test_SetFlashLoanFee::1");
 
         // Can't set if not the owner
         vm.prank(ALICE);
@@ -760,14 +753,14 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setFlashLoanFee(maxFlashLoanFee + 1);
     }
 
-    function testFuzz_openPresets(uint8 binStep) public {
+    function testFuzz_OpenPresets(uint8 binStep) public {
         uint256 minBinStep = factory.getMinBinStep();
         uint256 maxBinStep = factory.getMaxBinStep();
 
         binStep = uint8(bound(binStep, minBinStep, maxBinStep));
 
         // Preset are not open to the public by default
-        assertFalse(factory.getIsPresetOpen(binStep));
+        assertFalse(factory.getIsPresetOpen(binStep), "testFuzz_OpenPresets::1");
 
         // Can be opened
         vm.expectEmit(true, true, true, true);
@@ -776,9 +769,9 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         for (uint256 i = minBinStep; i < maxBinStep; i++) {
             if (i == binStep) {
-                assertTrue(factory.getIsPresetOpen(uint8(i)));
+                assertTrue(factory.getIsPresetOpen(uint8(i)), "testFuzz_OpenPresets::2");
             } else {
-                assertFalse(factory.getIsPresetOpen(uint8(i)));
+                assertFalse(factory.getIsPresetOpen(uint8(i)), "testFuzz_OpenPresets::3");
             }
         }
 
@@ -789,9 +782,9 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setOpenPreset(nextBinStep, true);
         factory.setOpenPreset(previousBinStep, true);
 
-        assertTrue(factory.getIsPresetOpen(binStep));
-        assertTrue(factory.getIsPresetOpen(nextBinStep));
-        assertTrue(factory.getIsPresetOpen(previousBinStep));
+        assertTrue(factory.getIsPresetOpen(binStep), "testFuzz_OpenPresets::4");
+        assertTrue(factory.getIsPresetOpen(nextBinStep), "testFuzz_OpenPresets::5");
+        assertTrue(factory.getIsPresetOpen(previousBinStep), "testFuzz_OpenPresets::6");
 
         // Can't set to the same state
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SamePresetOpenState.selector));
@@ -802,9 +795,9 @@ contract LiquidityBinFactoryTest is TestHelper {
         emit OpenPresetChanged(binStep, false);
         factory.setOpenPreset(binStep, false);
 
-        assertFalse(factory.getIsPresetOpen(binStep));
-        assertTrue(factory.getIsPresetOpen(nextBinStep));
-        assertTrue(factory.getIsPresetOpen(previousBinStep));
+        assertFalse(factory.getIsPresetOpen(binStep), "testFuzz_OpenPresets::7");
+        assertTrue(factory.getIsPresetOpen(nextBinStep), "testFuzz_OpenPresets::8");
+        assertTrue(factory.getIsPresetOpen(previousBinStep), "testFuzz_OpenPresets::9");
 
         // Can't open if not the owner
         vm.prank(ALICE);
@@ -816,20 +809,20 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setOpenPreset(binStep, false);
     }
 
-    function test_addQuoteAsset() public {
+    function test_AddQuoteAsset() public {
         uint256 numberOfQuoteAssetBefore = factory.getNumberOfQuoteAssets();
 
         IERC20 newToken = new ERC20Mock(18);
 
-        assertEq(factory.isQuoteAsset(newToken), false);
+        assertEq(factory.isQuoteAsset(newToken), false, "test_AddQuoteAsset::1");
 
         vm.expectEmit(true, true, true, true);
         emit QuoteAssetAdded(newToken);
         factory.addQuoteAsset(newToken);
 
-        assertEq(factory.isQuoteAsset(newToken), true);
-        assertEq(factory.getNumberOfQuoteAssets(), numberOfQuoteAssetBefore + 1);
-        assertEq(address(newToken), address(factory.getQuoteAsset(numberOfQuoteAssetBefore)));
+        assertEq(factory.isQuoteAsset(newToken), true, "test_AddQuoteAsset::2");
+        assertEq(factory.getNumberOfQuoteAssets(), numberOfQuoteAssetBefore + 1, "test_AddQuoteAsset::3");
+        assertEq(address(newToken), address(factory.getQuoteAsset(numberOfQuoteAssetBefore)), "test_AddQuoteAsset::4");
 
         // Can't add if not the owner
         vm.prank(ALICE);
@@ -841,17 +834,17 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.addQuoteAsset(newToken);
     }
 
-    function test_removeQuoteAsset() public {
+    function test_RemoveQuoteAsset() public {
         uint256 numberOfQuoteAssetBefore = factory.getNumberOfQuoteAssets();
 
-        assertEq(factory.isQuoteAsset(usdc), true);
+        assertEq(factory.isQuoteAsset(usdc), true, "test_RemoveQuoteAsset::1");
 
         vm.expectEmit(true, true, true, true);
         emit QuoteAssetRemoved(usdc);
         factory.removeQuoteAsset(usdc);
 
-        assertEq(factory.isQuoteAsset(usdc), false);
-        assertEq(factory.getNumberOfQuoteAssets(), numberOfQuoteAssetBefore - 1);
+        assertEq(factory.isQuoteAsset(usdc), false, "test_RemoveQuoteAsset::2");
+        assertEq(factory.getNumberOfQuoteAssets(), numberOfQuoteAssetBefore - 1, "test_RemoveQuoteAsset::3");
 
         // Can't remove if not the owner
         vm.prank(ALICE);
@@ -863,7 +856,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.removeQuoteAsset(usdc);
     }
 
-    function test_forceDecay() public {
+    function test_ForceDecay() public {
         ILBPair pair = factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
         factory.forceDecay(pair);
@@ -874,7 +867,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.forceDecay(pair);
     }
 
-    function test_getAllLBPairs() public {
+    function test_GetAllLBPairs() public {
         /* Create pairs:
         - WETH/USDC with bin step = 5
         - WETH/USDC with bin step = 20
@@ -909,14 +902,14 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         ILBFactory.LBPairInformation[] memory LBPairsAvailable = factory.getAllLBPairs(weth, usdc);
 
-        assertEq(LBPairsAvailable.length, 2);
+        assertEq(LBPairsAvailable.length, 2, "test_GetAllLBPairs::1");
 
         ILBFactory.LBPairInformation memory pair1Info = LBPairsAvailable[0];
-        assertEq(address(pair1Info.LBPair), address(pair1));
-        assertEq(pair1Info.binStep, 5);
+        assertEq(address(pair1Info.LBPair), address(pair1), "test_GetAllLBPairs::2");
+        assertEq(pair1Info.binStep, 5, "test_GetAllLBPairs::3");
 
         ILBFactory.LBPairInformation memory pair2Info = LBPairsAvailable[1];
-        assertEq(address(pair2Info.LBPair), address(pair2));
-        assertEq(pair2Info.binStep, 20);
+        assertEq(address(pair2Info.LBPair), address(pair2), "test_GetAllLBPairs::4");
+        assertEq(pair2Info.binStep, 20, "test_GetAllLBPairs::5");
     }
 }

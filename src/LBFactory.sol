@@ -41,6 +41,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     ILBPair[] private _allLBPairs;
 
+    uint256 private constant _TRUE = 1;
+    uint256 private constant _FALSE = 0;
+
     /**
      * @dev Mapping from a (tokenA, tokenB, binStep) to a LBPair. The tokens are ordered to save gas, but they can be
      * in the reverse order in the actual pair. Always query one of the 2 tokens of the pair to assert the order of the 2 tokens
@@ -260,7 +263,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
                 uint256 index;
                 for (uint256 i = _MIN_BIN_STEP; i <= _MAX_BIN_STEP; ++i) {
-                    if (avPresets.decodeUint1(i) == 1) {
+                    if (avPresets.decodeUint1(i) == _TRUE) {
                         binStepWithPreset[index] = i;
                         if (++index == nbPresets) break;
                     }
@@ -292,7 +295,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
                 uint256 index;
                 for (uint256 i = _MIN_BIN_STEP; i <= _MAX_BIN_STEP; ++i) {
-                    if (avLBPairBinSteps.decodeUint1(i) == 1) {
+                    if (avLBPairBinSteps.decodeUint1(i) == _TRUE) {
                         LBPairInformation memory pairInformation = _lbPairsInfo[tokenA][tokenB][i];
 
                         lbPairsAvailable[index] = LBPairInformation({
@@ -401,7 +404,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         {
             bytes32 avLBPairBinSteps = _availableLBPairBinSteps[tokenA][tokenB];
             // We add a 1 at bit `binStep` as this binStep is now set
-            avLBPairBinSteps = avLBPairBinSteps.set(1, 1, binStep);
+            avLBPairBinSteps = avLBPairBinSteps.set(_TRUE, Encoded.MASK_UINT1, binStep);
 
             // Increase the number of lb pairs by 1
             avLBPairBinSteps = bytes32(uint256(avLBPairBinSteps) + (1 << 248));
@@ -473,7 +476,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         bytes32 avPresets = _availablePresets;
         if (avPresets.decodeUint1(binStep) == 0) {
             // We add a 1 at bit `binStep` as this binStep is now set
-            avPresets = avPresets.set(1, 1, binStep);
+            avPresets = avPresets.set(_TRUE, Encoded.MASK_UINT1, binStep);
 
             // Increase the number of preset by 1
             avPresets = bytes32(uint256(avPresets) + (1 << 248));
@@ -508,12 +511,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
             if (isPresetOpen) revert LBFactory__SamePresetOpenState();
 
             // We add a 1 at bit `binStep` as this binStep is now open
-            _openPresets = _openPresets.set(1, 1, binStep);
+            _openPresets = _openPresets.set(_TRUE, Encoded.MASK_UINT1, binStep);
         } else {
             if (!isPresetOpen) revert LBFactory__SamePresetOpenState();
 
             // We remove a 1 at bit `binStep` as this binStep is now closed
-            _openPresets = _openPresets.set(0, 1, binStep);
+            _openPresets = _openPresets.set(_FALSE, Encoded.MASK_UINT1, binStep);
         }
 
         emit OpenPresetChanged(binStep, isOpen);
@@ -529,7 +532,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         // Set the bit `binStep` to 0
         bytes32 avPresets = _availablePresets;
 
-        avPresets = avPresets.set(0, 1, binStep);
+        avPresets = avPresets.set(_FALSE, Encoded.MASK_UINT1, binStep);
         avPresets = bytes32(uint256(avPresets) - (1 << 248));
 
         // Save the changes

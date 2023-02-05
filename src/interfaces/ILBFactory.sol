@@ -7,9 +7,11 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {ILBPair} from "./ILBPair.sol";
 import {IPendingOwnable} from "./IPendingOwnable.sol";
 
-/// @title Liquidity Book Factory Interface
-/// @author Trader Joe
-/// @notice Required interface of LBFactory contract
+/**
+ * @title Liquidity Book Factory Interface
+ * @author Trader Joe
+ * @notice Required interface of LBFactory contract
+ */
 interface ILBFactory is IPendingOwnable {
     error LBFactory__IdenticalAddresses(IERC20 token);
     error LBFactory__QuoteAssetNotWhitelisted(IERC20 quoteAsset);
@@ -36,13 +38,13 @@ interface ILBFactory is IPendingOwnable {
     error LBFactory__ImplementationNotSet();
     error LBFactory__SamePresetOpenState();
 
-    /// @dev Structure to store the LBPair information, such as:
-    /// - binStep: The bin step of the LBPair
-    /// - LBPair: The address of the LBPair
-    /// - createdByOwner: Whether the pair was created by the owner of the factory
-    /// - ignoredForRouting: Whether the pair is ignored for routing or not. An ignored pair will not be explored during routes finding
-    /// - revisionIndex: The revision index of the LBPair
-    /// - implementation: The implementation address of the LBPair
+    /**
+     * @dev Structure to store the LBPair information, such as:
+     * binStep: The bin step of the LBPair
+     * LBPair: The address of the LBPair
+     * createdByOwner: Whether the pair was created by the owner of the factory
+     * ignoredForRouting: Whether the pair is ignored for routing or not. An ignored pair will not be explored during routes finding
+     */
     struct LBPairInformation {
         uint8 binStep;
         ILBPair LBPair;
@@ -143,7 +145,7 @@ interface ILBFactory is IPendingOwnable {
         view
         returns (LBPairInformation[] memory LBPairsBinStep);
 
-    function setLBPairImplementation(address LBPairImplementation) external;
+    function setLBPairImplementation(address lbPairImplementation) external;
 
     function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint8 binStep)
         external
@@ -185,5 +187,5 @@ interface ILBFactory is IPendingOwnable {
 
     function removeQuoteAsset(IERC20 quoteAsset) external;
 
-    function forceDecay(ILBPair LBPair) external;
+    function forceDecay(ILBPair lbPair) external;
 }

@@ -190,14 +190,14 @@ contract LBFactory is PendingOwnable, ILBFactory {
     function getAllBinSteps() external view override returns (uint256[] memory presetsBinStep) {
         unchecked {
             bytes32 avPresets = _availablePresets;
-            uint256 nbPresets = avPresets.decode(type(uint8).max, 248);
+            uint256 nbPresets = avPresets.decodeUint8(248);
 
             if (nbPresets > 0) {
                 presetsBinStep = new uint256[](nbPresets);
 
                 uint256 index;
                 for (uint256 i = _MIN_BIN_STEP; i <= _MAX_BIN_STEP; ++i) {
-                    if (avPresets.decode(1, i) == 1) {
+                    if (avPresets.decodeUint1(i) == 1) {
                         presetsBinStep[index] = i;
                         if (++index == nbPresets) break;
                     }
@@ -220,14 +220,14 @@ contract LBFactory is PendingOwnable, ILBFactory {
             (IERC20 tokenA, IERC20 tokenB) = _sortTokens(tokenX, tokenY);
 
             bytes32 avLBPairBinSteps = _availableLBPairBinSteps[tokenA][tokenB];
-            uint256 nbAvailable = avLBPairBinSteps.decode(type(uint8).max, 248);
+            uint256 nbAvailable = avLBPairBinSteps.decodeUint8(248);
 
             if (nbAvailable > 0) {
                 lbPairsAvailable = new LBPairInformation[](nbAvailable);
 
                 uint256 index;
                 for (uint256 i = _MIN_BIN_STEP; i <= _MAX_BIN_STEP; ++i) {
-                    if (avLBPairBinSteps.decode(1, i) == 1) {
+                    if (avLBPairBinSteps.decodeUint1(i) == 1) {
                         LBPairInformation memory pairInformation = _lbPairsInfo[tokenA][tokenB][i];
 
                         lbPairsAvailable[index] = LBPairInformation({
@@ -332,7 +332,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         {
             bytes32 avLBPairBinSteps = _availableLBPairBinSteps[tokenA][tokenB];
             // We add a 1 at bit `binStep` as this binStep is now set
-            avLBPairBinSteps = bytes32(uint256(avLBPairBinSteps) | (1 << binStep));
+            avLBPairBinSteps = avLBPairBinSteps.set(1, 1, binStep);
 
             // Increase the number of lb pairs by 1
             avLBPairBinSteps = bytes32(uint256(avLBPairBinSteps) + (1 << 248));
@@ -401,9 +401,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
         _presets[binStep] = preset;
 
         bytes32 avPresets = _availablePresets;
-        if (avPresets.decode(1, binStep) == 0) {
+        if (avPresets.decodeUint1(binStep) == 0) {
             // We add a 1 at bit `binStep` as this binStep is now set
-            avPresets = bytes32(uint256(avPresets) | (1 << binStep));
+            avPresets = avPresets.set(1, 1, binStep);
 
             // Increase the number of preset by 1
             avPresets = bytes32(uint256(avPresets) + (1 << 248));
@@ -432,12 +432,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
             if (isPresetOpen) revert LBFactory__SamePresetOpenState();
 
             // We add a 1 at bit `binStep` as this binStep is now open
-            _openPresets = bytes32(uint256(openPresets) | (1 << binStep));
+            _openPresets = _openPresets.set(1, 1, binStep);
         } else {
             if (!isPresetOpen) revert LBFactory__SamePresetOpenState();
 
             // We remove a 1 at bit `binStep` as this binStep is now closed
-            _openPresets = bytes32(uint256(openPresets) & ~(1 << binStep));
+            _openPresets = _openPresets.set(0, 1, binStep);
         }
 
         emit OpenPresetChanged(binStep, isOpen);
@@ -451,7 +451,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         // Set the bit `binStep` to 0
         bytes32 avPresets = _availablePresets;
 
-        avPresets &= bytes32(type(uint256).max - (1 << binStep));
+        avPresets = avPresets.set(0, 1, binStep);
         avPresets = bytes32(uint256(avPresets) - (1 << 248));
 
         // Save the changes
@@ -549,7 +549,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     }
 
     function _isPresetOpen(bytes32 openPresets, uint8 binStep) internal pure returns (bool) {
-        return openPresets.decode(1, binStep) == 1;
+        return openPresets.decodeUint1(binStep) == 1;
     }
 
     /// @notice Internal function to set the recipient of the fee

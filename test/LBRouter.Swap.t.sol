@@ -44,6 +44,14 @@ contract LiquidityBinRouterSwapTest is TestHelper {
         router.addLiquidityAVAX{value: liquidityParameters.amountY}(liquidityParameters);
     }
 
+    function test_getIdFromPrice() public view {
+        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).LBPair;
+
+        router.getIdFromPrice(pair, 924521306405372907020063908180274956666);
+
+        router.getPriceFromId(pair, 1_000 + ID_ONE);
+    }
+
     function test_SwapExactTokensForTokens() public {
         uint128 amountIn = 20e18;
 
@@ -78,6 +86,15 @@ contract LiquidityBinRouterSwapTest is TestHelper {
         // Revert if the path arrays are not valid
         path.tokenPath = new IERC20[](0);
         vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__LengthsMismatch.selector));
+        router.swapExactTokensForTokens(amountIn, amountOutExpected, path, address(this), block.timestamp + 1);
+
+        // Revert if the pair doesn't exist
+        path.tokenPath = new IERC20[](2);
+        path.tokenPath[0] = usdt;
+        path.tokenPath[1] = taxToken;
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBRouter.LBRouter__PairNotCreated.selector, usdt, taxToken, DEFAULT_BIN_STEP)
+        );
         router.swapExactTokensForTokens(amountIn, amountOutExpected, path, address(this), block.timestamp + 1);
     }
 

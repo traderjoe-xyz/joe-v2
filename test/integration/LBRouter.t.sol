@@ -68,6 +68,14 @@ contract LiquidityBinRouterForkTest is TestHelper {
         uint256 amountOut = router.swapExactTokensForTokens(amountIn, 0, path, address(this), block.timestamp + 1);
 
         assertEq(amountOut, quote.amounts[3]);
+
+        // Reverse path
+        path = _buildPath(weth, usdt);
+        quote = quoter.findBestPathFromAmountIn(_convertToAddresses(path.tokenPath), uint128(amountIn));
+
+        amountOut = router.swapExactTokensForTokens(amountIn, 0, path, address(this), block.timestamp + 1);
+
+        assertEq(amountOut, quote.amounts[3]);
     }
 
     function test_swapTokensForExactTokens() public {
@@ -81,6 +89,15 @@ contract LiquidityBinRouterForkTest is TestHelper {
             router.swapTokensForExactTokens(amountOut, quote.amounts[0], path, address(this), block.timestamp + 1);
 
         assertEq(amountsIn[0], quote.amounts[0]);
+
+        // Reverse path
+        path = _buildPath(usdt, weth);
+        quote = quoter.findBestPathFromAmountOut(_convertToAddresses(path.tokenPath), uint128(amountOut));
+
+        amountsIn =
+            router.swapTokensForExactTokens(amountOut, quote.amounts[0], path, address(this), block.timestamp + 1);
+
+        assertEq(amountsIn[0], quote.amounts[0]);
     }
 
     function test_swapExactTokensForTokensSupportingFeeOnTransferTokens() public {
@@ -91,6 +108,16 @@ contract LiquidityBinRouterForkTest is TestHelper {
             quoter.findBestPathFromAmountIn(_convertToAddresses(path.tokenPath), uint128(amountIn));
 
         uint256 amountOut = router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            amountIn, 0, path, address(this), block.timestamp + 1
+        );
+
+        assertApproxEqRel(amountOut, quote.amounts[3] / 2, 1e12);
+
+        // Reverse path
+        path = _buildPath(usdt, taxToken);
+        quote = quoter.findBestPathFromAmountIn(_convertToAddresses(path.tokenPath), uint128(amountIn));
+
+        amountOut = router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
             amountIn, 0, path, address(this), block.timestamp + 1
         );
 

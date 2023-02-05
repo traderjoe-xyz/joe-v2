@@ -35,6 +35,14 @@ contract LiquidityBinRouterTest is TestHelper {
         deal(address(weth), address(this), startingBalance);
     }
 
+    function test_constructor() public {
+        assertEq(address(router.getFactory()), address(factory));
+        assertEq(address(router.getLegacyFactory()), address(legacyFactoryV2));
+        assertEq(address(router.getV1Factory()), address(factoryV1));
+        assertEq(address(router.getLegacyRouter()), address(legacyRouterV2));
+        assertEq(address(router.getWAVAX()), address(wavax));
+    }
+
     function test_ReceiveAVAX() public {
         // Users can't send AVAX to the router
         vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__SenderIsNotWAVAX.selector));
@@ -158,7 +166,34 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__IdOverflows.selector, uint256(type(uint24).max) + 1));
         router.addLiquidity(liquidityParameters);
 
-        // Revert is slippage is too high
+        // Revert if ID slippage is caught
+        liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+        liquidityParameters.activeIdDesired = ID_ONE - 10;
+        liquidityParameters.idSlippage = 5;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILBRouter.LBRouter__IdSlippageCaught.selector,
+                liquidityParameters.activeIdDesired,
+                liquidityParameters.idSlippage,
+                ID_ONE
+            )
+        );
+        router.addLiquidity(liquidityParameters);
+
+        liquidityParameters.activeIdDesired = ID_ONE + 10;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILBRouter.LBRouter__IdSlippageCaught.selector,
+                liquidityParameters.activeIdDesired,
+                liquidityParameters.idSlippage,
+                ID_ONE
+            )
+        );
+        router.addLiquidity(liquidityParameters);
+
+        // Revert if slippage is too high
         liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
         liquidityParameters.amountXMin = liquidityParameters.amountX + 1;
 
@@ -462,6 +497,12 @@ contract LiquidityBinRouterTest is TestHelper {
         uint256 balanceBefore = usdc.balanceOf(address(this));
         router.sweep(usdc, address(this), amount);
         assertEq(usdc.balanceOf(address(this)), balanceBefore + amount, "balanceAfter");
+
+        deal(address(router), amount);
+
+        balanceBefore = address(this).balance;
+        router.sweep(IERC20(address(0)), address(this), type(uint256).max);
+        assertEq(address(this).balance, balanceBefore + amount, "balanceAfter");
 
         // Can't sweep if non owner
         usdc.mint(address(router), amount);

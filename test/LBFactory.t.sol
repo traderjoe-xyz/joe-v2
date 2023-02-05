@@ -82,6 +82,13 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(factory.getFeeRecipient(), DEV);
         assertEq(factory.getFlashLoanFee(), DEFAULT_FLASHLOAN_FEE);
 
+        assertEq(factory.getLBPairImplementation(), address(pairImplementation));
+        assertEq(factory.getMinBinStep(), 1);
+        assertEq(factory.getMaxBinStep(), 200);
+        assertEq(factory.getFeeRecipient(), DEV);
+        assertEq(factory.getMaxFee(), 0.1e18);
+        assertEq(factory.getMaxProtocolShare(), 2_500);
+
         vm.expectEmit(true, true, true, true);
         emit FlashLoanFeeSet(0, DEFAULT_FLASHLOAN_FEE);
         new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);

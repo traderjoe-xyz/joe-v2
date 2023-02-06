@@ -58,7 +58,7 @@ contract LiquidityBinRouterForkTest is TestHelper {
         router.addLiquidityAVAX{value: liquidityParameters.amountY}(liquidityParameters);
     }
 
-    function test_swapExactTokensForTokens() public {
+    function test_SwapExactTokensForTokens() public {
         uint256 amountIn = 1e18;
 
         ILBRouter.Path memory path = _buildPath(usdt, weth);
@@ -67,10 +67,18 @@ contract LiquidityBinRouterForkTest is TestHelper {
 
         uint256 amountOut = router.swapExactTokensForTokens(amountIn, 0, path, address(this), block.timestamp + 1);
 
-        assertEq(amountOut, quote.amounts[3]);
+        assertEq(amountOut, quote.amounts[3], "test_SwapExactTokensForTokens::1");
+
+        // Reverse path
+        path = _buildPath(weth, usdt);
+        quote = quoter.findBestPathFromAmountIn(_convertToAddresses(path.tokenPath), uint128(amountIn));
+
+        amountOut = router.swapExactTokensForTokens(amountIn, 0, path, address(this), block.timestamp + 1);
+
+        assertEq(amountOut, quote.amounts[3], "test_SwapExactTokensForTokens::2");
     }
 
-    function test_swapTokensForExactTokens() public {
+    function test_SwapTokensForExactTokens() public {
         uint256 amountOut = 1e18;
 
         ILBRouter.Path memory path = _buildPath(weth, usdt);
@@ -80,10 +88,19 @@ contract LiquidityBinRouterForkTest is TestHelper {
         uint256[] memory amountsIn =
             router.swapTokensForExactTokens(amountOut, quote.amounts[0], path, address(this), block.timestamp + 1);
 
-        assertEq(amountsIn[0], quote.amounts[0]);
+        assertEq(amountsIn[0], quote.amounts[0], "test_SwapTokensForExactTokens::1");
+
+        // Reverse path
+        path = _buildPath(usdt, weth);
+        quote = quoter.findBestPathFromAmountOut(_convertToAddresses(path.tokenPath), uint128(amountOut));
+
+        amountsIn =
+            router.swapTokensForExactTokens(amountOut, quote.amounts[0], path, address(this), block.timestamp + 1);
+
+        assertEq(amountsIn[0], quote.amounts[0], "test_SwapTokensForExactTokens::2");
     }
 
-    function test_swapExactTokensForTokensSupportingFeeOnTransferTokens() public {
+    function test_SwapExactTokensForTokensSupportingFeeOnTransferTokens() public {
         uint256 amountIn = 1e18;
 
         ILBRouter.Path memory path = _buildPath(taxToken, usdt);
@@ -94,7 +111,21 @@ contract LiquidityBinRouterForkTest is TestHelper {
             amountIn, 0, path, address(this), block.timestamp + 1
         );
 
-        assertApproxEqRel(amountOut, quote.amounts[3] / 2, 1e12);
+        assertApproxEqRel(
+            amountOut, quote.amounts[3] / 2, 1e12, "test_SwapExactTokensForTokensSupportingFeeOnTransferTokens::1"
+        );
+
+        // Reverse path
+        path = _buildPath(usdt, taxToken);
+        quote = quoter.findBestPathFromAmountIn(_convertToAddresses(path.tokenPath), uint128(amountIn));
+
+        amountOut = router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            amountIn, 0, path, address(this), block.timestamp + 1
+        );
+
+        assertApproxEqRel(
+            amountOut, quote.amounts[3] / 2, 1e12, "test_SwapExactTokensForTokensSupportingFeeOnTransferTokens::2"
+        );
     }
 
     function _buildPath(IERC20 tokenIn, IERC20 tokenOut) private view returns (ILBRouter.Path memory path) {

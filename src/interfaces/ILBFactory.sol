@@ -7,9 +7,11 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {ILBPair} from "./ILBPair.sol";
 import {IPendingOwnable} from "./IPendingOwnable.sol";
 
-/// @title Liquidity Book Factory Interface
-/// @author Trader Joe
-/// @notice Required interface of LBFactory contract
+/**
+ * @title Liquidity Book Factory Interface
+ * @author Trader Joe
+ * @notice Required interface of LBFactory contract
+ */
 interface ILBFactory is IPendingOwnable {
     error LBFactory__IdenticalAddresses(IERC20 token);
     error LBFactory__QuoteAssetNotWhitelisted(IERC20 quoteAsset);
@@ -36,13 +38,13 @@ interface ILBFactory is IPendingOwnable {
     error LBFactory__ImplementationNotSet();
     error LBFactory__SamePresetOpenState();
 
-    /// @dev Structure to store the LBPair information, such as:
-    /// - binStep: The bin step of the LBPair
-    /// - LBPair: The address of the LBPair
-    /// - createdByOwner: Whether the pair was created by the owner of the factory
-    /// - ignoredForRouting: Whether the pair is ignored for routing or not. An ignored pair will not be explored during routes finding
-    /// - revisionIndex: The revision index of the LBPair
-    /// - implementation: The implementation address of the LBPair
+    /**
+     * @dev Structure to store the LBPair information, such as:
+     * binStep: The bin step of the LBPair
+     * LBPair: The address of the LBPair
+     * createdByOwner: Whether the pair was created by the owner of the factory
+     * ignoredForRouting: Whether the pair is ignored for routing or not. An ignored pair will not be explored during routes finding
+     */
     struct LBPairInformation {
         uint8 binStep;
         ILBPair LBPair;
@@ -57,19 +59,6 @@ interface ILBFactory is IPendingOwnable {
     event FeeRecipientSet(address oldRecipient, address newRecipient);
 
     event FlashLoanFeeSet(uint256 oldFlashLoanFee, uint256 newFlashLoanFee);
-
-    event FeeParametersSet(
-        address indexed sender,
-        ILBPair indexed LBPair,
-        uint256 binStep,
-        uint256 baseFactor,
-        uint256 filterPeriod,
-        uint256 decayPeriod,
-        uint256 reductionFactor,
-        uint256 variableFeeControl,
-        uint256 protocolShare,
-        uint256 maxVolatilityAccumulator
-    );
 
     event LBPairImplementationSet(address oldLBPairImplementation, address LBPairImplementation);
 
@@ -94,19 +83,17 @@ interface ILBFactory is IPendingOwnable {
 
     event OpenPresetChanged(uint8 indexed binStep, bool open);
 
-    function getMaxFee() external pure returns (uint256);
+    function getMaxFlashLoanFee() external pure returns (uint256);
 
     function getMinBinStep() external pure returns (uint256);
 
     function getMaxBinStep() external pure returns (uint256);
 
-    function getMaxProtocolShare() external pure returns (uint256);
-
     function getLBPairImplementation() external view returns (address);
 
     function getNumberOfQuoteAssets() external view returns (uint256);
 
-    function getQuoteAsset(uint256 index) external view returns (IERC20);
+    function getQuoteAssetAtIndex(uint256 index) external view returns (IERC20);
 
     function isQuoteAsset(IERC20 token) external view returns (bool);
 
@@ -143,7 +130,7 @@ interface ILBFactory is IPendingOwnable {
         view
         returns (LBPairInformation[] memory LBPairsBinStep);
 
-    function setLBPairImplementation(address LBPairImplementation) external;
+    function setLBPairImplementation(address lbPairImplementation) external;
 
     function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint8 binStep)
         external
@@ -185,5 +172,5 @@ interface ILBFactory is IPendingOwnable {
 
     function removeQuoteAsset(IERC20 quoteAsset) external;
 
-    function forceDecay(ILBPair LBPair) external;
+    function forceDecay(ILBPair lbPair) external;
 }

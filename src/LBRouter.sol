@@ -25,9 +25,11 @@ import {ILBLegacyFactory} from "./interfaces/ILBLegacyFactory.sol";
 import {ILBFactory} from "./interfaces/ILBFactory.sol";
 import {IWAVAX} from "./interfaces/IWAVAX.sol";
 
-/// @title Liquidity Book Router
-/// @author Trader Joe
-/// @notice Main contract to interact with to swap and manage liquidity on Joe V2 exchange.
+/**
+ * @title Liquidity Book Router
+ * @author Trader Joe
+ * @notice Main contract to interact with to swap and manage liquidity on Joe V2 exchange.
+ */
 contract LBRouter is ILBRouter {
     using TokenHelper for IERC20;
     using TokenHelper for IWAVAX;
@@ -58,11 +60,14 @@ contract LBRouter is ILBRouter {
         _;
     }
 
-    /// @notice Constructor
-    /// @param factory Address of Joe V2.1 factory
-    /// @param factoryV1 Address of Joe V1 factory
-    /// @param legacyFactory Address of Joe V2 factory
-    /// @param wavax Address of WAVAX
+    /**
+     * @notice Constructor
+     * @param factory Address of Joe V2.1 factory
+     * @param factoryV1 Address of Joe V1 factory
+     * @param legacyFactory Address of Joe V2 factory
+     * @param legacyRouter Address of Joe V2 router
+     * @param wavax Address of WAVAX
+     */
     constructor(
         ILBFactory factory,
         IJoeFactory factoryV1,
@@ -77,55 +82,83 @@ contract LBRouter is ILBRouter {
         _wavax = wavax;
     }
 
-    /// @dev Receive function that only accept AVAX from the WAVAX contract
+    /**
+     * @dev Receive function that only accept AVAX from the WAVAX contract
+     */
     receive() external payable {
         if (msg.sender != address(_wavax)) revert LBRouter__SenderIsNotWAVAX();
     }
 
-    function getFactory() external view override returns (ILBFactory) {
+    /**
+     * View function to get the factory V2.1 address
+     * @return lbFactory The address of the factory V2.1
+     */
+    function getFactory() external view override returns (ILBFactory lbFactory) {
         return _factory;
     }
 
-    function getLegacyFactory() external view override returns (ILBLegacyFactory) {
+    /**
+     * View function to get the factory V2 address
+     * @return legacyLBfactory The address of the factory V2
+     */
+    function getLegacyFactory() external view override returns (ILBLegacyFactory legacyLBfactory) {
         return _legacyFactory;
     }
 
-    function getV1Factory() external view override returns (IJoeFactory) {
+    /**
+     * View function to get the factory V1 address
+     * @return factoryV1 The address of the factory V1
+     */
+    function getV1Factory() external view override returns (IJoeFactory factoryV1) {
         return _factoryV1;
     }
 
-    function getLegacyRouter() external view override returns (ILBLegacyRouter) {
+    /**
+     * View function to get the router V2 address
+     * @return legacyRouter The address of the router V2
+     */
+    function getLegacyRouter() external view override returns (ILBLegacyRouter legacyRouter) {
         return _legacyRouter;
     }
 
-    function getWAVAX() external view override returns (IWAVAX) {
+    /**
+     * View function to get the WAVAX address
+     * @return wavax The address of WAVAX
+     */
+    function getWAVAX() external view override returns (IWAVAX wavax) {
         return _wavax;
     }
 
-    /// @notice Returns the approximate id corresponding to the inputted price.
-    /// Warning, the returned id may be inaccurate close to the start price of a bin
-    /// @param pair The address of the LBPair
-    /// @param price The price of y per x (multiplied by 1e36)
-    /// @return The id corresponding to this price
+    /**
+     * @notice Returns the approximate id corresponding to the inputted price.
+     * Warning, the returned id may be inaccurate close to the start price of a bin
+     * @param pair The address of the LBPair
+     * @param price The price of y per x (multiplied by 1e36)
+     * @return The id corresponding to this price
+     */
     function getIdFromPrice(ILBPair pair, uint256 price) external view override returns (uint24) {
         return pair.getIdFromPrice(price);
     }
 
-    /// @notice Returns the price corresponding to the inputted id
-    /// @param pair The address of the LBPair
-    /// @param id The id
-    /// @return The price corresponding to this id
+    /**
+     * @notice Returns the price corresponding to the inputted id
+     * @param pair The address of the LBPair
+     * @param id The id
+     * @return The price corresponding to this id
+     */
     function getPriceFromId(ILBPair pair, uint24 id) external view override returns (uint256) {
         return pair.getPriceFromId(id);
     }
 
-    /// @notice Simulate a swap in
-    /// @param pair The address of the LBPair
-    /// @param amountOut The amount of token to receive
-    /// @param swapForY Whether you swap X for Y (true), or Y for X (false)
-    /// @return amountIn The amount of token to send in order to receive amountOut token
-    /// @return amountOutLeft The amount of token Out that can't be returned due to a lack of liquidity
-    /// @return fee The amount of fees paid in token sent
+    /**
+     * @notice Simulate a swap in
+     * @param pair The address of the LBPair
+     * @param amountOut The amount of token to receive
+     * @param swapForY Whether you swap X for Y (true), or Y for X (false)
+     * @return amountIn The amount of token to send in order to receive amountOut token
+     * @return amountOutLeft The amount of token Out that can't be returned due to a lack of liquidity
+     * @return fee The amount of fees paid in token sent
+     */
     function getSwapIn(ILBPair pair, uint128 amountOut, bool swapForY)
         public
         view
@@ -135,13 +168,15 @@ contract LBRouter is ILBRouter {
         (amountIn, amountOutLeft, fee) = pair.getSwapIn(amountOut, swapForY);
     }
 
-    /// @notice Simulate a swap out
-    /// @param pair The address of the LBPair
-    /// @param amountIn The amount of token sent
-    /// @param swapForY Whether you swap X for Y (true), or Y for X (false)
-    /// @return amountInLeft The amount of token In that can't be swapped due to a lack of liquidity
-    /// @return amountOut The amount of token received if amountIn tokenX are sent
-    /// @return fee The amount of fees paid in token sent
+    /**
+     * @notice Simulate a swap out
+     * @param pair The address of the LBPair
+     * @param amountIn The amount of token sent
+     * @param swapForY Whether you swap X for Y (true), or Y for X (false)
+     * @return amountInLeft The amount of token In that can't be swapped due to a lack of liquidity
+     * @return amountOut The amount of token received if amountIn tokenX are sent
+     * @return fee The amount of fees paid in token sent
+     */
     function getSwapOut(ILBPair pair, uint128 amountIn, bool swapForY)
         external
         view
@@ -151,12 +186,14 @@ contract LBRouter is ILBRouter {
         (amountInLeft, amountOut, fee) = pair.getSwapOut(amountIn, swapForY);
     }
 
-    /// @notice Create a liquidity bin LBPair for tokenX and tokenY using the factory
-    /// @param tokenX The address of the first token
-    /// @param tokenY The address of the second token
-    /// @param activeId The active id of the pair
-    /// @param binStep The bin step in basis point, used to calculate log(1 + binStep)
-    /// @return pair The address of the newly created LBPair
+    /**
+     * @notice Create a liquidity bin LBPair for tokenX and tokenY using the factory
+     * @param tokenX The address of the first token
+     * @param tokenY The address of the second token
+     * @param activeId The active id of the pair
+     * @param binStep The bin step in basis point, used to calculate log(1 + binStep)
+     * @return pair The address of the newly created LBPair
+     */
     function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint8 binStep)
         external
         override
@@ -165,9 +202,17 @@ contract LBRouter is ILBRouter {
         pair = _factory.createLBPair(tokenX, tokenY, activeId, binStep);
     }
 
-    /// @notice Add liquidity while performing safety checks
-    /// @dev This function is compliant with fee on transfer tokens
-    /// @param liquidityParameters The liquidity parameters
+    /**
+     * @notice Add liquidity while performing safety checks
+     * @dev This function is compliant with fee on transfer tokens
+     * @param liquidityParameters The liquidity parameters
+     * @return amountXAdded The amount of token X added
+     * @return amountYAdded The amount of token Y added
+     * @return amountXLeft The amount of token X left (sent back to liquidityParameters.refundTo)
+     * @return amountYLeft The amount of token Y left (sent back to liquidityParameters.refundTo)
+     * @return depositIds The ids of the deposits
+     * @return liquidityMinted The amount of liquidity minted
+     */
     function addLiquidity(LiquidityParameters calldata liquidityParameters)
         external
         override
@@ -194,9 +239,17 @@ contract LBRouter is ILBRouter {
             _addLiquidity(liquidityParameters, lbPair);
     }
 
-    /// @notice Add liquidity with AVAX while performing safety checks
-    /// @dev This function is compliant with fee on transfer tokens
-    /// @param liquidityParameters The liquidity parameters
+    /**
+     * @notice Add liquidity with AVAX while performing safety checks
+     * @dev This function is compliant with fee on transfer tokens
+     * @param liquidityParameters The liquidity parameters
+     * @return amountXAdded The amount of token X added
+     * @return amountYAdded The amount of token Y added
+     * @return amountXLeft The amount of token X left (sent back to liquidityParameters.refundTo)
+     * @return amountYLeft The amount of token Y left (sent back to liquidityParameters.refundTo)
+     * @return depositIds The ids of the deposits
+     * @return liquidityMinted The amount of liquidity minted
+     */
     function addLiquidityAVAX(LiquidityParameters calldata liquidityParameters)
         external
         payable
@@ -237,19 +290,21 @@ contract LBRouter is ILBRouter {
             _addLiquidity(liquidityParameters, _LBPair);
     }
 
-    /// @notice Remove liquidity while performing safety checks
-    /// @dev This function is compliant with fee on transfer tokens
-    /// @param tokenX The address of token X
-    /// @param tokenY The address of token Y
-    /// @param binStep The bin step of the LBPair
-    /// @param amountXMin The min amount to receive of token X
-    /// @param amountYMin The min amount to receive of token Y
-    /// @param ids The list of ids to burn
-    /// @param amounts The list of amounts to burn of each id in `_ids`
-    /// @param to The address of the recipient
-    /// @param deadline The deadline of the tx
-    /// @return amountX Amount of token X returned
-    /// @return amountY Amount of token Y returned
+    /**
+     * @notice Remove liquidity while performing safety checks
+     * @dev This function is compliant with fee on transfer tokens
+     * @param tokenX The address of token X
+     * @param tokenY The address of token Y
+     * @param binStep The bin step of the LBPair
+     * @param amountXMin The min amount to receive of token X
+     * @param amountYMin The min amount to receive of token Y
+     * @param ids The list of ids to burn
+     * @param amounts The list of amounts to burn of each id in `_ids`
+     * @param to The address of the recipient
+     * @param deadline The deadline of the tx
+     * @return amountX Amount of token X returned
+     * @return amountY Amount of token Y returned
+     */
     function removeLiquidity(
         IERC20 tokenX,
         IERC20 tokenY,
@@ -271,20 +326,22 @@ contract LBRouter is ILBRouter {
         if (isWrongOrder) (amountX, amountY) = (amountY, amountX);
     }
 
-    /// @notice Remove AVAX liquidity while performing safety checks
-    /// @dev This function is **NOT** compliant with fee on transfer tokens.
-    /// This is wanted as it would make users pays the fee on transfer twice,
-    /// use the `removeLiquidity` function to remove liquidity with fee on transfer tokens.
-    /// @param token The address of token
-    /// @param binStep The bin step of the LBPair
-    /// @param amountTokenMin The min amount to receive of token
-    /// @param amountAVAXMin The min amount to receive of AVAX
-    /// @param ids The list of ids to burn
-    /// @param amounts The list of amounts to burn of each id in `_ids`
-    /// @param to The address of the recipient
-    /// @param deadline The deadline of the tx
-    /// @return amountToken Amount of token returned
-    /// @return amountAVAX Amount of AVAX returned
+    /**
+     * @notice Remove AVAX liquidity while performing safety checks
+     * @dev This function is **NOT** compliant with fee on transfer tokens.
+     * This is wanted as it would make users pays the fee on transfer twice,
+     * use the `removeLiquidity` function to remove liquidity with fee on transfer tokens.
+     * @param token The address of token
+     * @param binStep The bin step of the LBPair
+     * @param amountTokenMin The min amount to receive of token
+     * @param amountAVAXMin The min amount to receive of AVAX
+     * @param ids The list of ids to burn
+     * @param amounts The list of amounts to burn of each id in `_ids`
+     * @param to The address of the recipient
+     * @param deadline The deadline of the tx
+     * @return amountToken Amount of token returned
+     * @return amountAVAX Amount of AVAX returned
+     */
     function removeLiquidityAVAX(
         IERC20 token,
         uint8 binStep,
@@ -295,13 +352,12 @@ contract LBRouter is ILBRouter {
         address payable to,
         uint256 deadline
     ) external override ensure(deadline) returns (uint256 amountToken, uint256 amountAVAX) {
-        // TODO - avoid stack too deep and cache wavax
-        // IWAVAX wavax_ = _wavax;
+        IWAVAX wavax = _wavax;
 
-        ILBPair lbPair = ILBPair(_getLBPairInformation(token, IERC20(_wavax), binStep, Version.V2_1));
+        ILBPair lbPair = ILBPair(_getLBPairInformation(token, IERC20(wavax), binStep, Version.V2_1));
 
         {
-            bool isAVAXTokenY = IERC20(_wavax) == lbPair.getTokenY();
+            bool isAVAXTokenY = IERC20(wavax) == lbPair.getTokenY();
 
             if (!isAVAXTokenY) {
                 (amountTokenMin, amountAVAXMin) = (amountAVAXMin, amountTokenMin);
@@ -315,16 +371,19 @@ contract LBRouter is ILBRouter {
 
         token.safeTransfer(to, amountToken);
 
-        _wavax.withdraw(amountAVAX);
+        wavax.withdraw(amountAVAX);
         _safeTransferAVAX(to, amountAVAX);
     }
 
-    /// @notice Swaps exact tokens for tokens while performing safety checks
-    /// @param amountIn The amount of token to send
-    /// @param amountOutMin The min amount of token to receive
-    /// @param to The address of the recipient
-    /// @param deadline The deadline of the tx
-    /// @return amountOut Output amount of the swap
+    /**
+     * @notice Swaps exact tokens for tokens while performing safety checks
+     * @param amountIn The amount of token to send
+     * @param amountOutMin The min amount of token to receive
+     * @param path The path of the swap
+     * @param to The address of the recipient
+     * @param deadline The deadline of the tx
+     * @return amountOut Output amount of the swap
+     */
     function swapExactTokensForTokens(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -341,12 +400,15 @@ contract LBRouter is ILBRouter {
         if (amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMin, amountOut);
     }
 
-    /// @notice Swaps exact tokens for AVAX while performing safety checks
-    /// @param amountIn The amount of token to send
-    /// @param amountOutMinAVAX The min amount of AVAX to receive
-    /// @param to The address of the recipient
-    /// @param deadline The deadline of the tx
-    /// @return amountOut Output amount of the swap
+    /**
+     * @notice Swaps exact tokens for AVAX while performing safety checks
+     * @param amountIn The amount of token to send
+     * @param amountOutMinAVAX The min amount of AVAX to receive
+     * @param path The path of the swap
+     * @param to The address of the recipient
+     * @param deadline The deadline of the tx
+     * @return amountOut Output amount of the swap
+     */
     function swapExactTokensForAVAX(
         uint256 amountIn,
         uint256 amountOutMinAVAX,
@@ -370,11 +432,14 @@ contract LBRouter is ILBRouter {
         _safeTransferAVAX(to, amountOut);
     }
 
-    /// @notice Swaps exact AVAX for tokens while performing safety checks
-    /// @param amountOutMin The min amount of token to receive
-    /// @param to The address of the recipient
-    /// @param deadline The deadline of the tx
-    /// @return amountOut Output amount of the swap
+    /**
+     * @notice Swaps exact AVAX for tokens while performing safety checks
+     * @param amountOutMin The min amount of token to receive
+     * @param path The path of the swap
+     * @param to The address of the recipient
+     * @param deadline The deadline of the tx
+     * @return amountOut Output amount of the swap
+     */
     function swapExactAVAXForTokens(uint256 amountOutMin, Path memory path, address to, uint256 deadline)
         external
         payable
@@ -394,7 +459,15 @@ contract LBRouter is ILBRouter {
         if (amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMin, amountOut);
     }
 
-    /// @notice Swaps tokens for exact tokens while performing safety checks
+    /**
+     * @notice Swaps tokens for exact tokens while performing safety checks
+     * @param amountOut The amount of token to receive
+     * @param amountInMax The max amount of token to send
+     * @param path The path of the swap
+     * @param to The address of the recipient
+     * @param deadline The deadline of the tx
+     * @return amountsIn Input amounts of the swap
+     */
     function swapTokensForExactTokens(
         uint256 amountOut,
         uint256 amountInMax,
@@ -417,12 +490,15 @@ contract LBRouter is ILBRouter {
         }
     }
 
-    /// @notice Swaps tokens for exact AVAX while performing safety checks
-    /// @param amountAVAXOut The amount of AVAX to receive
-    /// @param amountInMax The max amount of token to send
-    /// @param to The address of the recipient
-    /// @param deadline The deadline of the tx
-    /// @return amountsIn path amounts for every step of the swap
+    /**
+     * @notice Swaps tokens for exact AVAX while performing safety checks
+     * @param amountAVAXOut The amount of AVAX to receive
+     * @param amountInMax The max amount of token to send
+     * @param path The path of the swap
+     * @param to The address of the recipient
+     * @param deadline The deadline of the tx
+     * @return amountsIn path amounts for every step of the swap
+     */
     function swapTokensForExactAVAX(
         uint256 amountAVAXOut,
         uint256 amountInMax,
@@ -450,12 +526,15 @@ contract LBRouter is ILBRouter {
         _safeTransferAVAX(to, _amountOutReal);
     }
 
-    /// @notice Swaps AVAX for exact tokens while performing safety checks
-    /// @dev Will refund any AVAX amount sent in excess to `msg.sender`
-    /// @param amountOut The amount of tokens to receive
-    /// @param to The address of the recipient
-    /// @param deadline The deadline of the tx
-    /// @return amountsIn path amounts for every step of the swap
+    /**
+     * @notice Swaps AVAX for exact tokens while performing safety checks
+     * @dev Will refund any AVAX amount sent in excess to `msg.sender`
+     * @param amountOut The amount of tokens to receive
+     * @param path The path of the swap
+     * @param to The address of the recipient
+     * @param deadline The deadline of the tx
+     * @return amountsIn path amounts for every step of the swap
+     */
     function swapAVAXForExactTokens(uint256 amountOut, Path memory path, address to, uint256 deadline)
         external
         payable
@@ -480,12 +559,15 @@ contract LBRouter is ILBRouter {
         if (msg.value > amountsIn[0]) _safeTransferAVAX(msg.sender, msg.value - amountsIn[0]);
     }
 
-    /// @notice Swaps exact tokens for tokens while performing safety checks supporting for fee on transfer tokens
-    /// @param amountIn The amount of token to send
-    /// @param amountOutMin The min amount of token to receive
-    /// @param to The address of the recipient
-    /// @param deadline The deadline of the tx
-    /// @return amountOut Output amount of the swap
+    /**
+     * @notice Swaps exact tokens for tokens while performing safety checks supporting for fee on transfer tokens
+     * @param amountIn The amount of token to send
+     * @param amountOutMin The min amount of token to receive
+     * @param path The path of the swap
+     * @param to The address of the recipient
+     * @param deadline The deadline of the tx
+     * @return amountOut Output amount of the swap
+     */
     function swapExactTokensForTokensSupportingFeeOnTransferTokens(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -507,12 +589,15 @@ contract LBRouter is ILBRouter {
         if (amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMin, amountOut);
     }
 
-    /// @notice Swaps exact tokens for AVAX while performing safety checks supporting for fee on transfer tokens
-    /// @param amountIn The amount of token to send
-    /// @param amountOutMinAVAX The min amount of AVAX to receive
-    /// @param to The address of the recipient
-    /// @param deadline The deadline of the tx
-    /// @return amountOut Output amount of the swap
+    /**
+     * @notice Swaps exact tokens for AVAX while performing safety checks supporting for fee on transfer tokens
+     * @param amountIn The amount of token to send
+     * @param amountOutMinAVAX The min amount of AVAX to receive
+     * @param path The path of the swap
+     * @param to The address of the recipient
+     * @param deadline The deadline of the tx
+     * @return amountOut Output amount of the swap
+     */
     function swapExactTokensForAVAXSupportingFeeOnTransferTokens(
         uint256 amountIn,
         uint256 amountOutMinAVAX,
@@ -539,11 +624,14 @@ contract LBRouter is ILBRouter {
         _safeTransferAVAX(to, amountOut);
     }
 
-    /// @notice Swaps exact AVAX for tokens while performing safety checks supporting for fee on transfer tokens
-    /// @param amountOutMin The min amount of token to receive
-    /// @param to The address of the recipient
-    /// @param deadline The deadline of the tx
-    /// @return amountOut Output amount of the swap
+    /**
+     * @notice Swaps exact AVAX for tokens while performing safety checks supporting for fee on transfer tokens
+     * @param amountOutMin The min amount of token to receive
+     * @param path The path of the swap
+     * @param to The address of the recipient
+     * @param deadline The deadline of the tx
+     * @return amountOut Output amount of the swap
+     */
     function swapExactAVAXForTokensSupportingFeeOnTransferTokens(
         uint256 amountOutMin,
         Path memory path,
@@ -566,11 +654,13 @@ contract LBRouter is ILBRouter {
         if (amountOutMin > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMin, amountOut);
     }
 
-    /// @notice Unstuck tokens that are sent to this contract by mistake
-    /// @dev Only callable by the factory owner
-    /// @param token The address of the token
-    /// @param to The address of the user to send back the tokens
-    /// @param amount The amount to send
+    /**
+     * @notice Unstuck tokens that are sent to this contract by mistake
+     * @dev Only callable by the factory owner
+     * @param token The address of the token
+     * @param to The address of the user to send back the tokens
+     * @param amount The amount to send
+     */
     function sweep(IERC20 token, address to, uint256 amount) external override onlyFactoryOwner {
         if (address(token) == address(0)) {
             if (amount == type(uint256).max) amount = address(this).balance;
@@ -581,12 +671,14 @@ contract LBRouter is ILBRouter {
         }
     }
 
-    /// @notice Unstuck LBTokens that are sent to this contract by mistake
-    /// @dev Only callable by the factory owner
-    /// @param lbToken The address of the LBToken
-    /// @param to The address of the user to send back the tokens
-    /// @param ids The list of token ids
-    /// @param amounts The list of amounts to send
+    /**
+     * @notice Unstuck LBTokens that are sent to this contract by mistake
+     * @dev Only callable by the factory owner
+     * @param lbToken The address of the LBToken
+     * @param to The address of the user to send back the tokens
+     * @param ids The list of token ids
+     * @param amounts The list of amounts to send
+     */
     function sweepLBToken(ILBToken lbToken, address to, uint256[] calldata ids, uint256[] calldata amounts)
         external
         override
@@ -595,9 +687,17 @@ contract LBRouter is ILBRouter {
         lbToken.batchTransferFrom(address(this), to, ids, amounts);
     }
 
-    /// @notice Helper function to add liquidity
-    /// @param liq The liquidity parameter
-    /// @param pair LBPair where liquidity is deposited
+    /**
+     * @notice Helper function to add liquidity
+     * @param liq The liquidity parameter
+     * @param pair LBPair where liquidity is deposited
+     * @return amountXAdded Amount of token X added
+     * @return amountYAdded Amount of token Y added
+     * @return amountXLeft Amount of token X left
+     * @return amountYLeft Amount of token Y left
+     * @return depositIds The list of deposit ids
+     * @return liquidityMinted The list of liquidity minted
+     */
     function _addLiquidity(LiquidityParameters calldata liq, ILBPair pair)
         private
         ensure(liq.deadline)
@@ -656,11 +756,14 @@ contract LBRouter is ILBRouter {
         }
     }
 
-    /// @notice Helper function to return the amounts in
-    /// @param pairs The list of pairs
-    /// @param tokenPath The swap path
-    /// @param amountOut The amount out
-    /// @return amountsIn The list of amounts in
+    /**
+     * @notice Helper function to return the amounts in
+     * @param versions The list of versions (V1, V2 or V2_1)
+     * @param pairs The list of pairs
+     * @param tokenPath The swap path
+     * @param amountOut The amount out
+     * @return amountsIn The list of amounts in
+     */
     function _getAmountsIn(
         Version[] memory versions,
         address[] memory pairs,
@@ -695,15 +798,17 @@ contract LBRouter is ILBRouter {
         }
     }
 
-    /// @notice Helper function to remove liquidity
-    /// @param pair The address of the LBPair
-    /// @param amountXMin The min amount to receive of token X
-    /// @param amountYMin The min amount to receive of token Y
-    /// @param ids The list of ids to burn
-    /// @param amounts The list of amounts to burn of each id in `_ids`
-    /// @param to The address of the recipient
-    /// @return amountX The amount of token X sent by the pair
-    /// @return amountY The amount of token Y sent by the pair
+    /**
+     * @notice Helper function to remove liquidity
+     * @param pair The address of the LBPair
+     * @param amountXMin The min amount to receive of token X
+     * @param amountYMin The min amount to receive of token Y
+     * @param ids The list of ids to burn
+     * @param amounts The list of amounts to burn of each id in `_ids`
+     * @param to The address of the recipient
+     * @return amountX The amount of token X sent by the pair
+     * @return amountY The amount of token Y sent by the pair
+     */
     function _removeLiquidity(
         ILBPair pair,
         uint256 amountXMin,
@@ -724,12 +829,15 @@ contract LBRouter is ILBRouter {
         }
     }
 
-    /// @notice Helper function to swap exact tokens for tokens
-    /// @param amountIn The amount of token sent
-    /// @param pairs The list of pairs
-    /// @param tokenPath The swap path using the binSteps following `pairBinSteps`
-    /// @param to The address of the recipient
-    /// @return amountOut The amount of token sent to `to`
+    /**
+     * @notice Helper function to swap exact tokens for tokens
+     * @param amountIn The amount of token sent
+     * @param pairs The list of pairs
+     * @param versions The list of versions (V1, V2 or V2_1)
+     * @param tokenPath The swap path using the binSteps following `pairBinSteps`
+     * @param to The address of the recipient
+     * @return amountOut The amount of token sent to `to`
+     */
     function _swapExactTokensForTokens(
         uint256 amountIn,
         address[] memory pairs,
@@ -784,12 +892,15 @@ contract LBRouter is ILBRouter {
         }
     }
 
-    /// @notice Helper function to swap tokens for exact tokens
-    /// @param pairs The array of pairs
-    /// @param tokenPath The swap path using the binSteps following `pairBinSteps`
-    /// @param amountsIn The list of amounts in
-    /// @param to The address of the recipient
-    /// @return amountOut The amount of token sent to `to`
+    /**
+     * @notice Helper function to swap tokens for exact tokens
+     * @param pairs The array of pairs
+     * @param versions The list of versions (V1, V2 or V2_1)
+     * @param tokenPath The swap path using the binSteps following `pairBinSteps`
+     * @param amountsIn The list of amounts in
+     * @param to The address of the recipient
+     * @return amountOut The amount of token sent to `to`
+     */
     function _swapTokensForExactTokens(
         address[] memory pairs,
         Version[] memory versions,
@@ -840,10 +951,13 @@ contract LBRouter is ILBRouter {
         }
     }
 
-    /// @notice Helper function to swap exact tokens supporting for fee on transfer tokens
-    /// @param pairs The list of pairs
-    /// @param tokenPath The swap path using the binSteps following `pairBinSteps`
-    /// @param to The address of the recipient
+    /**
+     * @notice Helper function to swap exact tokens supporting for fee on transfer tokens
+     * @param pairs The list of pairs
+     * @param versions The list of versions (V1, V2 or V2_1)
+     * @param tokenPath The swap path using the binSteps following `pairBinSteps`
+     * @param to The address of the recipient
+     */
     function _swapSupportingFeeOnTransferTokens(
         address[] memory pairs,
         Version[] memory versions,
@@ -889,12 +1003,15 @@ contract LBRouter is ILBRouter {
         }
     }
 
-    /// @notice Helper function to return the address of the LBPair
-    /// @dev Revert if the pair is not created yet
-    /// @param tokenX The address of the tokenX
-    /// @param tokenY The address of the tokenY
-    /// @param binStep The bin step of the LBPair
-    /// @return lbPair The address of the LBPair
+    /**
+     * @notice Helper function to return the address of the LBPair
+     * @dev Revert if the pair is not created yet
+     * @param tokenX The address of the tokenX
+     * @param tokenY The address of the tokenY
+     * @param binStep The bin step of the LBPair
+     * @param version The version of the LBPair
+     * @return lbPair The address of the LBPair
+     */
     function _getLBPairInformation(IERC20 tokenX, IERC20 tokenY, uint256 binStep, Version version)
         private
         view
@@ -911,12 +1028,15 @@ contract LBRouter is ILBRouter {
         }
     }
 
-    /// @notice Helper function to return the address of the pair (v1 or v2, according to `binStep`)
-    /// @dev Revert if the pair is not created yet
-    /// @param binStep The bin step of the LBPair, 0 means using V1 pair, any other value will use V2
-    /// @param tokenX The address of the tokenX
-    /// @param tokenY The address of the tokenY
-    /// @return pair The address of the pair of binStep `binStep`
+    /**
+     * @notice Helper function to return the address of the pair (v1 or v2, according to `binStep`)
+     * @dev Revert if the pair is not created yet
+     * @param tokenX The address of the tokenX
+     * @param tokenY The address of the tokenY
+     * @param binStep The bin step of the LBPair
+     * @param version The version of the LBPair
+     * @return pair The address of the pair of binStep `binStep`
+     */
     function _getPair(IERC20 tokenX, IERC20 tokenY, uint256 binStep, Version version)
         private
         view
@@ -930,6 +1050,13 @@ contract LBRouter is ILBRouter {
         }
     }
 
+    /**
+     * @notice Helper function to return a list of pairs
+     * @param pairBinSteps The list of bin steps
+     * @param versions The list of versions (V1, V2 or V2_1)
+     * @param tokenPath The swap path using the binSteps following `pairBinSteps`
+     * @return pairs The list of pairs
+     */
     function _getPairs(uint256[] memory pairBinSteps, Version[] memory versions, IERC20[] memory tokenPath)
         private
         view
@@ -949,17 +1076,21 @@ contract LBRouter is ILBRouter {
         }
     }
 
-    /// @notice Helper function to transfer AVAX
-    /// @param to The address of the recipient
-    /// @param amount The AVAX amount to send
+    /**
+     * @notice Helper function to transfer AVAX
+     * @param to The address of the recipient
+     * @param amount The AVAX amount to send
+     */
     function _safeTransferAVAX(address to, uint256 amount) private {
         (bool success,) = to.call{value: amount}("");
         if (!success) revert LBRouter__FailedToSendAVAX(to, amount);
     }
 
-    /// @notice Helper function to deposit and transfer _wavax
-    /// @param to The address of the recipient
-    /// @param amount The AVAX amount to wrap
+    /**
+     * @notice Helper function to deposit and transfer _wavax
+     * @param to The address of the recipient
+     * @param amount The AVAX amount to wrap
+     */
     function _wavaxDepositAndTransfer(address to, uint256 amount) private {
         _wavax.deposit{value: amount}();
         _wavax.safeTransfer(to, amount);

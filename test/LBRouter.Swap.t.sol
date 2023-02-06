@@ -8,14 +8,14 @@ import "test/helpers/TestHelper.sol";
  * This file only test single hop swaps using V2.1 pairs
  * Test scenarios:
  * 1. swapExactTokensForTokens
- * 1. swapExactTokensForAVAX
- * 2. swapExactAVAXForTokens
- * 3. swapTokensForExactTokens
- * 4. swapTokensForExactAVAX
- * 5. swapAVAXForExactTokens
- * 6. swapExactTokensForTokensSupportingFeeOnTransferTokens
- * 7. swapExactTokensForAVAXSupportingFeeOnTransferTokens
- * 8. swapExactAVAXForTokensSupportingFeeOnTransferTokens
+ * 2. swapExactTokensForAVAX
+ * 3. swapExactAVAXForTokens
+ * 4. swapTokensForExactTokens
+ * 5. swapTokensForExactAVAX
+ * 6. swapAVAXForExactTokens
+ * 7. swapExactTokensForTokensSupportingFeeOnTransferTokens
+ * 8. swapExactTokensForAVAXSupportingFeeOnTransferTokens
+ * 9. swapExactAVAXForTokensSupportingFeeOnTransferTokens
  */
 contract LiquidityBinRouterSwapTest is TestHelper {
     function setUp() public override {
@@ -44,6 +44,14 @@ contract LiquidityBinRouterSwapTest is TestHelper {
         router.addLiquidityAVAX{value: liquidityParameters.amountY}(liquidityParameters);
     }
 
+    function test_GetIdFromPrice() public view {
+        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).LBPair;
+
+        router.getIdFromPrice(pair, 924521306405372907020063908180274956666);
+
+        router.getPriceFromId(pair, 1_000 + ID_ONE);
+    }
+
     function test_SwapExactTokensForTokens() public {
         uint128 amountIn = 20e18;
 
@@ -57,8 +65,8 @@ contract LiquidityBinRouterSwapTest is TestHelper {
         (uint256 amountOut) =
             router.swapExactTokensForTokens(amountIn, amountOutExpected, path, address(this), block.timestamp + 1);
 
-        assertEq(amountOut, amountOutExpected, "amountOut");
-        assertEq(usdc.balanceOf(address(this)), balanceBefore + amountOut, "balance");
+        assertEq(amountOut, amountOutExpected, "test_SwapExactTokensForTokens::1");
+        assertEq(usdc.balanceOf(address(this)), balanceBefore + amountOut, "test_SwapExactTokensForTokens::2");
 
         // Reverts if amountOut is less than amountOutMin
         (, amountOutExpected,) = router.getSwapOut(pair, amountIn, true);
@@ -79,6 +87,15 @@ contract LiquidityBinRouterSwapTest is TestHelper {
         path.tokenPath = new IERC20[](0);
         vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__LengthsMismatch.selector));
         router.swapExactTokensForTokens(amountIn, amountOutExpected, path, address(this), block.timestamp + 1);
+
+        // Revert if the pair doesn't exist
+        path.tokenPath = new IERC20[](2);
+        path.tokenPath[0] = usdt;
+        path.tokenPath[1] = taxToken;
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBRouter.LBRouter__PairNotCreated.selector, usdt, taxToken, DEFAULT_BIN_STEP)
+        );
+        router.swapExactTokensForTokens(amountIn, amountOutExpected, path, address(this), block.timestamp + 1);
     }
 
     function test_SwapExactTokensForAVAX() public {
@@ -95,8 +112,8 @@ contract LiquidityBinRouterSwapTest is TestHelper {
             amountIn, amountOutExpected, path, payable(address(this)), block.timestamp + 1
         );
 
-        assertEq(amountOut, amountOutExpected, "amountOut");
-        assertEq(address(this).balance, balanceBefore + amountOut, "balance");
+        assertEq(amountOut, amountOutExpected, "test_SwapExactTokensForAVAX::1");
+        assertEq(address(this).balance, balanceBefore + amountOut, "test_SwapExactTokensForAVAX::2");
 
         // Reverts if amountOut is less than amountOutMin
         (, amountOutExpected,) = router.getSwapOut(pair, amountIn, false);
@@ -141,8 +158,8 @@ contract LiquidityBinRouterSwapTest is TestHelper {
         (uint256 amountOut) =
             router.swapExactAVAXForTokens{value: amountIn}(amountOutExpected, path, address(this), block.timestamp + 1);
 
-        assertEq(amountOut, amountOutExpected, "amountOut");
-        assertEq(usdc.balanceOf(address(this)), balanceBefore + amountOut, "balance");
+        assertEq(amountOut, amountOutExpected, "test_SwapExactAVAXForTokens::1");
+        assertEq(usdc.balanceOf(address(this)), balanceBefore + amountOut, "test_SwapExactAVAXForTokens::2");
 
         (, amountOutExpected,) = router.getSwapOut(pair, amountIn, true);
 
@@ -184,8 +201,8 @@ contract LiquidityBinRouterSwapTest is TestHelper {
         (uint256[] memory amountsIn) =
             router.swapTokensForExactTokens(amountOut, amountInExpected, path, address(this), block.timestamp + 1);
 
-        assertEq(amountsIn[0], amountInExpected, "amountOut");
-        assertEq(usdt.balanceOf(address(this)), balanceBefore - amountsIn[0], "balance");
+        assertEq(amountsIn[0], amountInExpected, "test_SwapTokensForExactTokens::1");
+        assertEq(usdt.balanceOf(address(this)), balanceBefore - amountsIn[0], "test_SwapTokensForExactTokens::2");
 
         (amountInExpected,,) = router.getSwapIn(pair, amountOut, true);
 
@@ -196,8 +213,6 @@ contract LiquidityBinRouterSwapTest is TestHelper {
             )
         );
         router.swapTokensForExactTokens(amountOut, amountInExpected - 1, path, address(this), block.timestamp + 1);
-
-        // TODO - try to hit LBRouter__InsufficientAmountOut
 
         // Revert is dealine passed
         vm.expectRevert(
@@ -225,8 +240,8 @@ contract LiquidityBinRouterSwapTest is TestHelper {
             amountOut, amountInExpected, path, payable(address(this)), block.timestamp + 1
         );
 
-        assertEq(amountsIn[0], amountInExpected, "amountOut");
-        assertEq(usdc.balanceOf(address(this)), balanceBefore - amountsIn[0], "balance");
+        assertEq(amountsIn[0], amountInExpected, "test_SwapTokensForExactAVAX::1");
+        assertEq(usdc.balanceOf(address(this)), balanceBefore - amountsIn[0], "test_SwapTokensForExactAVAX::2");
 
         (amountInExpected,,) = router.getSwapIn(pair, amountOut, false);
 
@@ -237,8 +252,6 @@ contract LiquidityBinRouterSwapTest is TestHelper {
             )
         );
         router.swapTokensForExactTokens(amountOut, amountInExpected - 1, path, address(this), block.timestamp + 1);
-
-        // TODO - try to hit LBRouter__InsufficientAmountOut
 
         // Revert if token out isn't WAVAX
         path.tokenPath[1] = usdt;
@@ -272,8 +285,8 @@ contract LiquidityBinRouterSwapTest is TestHelper {
             amountOut, path, address(this), block.timestamp + 1
         );
 
-        assertEq(amountsIn[0], amountInExpected, "amountOut");
-        assertEq(address(this).balance, balanceBefore - amountsIn[0], "balance");
+        assertEq(amountsIn[0], amountInExpected, "test_SwapAVAXForExactTokens::1");
+        assertEq(address(this).balance, balanceBefore - amountsIn[0], "test_SwapAVAXForExactTokens::2");
 
         (amountInExpected,,) = router.getSwapIn(pair, amountOut, true);
 
@@ -284,8 +297,6 @@ contract LiquidityBinRouterSwapTest is TestHelper {
             )
         );
         router.swapAVAXForExactTokens{value: amountInExpected / 2}(amountOut, path, address(this), block.timestamp + 1);
-
-        // TODO - try to hit LBRouter__InsufficientAmountOut
 
         // Revert if token in isn't WAVAX
         path.tokenPath[0] = usdt;
@@ -302,57 +313,6 @@ contract LiquidityBinRouterSwapTest is TestHelper {
         path.tokenPath = new IERC20[](0);
         vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__LengthsMismatch.selector));
         router.swapAVAXForExactTokens{value: amountInExpected}(amountOut, path, address(this), block.timestamp + 1);
-    }
-
-    function test_swapExactTokensForAVAXSupportingFeeOnTransferTokens() public {
-        uint128 amountIn = 20e18;
-
-        ILBPair pair = factory.getLBPairInformation(taxToken, wavax, DEFAULT_BIN_STEP).LBPair;
-        (, uint128 amountOutExpected,) = router.getSwapOut(pair, amountIn, true);
-
-        ILBRouter.Path memory path = _buildPath(taxToken, wavax);
-
-        // Reverts if amountOut is less than amountOutMin
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ILBRouter.LBRouter__InsufficientAmountOut.selector, amountOutExpected, amountOutExpected / 2
-            )
-        );
-        router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
-            amountIn, amountOutExpected, path, payable(address(this)), block.timestamp + 1
-        );
-
-        uint256 balanceBefore = address(this).balance;
-
-        // Token tax is 50%
-        (uint256 amountOut) = router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
-            amountIn, amountOutExpected / 2, path, payable(address(this)), block.timestamp + 1
-        );
-
-        assertEq(amountOut, amountOutExpected / 2, "amountOut");
-        assertEq(address(this).balance, balanceBefore + amountOut, "balance");
-
-        // Revert if token out isn't WAVAX
-        path.tokenPath[1] = usdt;
-        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__InvalidTokenPath.selector, address(usdt)));
-        router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
-            amountIn, amountOutExpected / 2, path, payable(address(this)), block.timestamp + 1
-        );
-
-        // Revert is dealine passed
-        vm.expectRevert(
-            abi.encodeWithSelector(ILBRouter.LBRouter__DeadlineExceeded.selector, block.timestamp - 1, block.timestamp)
-        );
-        router.swapExactTokensForAVAX(
-            amountIn, amountOutExpected / 2, path, payable(address(this)), block.timestamp - 1
-        );
-
-        // Revert if the path arrays are not valid
-        path.tokenPath = new IERC20[](0);
-        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__LengthsMismatch.selector));
-        router.swapExactTokensForAVAX(
-            amountIn, amountOutExpected / 2, path, payable(address(this)), block.timestamp + 1
-        );
     }
 
     function test_SwapExactTokensForAVAXSupportingFeeOnTransferTokens() public {
@@ -379,8 +339,12 @@ contract LiquidityBinRouterSwapTest is TestHelper {
             amountIn, amountOutExpected / 2, path, payable(address(this)), block.timestamp + 1
         );
 
-        assertEq(amountOut, amountOutExpected / 2, "amountOut");
-        assertEq(address(this).balance, balanceBefore + amountOut, "balance");
+        assertEq(amountOut, amountOutExpected / 2, "test_SwapExactTokensForAVAXSupportingFeeOnTransferTokens::1");
+        assertEq(
+            address(this).balance,
+            balanceBefore + amountOut,
+            "test_SwapExactTokensForAVAXSupportingFeeOnTransferTokens::2"
+        );
 
         // Revert if token out isn't WAVAX
         path.tokenPath[1] = usdt;
@@ -429,8 +393,12 @@ contract LiquidityBinRouterSwapTest is TestHelper {
             amountOutExpected / 2, path, address(this), block.timestamp + 1
         );
 
-        assertEq(amountOut, amountOutExpected / 2 + 1, "amountOut");
-        assertEq(taxToken.balanceOf(address(this)), balanceBefore + amountOut, "balance");
+        assertEq(amountOut, amountOutExpected / 2 + 1, "test_SwapExactAVAXForTokensSupportingFeeOnTransferTokens::1");
+        assertEq(
+            taxToken.balanceOf(address(this)),
+            balanceBefore + amountOut,
+            "test_SwapExactAVAXForTokensSupportingFeeOnTransferTokens::2"
+        );
 
         // Revert if token in isn't WAVAX
         path.tokenPath[0] = usdt;

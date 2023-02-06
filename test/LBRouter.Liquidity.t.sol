@@ -6,14 +6,14 @@ import "test/helpers/TestHelper.sol";
 
 /**
  * Test scenarios:
- * 2. Receive
- * 3. Create LBPair
- * 4. Add Liquidity
- * 5. Add liquidity AVAX
- * 6. Remove liquidity
- * 7. Remove liquidity AVAX
- * 8. Sweep ERC20s
- * 9. Sweep LBToken
+ * 1. Receive
+ * 2. Create LBPair
+ * 3. Add Liquidity
+ * 4. Add liquidity AVAX
+ * 5. Remove liquidity
+ * 6. Remove liquidity AVAX
+ * 7. Sweep ERC20s
+ * 8. Sweep LBToken
  */
 contract LiquidityBinRouterTest is TestHelper {
     bool blockReceive;
@@ -35,6 +35,14 @@ contract LiquidityBinRouterTest is TestHelper {
         deal(address(weth), address(this), startingBalance);
     }
 
+    function test_Constructor() public {
+        assertEq(address(router.getFactory()), address(factory), "test_Constructor::1");
+        assertEq(address(router.getLegacyFactory()), address(legacyFactoryV2), "test_Constructor::2");
+        assertEq(address(router.getV1Factory()), address(factoryV1), "test_Constructor::3");
+        assertEq(address(router.getLegacyRouter()), address(legacyRouterV2), "test_Constructor::4");
+        assertEq(address(router.getWAVAX()), address(wavax), "test_Constructor::5");
+    }
+
     function test_ReceiveAVAX() public {
         // Users can't send AVAX to the router
         vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__SenderIsNotWAVAX.selector));
@@ -45,7 +53,7 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.prank(address(wavax));
         (success,) = address(router).call{value: 1e18}("");
 
-        assertTrue(success);
+        assertTrue(success, "test_ReceiveAVAX::1");
     }
 
     function test_CreatePair() public {
@@ -82,20 +90,20 @@ contract LiquidityBinRouterTest is TestHelper {
         ) = router.addLiquidity(liquidityParameters);
 
         // Check amounts
-        assertEq(amountXAdded, liquidityParameters.amountX, "amountXAdded");
-        assertEq(amountYAdded, liquidityParameters.amountY, "amountYAdded");
-        assertLt(amountXLeft, amountXAdded, "amountXLeft");
-        assertLt(amountYLeft, amountYAdded, "amountYLeft");
+        assertEq(amountXAdded, liquidityParameters.amountX, "testFuzz_AddLiquidityNoSlippage::1");
+        assertEq(amountYAdded, liquidityParameters.amountY, "testFuzz_AddLiquidityNoSlippage::2");
+        assertLt(amountXLeft, amountXAdded, "testFuzz_AddLiquidityNoSlippage::3");
+        assertLt(amountYLeft, amountYAdded, "testFuzz_AddLiquidityNoSlippage::4");
 
         assertEq(usdt.balanceOf(BOB), amountXLeft, "usdt balance");
         assertEq(usdc.balanceOf(BOB), amountYLeft, "usdc balance");
 
         // Check liquidity minted
-        assertEq(liquidityMinted.length, binNumber);
-        assertEq(depositIds.length, binNumber);
+        assertEq(liquidityMinted.length, binNumber, "testFuzz_AddLiquidityNoSlippage::5");
+        assertEq(depositIds.length, binNumber, "testFuzz_AddLiquidityNoSlippage::6");
     }
 
-    function test_reverts_AddLiquidity() public {
+    function test_revert_AddLiquidity() public {
         uint256 amountYIn = 1e18;
         uint24 binNumber = 7;
         uint24 gap = 2;
@@ -158,7 +166,34 @@ contract LiquidityBinRouterTest is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__IdOverflows.selector, uint256(type(uint24).max) + 1));
         router.addLiquidity(liquidityParameters);
 
-        // Revert is slippage is too high
+        // Revert if ID slippage is caught
+        liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+        liquidityParameters.activeIdDesired = ID_ONE - 10;
+        liquidityParameters.idSlippage = 5;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILBRouter.LBRouter__IdSlippageCaught.selector,
+                liquidityParameters.activeIdDesired,
+                liquidityParameters.idSlippage,
+                ID_ONE
+            )
+        );
+        router.addLiquidity(liquidityParameters);
+
+        liquidityParameters.activeIdDesired = ID_ONE + 10;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILBRouter.LBRouter__IdSlippageCaught.selector,
+                liquidityParameters.activeIdDesired,
+                liquidityParameters.idSlippage,
+                ID_ONE
+            )
+        );
+        router.addLiquidity(liquidityParameters);
+
+        // Revert if slippage is too high
         liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
         liquidityParameters.amountXMin = liquidityParameters.amountX + 1;
 
@@ -218,14 +253,14 @@ contract LiquidityBinRouterTest is TestHelper {
         ) = router.addLiquidityAVAX{value: liquidityParameters.amountX}(liquidityParameters);
 
         // Check amounts
-        assertEq(amountXAdded, liquidityParameters.amountX, "amountXAdded");
-        assertEq(amountYAdded, liquidityParameters.amountY, "amountYAdded");
-        assertLt(amountXLeft, amountXAdded, "amountXLeft");
-        assertLt(amountYLeft, amountYAdded, "amountYLeft");
+        assertEq(amountXAdded, liquidityParameters.amountX, "test_AddLiquidityAVAX::1");
+        assertEq(amountYAdded, liquidityParameters.amountY, "test_AddLiquidityAVAX::2");
+        assertLt(amountXLeft, amountXAdded, "test_AddLiquidityAVAX::3");
+        assertLt(amountYLeft, amountYAdded, "test_AddLiquidityAVAX::4");
 
         // Check liquidity minted
-        assertEq(liquidityMinted.length, binNumber);
-        assertEq(depositIds.length, binNumber);
+        assertEq(liquidityMinted.length, binNumber, "test_AddLiquidityAVAX::5");
+        assertEq(depositIds.length, binNumber, "test_AddLiquidityAVAX::6");
 
         // Test with AVAX as token Y
         router.createLBPair(bnb, wavax, ID_ONE, DEFAULT_BIN_STEP);
@@ -235,7 +270,7 @@ contract LiquidityBinRouterTest is TestHelper {
         router.addLiquidityAVAX{value: liquidityParameters.amountY}(liquidityParameters);
     }
 
-    function test_reverts_AddLiquidityAVAX() public {
+    function test_revert_AddLiquidityAVAX() public {
         uint256 amountYIn = 1e18;
         uint24 binNumber = 7;
         uint24 gap = 2;
@@ -299,14 +334,14 @@ contract LiquidityBinRouterTest is TestHelper {
             usdt, usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp
         );
 
-        assertApproxEqAbs(amountXOut, amountXAdded, 10, "amountXOut");
-        assertApproxEqAbs(amountYOut, amountYAdded, 10, "amountYOut");
+        assertApproxEqAbs(amountXOut, amountXAdded, 10, "test_RemoveLiquidity::1");
+        assertApproxEqAbs(amountYOut, amountYAdded, 10, "test_RemoveLiquidity::2");
 
-        assertLe(amountXOut, amountXAdded, "amountXOut");
-        assertLe(amountYOut, amountYAdded, "amountYOut");
+        assertLe(amountXOut, amountXAdded, "test_RemoveLiquidity::3");
+        assertLe(amountYOut, amountYAdded, "test_RemoveLiquidity::4");
 
         for (uint256 i = 0; i < depositIds.length; i++) {
-            assertEq(pair.balanceOf(address(this), depositIds[i]), 0, "depositId");
+            assertEq(pair.balanceOf(address(this), depositIds[i]), 0, "test_RemoveLiquidity::5");
         }
 
         // Try with the token inversed
@@ -316,8 +351,8 @@ contract LiquidityBinRouterTest is TestHelper {
             usdc, usdt, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp
         );
 
-        assertApproxEqAbs(amountXOut, amountXAdded, 10, "amountXOut");
-        assertApproxEqAbs(amountYOut, amountYAdded, 10, "amountYOut");
+        assertApproxEqAbs(amountXOut, amountXAdded, 10, "test_RemoveLiquidity::6");
+        assertApproxEqAbs(amountYOut, amountYAdded, 10, "test_RemoveLiquidity::7");
 
         // Try removing half of the liquidity
         (amountXAdded, amountYAdded,,, depositIds, liquidityMinted) = router.addLiquidity(liquidityParameters);
@@ -330,11 +365,11 @@ contract LiquidityBinRouterTest is TestHelper {
             usdt, usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp
         );
 
-        assertApproxEqAbs(amountXOut, amountXAdded / 2, 10, "amountXOut");
-        assertApproxEqAbs(amountYOut, amountYAdded / 2, 10, "amountYOut");
+        assertApproxEqAbs(amountXOut, amountXAdded / 2, 10, "test_RemoveLiquidity::8");
+        assertApproxEqAbs(amountYOut, amountYAdded / 2, 10, "test_RemoveLiquidity::9");
     }
 
-    function test_reverts_RemoveLiquidity() public {
+    function test_revert_RemoveLiquidity() public {
         uint256 amountYIn = 1e18;
         uint24 binNumber = 7;
         uint24 gap = 2;
@@ -415,14 +450,14 @@ contract LiquidityBinRouterTest is TestHelper {
             usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, payable(address(this)), block.timestamp
         );
 
-        assertApproxEqAbs(amountAVAX, amountXAdded, 10, "amountXOut");
-        assertApproxEqAbs(amountToken, amountYAdded, 10, "amountYOut");
+        assertApproxEqAbs(amountAVAX, amountXAdded, 10, "test_RemoveLiquidityAVAX::1");
+        assertApproxEqAbs(amountToken, amountYAdded, 10, "test_RemoveLiquidityAVAX::2");
 
-        assertEq(address(this).balance, balanceAVAXBefore + amountAVAX, "balanceAVAXAfter");
-        assertEq(usdc.balanceOf(address(this)), balanceUSDCBefore + amountToken, "balanceUSDCAfter");
+        assertEq(address(this).balance, balanceAVAXBefore + amountAVAX, "test_RemoveLiquidityAVAX::3");
+        assertEq(usdc.balanceOf(address(this)), balanceUSDCBefore + amountToken, "test_RemoveLiquidityAVAX::4");
     }
 
-    function test_reverts_RemoveLiquidityAVAX() public {
+    function test_revert_RemoveLiquidityAVAX() public {
         uint256 amountYIn = 1e18;
         uint24 binNumber = 7;
         uint24 gap = 2;
@@ -461,7 +496,13 @@ contract LiquidityBinRouterTest is TestHelper {
 
         uint256 balanceBefore = usdc.balanceOf(address(this));
         router.sweep(usdc, address(this), amount);
-        assertEq(usdc.balanceOf(address(this)), balanceBefore + amount, "balanceAfter");
+        assertEq(usdc.balanceOf(address(this)), balanceBefore + amount, "test_SweepERC20::1");
+
+        deal(address(router), amount);
+
+        balanceBefore = address(this).balance;
+        router.sweep(IERC20(address(0)), address(this), type(uint256).max);
+        assertEq(address(this).balance, balanceBefore + amount, "test_SweepERC20::2");
 
         // Can't sweep if non owner
         usdc.mint(address(router), amount);
@@ -487,7 +528,9 @@ contract LiquidityBinRouterTest is TestHelper {
         router.sweepLBToken(pair, DEV, depositIds, liquidityMinted);
 
         for (uint256 i = 0; i < depositIds.length; i++) {
-            assertEq(pair.balanceOf(DEV, depositIds[i]), balancesBefore[i] + liquidityMinted[i], "balanceAfter");
+            assertEq(
+                pair.balanceOf(DEV, depositIds[i]), balancesBefore[i] + liquidityMinted[i], "test_SweepLBTokens::1"
+            );
         }
 
         (,,,, depositIds, liquidityMinted) = router.addLiquidity(liquidityParameters);

@@ -18,25 +18,32 @@ import {ILBLegacyPair} from "./interfaces/ILBLegacyPair.sol";
 import {ILBPair} from "./interfaces/ILBPair.sol";
 import {ILBRouter} from "./interfaces/ILBRouter.sol";
 
-/// @title Liquidity Book Quoter
-/// @author Trader Joe
-/// @notice Helper contract to determine best path through multiple markets
+/**
+ * @title Liquidity Book Quoter
+ * @author Trader Joe
+ * @notice Helper contract to determine best path through multiple markets
+ */
 contract LBQuoter {
     using Uint256x256Math for uint256;
 
     error LBQuoter_InvalidLength();
 
-    /// @notice Dex V2 router address
-    address private immutable _legacyRouterV2;
-    /// @notice Dex V2.1 router address
-    address private immutable _routerV2;
-    /// @notice Dex V1 factory address
     address private immutable _factoryV1;
-    /// @notice Dex V2 factory address
     address private immutable _legacyFactoryV2;
-    /// @notice Dex V2.1 factory address
     address private immutable _factoryV2;
+    address private immutable _legacyRouterV2;
+    address private immutable _routerV2;
 
+    /**
+     * @dev The quote struct returned by the quoter
+     * - route: address array of the token to go through
+     * - pairs: address array of the pairs to go through
+     * - binSteps: The bin step to use for each pair
+     * - versions: The version to use for each pair
+     * - amounts: The amounts of every step of the swap
+     * - virtualAmountsWithoutSlippage: The virtual amounts of every step of the swap without slippage
+     * - fees: The fees to pay for every step of the swap
+     */
     struct Quote {
         address[] route;
         address[] pairs;
@@ -47,12 +54,14 @@ contract LBQuoter {
         uint128[] fees;
     }
 
-    /// @notice Constructor
-    /// @param routerV2 Dex V2 router address
-    /// @param factoryV1 Dex V1 factory address
-    /// @param legacyFactoryV2 Dex V2 factory address
-    /// @param legacyRouterV2 Dex V2 router address
-    /// @param factoryV2 Dex V2.1 factory address
+    /**
+     * @notice Constructor
+     * @param factoryV1 Dex V1 factory address
+     * @param legacyFactoryV2 Dex V2 factory address
+     * @param factoryV2 Dex V2.1 factory address
+     * @param legacyRouterV2 Dex V2 router address
+     * @param routerV2 Dex V2 router address
+     */
     constructor(
         address factoryV1,
         address legacyFactoryV2,
@@ -67,40 +76,52 @@ contract LBQuoter {
         _legacyRouterV2 = legacyRouterV2;
     }
 
-    /// @notice Returns the Dex V1 factory address
-    /// @return factoryV1 Dex V1 factory address
+    /**
+     * @notice Returns the Dex V1 factory address
+     * @return factoryV1 Dex V1 factory address
+     */
     function getFactoryV1() public view returns (address factoryV1) {
         factoryV1 = _factoryV1;
     }
 
-    /// @notice Returns the Dex V2 factory address
-    /// @return legacyFactoryV2 Dex V2 factory address
+    /**
+     * @notice Returns the Dex V2 factory address
+     * @return legacyFactoryV2 Dex V2 factory address
+     */
     function getLegacyFactoryV2() public view returns (address legacyFactoryV2) {
         legacyFactoryV2 = _legacyFactoryV2;
     }
 
-    /// @notice Returns the Dex V2.1 factory address
-    /// @return factoryV2 Dex V2.1 factory address
+    /**
+     * @notice Returns the Dex V2.1 factory address
+     * @return factoryV2 Dex V2.1 factory address
+     */
     function getFactoryV2() public view returns (address factoryV2) {
         factoryV2 = _factoryV2;
     }
 
-    /// @notice Returns the Dex V2 router address
-    /// @return legacyRouterV2 Dex V2 router address
-    function getLEgacyRouteractoryV2() public view returns (address legacyRouterV2) {
+    /**
+     * @notice Returns the Dex V2 router address
+     * @return legacyRouterV2 Dex V2 router address
+     */
+    function getLegacyRouterV2() public view returns (address legacyRouterV2) {
         legacyRouterV2 = _legacyRouterV2;
     }
 
-    /// @notice Returns the Dex V2 router address
-    /// @return routerV2 Dex V2 router address
+    /**
+     * @notice Returns the Dex V2 router address
+     * @return routerV2 Dex V2 router address
+     */
     function getRouterV2() public view returns (address routerV2) {
         routerV2 = _routerV2;
     }
 
-    /// @notice Finds the best path given a list of tokens and the input amount wanted from the swap
-    /// @param route List of the tokens to go through
-    /// @param amountIn Swap amount in
-    /// @return quote The Quote structure containing the necessary element to perform the swap
+    /**
+     * @notice Finds the best path given a list of tokens and the input amount wanted from the swap
+     * @param route List of the tokens to go through
+     * @param amountIn Swap amount in
+     * @return quote The Quote structure containing the necessary element to perform the swap
+     */
     function findBestPathFromAmountIn(address[] calldata route, uint128 amountIn)
         public
         view
@@ -210,10 +231,12 @@ contract LBQuoter {
         }
     }
 
-    /// @notice Finds the best path given a list of tokens and the output amount wanted from the swap
-    /// @param route List of the tokens to go through
-    /// @param amountOut Swap amount out
-    /// @return quote The Quote structure containing the necessary element to perform the swap
+    /**
+     * @notice Finds the best path given a list of tokens and the output amount wanted from the swap
+     * @param route List of the tokens to go through
+     * @param amountOut Swap amount out
+     * @return quote The Quote structure containing the necessary element to perform the swap
+     */
     function findBestPathFromAmountOut(address[] calldata route, uint128 amountOut)
         public
         view
@@ -326,13 +349,15 @@ contract LBQuoter {
         }
     }
 
-    /// @dev Forked from JoeLibrary
-    /// @dev Doesn't rely on the init code hash of the factory
-    /// @param pair Address of the pair
-    /// @param tokenA Address of token A
-    /// @param tokenB Address of token B
-    /// @return reserveA Reserve of token A in the pair
-    /// @return reserveB Reserve of token B in the pair
+    /**
+     * @dev Forked from JoeLibrary
+     * @dev Doesn't rely on the init code hash of the factory
+     * @param pair Address of the pair
+     * @param tokenA Address of token A
+     * @param tokenB Address of token B
+     * @return reserveA Reserve of token A in the pair
+     * @return reserveB Reserve of token B in the pair
+     */
     function _getReserves(address pair, address tokenA, address tokenB)
         internal
         view
@@ -343,12 +368,14 @@ contract LBQuoter {
         (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
 
-    /// @dev Calculates a quote for a V2 pair
-    /// @param amount Amount in to consider
-    /// @param activeId Current active Id of the considred pair
-    /// @param binStep Bin step of the considered pair
-    /// @param swapForY Boolean describing if we are swapping from X to Y or the opposite
-    /// @return quote Amount Out if _amount was swapped with no slippage and no fees
+    /**
+     * @dev Calculates a quote for a V2 pair
+     * @param amount Amount in to consider
+     * @param activeId Current active Id of the considred pair
+     * @param binStep Bin step of the considered pair
+     * @param swapForY Boolean describing if we are swapping from X to Y or the opposite
+     * @return quote Amount Out if _amount was swapped with no slippage and no fees
+     */
     function _getV2Quote(uint256 amount, uint24 activeId, uint256 binStep, bool swapForY)
         internal
         pure

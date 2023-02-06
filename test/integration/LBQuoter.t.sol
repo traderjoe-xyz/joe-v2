@@ -4,17 +4,17 @@ pragma solidity 0.8.10;
 
 import "../helpers/TestHelper.sol";
 
-/*
-* Market deployed:
-* - USDT/USDC, V1 with low liquidity, V2 with high liquidity
-* - WAVAX/USDC, V1 with high liquidity, V2 with low liquidity
-* - WETH/USDC, V1 with low liquidity, V2.1 with high liquidity
-* - BNB/USDC, V2 with high liquidity, V2.1 with low liquidity
-* 
-* Every market with low liquidity has a slighly higher price. 
-* It should be picked with small amounts but not with large amounts.
-* All tokens are considered 18 decimals for simplification purposes.
-**/
+/**
+ * Market deployed:
+ * - USDT/USDC, V1 with low liquidity, V2 with high liquidity
+ * - WAVAX/USDC, V1 with high liquidity, V2 with low liquidity
+ * - WETH/USDC, V1 with low liquidity, V2.1 with high liquidity
+ * - BNB/USDC, V2 with high liquidity, V2.1 with low liquidity
+ *
+ * Every market with low liquidity has a slighly higher price.
+ * It should be picked with small amounts but not with large amounts.
+ * All tokens are considered 18 decimals for simplification purposes.
+ */
 
 contract LiquidityBinQuoterTest is TestHelper {
     uint256 private defaultBaseFee = DEFAULT_BIN_STEP * uint256(DEFAULT_BASE_FACTOR) * 1e10;
@@ -98,10 +98,11 @@ contract LiquidityBinQuoterTest is TestHelper {
     }
 
     function test_Constructor() public {
-        assertEq(address(quoter.getRouterV2()), address(router));
-        assertEq(address(quoter.getFactoryV1()), AvalancheAddresses.JOE_V1_FACTORY);
-        assertEq(address(quoter.getLegacyFactoryV2()), AvalancheAddresses.JOE_V2_FACTORY);
-        assertEq(address(quoter.getFactoryV2()), address(factory));
+        assertEq(address(quoter.getRouterV2()), address(router), "test_Constructor::1");
+        assertEq(address(quoter.getFactoryV1()), AvalancheAddresses.JOE_V1_FACTORY, "test_Constructor::2");
+        assertEq(address(quoter.getLegacyFactoryV2()), AvalancheAddresses.JOE_V2_FACTORY, "test_Constructor::3");
+        assertEq(address(quoter.getFactoryV2()), address(factory), "test_Constructor::4");
+        assertEq(address(quoter.getLegacyRouterV2()), address(legacyRouterV2), "test_Constructor::5");
     }
 
     function test_InvalidLength() public {
@@ -244,7 +245,6 @@ contract LiquidityBinQuoterTest is TestHelper {
 
     function test_Scenario4() public {
         // BNB/USDC, V2 with high liquidity, V2.1 with low liquidity
-
         address[] memory route = new address[](2);
         route[0] = address(bnb);
         route[1] = address(usdc);

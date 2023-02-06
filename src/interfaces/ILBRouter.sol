@@ -12,9 +12,11 @@ import {ILBPair} from "./ILBPair.sol";
 import {ILBToken} from "./ILBToken.sol";
 import {IWAVAX} from "./IWAVAX.sol";
 
-/// @title Liquidity Book Router Interface
-/// @author Trader Joe
-/// @notice Required interface of LBRouter contract
+/**
+ * @title Liquidity Book Router Interface
+ * @author Trader Joe
+ * @notice Required interface of LBRouter contract
+ */
 interface ILBRouter {
     error LBRouter__SenderIsNotWAVAX();
     error LBRouter__PairNotCreated(address tokenX, address tokenY, uint256 binStep);
@@ -41,28 +43,35 @@ interface ILBRouter {
         address tokenX, address tokenY, uint256 amountX, uint256 amountY, uint256 msgValue
     );
 
+    /**
+     * @dev This enum represents the version of the pair requested
+     * - V1: Joe V1 pair
+     * - V2: LB pair V2. Also called legacyPair
+     * - V2_1: LB pair V2.1 (current version)
+     */
     enum Version {
         V1,
         V2,
         V2_1
     }
 
-    /// @dev The liquidity parameters, such as:
-    /// - tokenX: The address of token X
-    /// - tokenY: The address of token Y
-    /// - binStep: The bin step of the pair
-    /// - revision: The revision of the pair
-    /// - amountX: The amount to send of token X
-    /// - amountY: The amount to send of token Y
-    /// - amountXMin: The min amount of token X added to liquidity
-    /// - amountYMin: The min amount of token Y added to liquidity
-    /// - activeIdDesired: The active id that user wants to add liquidity from
-    /// - idSlippage: The number of id that are allowed to slip
-    /// - deltaIds: The list of delta ids to add liquidity (`deltaId = activeId - desiredId`)
-    /// - distributionX: The distribution of tokenX with sum(distributionX) = 100e18 (100%) or 0 (0%)
-    /// - distributionY: The distribution of tokenY with sum(distributionY) = 100e18 (100%) or 0 (0%)
-    /// - to: The address of the recipient
-    /// - deadline: The deadline of the tx
+    /**
+     * @dev The liquidity parameters, such as:
+     * - tokenX: The address of token X
+     * - tokenY: The address of token Y
+     * - binStep: The bin step of the pair
+     * - amountX: The amount to send of token X
+     * - amountY: The amount to send of token Y
+     * - amountXMin: The min amount of token X added to liquidity
+     * - amountYMin: The min amount of token Y added to liquidity
+     * - activeIdDesired: The active id that user wants to add liquidity from
+     * - idSlippage: The number of id that are allowed to slip
+     * - deltaIds: The list of delta ids to add liquidity (`deltaId = activeId - desiredId`)
+     * - distributionX: The distribution of tokenX with sum(distributionX) = 100e18 (100%) or 0 (0%)
+     * - distributionY: The distribution of tokenY with sum(distributionY) = 100e18 (100%) or 0 (0%)
+     * - to: The address of the recipient
+     * - deadline: The deadline of the tx
+     */
     struct LiquidityParameters {
         IERC20 tokenX;
         IERC20 tokenY;
@@ -81,10 +90,12 @@ interface ILBRouter {
         uint256 deadline;
     }
 
-    /// @dev The path parameters, such as:
-    /// - pairBinSteps: The list of bin steps of the pairs to go through
-    /// - revisions: The list of revisions of the pairs to go through
-    /// - tokenPath: The list of tokens in the path to go through
+    /**
+     * @dev The path parameters, such as:
+     * - pairBinSteps: The list of bin steps of the pairs to go through
+     * - versions: The list of versions of the pairs to go through
+     * - tokenPath: The list of tokens in the path to go through
+     */
     struct Path {
         uint256[] pairBinSteps;
         Version[] versions;

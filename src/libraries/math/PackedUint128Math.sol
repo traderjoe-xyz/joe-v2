@@ -101,7 +101,7 @@ library PackedUint128Math {
      * [128 - 256[: any
      * @return x1 The first uint128
      */
-    function decodeFirst(bytes32 z) internal pure returns (uint128 x1) {
+    function decodeX(bytes32 z) internal pure returns (uint128 x1) {
         assembly {
             x1 := and(z, MASK_128)
         }
@@ -114,7 +114,7 @@ library PackedUint128Math {
      * [128 - 256[: x2
      * @return x2 The second uint128
      */
-    function decodeSecond(bytes32 z) internal pure returns (uint128 x2) {
+    function decodeY(bytes32 z) internal pure returns (uint128 x2) {
         assembly {
             x2 := shr(OFFSET, z)
         }
@@ -133,7 +133,7 @@ library PackedUint128Math {
      * @return x The decoded uint128
      */
     function decode(bytes32 z, bool first) internal pure returns (uint128 x) {
-        return first ? decodeFirst(z) : decodeSecond(z);
+        return first ? decodeX(z) : decodeY(z);
     }
 
     /**

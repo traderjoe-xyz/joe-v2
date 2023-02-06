@@ -33,12 +33,12 @@ contract PackedUint128MathTest is Test {
         assertEq(x2, uint128(uint256(x) >> 128), "testFuzz_Decode::2");
     }
 
-    function testFuzz_DecodeFirst(bytes32 x) external {
-        assertEq(uint128(uint256(x)), x.decodeFirst(), "testFuzz_DecodeFirst::1");
+    function testFuzz_decodeX(bytes32 x) external {
+        assertEq(uint128(uint256(x)), x.decodeX(), "testFuzz_decodeX::1");
     }
 
-    function testFuzz_DecodeSecond(bytes32 x) external {
-        assertEq(uint128(uint256(x) >> 128), x.decodeSecond(), "testFuzz_DecodeSecond::1");
+    function testFuzz_decodeY(bytes32 x) external {
+        assertEq(uint128(uint256(x) >> 128), x.decodeY(), "testFuzz_decodeY::1");
     }
 
     function testFuzz_DecodeBool(bytes32 x, bool first) external {

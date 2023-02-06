@@ -744,15 +744,15 @@ contract LBRouter is ILBRouter {
             bytes32 amountsLeft;
             (amountsReceived, amountsLeft, liquidityMinted) = pair.mint(liq.to, liquidityConfigs, liq.refundTo);
 
-            amountXAdded = amountsReceived.decodeFirst();
-            amountYAdded = amountsReceived.decodeSecond();
+            amountXAdded = amountsReceived.decodeX();
+            amountYAdded = amountsReceived.decodeY();
 
             if (amountXAdded < liq.amountXMin || amountYAdded < liq.amountYMin) {
                 revert LBRouter__AmountSlippageCaught(liq.amountXMin, amountXAdded, liq.amountYMin, amountYAdded);
             }
 
-            amountXLeft = amountsLeft.decodeFirst();
-            amountYLeft = amountsLeft.decodeSecond();
+            amountXLeft = amountsLeft.decodeX();
+            amountYLeft = amountsLeft.decodeY();
         }
     }
 
@@ -820,8 +820,8 @@ contract LBRouter is ILBRouter {
         (bytes32[] memory amountsBurned) = pair.burn(msg.sender, to, ids, amounts);
 
         for (uint256 i; i < amountsBurned.length; ++i) {
-            amountX += amountsBurned[i].decodeFirst();
-            amountY += amountsBurned[i].decodeSecond();
+            amountX += amountsBurned[i].decodeX();
+            amountY += amountsBurned[i].decodeY();
         }
 
         if (amountX < amountXMin || amountY < amountYMin) {

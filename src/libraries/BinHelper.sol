@@ -192,7 +192,7 @@ library BinHelper {
      * @return Whether the bin is empty (true) or not (false)
      */
     function isEmpty(bytes32 binReserves, bool isX) internal pure returns (bool) {
-        return isX ? binReserves.decodeFirst() == 0 : binReserves.decodeSecond() == 0;
+        return isX ? binReserves.decodeX() == 0 : binReserves.decodeY() == 0;
     }
 
     /**
@@ -277,7 +277,7 @@ library BinHelper {
      * [128 - 256[: empty
      */
     function receivedX(bytes32 reserves, IERC20 tokenX) internal view returns (bytes32) {
-        uint128 reserveX = reserves.decodeFirst();
+        uint128 reserveX = reserves.decodeX();
         return (_balanceOf(tokenX) - reserveX).encodeFirst();
     }
 
@@ -290,7 +290,7 @@ library BinHelper {
      * [128 - 256[: amountY
      */
     function receivedY(bytes32 reserves, IERC20 tokenY) internal view returns (bytes32) {
-        uint128 reserveY = reserves.decodeSecond();
+        uint128 reserveY = reserves.decodeY();
         return (_balanceOf(tokenY) - reserveY).encodeSecond();
     }
 
@@ -319,7 +319,7 @@ library BinHelper {
      * @param recipient The recipient
      */
     function transferX(bytes32 amounts, IERC20 tokenX, address recipient) internal {
-        uint128 amountX = amounts.decodeFirst();
+        uint128 amountX = amounts.decodeX();
 
         if (amountX > 0) tokenX.safeTransfer(recipient, amountX);
     }
@@ -333,7 +333,7 @@ library BinHelper {
      * @param recipient The recipient
      */
     function transferY(bytes32 amounts, IERC20 tokenY, address recipient) internal {
-        uint128 amountY = amounts.decodeSecond();
+        uint128 amountY = amounts.decodeY();
 
         if (amountY > 0) tokenY.safeTransfer(recipient, amountY);
     }

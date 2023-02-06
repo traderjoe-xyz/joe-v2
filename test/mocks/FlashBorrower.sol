@@ -46,11 +46,11 @@ contract FlashBorrower is ILBFlashLoanCallback {
         }
 
         if (paybackX == type(uint128).max) {
-            paybackX = amounts.decodeFirst() + totalFees.decodeFirst();
+            paybackX = amounts.decodeX() + totalFees.decodeX();
         }
 
         if (paybackY == type(uint128).max) {
-            paybackY = amounts.decodeSecond() + totalFees.decodeSecond();
+            paybackY = amounts.decodeY() + totalFees.decodeY();
         }
 
         if (paybackX > 0) {

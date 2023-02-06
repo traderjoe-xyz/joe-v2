@@ -123,12 +123,12 @@ contract BinHelperTest is TestHelper {
         binReserves = binReserves.add(effectiveAmountsIn);
         totalSupply += shares;
 
-        uint256 userReceivedX = shares.mulDivRoundDown(binReserves.decodeFirst(), totalSupply);
-        uint256 userReceivedY = shares.mulDivRoundDown(binReserves.decodeSecond(), totalSupply);
+        uint256 userReceivedX = shares.mulDivRoundDown(binReserves.decodeX(), totalSupply);
+        uint256 userReceivedY = shares.mulDivRoundDown(binReserves.decodeY(), totalSupply);
 
         uint256 receivedInY = userReceivedX.mulShiftRoundDown(price, Constants.SCALE_OFFSET) + userReceivedY;
-        uint256 sentInY = price.mulShiftRoundDown(effectiveAmountsIn.decodeFirst(), Constants.SCALE_OFFSET)
-            + effectiveAmountsIn.decodeSecond();
+        uint256 sentInY =
+            price.mulShiftRoundDown(effectiveAmountsIn.decodeX(), Constants.SCALE_OFFSET) + effectiveAmountsIn.decodeY();
 
         assertApproxEqAbs(receivedInY, sentInY, ((price - 1) >> 128) + 2, "test_TryExploitShares::1");
     }
@@ -253,13 +253,10 @@ contract BinHelperTest is TestHelper {
         uint256 amountInWithoutFees = amountsInToBin.sub(totalFees).decode(swapForY);
 
         (uint256 amountOutWithNoFees, uint256 amountOut) = swapForY
-            ? (
-                price.mulShiftRoundDown(amountsInToBin.decodeFirst(), Constants.SCALE_OFFSET),
-                amountsOutOfBin.decodeSecond()
-            )
+            ? (price.mulShiftRoundDown(amountsInToBin.decodeX(), Constants.SCALE_OFFSET), amountsOutOfBin.decodeY())
             : (
-                uint256(amountsInToBin.decodeSecond()).shiftDivRoundDown(Constants.SCALE_OFFSET, price),
-                amountsOutOfBin.decodeFirst()
+                uint256(amountsInToBin.decodeY()).shiftDivRoundDown(Constants.SCALE_OFFSET, price),
+                amountsOutOfBin.decodeX()
             );
 
         assertGe(amountOutWithNoFees, amountOut, "test_GetAmounts::2");
@@ -312,8 +309,8 @@ contract BinHelperTest is TestHelper {
             uint256 amountInForSwap = amountsInToBin.decode(swapForY);
 
             (uint256 amountOutWithNoFees, uint256 amountOut) = swapForY
-                ? (price.mulShiftRoundDown(amountInForSwap, Constants.SCALE_OFFSET), amountsOutOfBin.decodeSecond())
-                : (uint256(amountInForSwap).shiftDivRoundDown(Constants.SCALE_OFFSET, price), amountsOutOfBin.decodeFirst());
+                ? (price.mulShiftRoundDown(amountInForSwap, Constants.SCALE_OFFSET), amountsOutOfBin.decodeY())
+                : (uint256(amountInForSwap).shiftDivRoundDown(Constants.SCALE_OFFSET, price), amountsOutOfBin.decodeX());
 
             assertGe(amountOutWithNoFees, amountOut, "test_GetAmounts::2");
         }
@@ -354,12 +351,12 @@ contract BinHelperTest is TestHelper {
         assertEq(receivedY, sentY, "test_Received::2");
 
         received = reserves.receivedX(IERC20(address(usdc)));
-        receivedX = received.decodeFirst();
+        receivedX = received.decodeX();
 
         assertEq(receivedX, sentX, "test_Received::3");
 
         received = reserves.receivedY(IERC20(address(wavax)));
-        receivedY = received.decodeSecond();
+        receivedY = received.decodeY();
 
         assertEq(receivedY, sentY, "test_Received::4");
     }
@@ -377,22 +374,22 @@ contract BinHelperTest is TestHelper {
 
         firstHalf.transfer(IERC20(address(usdc)), IERC20(address(wavax)), recipient);
 
-        assertEq(usdc.balanceOf(recipient), firstHalf.decodeFirst(), "test_Transfer::1");
-        assertEq(wavax.balanceOf(recipient), firstHalf.decodeSecond(), "test_Transfer::2");
-        assertEq(usdc.balanceOf(address(this)), secondHalf.decodeFirst(), "test_Transfer::3");
-        assertEq(wavax.balanceOf(address(this)), secondHalf.decodeSecond(), "test_Transfer::4");
+        assertEq(usdc.balanceOf(recipient), firstHalf.decodeX(), "test_Transfer::1");
+        assertEq(wavax.balanceOf(recipient), firstHalf.decodeY(), "test_Transfer::2");
+        assertEq(usdc.balanceOf(address(this)), secondHalf.decodeX(), "test_Transfer::3");
+        assertEq(wavax.balanceOf(address(this)), secondHalf.decodeY(), "test_Transfer::4");
 
         secondHalf.transferX(IERC20(address(usdc)), recipient);
 
-        assertEq(usdc.balanceOf(recipient), amounts.decodeFirst(), "test_Transfer::5");
-        assertEq(wavax.balanceOf(recipient), firstHalf.decodeSecond(), "test_Transfer::6");
+        assertEq(usdc.balanceOf(recipient), amounts.decodeX(), "test_Transfer::5");
+        assertEq(wavax.balanceOf(recipient), firstHalf.decodeY(), "test_Transfer::6");
         assertEq(usdc.balanceOf(address(this)), 0, "test_Transfer::7");
-        assertEq(wavax.balanceOf(address(this)), secondHalf.decodeSecond(), "test_Transfer::8");
+        assertEq(wavax.balanceOf(address(this)), secondHalf.decodeY(), "test_Transfer::8");
 
         secondHalf.transferY(IERC20(address(wavax)), recipient);
 
-        assertEq(usdc.balanceOf(recipient), amounts.decodeFirst(), "test_Transfer::9");
-        assertEq(wavax.balanceOf(recipient), amounts.decodeSecond(), "test_Transfer::10");
+        assertEq(usdc.balanceOf(recipient), amounts.decodeX(), "test_Transfer::9");
+        assertEq(wavax.balanceOf(recipient), amounts.decodeY(), "test_Transfer::10");
         assertEq(usdc.balanceOf(address(this)), 0, "test_Transfer::11");
         assertEq(wavax.balanceOf(address(this)), 0, "test_Transfer::12");
     }

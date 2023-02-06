@@ -68,15 +68,14 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(factory.getMinBinStep(), 1, "test_Constructor::4");
         assertEq(factory.getMaxBinStep(), 200, "test_Constructor::5");
         assertEq(factory.getFeeRecipient(), DEV, "test_Constructor::6");
-        assertEq(factory.getMaxFee(), 0.1e18, "test_Constructor::7");
-        assertEq(factory.getMaxProtocolShare(), 2_500, "test_Constructor::8");
+        assertEq(factory.getMaxFlashLoanFee(), 0.1e18, "test_Constructor::7");
 
         vm.expectEmit(true, true, true, true);
         emit FlashLoanFeeSet(0, DEFAULT_FLASHLOAN_FEE);
         new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
 
         // Reverts if the flash loan fee is above the max fee
-        uint256 maxFee = factory.getMaxFee();
+        uint256 maxFee = factory.getMaxFlashLoanFee();
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__FlashLoanFeeAboveMax.selector, maxFee + 1, maxFee));
         new LBFactory(DEV, maxFee + 1);
     }
@@ -333,7 +332,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         decayPeriod = uint16(bound(decayPeriod, filterPeriod + 1, Encoded.MASK_UINT12));
         reductionFactor = uint16(bound(reductionFactor, 0, Constants.BASIS_POINT_MAX));
         variableFeeControl = uint24(bound(variableFeeControl, 0, Constants.BASIS_POINT_MAX));
-        protocolShare = uint16(bound(protocolShare, 0, factory.getMaxProtocolShare()));
+        protocolShare = uint16(bound(protocolShare, 0, 2_500));
         maxVolatilityAccumulator = uint24(bound(maxVolatilityAccumulator, 0, Encoded.MASK_UINT20));
 
         vm.expectEmit(true, true, true, true);
@@ -597,7 +596,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setFlashLoanFee(newFlashLoanFee);
 
         // Can't set to a fee greater than the maximum
-        uint256 maxFlashLoanFee = factory.getMaxFee();
+        uint256 maxFlashLoanFee = factory.getMaxFlashLoanFee();
         vm.expectRevert(
             abi.encodeWithSelector(
                 ILBFactory.LBFactory__FlashLoanFeeAboveMax.selector, maxFlashLoanFee + 1, maxFlashLoanFee

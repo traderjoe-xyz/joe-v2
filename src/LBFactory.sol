@@ -32,8 +32,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     uint256 private constant _MIN_BIN_STEP = 1; // 0.01%
     uint256 private constant _MAX_BIN_STEP = 200; // 1%, can't be greater than 247 for indexing reasons
 
-    uint256 private constant _MAX_FEE = 0.1e18; // 10%
-    uint256 private constant _MAX_PROTOCOL_SHARE = 2_500; // 25%
+    uint256 private constant _MAX_FLASHLOAN_FEE = 0.1e18; // 10%
     address private _feeRecipient;
     uint256 private _flashLoanFee;
 
@@ -78,7 +77,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      *
      */
     constructor(address feeRecipient, uint256 flashLoanFee) {
-        if (flashLoanFee > _MAX_FEE) revert LBFactory__FlashLoanFeeAboveMax(flashLoanFee, _MAX_FEE);
+        if (flashLoanFee > _MAX_FLASHLOAN_FEE) revert LBFactory__FlashLoanFeeAboveMax(flashLoanFee, _MAX_FLASHLOAN_FEE);
 
         _setFeeRecipient(feeRecipient);
 
@@ -114,16 +113,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @notice Get the maximum fee percentage for flashLoans
      * @return maxFee
      */
-    function getMaxFee() external pure returns (uint256 maxFee) {
-        return _MAX_FEE;
-    }
-
-    /**
-     * @notice Get the maximum protocol share percentage
-     * @return maxProtocolShare
-     */
-    function getMaxProtocolShare() external pure returns (uint256 maxProtocolShare) {
-        return _MAX_PROTOCOL_SHARE;
+    function getMaxFlashLoanFee() external pure returns (uint256 maxFee) {
+        return _MAX_FLASHLOAN_FEE;
     }
 
     /**
@@ -611,7 +602,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint256 oldFlashLoanFee = _flashLoanFee;
 
         if (oldFlashLoanFee == flashLoanFee) revert LBFactory__SameFlashLoanFee(flashLoanFee);
-        if (flashLoanFee > _MAX_FEE) revert LBFactory__FlashLoanFeeAboveMax(flashLoanFee, _MAX_FEE);
+        if (flashLoanFee > _MAX_FLASHLOAN_FEE) revert LBFactory__FlashLoanFeeAboveMax(flashLoanFee, _MAX_FLASHLOAN_FEE);
 
         _flashLoanFee = flashLoanFee;
         emit FlashLoanFeeSet(oldFlashLoanFee, flashLoanFee);

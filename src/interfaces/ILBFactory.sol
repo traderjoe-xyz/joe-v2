@@ -96,13 +96,11 @@ interface ILBFactory is IPendingOwnable {
 
     event OpenPresetChanged(uint8 indexed binStep, bool open);
 
-    function getMaxFee() external pure returns (uint256);
+    function getMaxFlashLoanFee() external pure returns (uint256);
 
     function getMinBinStep() external pure returns (uint256);
 
     function getMaxBinStep() external pure returns (uint256);
-
-    function getMaxProtocolShare() external pure returns (uint256);
 
     function getLBPairImplementation() external view returns (address);
 

@@ -60,19 +60,6 @@ interface ILBFactory is IPendingOwnable {
 
     event FlashLoanFeeSet(uint256 oldFlashLoanFee, uint256 newFlashLoanFee);
 
-    event FeeParametersSet(
-        address indexed sender,
-        ILBPair indexed LBPair,
-        uint256 binStep,
-        uint256 baseFactor,
-        uint256 filterPeriod,
-        uint256 decayPeriod,
-        uint256 reductionFactor,
-        uint256 variableFeeControl,
-        uint256 protocolShare,
-        uint256 maxVolatilityAccumulator
-    );
-
     event LBPairImplementationSet(address oldLBPairImplementation, address LBPairImplementation);
 
     event LBPairIgnoredStateChanged(ILBPair indexed LBPair, bool ignored);

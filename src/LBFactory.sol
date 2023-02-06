@@ -571,19 +571,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
             protocolShare,
             maxVolatilityAccumulator
         );
-
-        emit FeeParametersSet(
-            msg.sender,
-            lbPair,
-            binStep,
-            baseFactor,
-            filterPeriod,
-            decayPeriod,
-            reductionFactor,
-            variableFeeControl,
-            protocolShare,
-            maxVolatilityAccumulator
-            );
     }
 
     /**

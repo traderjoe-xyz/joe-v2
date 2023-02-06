@@ -106,7 +106,7 @@ interface ILBFactory is IPendingOwnable {
 
     function getNumberOfQuoteAssets() external view returns (uint256);
 
-    function getQuoteAsset(uint256 index) external view returns (IERC20);
+    function getQuoteAssetAtIndex(uint256 index) external view returns (IERC20);
 
     function isQuoteAsset(IERC20 token) external view returns (bool);
 

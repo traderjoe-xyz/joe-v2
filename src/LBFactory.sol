@@ -163,7 +163,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param index The index
      * @return asset The address of the quoteAsset at index `index`
      */
-    function getQuoteAsset(uint256 index) external view override returns (IERC20 asset) {
+    function getQuoteAssetAtIndex(uint256 index) external view override returns (IERC20 asset) {
         return IERC20(_quoteAssetWhitelist.at(index));
     }
 
@@ -234,7 +234,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param binStep The bin step of the preset
      * @return isAvailable Whether the preset is available or not
      */
-    function getIsPresetOpen(uint8 binStep) external view returns (bool isAvailable) {
+    function isPresetOpen(uint8 binStep) external view returns (bool isAvailable) {
         bytes32 openPresets = _openPresets;
 
         return _isPresetOpen(openPresets, binStep);
@@ -496,15 +496,15 @@ contract LBFactory is PendingOwnable, ILBFactory {
      */
     function setOpenPreset(uint8 binStep, bool isOpen) external onlyOwner {
         bytes32 openPresets = _openPresets;
-        bool isPresetOpen = _isPresetOpen(openPresets, binStep);
+        bool isPresetOpenCurrent = _isPresetOpen(openPresets, binStep);
 
         if (isOpen) {
-            if (isPresetOpen) revert LBFactory__SamePresetOpenState();
+            if (isPresetOpenCurrent) revert LBFactory__SamePresetOpenState();
 
             // We add a 1 at bit `binStep` as this binStep is now open
             _openPresets = _openPresets.set(_TRUE, Encoded.MASK_UINT1, binStep);
         } else {
-            if (!isPresetOpen) revert LBFactory__SamePresetOpenState();
+            if (!isPresetOpenCurrent) revert LBFactory__SamePresetOpenState();
 
             // We remove a 1 at bit `binStep` as this binStep is now closed
             _openPresets = _openPresets.set(_FALSE, Encoded.MASK_UINT1, binStep);

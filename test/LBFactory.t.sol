@@ -612,7 +612,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         binStep = uint8(bound(binStep, minBinStep, maxBinStep));
 
         // Preset are not open to the public by default
-        assertFalse(factory.getIsPresetOpen(binStep), "testFuzz_OpenPresets::1");
+        assertFalse(factory.isPresetOpen(binStep), "testFuzz_OpenPresets::1");
 
         // Can be opened
         vm.expectEmit(true, true, true, true);
@@ -621,9 +621,9 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         for (uint256 i = minBinStep; i < maxBinStep; i++) {
             if (i == binStep) {
-                assertTrue(factory.getIsPresetOpen(uint8(i)), "testFuzz_OpenPresets::2");
+                assertTrue(factory.isPresetOpen(uint8(i)), "testFuzz_OpenPresets::2");
             } else {
-                assertFalse(factory.getIsPresetOpen(uint8(i)), "testFuzz_OpenPresets::3");
+                assertFalse(factory.isPresetOpen(uint8(i)), "testFuzz_OpenPresets::3");
             }
         }
 
@@ -634,9 +634,9 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setOpenPreset(nextBinStep, true);
         factory.setOpenPreset(previousBinStep, true);
 
-        assertTrue(factory.getIsPresetOpen(binStep), "testFuzz_OpenPresets::4");
-        assertTrue(factory.getIsPresetOpen(nextBinStep), "testFuzz_OpenPresets::5");
-        assertTrue(factory.getIsPresetOpen(previousBinStep), "testFuzz_OpenPresets::6");
+        assertTrue(factory.isPresetOpen(binStep), "testFuzz_OpenPresets::4");
+        assertTrue(factory.isPresetOpen(nextBinStep), "testFuzz_OpenPresets::5");
+        assertTrue(factory.isPresetOpen(previousBinStep), "testFuzz_OpenPresets::6");
 
         // Can't set to the same state
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SamePresetOpenState.selector));
@@ -647,9 +647,9 @@ contract LiquidityBinFactoryTest is TestHelper {
         emit OpenPresetChanged(binStep, false);
         factory.setOpenPreset(binStep, false);
 
-        assertFalse(factory.getIsPresetOpen(binStep), "testFuzz_OpenPresets::7");
-        assertTrue(factory.getIsPresetOpen(nextBinStep), "testFuzz_OpenPresets::8");
-        assertTrue(factory.getIsPresetOpen(previousBinStep), "testFuzz_OpenPresets::9");
+        assertFalse(factory.isPresetOpen(binStep), "testFuzz_OpenPresets::7");
+        assertTrue(factory.isPresetOpen(nextBinStep), "testFuzz_OpenPresets::8");
+        assertTrue(factory.isPresetOpen(previousBinStep), "testFuzz_OpenPresets::9");
 
         // Can't open if not the owner
         vm.prank(ALICE);
@@ -674,7 +674,9 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         assertEq(factory.isQuoteAsset(newToken), true, "test_AddQuoteAsset::2");
         assertEq(factory.getNumberOfQuoteAssets(), numberOfQuoteAssetBefore + 1, "test_AddQuoteAsset::3");
-        assertEq(address(newToken), address(factory.getQuoteAsset(numberOfQuoteAssetBefore)), "test_AddQuoteAsset::4");
+        assertEq(
+            address(newToken), address(factory.getQuoteAssetAtIndex(numberOfQuoteAssetBefore)), "test_AddQuoteAsset::4"
+        );
 
         // Can't add if not the owner
         vm.prank(ALICE);

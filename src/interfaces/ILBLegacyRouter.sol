@@ -31,6 +31,10 @@ interface ILBLegacyRouter {
         uint256 deadline;
     }
 
+    function getIdFromPrice(ILBLegacyPair LBPair, uint256 price) external view returns (uint24);
+
+    function getPriceFromId(ILBLegacyPair LBPair, uint24 id) external view returns (uint256);
+
     function getSwapIn(ILBLegacyPair lbPair, uint256 amountOut, bool swapForY)
         external
         view

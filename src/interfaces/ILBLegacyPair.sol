@@ -15,4 +15,8 @@ interface ILBLegacyPair {
     function getReservesAndId() external view returns (uint256 reserveX, uint256 reserveY, uint256 activeId);
 
     function swap(bool sentTokenY, address to) external returns (uint256 amountXOut, uint256 amountYOut);
+
+    function findFirstNonEmptyBinId(uint24 id_, bool sentTokenY) external view returns (uint24 id);
+
+    function getBin(uint24 id) external view returns (uint256 reserveX, uint256 reserveY);
 }

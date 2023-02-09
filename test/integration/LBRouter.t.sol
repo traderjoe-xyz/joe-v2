@@ -7,9 +7,9 @@ import "../helpers/TestHelper.sol";
 /**
  * Pairs created:
  * USDT/USDC V1
- * AVAX/USDC V2
- * WETH/AVAX V2.1
- * TaxToken/AVAX V2.1
+ * NATIVE/USDC V2
+ * WETH/NATIVE V2.1
+ * TaxToken/NATIVE V2.1
  */
 contract LiquidityBinRouterForkTest is TestHelper {
     using Utils for ILBRouter.LiquidityParameters;
@@ -40,22 +40,22 @@ contract LiquidityBinRouterForkTest is TestHelper {
 
         vm.startPrank(AvalancheAddresses.V2_FACTORY_OWNER);
         legacyFactoryV2.addQuoteAsset(usdc);
-        legacyFactoryV2.createLBPair(wavax, usdc, ID_ONE, DEFAULT_BIN_STEP); // 1 AVAX = 1 USDC
+        legacyFactoryV2.createLBPair(wnative, usdc, ID_ONE, DEFAULT_BIN_STEP); // 1 NATIVE = 1 USDC
         vm.stopPrank();
 
-        factory.createLBPair(weth, wavax, ID_ONE, DEFAULT_BIN_STEP); // 1 WETH = 1 AVAX
-        factory.createLBPair(taxToken, wavax, ID_ONE, DEFAULT_BIN_STEP); // 1 TaxToken = 1 AVAX
+        factory.createLBPair(weth, wnative, ID_ONE, DEFAULT_BIN_STEP); // 1 WETH = 1 NATIVE
+        factory.createLBPair(taxToken, wnative, ID_ONE, DEFAULT_BIN_STEP); // 1 TaxToken = 1 NATIVE
 
         // Add liquidity to V2
         ILBRouter.LiquidityParameters memory liquidityParameters =
-            getLiquidityParameters(wavax, usdc, liquidityAmount, ID_ONE, 7, 0);
+            getLiquidityParameters(wnative, usdc, liquidityAmount, ID_ONE, 7, 0);
         legacyRouterV2.addLiquidityAVAX{value: liquidityParameters.amountX}(liquidityParameters.toLegacy());
 
-        liquidityParameters = getLiquidityParameters(weth, wavax, liquidityAmount, ID_ONE, 7, 0);
-        router.addLiquidityAVAX{value: liquidityParameters.amountY}(liquidityParameters);
+        liquidityParameters = getLiquidityParameters(weth, wnative, liquidityAmount, ID_ONE, 7, 0);
+        router.addLiquidityNATIVE{value: liquidityParameters.amountY}(liquidityParameters);
 
-        liquidityParameters = getLiquidityParameters(taxToken, wavax, liquidityAmount, ID_ONE, 7, 0);
-        router.addLiquidityAVAX{value: liquidityParameters.amountY}(liquidityParameters);
+        liquidityParameters = getLiquidityParameters(taxToken, wnative, liquidityAmount, ID_ONE, 7, 0);
+        router.addLiquidityNATIVE{value: liquidityParameters.amountY}(liquidityParameters);
     }
 
     function test_SwapExactTokensForTokens() public {
@@ -136,7 +136,7 @@ contract LiquidityBinRouterForkTest is TestHelper {
         if (tokenIn == usdt) {
             path.tokenPath[0] = tokenIn;
             path.tokenPath[1] = usdc;
-            path.tokenPath[2] = wavax;
+            path.tokenPath[2] = wnative;
             path.tokenPath[3] = tokenOut;
 
             path.pairBinSteps[0] = 0;
@@ -148,7 +148,7 @@ contract LiquidityBinRouterForkTest is TestHelper {
             path.versions[2] = ILBRouter.Version.V2_1;
         } else {
             path.tokenPath[0] = tokenIn;
-            path.tokenPath[1] = wavax;
+            path.tokenPath[1] = wnative;
             path.tokenPath[2] = usdc;
             path.tokenPath[3] = tokenOut;
 

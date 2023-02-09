@@ -9,8 +9,8 @@ import {TokenHelper, IERC20} from "src/libraries/TokenHelper.sol";
 /// @author Trader Joe
 /// @dev This contract should only be used for testnet
 /// @notice Create a faucet contract that create test tokens and allow user to request for tokens.
-/// This faucet will also provide AVAX if avax were sent to the contract (either during the construction or after).
-/// This contract will not fail if its avax balance becomes too low, it will just not send AVAX but will mint the different tokens.
+/// This faucet will also provide NATIVE if native were sent to the contract (either during the construction or after).
+/// This contract will not fail if its native balance becomes too low, it will just not send NATIVE but will mint the different tokens.
 contract Faucet is PendingOwnable {
     using TokenHelper for IERC20;
 
@@ -55,15 +55,15 @@ contract Faucet is PendingOwnable {
         _;
     }
 
-    /// @notice Constructor of the faucet, set the request cooldown and add avax to the faucet
-    /// @param _avaxPerRequest The avax received per request
+    /// @notice Constructor of the faucet, set the request cooldown and add native to the faucet
+    /// @param _nativePerRequest The native received per request
     /// @param _requestCooldown The request cooldown
-    constructor(uint96 _avaxPerRequest, uint256 _requestCooldown) payable {
+    constructor(uint96 _nativePerRequest, uint256 _requestCooldown) payable {
         _setRequestCooldown(_requestCooldown);
-        _addFaucetToken(FaucetToken({ERC20: IERC20(address(0)), amountPerRequest: _avaxPerRequest}));
+        _addFaucetToken(FaucetToken({ERC20: IERC20(address(0)), amountPerRequest: _nativePerRequest}));
     }
 
-    /// @notice Allows to receive AVAX directly
+    /// @notice Allows to receive NATIVE directly
     receive() external payable {}
 
     /// @notice Returns the number of tokens given by the faucet
@@ -71,7 +71,7 @@ contract Faucet is PendingOwnable {
         return faucetTokens.length;
     }
 
-    /// @notice User needs to call this function in order to receive test tokens and avax
+    /// @notice User needs to call this function in order to receive test tokens and native
     /// @dev Can be called only once per `requestCooldown` seconds
     function request() external onlyEOA isRequestUnlocked verifyRequest(msg.sender) {
         lastRequest[msg.sender] = block.timestamp;
@@ -79,7 +79,7 @@ contract Faucet is PendingOwnable {
         _request(msg.sender);
     }
 
-    /// @notice User needs to call this function in order to receive test tokens and avax
+    /// @notice User needs to call this function in order to receive test tokens and native
     /// @dev Can be called only once per `requestCooldown` seconds for every address
     /// Can only be called by the operator
     /// @param _to The address that will receive the tokens
@@ -98,7 +98,7 @@ contract Faucet is PendingOwnable {
     }
 
     /// @notice Remove a token from the faucet
-    /// @dev Token needs to be in the set, and AVAX can't be removed
+    /// @dev Token needs to be in the set, and NATIVE can't be removed
     /// @param _token The address of the token
     function removeFaucetToken(IERC20 _token) external onlyOwner {
         uint256 index = tokenToIndices[_token];
@@ -139,7 +139,7 @@ contract Faucet is PendingOwnable {
     /// @param _to The recipient address
     /// @param _amount The token amount to send
     function withdrawToken(IERC20 _token, address _to, uint256 _amount) external onlyOwner {
-        if (address(_token) == address(0)) _sendAvax(_to, _amount);
+        if (address(_token) == address(0)) _sendNative(_to, _amount);
         else _token.safeTransfer(_to, _amount);
     }
 
@@ -164,7 +164,7 @@ contract Faucet is PendingOwnable {
         FaucetToken memory token = faucetTokens[0];
 
         if (token.amountPerRequest > 0 && address(this).balance >= token.amountPerRequest) {
-            _sendAvax(_to, token.amountPerRequest);
+            _sendNative(_to, token.amountPerRequest);
         }
 
         for (uint256 i = 1; i < len; ++i) {
@@ -206,11 +206,11 @@ contract Faucet is PendingOwnable {
         faucetTokens[index - 1].amountPerRequest = _amountPerRequest;
     }
 
-    /// @notice Private function to send `amount` AVAX to `to`
+    /// @notice Private function to send `amount` NATIVE to `to`
     /// @param _to The recipient address
-    /// @param _amount The AVAX amount to send
-    function _sendAvax(address _to, uint256 _amount) private {
+    /// @param _amount The NATIVE amount to send
+    function _sendNative(address _to, uint256 _amount) private {
         (bool success,) = _to.call{value: _amount}("");
-        require(success, "AVAX transfer failed");
+        require(success, "NATIVE transfer failed");
     }
 }

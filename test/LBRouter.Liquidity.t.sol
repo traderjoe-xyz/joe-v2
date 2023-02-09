@@ -9,9 +9,9 @@ import "test/helpers/TestHelper.sol";
  * 1. Receive
  * 2. Create LBPair
  * 3. Add Liquidity
- * 4. Add liquidity AVAX
+ * 4. Add liquidity NATIVE
  * 5. Remove liquidity
- * 6. Remove liquidity AVAX
+ * 6. Remove liquidity NATIVE
  * 7. Sweep ERC20s
  * 8. Sweep LBToken
  */
@@ -25,7 +25,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
         // Create necessary pairs
         router.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
-        router.createLBPair(wavax, usdc, ID_ONE, DEFAULT_BIN_STEP);
+        router.createLBPair(wnative, usdc, ID_ONE, DEFAULT_BIN_STEP);
         router.createLBPair(taxToken, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
         uint256 startingBalance = type(uint112).max;
@@ -40,20 +40,20 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(address(router.getLegacyFactory()), address(legacyFactoryV2), "test_Constructor::2");
         assertEq(address(router.getV1Factory()), address(factoryV1), "test_Constructor::3");
         assertEq(address(router.getLegacyRouter()), address(legacyRouterV2), "test_Constructor::4");
-        assertEq(address(router.getWAVAX()), address(wavax), "test_Constructor::5");
+        assertEq(address(router.getWNATIVE()), address(wnative), "test_Constructor::5");
     }
 
-    function test_ReceiveAVAX() public {
-        // Users can't send AVAX to the router
-        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__SenderIsNotWAVAX.selector));
+    function test_ReceiveNATIVE() public {
+        // Users can't send NATIVE to the router
+        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__SenderIsNotWNATIVE.selector));
         (bool success,) = address(router).call{value: 1e18}("");
 
-        // WAVAX can
-        deal(address(wavax), 1e18);
-        vm.prank(address(wavax));
+        // WNATIVE can
+        deal(address(wnative), 1e18);
+        vm.prank(address(wnative));
         (success,) = address(router).call{value: 1e18}("");
 
-        assertTrue(success, "test_ReceiveAVAX::1");
+        assertTrue(success, "test_ReceiveNATIVE::1");
     }
 
     function test_CreatePair() public {
@@ -234,13 +234,13 @@ contract LiquidityBinRouterTest is TestHelper {
         router.addLiquidity(liquidityParameters);
     }
 
-    function test_AddLiquidityAVAX() public {
+    function test_AddLiquidityNATIVE() public {
         uint256 amountYIn = 1e18;
         uint24 binNumber = 7;
         uint24 gap = 2;
 
         ILBRouter.LiquidityParameters memory liquidityParameters =
-            getLiquidityParameters(wavax, usdc, amountYIn, ID_ONE, binNumber, gap);
+            getLiquidityParameters(wnative, usdc, amountYIn, ID_ONE, binNumber, gap);
 
         // Add liquidity
         (
@@ -250,44 +250,44 @@ contract LiquidityBinRouterTest is TestHelper {
             uint256 amountYLeft,
             uint256[] memory depositIds,
             uint256[] memory liquidityMinted
-        ) = router.addLiquidityAVAX{value: liquidityParameters.amountX}(liquidityParameters);
+        ) = router.addLiquidityNATIVE{value: liquidityParameters.amountX}(liquidityParameters);
 
         // Check amounts
-        assertEq(amountXAdded, liquidityParameters.amountX, "test_AddLiquidityAVAX::1");
-        assertEq(amountYAdded, liquidityParameters.amountY, "test_AddLiquidityAVAX::2");
-        assertLt(amountXLeft, amountXAdded, "test_AddLiquidityAVAX::3");
-        assertLt(amountYLeft, amountYAdded, "test_AddLiquidityAVAX::4");
+        assertEq(amountXAdded, liquidityParameters.amountX, "test_AddLiquidityNATIVE::1");
+        assertEq(amountYAdded, liquidityParameters.amountY, "test_AddLiquidityNATIVE::2");
+        assertLt(amountXLeft, amountXAdded, "test_AddLiquidityNATIVE::3");
+        assertLt(amountYLeft, amountYAdded, "test_AddLiquidityNATIVE::4");
 
         // Check liquidity minted
-        assertEq(liquidityMinted.length, binNumber, "test_AddLiquidityAVAX::5");
-        assertEq(depositIds.length, binNumber, "test_AddLiquidityAVAX::6");
+        assertEq(liquidityMinted.length, binNumber, "test_AddLiquidityNATIVE::5");
+        assertEq(depositIds.length, binNumber, "test_AddLiquidityNATIVE::6");
 
-        // Test with AVAX as token Y
-        router.createLBPair(bnb, wavax, ID_ONE, DEFAULT_BIN_STEP);
+        // Test with NATIVE as token Y
+        router.createLBPair(bnb, wnative, ID_ONE, DEFAULT_BIN_STEP);
 
-        liquidityParameters = getLiquidityParameters(bnb, wavax, amountYIn, ID_ONE, binNumber, gap);
+        liquidityParameters = getLiquidityParameters(bnb, wnative, amountYIn, ID_ONE, binNumber, gap);
 
-        router.addLiquidityAVAX{value: liquidityParameters.amountY}(liquidityParameters);
+        router.addLiquidityNATIVE{value: liquidityParameters.amountY}(liquidityParameters);
     }
 
-    function test_revert_AddLiquidityAVAX() public {
+    function test_revert_AddLiquidityNATIVE() public {
         uint256 amountYIn = 1e18;
         uint24 binNumber = 7;
         uint24 gap = 2;
 
         // Revert if tokens are in the wrong order
         ILBRouter.LiquidityParameters memory liquidityParameters =
-            getLiquidityParameters(usdc, wavax, amountYIn, ID_ONE, binNumber, gap);
+            getLiquidityParameters(usdc, wnative, amountYIn, ID_ONE, binNumber, gap);
 
         vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__WrongTokenOrder.selector));
-        router.addLiquidityAVAX{value: liquidityParameters.amountY}(liquidityParameters);
+        router.addLiquidityNATIVE{value: liquidityParameters.amountY}(liquidityParameters);
 
-        // Revert if for non WAVAX pairs
+        // Revert if for non WNATIVE pairs
         liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                ILBRouter.LBRouter__WrongAvaxLiquidityParameters.selector,
+                ILBRouter.LBRouter__WrongNativeLiquidityParameters.selector,
                 address(liquidityParameters.tokenX),
                 address(liquidityParameters.tokenY),
                 liquidityParameters.amountX,
@@ -295,14 +295,14 @@ contract LiquidityBinRouterTest is TestHelper {
                 liquidityParameters.amountY
             )
         );
-        router.addLiquidityAVAX{value: liquidityParameters.amountY}(liquidityParameters);
+        router.addLiquidityNATIVE{value: liquidityParameters.amountY}(liquidityParameters);
 
-        // Revert if the amount of AVAX isn't correct
-        liquidityParameters = getLiquidityParameters(wavax, usdc, amountYIn, ID_ONE, binNumber, gap);
+        // Revert if the amount of NATIVE isn't correct
+        liquidityParameters = getLiquidityParameters(wnative, usdc, amountYIn, ID_ONE, binNumber, gap);
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                ILBRouter.LBRouter__WrongAvaxLiquidityParameters.selector,
+                ILBRouter.LBRouter__WrongNativeLiquidityParameters.selector,
                 address(liquidityParameters.tokenX),
                 address(liquidityParameters.tokenY),
                 liquidityParameters.amountX,
@@ -311,7 +311,7 @@ contract LiquidityBinRouterTest is TestHelper {
             )
         );
         // liquidityParameters.amountX should be sent as message value
-        router.addLiquidityAVAX{value: liquidityParameters.amountY}(liquidityParameters);
+        router.addLiquidityNATIVE{value: liquidityParameters.amountY}(liquidityParameters);
     }
 
     function test_RemoveLiquidity() public {
@@ -428,64 +428,64 @@ contract LiquidityBinRouterTest is TestHelper {
         );
     }
 
-    function test_RemoveLiquidityAVAX() public {
+    function test_RemoveLiquidityNATIVE() public {
         uint256 amountYIn = 1e18;
         uint24 binNumber = 7;
         uint24 gap = 2;
 
         ILBRouter.LiquidityParameters memory liquidityParameters =
-            getLiquidityParameters(wavax, usdc, amountYIn, ID_ONE, binNumber, gap);
+            getLiquidityParameters(wnative, usdc, amountYIn, ID_ONE, binNumber, gap);
 
         // Add liquidity
         (uint256 amountXAdded, uint256 amountYAdded,,, uint256[] memory depositIds, uint256[] memory liquidityMinted) =
-            router.addLiquidityAVAX{value: liquidityParameters.amountX}(liquidityParameters);
+            router.addLiquidityNATIVE{value: liquidityParameters.amountX}(liquidityParameters);
 
-        ILBPair pair = factory.getLBPairInformation(wavax, usdc, DEFAULT_BIN_STEP).LBPair;
+        ILBPair pair = factory.getLBPairInformation(wnative, usdc, DEFAULT_BIN_STEP).LBPair;
         pair.setApprovalForAll(address(router), true);
 
-        uint256 balanceAVAXBefore = address(this).balance;
+        uint256 balanceNATIVEBefore = address(this).balance;
         uint256 balanceUSDCBefore = usdc.balanceOf(address(this));
 
-        (uint256 amountToken, uint256 amountAVAX) = router.removeLiquidityAVAX(
+        (uint256 amountToken, uint256 amountNATIVE) = router.removeLiquidityNATIVE(
             usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, payable(address(this)), block.timestamp
         );
 
-        assertApproxEqAbs(amountAVAX, amountXAdded, 10, "test_RemoveLiquidityAVAX::1");
-        assertApproxEqAbs(amountToken, amountYAdded, 10, "test_RemoveLiquidityAVAX::2");
+        assertApproxEqAbs(amountNATIVE, amountXAdded, 10, "test_RemoveLiquidityNATIVE::1");
+        assertApproxEqAbs(amountToken, amountYAdded, 10, "test_RemoveLiquidityNATIVE::2");
 
-        assertEq(address(this).balance, balanceAVAXBefore + amountAVAX, "test_RemoveLiquidityAVAX::3");
-        assertEq(usdc.balanceOf(address(this)), balanceUSDCBefore + amountToken, "test_RemoveLiquidityAVAX::4");
+        assertEq(address(this).balance, balanceNATIVEBefore + amountNATIVE, "test_RemoveLiquidityNATIVE::3");
+        assertEq(usdc.balanceOf(address(this)), balanceUSDCBefore + amountToken, "test_RemoveLiquidityNATIVE::4");
     }
 
-    function test_revert_RemoveLiquidityAVAX() public {
+    function test_revert_RemoveLiquidityNATIVE() public {
         uint256 amountYIn = 1e18;
         uint24 binNumber = 7;
         uint24 gap = 2;
 
         ILBRouter.LiquidityParameters memory liquidityParameters =
-            getLiquidityParameters(wavax, usdc, amountYIn, ID_ONE, binNumber, gap);
+            getLiquidityParameters(wnative, usdc, amountYIn, ID_ONE, binNumber, gap);
 
         // Add liquidity
         (uint256 amountXAdded,,,, uint256[] memory depositIds, uint256[] memory liquidityMinted) =
-            router.addLiquidityAVAX{value: liquidityParameters.amountX}(liquidityParameters);
+            router.addLiquidityNATIVE{value: liquidityParameters.amountX}(liquidityParameters);
 
-        ILBPair pair = factory.getLBPairInformation(wavax, usdc, DEFAULT_BIN_STEP).LBPair;
+        ILBPair pair = factory.getLBPairInformation(wnative, usdc, DEFAULT_BIN_STEP).LBPair;
         pair.setApprovalForAll(address(router), true);
 
         // Revert if the deadline is passed
         vm.expectRevert(
             abi.encodeWithSelector(ILBRouter.LBRouter__DeadlineExceeded.selector, block.timestamp - 1, block.timestamp)
         );
-        router.removeLiquidityAVAX(
+        router.removeLiquidityNATIVE(
             usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, payable(address(this)), block.timestamp - 1
         );
 
         // Revert if the contract does not have a receive function
         blockReceive = true;
         vm.expectRevert(
-            abi.encodeWithSelector(ILBRouter.LBRouter__FailedToSendAVAX.selector, address(this), amountXAdded - 2)
+            abi.encodeWithSelector(ILBRouter.LBRouter__FailedToSendNATIVE.selector, address(this), amountXAdded - 2)
         );
-        router.removeLiquidityAVAX(
+        router.removeLiquidityNATIVE(
             usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, payable(address(this)), block.timestamp
         );
     }

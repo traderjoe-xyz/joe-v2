@@ -23,7 +23,7 @@ import {ILBLegacyRouter} from "./interfaces/ILBLegacyRouter.sol";
 import {IJoeFactory} from "./interfaces/IJoeFactory.sol";
 import {ILBLegacyFactory} from "./interfaces/ILBLegacyFactory.sol";
 import {ILBFactory} from "./interfaces/ILBFactory.sol";
-import {IWAVAX} from "./interfaces/IWAVAX.sol";
+import {IWNATIVE} from "./interfaces/IWNATIVE.sol";
 
 /**
  * @title Liquidity Book Router
@@ -32,7 +32,7 @@ import {IWAVAX} from "./interfaces/IWAVAX.sol";
  */
 contract LBRouter is ILBRouter {
     using TokenHelper for IERC20;
-    using TokenHelper for IWAVAX;
+    using TokenHelper for IWNATIVE;
     using JoeLibrary for uint256;
     using PackedUint128Math for bytes32;
 
@@ -40,7 +40,7 @@ contract LBRouter is ILBRouter {
     IJoeFactory private immutable _factoryV1;
     ILBLegacyFactory private immutable _legacyFactory;
     ILBLegacyRouter private immutable _legacyRouter;
-    IWAVAX private immutable _wavax;
+    IWNATIVE private immutable _wnative;
 
     modifier onlyFactoryOwner() {
         if (msg.sender != _factory.owner()) revert LBRouter__NotFactoryOwner();
@@ -66,27 +66,27 @@ contract LBRouter is ILBRouter {
      * @param factoryV1 Address of Joe V1 factory
      * @param legacyFactory Address of Joe V2 factory
      * @param legacyRouter Address of Joe V2 router
-     * @param wavax Address of WAVAX
+     * @param wnative Address of WNATIVE
      */
     constructor(
         ILBFactory factory,
         IJoeFactory factoryV1,
         ILBLegacyFactory legacyFactory,
         ILBLegacyRouter legacyRouter,
-        IWAVAX wavax
+        IWNATIVE wnative
     ) {
         _factory = factory;
         _factoryV1 = factoryV1;
         _legacyFactory = legacyFactory;
         _legacyRouter = legacyRouter;
-        _wavax = wavax;
+        _wnative = wnative;
     }
 
     /**
-     * @dev Receive function that only accept AVAX from the WAVAX contract
+     * @dev Receive function that only accept NATIVE from the WNATIVE contract
      */
     receive() external payable {
-        if (msg.sender != address(_wavax)) revert LBRouter__SenderIsNotWAVAX();
+        if (msg.sender != address(_wnative)) revert LBRouter__SenderIsNotWNATIVE();
     }
 
     /**
@@ -122,11 +122,11 @@ contract LBRouter is ILBRouter {
     }
 
     /**
-     * View function to get the WAVAX address
-     * @return wavax The address of WAVAX
+     * View function to get the WNATIVE address
+     * @return wnative The address of WNATIVE
      */
-    function getWAVAX() external view override returns (IWAVAX wavax) {
-        return _wavax;
+    function getWNATIVE() external view override returns (IWNATIVE wnative) {
+        return _wnative;
     }
 
     /**
@@ -240,7 +240,7 @@ contract LBRouter is ILBRouter {
     }
 
     /**
-     * @notice Add liquidity with AVAX while performing safety checks
+     * @notice Add liquidity with NATIVE while performing safety checks
      * @dev This function is compliant with fee on transfer tokens
      * @param liquidityParameters The liquidity parameters
      * @return amountXAdded The amount of token X added
@@ -250,7 +250,7 @@ contract LBRouter is ILBRouter {
      * @return depositIds The ids of the deposits
      * @return liquidityMinted The amount of liquidity minted
      */
-    function addLiquidityAVAX(LiquidityParameters calldata liquidityParameters)
+    function addLiquidityNATIVE(LiquidityParameters calldata liquidityParameters)
         external
         payable
         override
@@ -270,14 +270,14 @@ contract LBRouter is ILBRouter {
         );
         if (liquidityParameters.tokenX != _LBPair.getTokenX()) revert LBRouter__WrongTokenOrder();
 
-        if (liquidityParameters.tokenX == _wavax && liquidityParameters.amountX == msg.value) {
-            _wavaxDepositAndTransfer(address(_LBPair), msg.value);
+        if (liquidityParameters.tokenX == _wnative && liquidityParameters.amountX == msg.value) {
+            _wnativeDepositAndTransfer(address(_LBPair), msg.value);
             liquidityParameters.tokenY.safeTransferFrom(msg.sender, address(_LBPair), liquidityParameters.amountY);
-        } else if (liquidityParameters.tokenY == _wavax && liquidityParameters.amountY == msg.value) {
+        } else if (liquidityParameters.tokenY == _wnative && liquidityParameters.amountY == msg.value) {
             liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(_LBPair), liquidityParameters.amountX);
-            _wavaxDepositAndTransfer(address(_LBPair), msg.value);
+            _wnativeDepositAndTransfer(address(_LBPair), msg.value);
         } else {
-            revert LBRouter__WrongAvaxLiquidityParameters(
+            revert LBRouter__WrongNativeLiquidityParameters(
                 address(liquidityParameters.tokenX),
                 address(liquidityParameters.tokenY),
                 liquidityParameters.amountX,
@@ -327,52 +327,52 @@ contract LBRouter is ILBRouter {
     }
 
     /**
-     * @notice Remove AVAX liquidity while performing safety checks
+     * @notice Remove NATIVE liquidity while performing safety checks
      * @dev This function is **NOT** compliant with fee on transfer tokens.
      * This is wanted as it would make users pays the fee on transfer twice,
      * use the `removeLiquidity` function to remove liquidity with fee on transfer tokens.
      * @param token The address of token
      * @param binStep The bin step of the LBPair
      * @param amountTokenMin The min amount to receive of token
-     * @param amountAVAXMin The min amount to receive of AVAX
+     * @param amountNATIVEMin The min amount to receive of NATIVE
      * @param ids The list of ids to burn
      * @param amounts The list of amounts to burn of each id in `_ids`
      * @param to The address of the recipient
      * @param deadline The deadline of the tx
      * @return amountToken Amount of token returned
-     * @return amountAVAX Amount of AVAX returned
+     * @return amountNATIVE Amount of NATIVE returned
      */
-    function removeLiquidityAVAX(
+    function removeLiquidityNATIVE(
         IERC20 token,
         uint8 binStep,
         uint256 amountTokenMin,
-        uint256 amountAVAXMin,
+        uint256 amountNATIVEMin,
         uint256[] memory ids,
         uint256[] memory amounts,
         address payable to,
         uint256 deadline
-    ) external override ensure(deadline) returns (uint256 amountToken, uint256 amountAVAX) {
-        IWAVAX wavax = _wavax;
+    ) external override ensure(deadline) returns (uint256 amountToken, uint256 amountNATIVE) {
+        IWNATIVE wnative = _wnative;
 
-        ILBPair lbPair = ILBPair(_getLBPairInformation(token, IERC20(wavax), binStep, Version.V2_1));
+        ILBPair lbPair = ILBPair(_getLBPairInformation(token, IERC20(wnative), binStep, Version.V2_1));
 
         {
-            bool isAVAXTokenY = IERC20(wavax) == lbPair.getTokenY();
+            bool isNATIVETokenY = IERC20(wnative) == lbPair.getTokenY();
 
-            if (!isAVAXTokenY) {
-                (amountTokenMin, amountAVAXMin) = (amountAVAXMin, amountTokenMin);
+            if (!isNATIVETokenY) {
+                (amountTokenMin, amountNATIVEMin) = (amountNATIVEMin, amountTokenMin);
             }
 
             (uint256 amountX, uint256 amountY) =
-                _removeLiquidity(lbPair, amountTokenMin, amountAVAXMin, ids, amounts, address(this));
+                _removeLiquidity(lbPair, amountTokenMin, amountNATIVEMin, ids, amounts, address(this));
 
-            (amountToken, amountAVAX) = isAVAXTokenY ? (amountX, amountY) : (amountY, amountX);
+            (amountToken, amountNATIVE) = isNATIVETokenY ? (amountX, amountY) : (amountY, amountX);
         }
 
         token.safeTransfer(to, amountToken);
 
-        wavax.withdraw(amountAVAX);
-        _safeTransferAVAX(to, amountAVAX);
+        wnative.withdraw(amountNATIVE);
+        _safeTransferNATIVE(to, amountNATIVE);
     }
 
     /**
@@ -401,22 +401,22 @@ contract LBRouter is ILBRouter {
     }
 
     /**
-     * @notice Swaps exact tokens for AVAX while performing safety checks
+     * @notice Swaps exact tokens for NATIVE while performing safety checks
      * @param amountIn The amount of token to send
-     * @param amountOutMinAVAX The min amount of AVAX to receive
+     * @param amountOutMinNATIVE The min amount of NATIVE to receive
      * @param path The path of the swap
      * @param to The address of the recipient
      * @param deadline The deadline of the tx
      * @return amountOut Output amount of the swap
      */
-    function swapExactTokensForAVAX(
+    function swapExactTokensForNATIVE(
         uint256 amountIn,
-        uint256 amountOutMinAVAX,
+        uint256 amountOutMinNATIVE,
         Path memory path,
         address payable to,
         uint256 deadline
     ) external override ensure(deadline) verifyPathValidity(path) returns (uint256 amountOut) {
-        if (path.tokenPath[path.pairBinSteps.length] != IERC20(_wavax)) {
+        if (path.tokenPath[path.pairBinSteps.length] != IERC20(_wnative)) {
             revert LBRouter__InvalidTokenPath(address(path.tokenPath[path.pairBinSteps.length]));
         }
 
@@ -426,21 +426,21 @@ contract LBRouter is ILBRouter {
 
         amountOut = _swapExactTokensForTokens(amountIn, pairs, path.versions, path.tokenPath, address(this));
 
-        if (amountOutMinAVAX > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMinAVAX, amountOut);
+        if (amountOutMinNATIVE > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMinNATIVE, amountOut);
 
-        _wavax.withdraw(amountOut);
-        _safeTransferAVAX(to, amountOut);
+        _wnative.withdraw(amountOut);
+        _safeTransferNATIVE(to, amountOut);
     }
 
     /**
-     * @notice Swaps exact AVAX for tokens while performing safety checks
+     * @notice Swaps exact NATIVE for tokens while performing safety checks
      * @param amountOutMin The min amount of token to receive
      * @param path The path of the swap
      * @param to The address of the recipient
      * @param deadline The deadline of the tx
      * @return amountOut Output amount of the swap
      */
-    function swapExactAVAXForTokens(uint256 amountOutMin, Path memory path, address to, uint256 deadline)
+    function swapExactNATIVEForTokens(uint256 amountOutMin, Path memory path, address to, uint256 deadline)
         external
         payable
         override
@@ -448,11 +448,11 @@ contract LBRouter is ILBRouter {
         verifyPathValidity(path)
         returns (uint256 amountOut)
     {
-        if (path.tokenPath[0] != IERC20(_wavax)) revert LBRouter__InvalidTokenPath(address(path.tokenPath[0]));
+        if (path.tokenPath[0] != IERC20(_wnative)) revert LBRouter__InvalidTokenPath(address(path.tokenPath[0]));
 
         address[] memory pairs = _getPairs(path.pairBinSteps, path.versions, path.tokenPath);
 
-        _wavaxDepositAndTransfer(pairs[0], msg.value);
+        _wnativeDepositAndTransfer(pairs[0], msg.value);
 
         amountOut = _swapExactTokensForTokens(msg.value, pairs, path.versions, path.tokenPath, to);
 
@@ -491,27 +491,27 @@ contract LBRouter is ILBRouter {
     }
 
     /**
-     * @notice Swaps tokens for exact AVAX while performing safety checks
-     * @param amountAVAXOut The amount of AVAX to receive
+     * @notice Swaps tokens for exact NATIVE while performing safety checks
+     * @param amountNATIVEOut The amount of NATIVE to receive
      * @param amountInMax The max amount of token to send
      * @param path The path of the swap
      * @param to The address of the recipient
      * @param deadline The deadline of the tx
      * @return amountsIn path amounts for every step of the swap
      */
-    function swapTokensForExactAVAX(
-        uint256 amountAVAXOut,
+    function swapTokensForExactNATIVE(
+        uint256 amountNATIVEOut,
         uint256 amountInMax,
         Path memory path,
         address payable to,
         uint256 deadline
     ) external override ensure(deadline) verifyPathValidity(path) returns (uint256[] memory amountsIn) {
-        if (path.tokenPath[path.pairBinSteps.length] != IERC20(_wavax)) {
+        if (path.tokenPath[path.pairBinSteps.length] != IERC20(_wnative)) {
             revert LBRouter__InvalidTokenPath(address(path.tokenPath[path.pairBinSteps.length]));
         }
 
         address[] memory pairs = _getPairs(path.pairBinSteps, path.versions, path.tokenPath);
-        amountsIn = _getAmountsIn(path.versions, pairs, path.tokenPath, amountAVAXOut);
+        amountsIn = _getAmountsIn(path.versions, pairs, path.tokenPath, amountNATIVEOut);
 
         if (amountsIn[0] > amountInMax) revert LBRouter__MaxAmountInExceeded(amountInMax, amountsIn[0]);
 
@@ -520,22 +520,22 @@ contract LBRouter is ILBRouter {
         uint256 _amountOutReal =
             _swapTokensForExactTokens(pairs, path.versions, path.tokenPath, amountsIn, address(this));
 
-        if (_amountOutReal < amountAVAXOut) revert LBRouter__InsufficientAmountOut(amountAVAXOut, _amountOutReal);
+        if (_amountOutReal < amountNATIVEOut) revert LBRouter__InsufficientAmountOut(amountNATIVEOut, _amountOutReal);
 
-        _wavax.withdraw(_amountOutReal);
-        _safeTransferAVAX(to, _amountOutReal);
+        _wnative.withdraw(_amountOutReal);
+        _safeTransferNATIVE(to, _amountOutReal);
     }
 
     /**
-     * @notice Swaps AVAX for exact tokens while performing safety checks
-     * @dev Will refund any AVAX amount sent in excess to `msg.sender`
+     * @notice Swaps NATIVE for exact tokens while performing safety checks
+     * @dev Will refund any NATIVE amount sent in excess to `msg.sender`
      * @param amountOut The amount of tokens to receive
      * @param path The path of the swap
      * @param to The address of the recipient
      * @param deadline The deadline of the tx
      * @return amountsIn path amounts for every step of the swap
      */
-    function swapAVAXForExactTokens(uint256 amountOut, Path memory path, address to, uint256 deadline)
+    function swapNATIVEForExactTokens(uint256 amountOut, Path memory path, address to, uint256 deadline)
         external
         payable
         override
@@ -543,20 +543,20 @@ contract LBRouter is ILBRouter {
         verifyPathValidity(path)
         returns (uint256[] memory amountsIn)
     {
-        if (path.tokenPath[0] != IERC20(_wavax)) revert LBRouter__InvalidTokenPath(address(path.tokenPath[0]));
+        if (path.tokenPath[0] != IERC20(_wnative)) revert LBRouter__InvalidTokenPath(address(path.tokenPath[0]));
 
         address[] memory pairs = _getPairs(path.pairBinSteps, path.versions, path.tokenPath);
         amountsIn = _getAmountsIn(path.versions, pairs, path.tokenPath, amountOut);
 
         if (amountsIn[0] > msg.value) revert LBRouter__MaxAmountInExceeded(msg.value, amountsIn[0]);
 
-        _wavaxDepositAndTransfer(pairs[0], amountsIn[0]);
+        _wnativeDepositAndTransfer(pairs[0], amountsIn[0]);
 
         uint256 amountOutReal = _swapTokensForExactTokens(pairs, path.versions, path.tokenPath, amountsIn, to);
 
         if (amountOutReal < amountOut) revert LBRouter__InsufficientAmountOut(amountOut, amountOutReal);
 
-        if (msg.value > amountsIn[0]) _safeTransferAVAX(msg.sender, msg.value - amountsIn[0]);
+        if (msg.value > amountsIn[0]) _safeTransferNATIVE(msg.sender, msg.value - amountsIn[0]);
     }
 
     /**
@@ -590,55 +590,55 @@ contract LBRouter is ILBRouter {
     }
 
     /**
-     * @notice Swaps exact tokens for AVAX while performing safety checks supporting for fee on transfer tokens
+     * @notice Swaps exact tokens for NATIVE while performing safety checks supporting for fee on transfer tokens
      * @param amountIn The amount of token to send
-     * @param amountOutMinAVAX The min amount of AVAX to receive
+     * @param amountOutMinNATIVE The min amount of NATIVE to receive
      * @param path The path of the swap
      * @param to The address of the recipient
      * @param deadline The deadline of the tx
      * @return amountOut Output amount of the swap
      */
-    function swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+    function swapExactTokensForNATIVESupportingFeeOnTransferTokens(
         uint256 amountIn,
-        uint256 amountOutMinAVAX,
+        uint256 amountOutMinNATIVE,
         Path memory path,
         address payable to,
         uint256 deadline
     ) external override ensure(deadline) verifyPathValidity(path) returns (uint256 amountOut) {
-        if (path.tokenPath[path.pairBinSteps.length] != IERC20(_wavax)) {
+        if (path.tokenPath[path.pairBinSteps.length] != IERC20(_wnative)) {
             revert LBRouter__InvalidTokenPath(address(path.tokenPath[path.pairBinSteps.length]));
         }
 
         address[] memory pairs = _getPairs(path.pairBinSteps, path.versions, path.tokenPath);
 
-        uint256 balanceBefore = _wavax.balanceOf(address(this));
+        uint256 balanceBefore = _wnative.balanceOf(address(this));
 
         path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountIn);
 
         _swapSupportingFeeOnTransferTokens(pairs, path.versions, path.tokenPath, address(this));
 
-        amountOut = _wavax.balanceOf(address(this)) - balanceBefore;
-        if (amountOutMinAVAX > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMinAVAX, amountOut);
+        amountOut = _wnative.balanceOf(address(this)) - balanceBefore;
+        if (amountOutMinNATIVE > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMinNATIVE, amountOut);
 
-        _wavax.withdraw(amountOut);
-        _safeTransferAVAX(to, amountOut);
+        _wnative.withdraw(amountOut);
+        _safeTransferNATIVE(to, amountOut);
     }
 
     /**
-     * @notice Swaps exact AVAX for tokens while performing safety checks supporting for fee on transfer tokens
+     * @notice Swaps exact NATIVE for tokens while performing safety checks supporting for fee on transfer tokens
      * @param amountOutMin The min amount of token to receive
      * @param path The path of the swap
      * @param to The address of the recipient
      * @param deadline The deadline of the tx
      * @return amountOut Output amount of the swap
      */
-    function swapExactAVAXForTokensSupportingFeeOnTransferTokens(
+    function swapExactNATIVEForTokensSupportingFeeOnTransferTokens(
         uint256 amountOutMin,
         Path memory path,
         address to,
         uint256 deadline
     ) external payable override ensure(deadline) verifyPathValidity(path) returns (uint256 amountOut) {
-        if (path.tokenPath[0] != IERC20(_wavax)) revert LBRouter__InvalidTokenPath(address(path.tokenPath[0]));
+        if (path.tokenPath[0] != IERC20(_wnative)) revert LBRouter__InvalidTokenPath(address(path.tokenPath[0]));
 
         address[] memory pairs = _getPairs(path.pairBinSteps, path.versions, path.tokenPath);
 
@@ -646,7 +646,7 @@ contract LBRouter is ILBRouter {
 
         uint256 balanceBefore = targetToken.balanceOf(to);
 
-        _wavaxDepositAndTransfer(pairs[0], msg.value);
+        _wnativeDepositAndTransfer(pairs[0], msg.value);
 
         _swapSupportingFeeOnTransferTokens(pairs, path.versions, path.tokenPath, to);
 
@@ -664,7 +664,7 @@ contract LBRouter is ILBRouter {
     function sweep(IERC20 token, address to, uint256 amount) external override onlyFactoryOwner {
         if (address(token) == address(0)) {
             if (amount == type(uint256).max) amount = address(this).balance;
-            _safeTransferAVAX(to, amount);
+            _safeTransferNATIVE(to, amount);
         } else {
             if (amount == type(uint256).max) amount = token.balanceOf(address(this));
             token.safeTransfer(to, amount);
@@ -1077,22 +1077,22 @@ contract LBRouter is ILBRouter {
     }
 
     /**
-     * @notice Helper function to transfer AVAX
+     * @notice Helper function to transfer NATIVE
      * @param to The address of the recipient
-     * @param amount The AVAX amount to send
+     * @param amount The NATIVE amount to send
      */
-    function _safeTransferAVAX(address to, uint256 amount) private {
+    function _safeTransferNATIVE(address to, uint256 amount) private {
         (bool success,) = to.call{value: amount}("");
-        if (!success) revert LBRouter__FailedToSendAVAX(to, amount);
+        if (!success) revert LBRouter__FailedToSendNATIVE(to, amount);
     }
 
     /**
-     * @notice Helper function to deposit and transfer _wavax
+     * @notice Helper function to deposit and transfer _wnative
      * @param to The address of the recipient
-     * @param amount The AVAX amount to wrap
+     * @param amount The NATIVE amount to wrap
      */
-    function _wavaxDepositAndTransfer(address to, uint256 amount) private {
-        _wavax.deposit{value: amount}();
-        _wavax.safeTransfer(to, amount);
+    function _wnativeDepositAndTransfer(address to, uint256 amount) private {
+        _wnative.deposit{value: amount}();
+        _wnative.safeTransfer(to, amount);
     }
 }

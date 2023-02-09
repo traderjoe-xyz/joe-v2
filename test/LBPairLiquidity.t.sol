@@ -9,12 +9,12 @@ contract LBPairLiquidityTest is TestHelper {
 
     uint256 constant PRECISION = 1e18;
 
-    uint24 immutable activeId = ID_ONE - 24647; // id where 1 AVAX = 20 USDC
+    uint24 immutable activeId = ID_ONE - 24647; // id where 1 NATIVE = 20 USDC
 
     function setUp() public override {
         super.setUp();
 
-        pairWavax = createLBPairFromStartId(wavax, usdc, activeId);
+        pairWnative = createLBPairFromStartId(wnative, usdc, activeId);
     }
 
     function test_SimpleMint() external {
@@ -23,16 +23,18 @@ contract LBPairLiquidityTest is TestHelper {
         uint8 nbBinX = 6;
         uint8 nbBinY = 6;
 
-        addLiquidity(ALICE, BOB, pairWavax, activeId, amountX, amountY, nbBinX, nbBinY);
+        addLiquidity(ALICE, BOB, pairWnative, activeId, amountX, amountY, nbBinX, nbBinY);
 
-        assertEq(wavax.balanceOf(ALICE), amountX - amountX * (PRECISION / nbBinX) / 1e18 * nbBinX, "test_SimpleMint::1");
+        assertEq(
+            wnative.balanceOf(ALICE), amountX - amountX * (PRECISION / nbBinX) / 1e18 * nbBinX, "test_SimpleMint::1"
+        );
         assertEq(usdc.balanceOf(ALICE), amountY - amountY * (PRECISION / nbBinY) / 1e18 * nbBinY, "test_SimpleMint::2");
 
         uint256 total = getTotalBins(nbBinX, nbBinY);
         for (uint256 i; i < total; ++i) {
             uint24 id = getId(activeId, i, nbBinY);
 
-            (uint128 binReserveX, uint128 binReserveY) = pairWavax.getBin(id);
+            (uint128 binReserveX, uint128 binReserveY) = pairWnative.getBin(id);
 
             if (id < activeId) {
                 assertEq(binReserveX, 0, "test_SimpleMint::3");
@@ -45,8 +47,8 @@ contract LBPairLiquidityTest is TestHelper {
                 assertEq(binReserveY, 0, "test_SimpleMint::8");
             }
 
-            assertGt(pairWavax.balanceOf(BOB, id), 0, "test_SimpleMint::9");
-            assertEq(pairWavax.balanceOf(ALICE, id), 0, "test_SimpleMint::10");
+            assertGt(pairWnative.balanceOf(BOB, id), 0, "test_SimpleMint::9");
+            assertEq(pairWnative.balanceOf(ALICE, id), 0, "test_SimpleMint::10");
         }
     }
 
@@ -56,7 +58,7 @@ contract LBPairLiquidityTest is TestHelper {
         uint8 nbBinX = 6;
         uint8 nbBinY = 6;
 
-        addLiquidity(ALICE, BOB, pairWavax, activeId, amountX, amountY, nbBinX, nbBinY);
+        addLiquidity(ALICE, BOB, pairWnative, activeId, amountX, amountY, nbBinX, nbBinY);
 
         uint256 total = getTotalBins(nbBinX, nbBinY);
         uint256[] memory balances = new uint256[](total);
@@ -64,15 +66,15 @@ contract LBPairLiquidityTest is TestHelper {
         for (uint256 i; i < total; ++i) {
             uint24 id = getId(activeId, i, nbBinY);
 
-            balances[i] = pairWavax.balanceOf(BOB, id);
+            balances[i] = pairWnative.balanceOf(BOB, id);
         }
 
-        addLiquidity(ALICE, BOB, pairWavax, activeId, amountX, amountY, nbBinX, nbBinY);
+        addLiquidity(ALICE, BOB, pairWnative, activeId, amountX, amountY, nbBinX, nbBinY);
 
         for (uint256 i; i < total; ++i) {
             uint24 id = getId(activeId, i, nbBinY);
 
-            (uint128 binReserveX, uint128 binReserveY) = pairWavax.getBin(id);
+            (uint128 binReserveX, uint128 binReserveY) = pairWnative.getBin(id);
 
             if (id < activeId) {
                 assertEq(binReserveX, 0, "test_SimpleMint::1");
@@ -85,7 +87,7 @@ contract LBPairLiquidityTest is TestHelper {
                 assertEq(binReserveY, 0, "test_SimpleMint::6");
             }
 
-            assertEq(pairWavax.balanceOf(BOB, id), 2 * balances[i], "test_DoubleMint::7");
+            assertEq(pairWnative.balanceOf(BOB, id), 2 * balances[i], "test_DoubleMint::7");
         }
     }
 
@@ -95,7 +97,7 @@ contract LBPairLiquidityTest is TestHelper {
         uint8 nbBinX = 6;
         uint8 nbBinY = 6;
 
-        addLiquidity(ALICE, BOB, pairWavax, activeId, amountX, amountY, nbBinX, nbBinY);
+        addLiquidity(ALICE, BOB, pairWnative, activeId, amountX, amountY, nbBinX, nbBinY);
 
         uint256 total = getTotalBins(nbBinX, nbBinY);
         uint256[] memory balances = new uint256[](total);
@@ -103,19 +105,21 @@ contract LBPairLiquidityTest is TestHelper {
         for (uint256 i; i < total; ++i) {
             uint24 id = getId(activeId, i, nbBinY);
 
-            balances[i] = pairWavax.balanceOf(BOB, id);
+            balances[i] = pairWnative.balanceOf(BOB, id);
         }
 
-        addLiquidity(ALICE, BOB, pairWavax, activeId, amountX, amountY, nbBinX, 0);
-        addLiquidity(ALICE, BOB, pairWavax, activeId, amountX, amountY, 0, nbBinY);
+        addLiquidity(ALICE, BOB, pairWnative, activeId, amountX, amountY, nbBinX, 0);
+        addLiquidity(ALICE, BOB, pairWnative, activeId, amountX, amountY, 0, nbBinY);
 
         for (uint256 i; i < total; ++i) {
             uint24 id = getId(activeId, i, nbBinY);
 
             if (id == activeId) {
-                assertApproxEqRel(pairWavax.balanceOf(BOB, id), 2 * balances[i], 1e15, "test_MintWithDifferentBins::1"); // composition fee
+                assertApproxEqRel(
+                    pairWnative.balanceOf(BOB, id), 2 * balances[i], 1e15, "test_MintWithDifferentBins::1"
+                ); // composition fee
             } else {
-                assertEq(pairWavax.balanceOf(BOB, id), 2 * balances[i], "test_MintWithDifferentBins::2");
+                assertEq(pairWnative.balanceOf(BOB, id), 2 * balances[i], "test_MintWithDifferentBins::2");
             }
         }
     }
@@ -126,7 +130,7 @@ contract LBPairLiquidityTest is TestHelper {
         uint8 nbBinX = 6;
         uint8 nbBinY = 6;
 
-        addLiquidity(ALICE, BOB, pairWavax, activeId, amountX, amountY, nbBinX, nbBinY);
+        addLiquidity(ALICE, BOB, pairWnative, activeId, amountX, amountY, nbBinX, nbBinY);
 
         uint256 total = getTotalBins(nbBinX, nbBinY);
 
@@ -137,17 +141,17 @@ contract LBPairLiquidityTest is TestHelper {
             uint24 id = getId(activeId, i, nbBinY);
 
             ids[i] = id;
-            balances[i] = pairWavax.balanceOf(BOB, id);
+            balances[i] = pairWnative.balanceOf(BOB, id);
         }
 
-        (uint128 reserveX, uint128 reserveY) = pairWavax.getReserves();
+        (uint128 reserveX, uint128 reserveY) = pairWnative.getReserves();
 
         vm.prank(BOB);
-        pairWavax.burn(BOB, BOB, ids, balances);
+        pairWnative.burn(BOB, BOB, ids, balances);
 
-        assertEq(wavax.balanceOf(BOB), reserveX, "test_SimpleBurn::1");
+        assertEq(wnative.balanceOf(BOB), reserveX, "test_SimpleBurn::1");
         assertEq(usdc.balanceOf(BOB), reserveY, "test_SimpleBurn::2");
-        (reserveX, reserveY) = pairWavax.getReserves();
+        (reserveX, reserveY) = pairWnative.getReserves();
 
         assertEq(reserveX, 0, "test_BurnPartial::3");
         assertEq(reserveY, 0, "test_BurnPartial::4");
@@ -159,7 +163,7 @@ contract LBPairLiquidityTest is TestHelper {
         uint8 nbBinX = 6;
         uint8 nbBinY = 6;
 
-        addLiquidity(ALICE, BOB, pairWavax, activeId, amountX, amountY, nbBinX, nbBinY);
+        addLiquidity(ALICE, BOB, pairWnative, activeId, amountX, amountY, nbBinX, nbBinY);
 
         uint256 total = getTotalBins(nbBinX, nbBinY);
 
@@ -171,27 +175,27 @@ contract LBPairLiquidityTest is TestHelper {
             uint24 id = getId(activeId, i, nbBinY);
 
             ids[i] = id;
-            uint256 balance = pairWavax.balanceOf(BOB, id);
+            uint256 balance = pairWnative.balanceOf(BOB, id);
 
             halfbalances[i] = balance / 2;
             balances[i] = balance - balance / 2;
         }
 
-        (uint128 reserveX, uint128 reserveY) = pairWavax.getReserves();
+        (uint128 reserveX, uint128 reserveY) = pairWnative.getReserves();
 
         vm.prank(BOB);
-        pairWavax.burn(BOB, BOB, ids, halfbalances);
+        pairWnative.burn(BOB, BOB, ids, halfbalances);
 
-        assertApproxEqRel(wavax.balanceOf(BOB), reserveX / 2, 1e10, "test_BurnPartial::1");
+        assertApproxEqRel(wnative.balanceOf(BOB), reserveX / 2, 1e10, "test_BurnPartial::1");
         assertApproxEqRel(usdc.balanceOf(BOB), reserveY / 2, 1e10, "test_BurnPartial::2");
 
         vm.prank(BOB);
-        pairWavax.burn(BOB, BOB, ids, balances);
+        pairWnative.burn(BOB, BOB, ids, balances);
 
-        assertEq(wavax.balanceOf(BOB), reserveX, "test_BurnPartial::3");
+        assertEq(wnative.balanceOf(BOB), reserveX, "test_BurnPartial::3");
         assertEq(usdc.balanceOf(BOB), reserveY, "test_BurnPartial::4");
 
-        (reserveX, reserveY) = pairWavax.getReserves();
+        (reserveX, reserveY) = pairWnative.getReserves();
 
         assertEq(reserveX, 0, "test_BurnPartial::5");
         assertEq(reserveY, 0, "test_BurnPartial::6");
@@ -201,24 +205,24 @@ contract LBPairLiquidityTest is TestHelper {
         uint8 nbBinX = 6;
         uint8 nbBinY = 6;
 
-        addLiquidity(ALICE, BOB, pairWavax, activeId, 100 * 10 ** 18, 2_000 * 10 ** 6, nbBinX, nbBinY);
+        addLiquidity(ALICE, BOB, pairWnative, activeId, 100 * 10 ** 18, 2_000 * 10 ** 6, nbBinX, nbBinY);
 
         uint24 lowId = activeId - nbBinY + 1;
         uint24 upperId = activeId + nbBinX - 1;
 
-        uint24 id = pairWavax.getNextNonEmptyBin(false, 0);
+        uint24 id = pairWnative.getNextNonEmptyBin(false, 0);
 
         assertEq(id, lowId, "test_GetNextNonEmptyBin::1");
 
         uint256 total = getTotalBins(nbBinX, nbBinY);
 
         for (uint256 i; i < total - 1; ++i) {
-            id = pairWavax.getNextNonEmptyBin(false, id);
+            id = pairWnative.getNextNonEmptyBin(false, id);
 
             assertEq(id, lowId + i + 1, "test_GetNextNonEmptyBin::2");
         }
 
-        id = pairWavax.getNextNonEmptyBin(true, type(uint24).max);
+        id = pairWnative.getNextNonEmptyBin(true, type(uint24).max);
 
         assertEq(id, upperId, "test_GetNextNonEmptyBin::3");
 
@@ -226,16 +230,16 @@ contract LBPairLiquidityTest is TestHelper {
         uint256[] memory balances = new uint256[](1);
 
         ids[0] = activeId;
-        balances[0] = pairWavax.balanceOf(BOB, activeId);
+        balances[0] = pairWnative.balanceOf(BOB, activeId);
 
         vm.prank(BOB);
-        pairWavax.burn(BOB, BOB, ids, balances);
+        pairWnative.burn(BOB, BOB, ids, balances);
 
-        id = pairWavax.getNextNonEmptyBin(false, activeId - 1);
+        id = pairWnative.getNextNonEmptyBin(false, activeId - 1);
 
         assertEq(id, activeId + 1, "test_GetNextNonEmptyBin::4");
 
-        id = pairWavax.getNextNonEmptyBin(true, activeId + 1);
+        id = pairWnative.getNextNonEmptyBin(true, activeId + 1);
 
         assertEq(id, activeId - 1, "test_GetNextNonEmptyBin::5");
     }
@@ -243,30 +247,30 @@ contract LBPairLiquidityTest is TestHelper {
     function test_revert_MintEmptyConfig() external {
         bytes32[] memory data = new bytes32[](0);
         vm.expectRevert(ILBPair.LBPair__EmptyMarketConfigs.selector);
-        pairWavax.mint(BOB, data, BOB);
+        pairWnative.mint(BOB, data, BOB);
     }
 
     function test_revert_MintZeroShares() external {
         bytes32[] memory data = new bytes32[](1);
         data[0] = LiquidityConfigurations.encodeParams(1e18, 1e18, activeId);
         vm.expectRevert(abi.encodeWithSelector(ILBPair.LBPair__ZeroShares.selector, activeId));
-        pairWavax.mint(BOB, data, BOB);
+        pairWnative.mint(BOB, data, BOB);
     }
 
     function test_revert_MintMoreThanAmountSent() external {
-        deal(address(wavax), address(pairWavax), 1e18);
-        deal(address(usdc), address(pairWavax), 1e18);
+        deal(address(wnative), address(pairWnative), 1e18);
+        deal(address(usdc), address(pairWnative), 1e18);
 
         bytes32[] memory data = new bytes32[](2);
         data[0] = LiquidityConfigurations.encodeParams(0, 0.5e18, activeId - 1);
         data[1] = LiquidityConfigurations.encodeParams(0, 0.5e18 + 1, activeId);
         vm.expectRevert(PackedUint128Math.PackedUint128Math__SubUnderflow.selector);
-        pairWavax.mint(BOB, data, BOB);
+        pairWnative.mint(BOB, data, BOB);
 
         data[1] = LiquidityConfigurations.encodeParams(0.5e18, 0, activeId);
         data[0] = LiquidityConfigurations.encodeParams(0.5e18 + 1, 0, activeId + 1);
         vm.expectRevert(PackedUint128Math.PackedUint128Math__SubUnderflow.selector);
-        pairWavax.mint(BOB, data, BOB);
+        pairWnative.mint(BOB, data, BOB);
     }
 
     function test_revert_BurnEmptyArraysOrDifferent() external {
@@ -274,41 +278,41 @@ contract LBPairLiquidityTest is TestHelper {
         uint256[] memory balances = new uint256[](1);
 
         vm.expectRevert(ILBPair.LBPair__InvalidInput.selector);
-        pairWavax.burn(DEV, DEV, ids, balances);
+        pairWnative.burn(DEV, DEV, ids, balances);
 
         ids = new uint256[](1);
         balances = new uint256[](0);
 
         vm.expectRevert(ILBPair.LBPair__InvalidInput.selector);
-        pairWavax.burn(DEV, DEV, ids, balances);
+        pairWnative.burn(DEV, DEV, ids, balances);
 
         ids = new uint256[](0);
         balances = new uint256[](0);
 
         vm.expectRevert(ILBPair.LBPair__InvalidInput.selector);
-        pairWavax.burn(DEV, DEV, ids, balances);
+        pairWnative.burn(DEV, DEV, ids, balances);
 
         ids = new uint256[](1);
         balances = new uint256[](2);
 
         vm.expectRevert(ILBPair.LBPair__InvalidInput.selector);
-        pairWavax.burn(DEV, DEV, ids, balances);
+        pairWnative.burn(DEV, DEV, ids, balances);
     }
 
     function test_revert_BurnMoreThanBalance() external {
-        addLiquidity(ALICE, ALICE, pairWavax, activeId, 1e18, 1e18, 1, 0);
-        addLiquidity(DEV, DEV, pairWavax, activeId, 1e18, 1e18, 1, 0);
+        addLiquidity(ALICE, ALICE, pairWnative, activeId, 1e18, 1e18, 1, 0);
+        addLiquidity(DEV, DEV, pairWnative, activeId, 1e18, 1e18, 1, 0);
 
         uint256[] memory ids = new uint256[](1);
         uint256[] memory balances = new uint256[](1);
 
         ids[0] = activeId;
-        balances[0] = pairWavax.balanceOf(DEV, activeId) + 1;
+        balances[0] = pairWnative.balanceOf(DEV, activeId) + 1;
 
         vm.expectRevert(
             abi.encodeWithSelector(ILBToken.LBToken__BurnExceedsBalance.selector, DEV, activeId, balances[0])
         );
-        pairWavax.burn(DEV, DEV, ids, balances);
+        pairWnative.burn(DEV, DEV, ids, balances);
     }
 
     function test_revert_BurnZeroShares() external {
@@ -319,7 +323,7 @@ contract LBPairLiquidityTest is TestHelper {
         balances[0] = 0;
 
         vm.expectRevert(abi.encodeWithSelector(ILBPair.LBPair__ZeroAmount.selector, activeId));
-        pairWavax.burn(DEV, DEV, ids, balances);
+        pairWnative.burn(DEV, DEV, ids, balances);
     }
 
     function test_revert_BurnForZeroAmounts() external {
@@ -330,6 +334,6 @@ contract LBPairLiquidityTest is TestHelper {
         balances[0] = 1;
 
         vm.expectRevert(abi.encodeWithSelector(ILBPair.LBPair__ZeroAmountsOut.selector, activeId));
-        pairWavax.burn(DEV, DEV, ids, balances);
+        pairWnative.burn(DEV, DEV, ids, balances);
     }
 }

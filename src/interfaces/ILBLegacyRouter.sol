@@ -8,7 +8,7 @@ import {ILBFactory} from "./ILBFactory.sol";
 import {IJoeFactory} from "./IJoeFactory.sol";
 import {ILBLegacyPair} from "./ILBLegacyPair.sol";
 import {ILBToken} from "./ILBToken.sol";
-import {IWAVAX} from "./IWAVAX.sol";
+import {IWNATIVE} from "./IWNATIVE.sol";
 
 /// @title Liquidity Book Router Interface
 /// @author Trader Joe

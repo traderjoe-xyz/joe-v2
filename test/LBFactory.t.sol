@@ -438,7 +438,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function test_SetFeesParametersOnPair() public {
-        ILBPair pair = factory.createLBPair(wavax, usdc, ID_ONE, DEFAULT_BIN_STEP);
+        ILBPair pair = factory.createLBPair(wnative, usdc, ID_ONE, DEFAULT_BIN_STEP);
         addLiquidity(DEV, DEV, LBPair(address(pair)), ID_ONE, 100e18, 100e18, 10, 10);
 
         // Do swaps to increase the variable fee parameters
@@ -453,7 +453,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
             path.tokenPath = new IERC20[](2);
             path.tokenPath[0] = usdc;
-            path.tokenPath[1] = wavax;
+            path.tokenPath[1] = wnative;
             router.swapExactTokensForTokens(50e18, 0, path, address(this), block.timestamp + 1);
             vm.warp(100);
             router.swapExactTokensForTokens(10e18, 0, path, address(this), block.timestamp + 1);
@@ -479,7 +479,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             );
 
         factory.setFeesParametersOnPair(
-            wavax,
+            wnative,
             usdc,
             DEFAULT_BIN_STEP,
             DEFAULT_BASE_FACTOR * 2,
@@ -527,7 +527,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.prank(ALICE);
         vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
         factory.setFeesParametersOnPair(
-            wavax,
+            wnative,
             usdc,
             DEFAULT_BIN_STEP,
             DEFAULT_BASE_FACTOR * 2,

@@ -339,11 +339,11 @@ contract BinHelperTest is TestHelper {
         address pair = address(this);
 
         deal(address(usdc), pair, reserveX + sentX);
-        deal(address(wavax), pair, reserveY + sentY);
+        deal(address(wnative), pair, reserveY + sentY);
 
         bytes32 reserves = reserveX.encode(reserveY);
 
-        bytes32 received = reserves.received(IERC20(address(usdc)), IERC20(address(wavax)));
+        bytes32 received = reserves.received(IERC20(address(usdc)), IERC20(address(wnative)));
 
         (uint256 receivedX, uint256 receivedY) = received.decode();
 
@@ -355,7 +355,7 @@ contract BinHelperTest is TestHelper {
 
         assertEq(receivedX, sentX, "test_Received::3");
 
-        received = reserves.receivedY(IERC20(address(wavax)));
+        received = reserves.receivedY(IERC20(address(wnative)));
         receivedY = received.decodeY();
 
         assertEq(receivedY, sentY, "test_Received::4");
@@ -365,32 +365,32 @@ contract BinHelperTest is TestHelper {
         address recipient = address(1);
 
         deal(address(usdc), address(this), amountX);
-        deal(address(wavax), address(this), amountY);
+        deal(address(wnative), address(this), amountY);
 
         bytes32 amounts = amountX.encode(amountY);
 
         bytes32 firstHalf = amounts.sub((amountX / 2).encode((amountY / 2)));
         bytes32 secondHalf = amounts.sub(firstHalf);
 
-        firstHalf.transfer(IERC20(address(usdc)), IERC20(address(wavax)), recipient);
+        firstHalf.transfer(IERC20(address(usdc)), IERC20(address(wnative)), recipient);
 
         assertEq(usdc.balanceOf(recipient), firstHalf.decodeX(), "test_Transfer::1");
-        assertEq(wavax.balanceOf(recipient), firstHalf.decodeY(), "test_Transfer::2");
+        assertEq(wnative.balanceOf(recipient), firstHalf.decodeY(), "test_Transfer::2");
         assertEq(usdc.balanceOf(address(this)), secondHalf.decodeX(), "test_Transfer::3");
-        assertEq(wavax.balanceOf(address(this)), secondHalf.decodeY(), "test_Transfer::4");
+        assertEq(wnative.balanceOf(address(this)), secondHalf.decodeY(), "test_Transfer::4");
 
         secondHalf.transferX(IERC20(address(usdc)), recipient);
 
         assertEq(usdc.balanceOf(recipient), amounts.decodeX(), "test_Transfer::5");
-        assertEq(wavax.balanceOf(recipient), firstHalf.decodeY(), "test_Transfer::6");
+        assertEq(wnative.balanceOf(recipient), firstHalf.decodeY(), "test_Transfer::6");
         assertEq(usdc.balanceOf(address(this)), 0, "test_Transfer::7");
-        assertEq(wavax.balanceOf(address(this)), secondHalf.decodeY(), "test_Transfer::8");
+        assertEq(wnative.balanceOf(address(this)), secondHalf.decodeY(), "test_Transfer::8");
 
-        secondHalf.transferY(IERC20(address(wavax)), recipient);
+        secondHalf.transferY(IERC20(address(wnative)), recipient);
 
         assertEq(usdc.balanceOf(recipient), amounts.decodeX(), "test_Transfer::9");
-        assertEq(wavax.balanceOf(recipient), amounts.decodeY(), "test_Transfer::10");
+        assertEq(wnative.balanceOf(recipient), amounts.decodeY(), "test_Transfer::10");
         assertEq(usdc.balanceOf(address(this)), 0, "test_Transfer::11");
-        assertEq(wavax.balanceOf(address(this)), 0, "test_Transfer::12");
+        assertEq(wnative.balanceOf(address(this)), 0, "test_Transfer::12");
     }
 }

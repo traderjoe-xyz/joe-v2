@@ -10,7 +10,7 @@ import {ILBLegacyFactory} from "./ILBLegacyFactory.sol";
 import {ILBLegacyRouter} from "./ILBLegacyRouter.sol";
 import {ILBPair} from "./ILBPair.sol";
 import {ILBToken} from "./ILBToken.sol";
-import {IWAVAX} from "./IWAVAX.sol";
+import {IWNATIVE} from "./IWNATIVE.sol";
 
 /**
  * @title Liquidity Book Router Interface
@@ -18,7 +18,7 @@ import {IWAVAX} from "./IWAVAX.sol";
  * @notice Required interface of LBRouter contract
  */
 interface ILBRouter {
-    error LBRouter__SenderIsNotWAVAX();
+    error LBRouter__SenderIsNotWNATIVE();
     error LBRouter__PairNotCreated(address tokenX, address tokenY, uint256 binStep);
     error LBRouter__WrongAmounts(uint256 amount, uint256 reserve);
     error LBRouter__SwapOverflows(uint256 id);
@@ -32,14 +32,14 @@ interface ILBRouter {
     error LBRouter__IdSlippageCaught(uint256 activeIdDesired, uint256 idSlippage, uint256 activeId);
     error LBRouter__AmountSlippageCaught(uint256 amountXMin, uint256 amountX, uint256 amountYMin, uint256 amountY);
     error LBRouter__IdDesiredOverflows(uint256 idDesired, uint256 idSlippage);
-    error LBRouter__FailedToSendAVAX(address recipient, uint256 amount);
+    error LBRouter__FailedToSendNATIVE(address recipient, uint256 amount);
     error LBRouter__DeadlineExceeded(uint256 deadline, uint256 currentTimestamp);
     error LBRouter__AmountSlippageBPTooBig(uint256 amountSlippage);
     error LBRouter__InsufficientAmountOut(uint256 amountOutMin, uint256 amountOut);
     error LBRouter__MaxAmountInExceeded(uint256 amountInMax, uint256 amountIn);
     error LBRouter__InvalidTokenPath(address wrongToken);
     error LBRouter__InvalidVersion(uint256 version);
-    error LBRouter__WrongAvaxLiquidityParameters(
+    error LBRouter__WrongNativeLiquidityParameters(
         address tokenX, address tokenY, uint256 amountX, uint256 amountY, uint256 msgValue
     );
 
@@ -110,7 +110,7 @@ interface ILBRouter {
 
     function getLegacyRouter() external view returns (ILBLegacyRouter);
 
-    function getWAVAX() external view returns (IWAVAX);
+    function getWNATIVE() external view returns (IWNATIVE);
 
     function getIdFromPrice(ILBPair LBPair, uint256 price) external view returns (uint24);
 
@@ -141,7 +141,7 @@ interface ILBRouter {
             uint256[] memory liquidityMinted
         );
 
-    function addLiquidityAVAX(LiquidityParameters calldata liquidityParameters)
+    function addLiquidityNATIVE(LiquidityParameters calldata liquidityParameters)
         external
         payable
         returns (
@@ -165,16 +165,16 @@ interface ILBRouter {
         uint256 deadline
     ) external returns (uint256 amountX, uint256 amountY);
 
-    function removeLiquidityAVAX(
+    function removeLiquidityNATIVE(
         IERC20 token,
         uint8 binStep,
         uint256 amountTokenMin,
-        uint256 amountAVAXMin,
+        uint256 amountNATIVEMin,
         uint256[] memory ids,
         uint256[] memory amounts,
         address payable to,
         uint256 deadline
-    ) external returns (uint256 amountToken, uint256 amountAVAX);
+    ) external returns (uint256 amountToken, uint256 amountNATIVE);
 
     function swapExactTokensForTokens(
         uint256 amountIn,
@@ -184,15 +184,15 @@ interface ILBRouter {
         uint256 deadline
     ) external returns (uint256 amountOut);
 
-    function swapExactTokensForAVAX(
+    function swapExactTokensForNATIVE(
         uint256 amountIn,
-        uint256 amountOutMinAVAX,
+        uint256 amountOutMinNATIVE,
         Path memory path,
         address payable to,
         uint256 deadline
     ) external returns (uint256 amountOut);
 
-    function swapExactAVAXForTokens(uint256 amountOutMin, Path memory path, address to, uint256 deadline)
+    function swapExactNATIVEForTokens(uint256 amountOutMin, Path memory path, address to, uint256 deadline)
         external
         payable
         returns (uint256 amountOut);
@@ -205,7 +205,7 @@ interface ILBRouter {
         uint256 deadline
     ) external returns (uint256[] memory amountsIn);
 
-    function swapTokensForExactAVAX(
+    function swapTokensForExactNATIVE(
         uint256 amountOut,
         uint256 amountInMax,
         Path memory path,
@@ -213,7 +213,7 @@ interface ILBRouter {
         uint256 deadline
     ) external returns (uint256[] memory amountsIn);
 
-    function swapAVAXForExactTokens(uint256 amountOut, Path memory path, address to, uint256 deadline)
+    function swapNATIVEForExactTokens(uint256 amountOut, Path memory path, address to, uint256 deadline)
         external
         payable
         returns (uint256[] memory amountsIn);
@@ -226,15 +226,15 @@ interface ILBRouter {
         uint256 deadline
     ) external returns (uint256 amountOut);
 
-    function swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+    function swapExactTokensForNATIVESupportingFeeOnTransferTokens(
         uint256 amountIn,
-        uint256 amountOutMinAVAX,
+        uint256 amountOutMinNATIVE,
         Path memory path,
         address payable to,
         uint256 deadline
     ) external returns (uint256 amountOut);
 
-    function swapExactAVAXForTokensSupportingFeeOnTransferTokens(
+    function swapExactNATIVEForTokensSupportingFeeOnTransferTokens(
         uint256 amountOutMin,
         Path memory path,
         address to,

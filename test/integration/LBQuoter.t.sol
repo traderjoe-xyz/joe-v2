@@ -7,7 +7,7 @@ import "../helpers/TestHelper.sol";
 /**
  * Market deployed:
  * - USDT/USDC, V1 with low liquidity, V2 with high liquidity
- * - WAVAX/USDC, V1 with high liquidity, V2 with low liquidity
+ * - WNATIVE/USDC, V1 with high liquidity, V2 with low liquidity
  * - WETH/USDC, V1 with low liquidity, V2.1 with high liquidity
  * - BNB/USDC, V2 with high liquidity, V2.1 with low liquidity
  *
@@ -31,7 +31,7 @@ contract LiquidityBinQuoterTest is TestHelper {
         // Get tokens to add liquidity
         deal(address(usdc), address(this), 10 * highLiquidityAmount);
         deal(address(usdt), address(this), 10 * highLiquidityAmount);
-        deal(address(wavax), address(this), 10 * highLiquidityAmount);
+        deal(address(wnative), address(this), 10 * highLiquidityAmount);
         deal(address(weth), address(this), 10 * highLiquidityAmount);
         deal(address(bnb), address(this), 10 * highLiquidityAmount);
 
@@ -48,9 +48,9 @@ contract LiquidityBinQuoterTest is TestHelper {
         );
 
         routerV1.addLiquidity(
-            address(wavax),
+            address(wnative),
             address(usdc),
-            highLiquidityAmount, // 1 AVAX = 1 USDC
+            highLiquidityAmount, // 1 NATIVE = 1 USDC
             highLiquidityAmount,
             0,
             0,
@@ -72,7 +72,7 @@ contract LiquidityBinQuoterTest is TestHelper {
         vm.startPrank(AvalancheAddresses.V2_FACTORY_OWNER);
         legacyFactoryV2.addQuoteAsset(usdc);
         legacyFactoryV2.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP); // 1 USDT = 1 USDC
-        legacyFactoryV2.createLBPair(wavax, usdc, ID_ONE + 50, DEFAULT_BIN_STEP); // 1 AVAX > 1 USDC
+        legacyFactoryV2.createLBPair(wnative, usdc, ID_ONE + 50, DEFAULT_BIN_STEP); // 1 NATIVE > 1 USDC
         legacyFactoryV2.createLBPair(bnb, usdc, ID_ONE, DEFAULT_BIN_STEP); // 1 BNB = 1 USDC
         vm.stopPrank();
 
@@ -84,7 +84,7 @@ contract LiquidityBinQuoterTest is TestHelper {
             getLiquidityParameters(usdt, usdc, highLiquidityAmount, ID_ONE, 7, 0);
         legacyRouterV2.addLiquidity(liquidityParameters.toLegacy());
 
-        liquidityParameters = getLiquidityParameters(wavax, usdc, lowLiquidityAmount, ID_ONE + 50, 7, 0);
+        liquidityParameters = getLiquidityParameters(wnative, usdc, lowLiquidityAmount, ID_ONE + 50, 7, 0);
         legacyRouterV2.addLiquidity(liquidityParameters.toLegacy());
 
         liquidityParameters = getLiquidityParameters(weth, usdc, highLiquidityAmount, ID_ONE, 7, 0);
@@ -158,9 +158,9 @@ contract LiquidityBinQuoterTest is TestHelper {
     }
 
     function test_Scenario2() public {
-        // WAVAX/USDC, V1 with high liquidity, V2 with low liquidity
+        // WNATIVE/USDC, V1 with high liquidity, V2 with low liquidity
         address[] memory route = new address[](2);
-        route[0] = address(wavax);
+        route[0] = address(wnative);
         route[1] = address(usdc);
 
         // Small amountIn

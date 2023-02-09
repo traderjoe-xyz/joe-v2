@@ -597,7 +597,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to add an asset to the whitelist of quote assets
-     * @param quoteAsset The quote asset (e.g: AVAX, USDC...)
+     * @param quoteAsset The quote asset (e.g: NATIVE, USDC...)
      */
     function addQuoteAsset(IERC20 quoteAsset) external override onlyOwner {
         if (!_quoteAssetWhitelist.add(address(quoteAsset))) {
@@ -609,7 +609,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to remove an asset from the whitelist of quote assets
-     * @param quoteAsset The quote asset (e.g: AVAX, USDC...)
+     * @param quoteAsset The quote asset (e.g: NATIVE, USDC...)
      */
     function removeQuoteAsset(IERC20 quoteAsset) external override onlyOwner {
         if (!_quoteAssetWhitelist.remove(address(quoteAsset))) revert LBFactory__QuoteAssetNotWhitelisted(quoteAsset);

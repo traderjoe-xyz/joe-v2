@@ -22,7 +22,7 @@ import "../../src/interfaces/IPendingOwnable.sol";
 
 import "./Utils.sol";
 
-import "test/mocks/WAVAX.sol";
+import "test/mocks/WNATIVE.sol";
 import "test/mocks/ERC20.sol";
 import "test/mocks/FlashBorrower.sol";
 import "test/mocks/ERC20TransferTax.sol";
@@ -54,7 +54,7 @@ abstract contract TestHelper is Test {
     address payable immutable BOB = payable(makeAddr("bob"));
 
     // Wrapped Native
-    WAVAX internal wavax;
+    WNATIVE internal wnative;
 
     // 6 decimals
     ERC20Mock internal usdc;
@@ -74,7 +74,7 @@ abstract contract TestHelper is Test {
     LBFactory internal factory;
     LBRouter internal router;
     LBPair internal localPair;
-    LBPair internal pairWavax;
+    LBPair internal pairWnative;
     LBQuoter internal quoter;
     LBPair internal pairImplementation;
 
@@ -85,10 +85,10 @@ abstract contract TestHelper is Test {
     ILBLegacyFactory internal legacyFactoryV2;
 
     function setUp() public virtual {
-        wavax = WAVAX(AvalancheAddresses.WAVAX);
+        wnative = WNATIVE(AvalancheAddresses.WNATIVE);
         // If not forking, deploy mock
-        if (address(wavax).code.length == 0) {
-            vm.etch(address(wavax), address(new WAVAX()).code);
+        if (address(wnative).code.length == 0) {
+            vm.etch(address(wnative), address(new WNATIVE()).code);
         }
 
         // Create mocks
@@ -101,7 +101,7 @@ abstract contract TestHelper is Test {
         taxToken = new ERC20TransferTaxMock();
 
         // Label mocks
-        vm.label(address(wavax), "wavax");
+        vm.label(address(wnative), "wnative");
         vm.label(address(usdc), "usdc");
         vm.label(address(usdt), "usdt");
         vm.label(address(wbtc), "wbtc");
@@ -126,7 +126,7 @@ abstract contract TestHelper is Test {
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
 
         // Create router
-        router = new LBRouter(factory, factoryV1, legacyFactoryV2, legacyRouterV2, IWAVAX(address(wavax)));
+        router = new LBRouter(factory, factoryV1, legacyFactoryV2, legacyRouterV2, IWNATIVE(address(wnative)));
 
         // Create quoter
         quoter =
@@ -145,7 +145,7 @@ abstract contract TestHelper is Test {
         vm.label(address(legacyFactoryV2), "legacyFactoryV2");
 
         // Give approvals to routers
-        wavax.approve(address(routerV1), type(uint256).max);
+        wnative.approve(address(routerV1), type(uint256).max);
         usdc.approve(address(routerV1), type(uint256).max);
         usdt.approve(address(routerV1), type(uint256).max);
         wbtc.approve(address(routerV1), type(uint256).max);
@@ -154,7 +154,7 @@ abstract contract TestHelper is Test {
         bnb.approve(address(routerV1), type(uint256).max);
         taxToken.approve(address(routerV1), type(uint256).max);
 
-        wavax.approve(address(legacyRouterV2), type(uint256).max);
+        wnative.approve(address(legacyRouterV2), type(uint256).max);
         usdc.approve(address(legacyRouterV2), type(uint256).max);
         usdt.approve(address(legacyRouterV2), type(uint256).max);
         wbtc.approve(address(legacyRouterV2), type(uint256).max);
@@ -163,7 +163,7 @@ abstract contract TestHelper is Test {
         bnb.approve(address(legacyRouterV2), type(uint256).max);
         taxToken.approve(address(legacyRouterV2), type(uint256).max);
 
-        wavax.approve(address(router), type(uint256).max);
+        wnative.approve(address(router), type(uint256).max);
         usdc.approve(address(router), type(uint256).max);
         usdt.approve(address(router), type(uint256).max);
         wbtc.approve(address(router), type(uint256).max);
@@ -186,7 +186,7 @@ abstract contract TestHelper is Test {
     }
 
     function addAllAssetsToQuoteWhitelist() internal {
-        if (address(wavax) != address(0)) factory.addQuoteAsset(wavax);
+        if (address(wnative) != address(0)) factory.addQuoteAsset(wnative);
         if (address(usdc) != address(0)) factory.addQuoteAsset(usdc);
         if (address(usdt) != address(0)) factory.addQuoteAsset(usdt);
         if (address(wbtc) != address(0)) factory.addQuoteAsset(wbtc);
@@ -301,7 +301,7 @@ abstract contract TestHelper is Test {
         uint8 nbBinX,
         uint8 nbBinY
     ) public {
-        deal(address(wavax), from, amountX);
+        deal(address(wnative), from, amountX);
         deal(address(usdc), from, amountY);
 
         uint256 total = getTotalBins(nbBinX, nbBinY);
@@ -318,7 +318,7 @@ abstract contract TestHelper is Test {
         }
 
         vm.startPrank(from);
-        wavax.transfer(address(lbPair), amountX);
+        wnative.transfer(address(lbPair), amountX);
         usdc.transfer(address(lbPair), amountY);
         vm.stopPrank();
 

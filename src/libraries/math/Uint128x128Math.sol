@@ -4,7 +4,6 @@ pragma solidity 0.8.10;
 
 import {Constants} from "../Constants.sol";
 import {BitMath} from "./BitMath.sol";
-import {Uint256x256Math} from "./Uint256x256Math.sol";
 
 /**
  * @title Liquidity Book Uint128x128 Math Library
@@ -12,7 +11,6 @@ import {Uint256x256Math} from "./Uint256x256Math.sol";
  * @notice Helper contract used for power and log calculations
  */
 library Uint128x128Math {
-    using Uint256x256Math for uint256;
     using BitMath for uint256;
 
     error Uint128x128Math__LogUnderflow();

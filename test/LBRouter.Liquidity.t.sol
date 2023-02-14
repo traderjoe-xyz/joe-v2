@@ -328,7 +328,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
         ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).LBPair;
 
-        pair.setApprovalForAll(address(router), true);
+        pair.approveForAll(address(router), true);
 
         (uint256 amountXOut, uint256 amountYOut) = router.removeLiquidity(
             usdt, usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp
@@ -382,7 +382,7 @@ contract LiquidityBinRouterTest is TestHelper {
             router.addLiquidity(liquidityParameters);
 
         ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).LBPair;
-        pair.setApprovalForAll(address(router), true);
+        pair.approveForAll(address(router), true);
 
         // Revert if the deadline is passed
         vm.expectRevert(
@@ -441,7 +441,7 @@ contract LiquidityBinRouterTest is TestHelper {
             router.addLiquidityNATIVE{value: liquidityParameters.amountX}(liquidityParameters);
 
         ILBPair pair = factory.getLBPairInformation(wnative, usdc, DEFAULT_BIN_STEP).LBPair;
-        pair.setApprovalForAll(address(router), true);
+        pair.approveForAll(address(router), true);
 
         uint256 balanceNATIVEBefore = address(this).balance;
         uint256 balanceUSDCBefore = usdc.balanceOf(address(this));
@@ -470,7 +470,7 @@ contract LiquidityBinRouterTest is TestHelper {
             router.addLiquidityNATIVE{value: liquidityParameters.amountX}(liquidityParameters);
 
         ILBPair pair = factory.getLBPairInformation(wnative, usdc, DEFAULT_BIN_STEP).LBPair;
-        pair.setApprovalForAll(address(router), true);
+        pair.approveForAll(address(router), true);
 
         // Revert if the deadline is passed
         vm.expectRevert(

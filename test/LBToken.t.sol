@@ -236,7 +236,7 @@ contract LBTokenTest is Test {
         vm.stopPrank();
 
         vm.startPrank(from);
-        lbToken.setApprovalForAll(to, true);
+        lbToken.approveForAll(to, true);
         vm.stopPrank();
 
         assertEq(lbToken.isApprovedForAll(from, to), true, "testFuzz_ApprovedForAll::1");
@@ -249,7 +249,7 @@ contract LBTokenTest is Test {
         assertEq(lbToken.balanceOf(to, id), amount, "testFuzz_ApprovedForAll::3");
 
         vm.startPrank(from);
-        lbToken.setApprovalForAll(to, false);
+        lbToken.approveForAll(to, false);
         vm.stopPrank();
 
         assertEq(lbToken.isApprovedForAll(from, to), false, "testFuzz_ApprovedForAll::4");
@@ -292,7 +292,7 @@ contract LBTokenTest is Test {
 
         vm.startPrank(account);
         vm.expectRevert(abi.encodeWithSelector(ILBToken.LBToken__SelfApproval.selector, account));
-        lbToken.setApprovalForAll(account, true);
+        lbToken.approveForAll(account, true);
         vm.stopPrank();
 
         assertEq(lbToken.isApprovedForAll(account, account), true, "testFuzz_SetApprovalOnSelf::1");

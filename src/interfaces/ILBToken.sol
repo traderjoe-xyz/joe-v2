@@ -36,7 +36,7 @@ interface ILBToken {
 
     function isApprovedForAll(address owner, address spender) external view returns (bool);
 
-    function setApprovalForAll(address spender, bool approved) external;
+    function approveForAll(address spender, bool approved) external;
 
     function batchTransferFrom(address from, address to, uint256[] calldata ids, uint256[] calldata amounts) external;
 }

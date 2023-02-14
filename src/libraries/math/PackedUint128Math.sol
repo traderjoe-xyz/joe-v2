@@ -3,7 +3,6 @@
 pragma solidity 0.8.10;
 
 import {Constants} from "../Constants.sol";
-import {SafeCast} from "./SafeCast.sol";
 
 /**
  * @title Liquidity Book Packed Uint128 Math Library
@@ -12,11 +11,8 @@ import {SafeCast} from "./SafeCast.sol";
  * and interact with the encoded bytes32.
  */
 library PackedUint128Math {
-    using SafeCast for uint256;
-
     error PackedUint128Math__AddOverflow();
     error PackedUint128Math__SubUnderflow();
-    error PackedUint128Math__AddFirstSubSecondOverflow();
     error PackedUint128Math__MultiplierTooLarge();
 
     uint256 private constant OFFSET = 128;

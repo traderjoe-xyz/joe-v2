@@ -2,16 +2,12 @@
 
 pragma solidity 0.8.10;
 
-import {BitMath} from "./BitMath.sol";
-
 /**
  * @title Liquidity Book Uint256x256 Math Library
  * @author Trader Joe
  * @notice Helper contract used for full precision calculations
  */
 library Uint256x256Math {
-    using BitMath for uint256;
-
     error Uint256x256Math__MulShiftOverflow();
     error Uint256x256Math__MulDivOverflow();
 

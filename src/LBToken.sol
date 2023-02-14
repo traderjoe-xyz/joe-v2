@@ -129,8 +129,8 @@ contract LBToken is ILBToken {
      * @param spender The address of the spender.
      * @param approved The boolean value to grant or revoke permission.
      */
-    function setApprovalForAll(address spender, bool approved) public virtual override {
-        _setApprovalForAll(msg.sender, spender, approved);
+    function approveForAll(address spender, bool approved) public virtual override {
+        _approveForAll(msg.sender, spender, approved);
     }
 
     /**
@@ -261,7 +261,7 @@ contract LBToken is ILBToken {
      * @param spender The address of the spender
      * @param approved The boolean value to grant or revoke permission
      */
-    function _setApprovalForAll(address owner, address spender, bool approved) internal {
+    function _approveForAll(address owner, address spender, bool approved) internal {
         if (owner == spender) revert LBToken__SelfApproval(owner);
 
         _spenderApprovals[owner][spender] = approved;

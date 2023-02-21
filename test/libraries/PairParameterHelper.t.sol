@@ -142,15 +142,15 @@ contract PairParameterHelperTest is Test {
         );
     }
 
-    function testFuzz_getBaseAndVariableFees(bytes32 params, uint8 binStep) external {
+    function testFuzz_getBaseAndVariableFees(bytes32 params, uint16 binStep) external {
         uint256 baseFee = params.getBaseFee(binStep);
         uint256 variableFee = params.getVariableFee(binStep);
 
-        assertEq(baseFee, uint256(params.getBaseFactor()) * binStep * 5e9, "test_getBaseAndVariableFees::1");
+        assertEq(baseFee, uint256(params.getBaseFactor()) * binStep * 1e10, "test_getBaseAndVariableFees::1");
 
         uint256 prod = uint256(params.getVolatilityAccumulator()) * binStep;
         assertEq(
-            variableFee, (prod * prod * params.getVariableFeeControl() + 399) / 400, "test_getBaseAndVariableFees::2"
+            variableFee, (prod * prod * params.getVariableFeeControl() + 99) / 100, "test_getBaseAndVariableFees::2"
         );
 
         if (baseFee + variableFee < type(uint128).max) {

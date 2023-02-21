@@ -39,7 +39,7 @@ abstract contract TestHelper is Test {
     uint256 internal constant BASIS_POINT_MAX = 10_000;
 
     // Avalanche market config for 10bps
-    uint8 internal constant DEFAULT_BIN_STEP = 20;
+    uint16 internal constant DEFAULT_BIN_STEP = 10;
     uint16 internal constant DEFAULT_BASE_FACTOR = 5_000;
     uint16 internal constant DEFAULT_FILTER_PERIOD = 30;
     uint16 internal constant DEFAULT_DECAY_PERIOD = 600;
@@ -47,6 +47,7 @@ abstract contract TestHelper is Test {
     uint24 internal constant DEFAULT_VARIABLE_FEE_CONTROL = 40_000;
     uint16 internal constant DEFAULT_PROTOCOL_SHARE = 1_000;
     uint24 internal constant DEFAULT_MAX_VOLATILITY_ACCUMULATOR = 350_000;
+    bool internal constant DEFAULT_OPEN_STATE = false;
     uint256 internal constant DEFAULT_FLASHLOAN_FEE = 8e14;
 
     address payable immutable DEV = payable(address(this));
@@ -196,7 +197,7 @@ abstract contract TestHelper is Test {
         if (address(taxToken) != address(0)) factory.addQuoteAsset(taxToken);
     }
 
-    function setDefaultFactoryPresets(uint8 binStep) internal {
+    function setDefaultFactoryPresets(uint16 binStep) internal {
         factory.setPreset(
             binStep,
             DEFAULT_BASE_FACTOR,
@@ -205,7 +206,8 @@ abstract contract TestHelper is Test {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR,
+            DEFAULT_OPEN_STATE
         );
     }
 
@@ -217,7 +219,7 @@ abstract contract TestHelper is Test {
         newPair = createLBPairFromStartIdAndBinStep(tokenX, tokenY, startId, DEFAULT_BIN_STEP);
     }
 
-    function createLBPairFromStartIdAndBinStep(IERC20 tokenX, IERC20 tokenY, uint24 startId, uint8 binStep)
+    function createLBPairFromStartIdAndBinStep(IERC20 tokenX, IERC20 tokenY, uint24 startId, uint16 binStep)
         internal
         returns (LBPair newPair)
     {
@@ -361,5 +363,9 @@ abstract contract TestHelper is Test {
         id = nbBinY > 0 ? id - nbBinY + 1 : id;
 
         return id.safe24();
+    }
+
+    function isPresetOpen(uint16 binStep) public view returns (bool isOpen) {
+        (,,,,,,, isOpen) = factory.getPreset(binStep);
     }
 }

@@ -11,9 +11,9 @@ contract PriceHelperTest is Test {
 
     Math immutable math = new Math();
 
-    function testFuzz_GetBase(uint8 binStep) external {
+    function testFuzz_GetBase(uint16 binStep) external {
         uint256 base128x128 = PriceHelper.getBase(binStep);
-        uint256 expectedBase128x128 = (1 << 128) + (uint256(binStep) << 128) / 20_000;
+        uint256 expectedBase128x128 = (1 << 128) + (uint256(binStep) << 128) / 10_000;
 
         assertEq(base128x128, expectedBase128x128, "test_GetBase::1");
     }
@@ -49,7 +49,7 @@ contract PriceHelperTest is Test {
         assertEq(priceDecimal, expectedPriceDecimal, "test_Convert128x128PriceToDecimal::1");
     }
 
-    function testFuzz_Price(uint256 price, uint8 binStep) external {
+    function testFuzz_Price(uint256 price, uint16 binStep) external {
         // test that all prices from 1e64 to 1e192 are valid, includes 1e-18 to 1e18 in decimal.
         vm.assume(price > 1 << 64 && price < 1 << 192 && binStep > 0 && binStep < 200);
 
@@ -63,12 +63,12 @@ contract PriceHelperTest is Test {
             // Can't use `assertApproxEqRel` as it overflow when multiplying by 1e18
             // Assert that price is at most `binStep`% away from the calculated price
             assertLe(
-                price * (Constants.TWO_BASIS_POINT_MAX - binStep) / Constants.TWO_BASIS_POINT_MAX,
+                price * (Constants.BASIS_POINT_MAX - binStep) / Constants.BASIS_POINT_MAX,
                 calculatedPrice,
                 "test_Price::1"
             );
             assertGe(
-                price * (Constants.TWO_BASIS_POINT_MAX + binStep) / Constants.TWO_BASIS_POINT_MAX,
+                price * (Constants.BASIS_POINT_MAX + binStep) / Constants.BASIS_POINT_MAX,
                 calculatedPrice,
                 "test_Price::2"
             );
@@ -76,29 +76,34 @@ contract PriceHelperTest is Test {
     }
 
     function test_Price() external {
-        uint24 id = 8761245; // result of `log2(123456789) / log2(1.00005) + 2**23`
+        uint24 id = 8574931; // result of `log2(123456789) / log2(1.0001) + 2**23`
         uint256 expectedPrice = PriceHelper.convertDecimalPriceTo128x128(123456789e18);
         assertLe(PriceHelper.getPriceFromId(id - 1, 1), expectedPrice, "test_Price::1");
         assertGe(PriceHelper.getPriceFromId(id + 1, 1), expectedPrice, "test_Price::2");
 
-        id = 8116506; // result of `log2(0.00000123456789) / log2(1.00005) + 2**23`
+        id = 8252553; // result of `log2(0.00000123456789) / log2(1.0001) + 2**23`
         expectedPrice = PriceHelper.convertDecimalPriceTo128x128(0.00000123456789e18);
         assertLe(PriceHelper.getPriceFromId(id - 1, 1), expectedPrice, "test_Price::3");
         assertGe(PriceHelper.getPriceFromId(id + 1, 1), expectedPrice, "test_Price::4");
 
         id = 8392773; // result of `log2(10**18)/log2(1.01) + 2**23`
         expectedPrice = PriceHelper.convertDecimalPriceTo128x128(1e36);
-        assertLe(PriceHelper.getPriceFromId(id - 1, 200), expectedPrice, "test_Price::5");
-        assertGe(PriceHelper.getPriceFromId(id + 1, 200), expectedPrice, "test_Price::6");
+        assertLe(PriceHelper.getPriceFromId(id - 1, 100), expectedPrice, "test_Price::5");
+        assertGe(PriceHelper.getPriceFromId(id + 1, 100), expectedPrice, "test_Price::6");
+
+        id = 8389042; // result of `log2(10**18)/log2(1.1) + 2**23`
+        expectedPrice = PriceHelper.convertDecimalPriceTo128x128(1e36);
+        assertLe(PriceHelper.getPriceFromId(id - 1, 1000), expectedPrice, "test_Price::7");
+        assertGe(PriceHelper.getPriceFromId(id + 1, 1000), expectedPrice, "test_Price::8");
     }
 }
 
 contract Math {
-    function priceFromId(uint24 id, uint8 binStep) external pure returns (uint256) {
+    function priceFromId(uint24 id, uint16 binStep) external pure returns (uint256) {
         return PriceHelper.getPriceFromId(id, binStep);
     }
 
-    function idFromPrice(uint256 price, uint8 binStep) external pure returns (uint24) {
+    function idFromPrice(uint256 price, uint16 binStep) external pure returns (uint24) {
         return PriceHelper.getIdFromPrice(price, binStep);
     }
 }

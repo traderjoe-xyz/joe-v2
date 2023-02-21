@@ -146,7 +146,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @dev The bin step is the increase in price between two consecutive bins, in basis points.
      * For example, a bin step of 1 means that the price of the next bin is 0.01% higher than the price of the previous bin.
      * The maximum bin step is 200, which means that the price of the next bin is 1% higher than the price of the previous bin.
-     * @return binStep The bin step of the Liquidity Book Pair, in 100_000th
+     * @return binStep The bin step of the Liquidity Book Pair, in 10_000th
      */
     function getBinStep() external pure override returns (uint16) {
         return _binStep();

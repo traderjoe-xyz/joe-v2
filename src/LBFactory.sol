@@ -289,7 +289,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param tokenX The address of the first token
      * @param tokenY The address of the second token
      * @param activeId The active id of the pair
-     * @param binStep The bin step in basis point, used to calculate log(1 + binStep / 100_000)
+     * @param binStep The bin step in basis point, used to calculate log(1 + binStep / 10_000)
      * @return pair The address of the newly created LBPair
      */
     function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)

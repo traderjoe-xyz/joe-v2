@@ -36,11 +36,11 @@ library FeeHelper {
 
     /**
      * @dev Calculates the fee amount from the amount with fees, rounding up
-     * @param amounWithFees The amount with fees
+     * @param amountWithFees The amount with fees
      * @param totalFee The total fee
      * @return feeAmount The fee amount
      */
-    function getFeeAmountFrom(uint128 amounWithFees, uint128 totalFee)
+    function getFeeAmountFrom(uint128 amountWithFees, uint128 totalFee)
         internal
         pure
         checkFeeOverflow(totalFee)
@@ -48,7 +48,7 @@ library FeeHelper {
     {
         unchecked {
             // Can't overflow, max(result) = (type(uint128).max * 0.1e18 + 1e18 - 1) / 1e18 < 2^128
-            return uint128((uint256(amounWithFees) * totalFee + Constants.PRECISION - 1) / Constants.PRECISION);
+            return uint128((uint256(amountWithFees) * totalFee + Constants.PRECISION - 1) / Constants.PRECISION);
         }
     }
 

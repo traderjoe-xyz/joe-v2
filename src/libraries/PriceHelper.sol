@@ -25,7 +25,7 @@ library PriceHelper {
      * @param binStep The bin step
      * @return price The price as a 128.128-binary fixed-point number
      */
-    function getPriceFromId(uint24 id, uint8 binStep) internal pure returns (uint256 price) {
+    function getPriceFromId(uint24 id, uint16 binStep) internal pure returns (uint256 price) {
         uint256 base = getBase(binStep);
         int256 exponent = getExponent(id);
 
@@ -38,7 +38,7 @@ library PriceHelper {
      * @param binStep The bin step
      * @return id The id
      */
-    function getIdFromPrice(uint256 price, uint8 binStep) internal pure returns (uint24 id) {
+    function getIdFromPrice(uint256 price, uint16 binStep) internal pure returns (uint24 id) {
         uint256 base = getBase(binStep);
         int256 realId = price.log2() / base.log2();
 
@@ -52,9 +52,9 @@ library PriceHelper {
      * @param binStep The bin step
      * @return base The base
      */
-    function getBase(uint8 binStep) internal pure returns (uint256) {
+    function getBase(uint16 binStep) internal pure returns (uint256) {
         unchecked {
-            return Constants.SCALE + (uint256(binStep) << Constants.SCALE_OFFSET) / Constants.TWO_BASIS_POINT_MAX;
+            return Constants.SCALE + (uint256(binStep) << Constants.SCALE_OFFSET) / Constants.BASIS_POINT_MAX;
         }
     }
 

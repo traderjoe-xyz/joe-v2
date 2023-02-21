@@ -194,7 +194,7 @@ contract LBRouter is ILBRouter {
      * @param binStep The bin step in basis point, used to calculate log(1 + binStep)
      * @return pair The address of the newly created LBPair
      */
-    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint8 binStep)
+    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
         external
         override
         returns (ILBPair pair)
@@ -308,7 +308,7 @@ contract LBRouter is ILBRouter {
     function removeLiquidity(
         IERC20 tokenX,
         IERC20 tokenY,
-        uint8 binStep,
+        uint16 binStep,
         uint256 amountXMin,
         uint256 amountYMin,
         uint256[] memory ids,
@@ -344,7 +344,7 @@ contract LBRouter is ILBRouter {
      */
     function removeLiquidityNATIVE(
         IERC20 token,
-        uint8 binStep,
+        uint16 binStep,
         uint256 amountTokenMin,
         uint256 amountNATIVEMin,
         uint256[] memory ids,

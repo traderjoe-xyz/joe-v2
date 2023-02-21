@@ -93,6 +93,19 @@ abstract contract Clone {
     }
 
     /**
+     * @dev Reads an immutable arg with type uint16
+     * @param argOffset The offset of the arg in the immutable args
+     * @return arg The immutable uint16 arg
+     */
+    function _getArgUint16(uint256 argOffset) internal pure returns (uint16 arg) {
+        uint256 offset = _getImmutableArgsOffset();
+        /// @solidity memory-safe-assembly
+        assembly {
+            arg := shr(0xf0, calldataload(add(offset, argOffset)))
+        }
+    }
+
+    /**
      * @dev Reads an immutable arg with type uint8
      * @param argOffset The offset of the arg in the immutable args
      * @return arg The immutable uint8 arg

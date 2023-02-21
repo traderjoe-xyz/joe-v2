@@ -106,7 +106,7 @@ library Uint128x128Math {
             }
         }
 
-        if (absY < 0x200000) {
+        if (absY < 0x100000) {
             result = Constants.SCALE;
             assembly {
                 let squared := x
@@ -154,8 +154,6 @@ library Uint128x128Math {
                 if and(absY, 0x40000) { result := shr(128, mul(result, squared)) }
                 squared := shr(128, mul(squared, squared))
                 if and(absY, 0x80000) { result := shr(128, mul(result, squared)) }
-                squared := shr(128, mul(squared, squared))
-                if and(absY, 0x100000) { result := shr(128, mul(result, shr(128, mul(result, squared)))) }
             }
         }
 

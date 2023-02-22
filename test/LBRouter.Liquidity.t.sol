@@ -21,7 +21,7 @@ contract LiquidityBinRouterTest is TestHelper {
     function setUp() public override {
         super.setUp();
 
-        factory.setOpenPreset(DEFAULT_BIN_STEP, true);
+        factory.setPresetOpenState(DEFAULT_BIN_STEP, true);
 
         // Create necessary pairs
         router.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
@@ -59,7 +59,7 @@ contract LiquidityBinRouterTest is TestHelper {
     function test_CreatePair() public {
         router.createLBPair(weth, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
-        factory.setOpenPreset(DEFAULT_BIN_STEP, false);
+        factory.setPresetOpenState(DEFAULT_BIN_STEP, false);
 
         vm.expectRevert(
             abi.encodeWithSelector(

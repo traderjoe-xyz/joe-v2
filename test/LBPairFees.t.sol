@@ -481,6 +481,7 @@ contract LBPairFeesTest is TestHelper {
         vm.prank(BOB);
         wnative.transfer(address(pairWnative), 1e18);
         pairWnative.swap(true, BOB);
+        pairWnative.getBinStep();
 
         (uint128 protocolFeeX, uint128 protocolFeeY) = pairWnative.getProtocolFees();
         uint128 previousProtocolFeeX = protocolFeeX;
@@ -546,15 +547,15 @@ contract LBPairFeesTest is TestHelper {
     }
 
     function test_revert_TotalFeeExceeded(
-        uint8 binStep,
+        uint16 binStep,
         uint16 baseFactor,
         uint24 variableFeeControl,
         uint24 maxVolatilityAccumulator
     ) external {
         vm.assume(maxVolatilityAccumulator <= Encoded.MASK_UINT20);
 
-        uint256 baseFee = uint256(baseFactor) * binStep * 5e9;
-        uint256 varFee = ((uint256(binStep) * maxVolatilityAccumulator) ** 2 * variableFeeControl + 399) / 400;
+        uint256 baseFee = uint256(baseFactor) * binStep * 1e10;
+        uint256 varFee = ((uint256(binStep) * maxVolatilityAccumulator) ** 2 * variableFeeControl + 99) / 100;
 
         vm.assume(baseFee + varFee > 1e17);
 

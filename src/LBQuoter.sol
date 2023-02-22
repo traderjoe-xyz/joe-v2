@@ -208,7 +208,7 @@ contract LBQuoter {
                             if (amountInLeft == 0 && swapAmountOut > quote.amounts[i + 1]) {
                                 quote.amounts[i + 1] = swapAmountOut;
                                 quote.pairs[i] = address(LBPairsAvailable[j].LBPair);
-                                quote.binSteps[i] = uint8(LBPairsAvailable[j].binStep);
+                                quote.binSteps[i] = uint16(LBPairsAvailable[j].binStep);
                                 quote.versions[i] = ILBRouter.Version.V2_1;
 
                                 // Getting current price
@@ -326,7 +326,7 @@ contract LBQuoter {
                             ) {
                                 quote.amounts[i - 1] = swapAmountIn;
                                 quote.pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
-                                quote.binSteps[i - 1] = uint8(LBPairsAvailable[j].binStep);
+                                quote.binSteps[i - 1] = uint16(LBPairsAvailable[j].binStep);
                                 quote.versions[i - 1] = ILBRouter.Version.V2_1;
 
                                 // Getting current price
@@ -383,11 +383,11 @@ contract LBQuoter {
     {
         if (swapForY) {
             quote = uint128(
-                PriceHelper.getPriceFromId(activeId, uint8(binStep)).mulShiftRoundDown(amount, Constants.SCALE_OFFSET)
+                PriceHelper.getPriceFromId(activeId, uint16(binStep)).mulShiftRoundDown(amount, Constants.SCALE_OFFSET)
             );
         } else {
             quote = uint128(
-                amount.shiftDivRoundDown(Constants.SCALE_OFFSET, PriceHelper.getPriceFromId(activeId, uint8(binStep)))
+                amount.shiftDivRoundDown(Constants.SCALE_OFFSET, PriceHelper.getPriceFromId(activeId, uint16(binStep)))
             );
         }
     }

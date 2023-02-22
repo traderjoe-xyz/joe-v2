@@ -35,7 +35,7 @@ contract TestImmutableClone is Test {
         assertEq(implementationClone.getBytes(data.length), data, "testFuzz_Implementation::1");
     }
 
-    function testFuzz_Pair(address tokenX, address tokenY, uint8 binStep) public {
+    function testFuzz_Pair(address tokenX, address tokenY, uint16 binStep) public {
         address implementation = address(new Pair());
         bytes32 salt = keccak256("salt");
 
@@ -79,8 +79,8 @@ contract Pair is Clone {
         return _getArgAddress(20);
     }
 
-    function getBinStep() public pure returns (uint8) {
-        return _getArgUint8(40);
+    function getBinStep() public pure returns (uint16) {
+        return _getArgUint16(40);
     }
 }
 

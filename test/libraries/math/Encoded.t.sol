@@ -31,9 +31,9 @@ contract EncodedTest is Test {
         assertEq(v2, ((v << offset) >> offset) & mask, "test_SetAndDecode::1");
     }
 
-    function testFuzz_decodeUint1(bytes32 x, uint256 offset) external {
-        uint256 v = x.decodeUint1(offset);
-        assertEq(v, (uint256(x) >> offset) & 1, "test_decodeUint1::1");
+    function testFuzz_decodeBool(bytes32 x, uint256 offset) external {
+        bool v = x.decodeBool(offset);
+        assertEq(v ? 1 : 0, (uint256(x) >> offset) & 1, "test_decodeUint1::1");
     }
 
     function testFuzz_decodeUint8(bytes32 x, uint256 offset) external {

@@ -54,7 +54,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     event PresetRemoved(uint256 indexed binStep);
     event FeeRecipientSet(address oldRecipient, address newRecipient);
     event FlashLoanFeeSet(uint256 oldFlashLoanFee, uint256 newFlashLoanFee);
-    event OpenPresetChanged(uint8 indexed binStep, bool open);
+    event PresetOpenStateChanged(uint256 indexed binStep, bool indexed isOpen);
 
     function setUp() public override {
         super.setUp();
@@ -66,9 +66,8 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         assertEq(factory.getLBPairImplementation(), address(pairImplementation), "test_Constructor::3");
         assertEq(factory.getMinBinStep(), 1, "test_Constructor::4");
-        assertEq(factory.getMaxBinStep(), 200, "test_Constructor::5");
-        assertEq(factory.getFeeRecipient(), DEV, "test_Constructor::6");
-        assertEq(factory.getMaxFlashLoanFee(), 0.1e18, "test_Constructor::7");
+        assertEq(factory.getFeeRecipient(), DEV, "test_Constructor::5");
+        assertEq(factory.getMaxFlashLoanFee(), 0.1e18, "test_Constructor::6");
 
         vm.expectEmit(true, true, true, true);
         emit FlashLoanFeeSet(0, DEFAULT_FLASHLOAN_FEE);
@@ -100,9 +99,11 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         LBFactory anotherFactory = new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
 
+        anotherFactory.setPreset(1, 1, 1, 1, 1, 1, 1, 1, false);
+
         // Reverts if there is no implementation set
         vm.expectRevert(ILBFactory.LBFactory__ImplementationNotSet.selector);
-        anotherFactory.createLBPair(weth, usdc, ID_ONE, DEFAULT_BIN_STEP);
+        anotherFactory.createLBPair(weth, usdc, ID_ONE, 1);
 
         ILBPair newImplementationForAnotherFactory = new LBPair(anotherFactory);
 
@@ -179,7 +180,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         );
         factory.createLBPair(link, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
-        factory.setOpenPreset(DEFAULT_BIN_STEP, true);
+        factory.setPresetOpenState(DEFAULT_BIN_STEP, true);
 
         // Any user should be able to create pairs
         vm.prank(ALICE);
@@ -206,7 +207,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         );
 
         // Should close pair creations again
-        factory.setOpenPreset(DEFAULT_BIN_STEP, false);
+        factory.setPresetOpenState(DEFAULT_BIN_STEP, false);
 
         vm.prank(ALICE);
         vm.expectRevert(
@@ -227,26 +228,6 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't create pair if the implementation is not set
         LBFactory newFactory = new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
-        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__ImplementationNotSet.selector));
-        newFactory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
-
-        // Can't create pair if the quote asset is not whitelisted
-        newFactory.setLBPairImplementation(address(new LBPair(newFactory)));
-        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__QuoteAssetNotWhitelisted.selector, usdc));
-        newFactory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
-
-        // Can't create pair if the quote asset is the same as the base asset
-        newFactory.addQuoteAsset(usdc);
-        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__IdenticalAddresses.selector, usdc));
-        newFactory.createLBPair(usdc, usdc, ID_ONE, DEFAULT_BIN_STEP);
-
-        // TODO Can't create a pair with an invalid bin step
-        // vm.expectRevert(abi.encodeWithSelector(ILBFactory.BinHelper__BinStepOverflows.selector, type(uint16).max));
-        // newFactory.createLBPair(usdt, usdc, ID_ONE, type(uint16).max);
-
-        // Can't create a pair with address(0)
-        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__AddressZero.selector));
-        newFactory.createLBPair(IERC20(address(0)), usdc, ID_ONE, DEFAULT_BIN_STEP);
 
         // Can't create a pair if the preset is not set
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__BinStepHasNoPreset.selector, DEFAULT_BIN_STEP));
@@ -260,8 +241,26 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR,
+            DEFAULT_OPEN_STATE
         );
+
+        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__ImplementationNotSet.selector));
+        newFactory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
+
+        // Can't create pair if the quote asset is not whitelisted
+        newFactory.setLBPairImplementation(address(new LBPair(newFactory)));
+        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__QuoteAssetNotWhitelisted.selector, usdc));
+        newFactory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
+
+        // Can't create pair if the quote asset is the same as the base asset
+        newFactory.addQuoteAsset(usdc);
+        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__IdenticalAddresses.selector, usdc));
+        newFactory.createLBPair(usdc, usdc, ID_ONE, DEFAULT_BIN_STEP);
+
+        // Can't create a pair with address(0)
+        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__AddressZero.selector));
+        newFactory.createLBPair(IERC20(address(0)), usdc, ID_ONE, DEFAULT_BIN_STEP);
 
         // Can't create the same pair twice (a revision should be created instead)
         newFactory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
@@ -302,7 +301,9 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, true);
 
         // Can't update a non existing pair
-        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__AddressZero.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBFactory.LBFactory__LBPairDoesNotExist.selector, usdt, usdc, DEFAULT_BIN_STEP)
+        );
         factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, true);
 
         factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
@@ -318,16 +319,17 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function testFuzz_SetPreset(
-        uint8 binStep,
+        uint16 binStep,
         uint16 baseFactor,
         uint16 filterPeriod,
         uint16 decayPeriod,
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulator
+        uint24 maxVolatilityAccumulator,
+        bool isOpen
     ) public {
-        binStep = uint8(bound(binStep, factory.getMinBinStep(), factory.getMaxBinStep()));
+        binStep = uint16(bound(binStep, factory.getMinBinStep(), type(uint16).max));
         filterPeriod = uint16(bound(filterPeriod, 0, Encoded.MASK_UINT12 - 1));
         decayPeriod = uint16(bound(decayPeriod, filterPeriod + 1, Encoded.MASK_UINT12));
         reductionFactor = uint16(bound(reductionFactor, 0, Constants.BASIS_POINT_MAX));
@@ -346,6 +348,8 @@ contract LiquidityBinFactoryTest is TestHelper {
             protocolShare,
             maxVolatilityAccumulator
             );
+        vm.expectEmit(true, true, true, true);
+        emit PresetOpenStateChanged(binStep, isOpen);
 
         factory.setPreset(
             binStep,
@@ -355,25 +359,24 @@ contract LiquidityBinFactoryTest is TestHelper {
             reductionFactor,
             variableFeeControl,
             protocolShare,
-            maxVolatilityAccumulator
+            maxVolatilityAccumulator,
+            isOpen
         );
 
         // Bin step DEFAULT_BIN_STEP is already there
         if (binStep != DEFAULT_BIN_STEP) {
             assertEq(factory.getAllBinSteps().length, 2, "1");
-            if (binStep < DEFAULT_BIN_STEP) {
-                assertEq(factory.getAllBinSteps()[0], binStep, "2");
-            } else {
-                assertEq(factory.getAllBinSteps()[1], binStep, "3");
-            }
+
+            assertEq(factory.getAllBinSteps()[0], DEFAULT_BIN_STEP, "2");
+            assertEq(factory.getAllBinSteps()[1], binStep, "3");
         } else {
-            assertEq(factory.getAllBinSteps().length, 1, "3");
-            assertEq(factory.getAllBinSteps()[0], binStep, "4");
+            assertEq(factory.getAllBinSteps().length, 1, "4");
+            assertEq(factory.getAllBinSteps()[0], binStep, "5");
         }
 
         // Check splitted in two to avoid stack too deep errors
         {
-            (uint256 baseFactorView, uint256 filterPeriodView, uint256 decayPeriodView, uint256 reductionFactorView,,,)
+            (uint256 baseFactorView, uint256 filterPeriodView, uint256 decayPeriodView, uint256 reductionFactorView,,,,)
             = factory.getPreset(binStep);
 
             assertEq(baseFactorView, baseFactor);
@@ -383,12 +386,21 @@ contract LiquidityBinFactoryTest is TestHelper {
         }
 
         {
-            (,,,, uint256 variableFeeControlView, uint256 protocolShareView, uint256 maxVolatilityAccumulatorView) =
-                factory.getPreset(binStep);
+            (
+                ,
+                ,
+                ,
+                ,
+                uint256 variableFeeControlView,
+                uint256 protocolShareView,
+                uint256 maxVolatilityAccumulatorView,
+                bool isOpenView
+            ) = factory.getPreset(binStep);
 
             assertEq(variableFeeControlView, variableFeeControl);
             assertEq(protocolShareView, protocolShare);
             assertEq(maxVolatilityAccumulatorView, maxVolatilityAccumulator);
+            assertEq(isOpenView, isOpen);
         }
     }
 
@@ -401,7 +413,8 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR,
+            DEFAULT_OPEN_STATE
         );
 
         factory.setPreset(
@@ -412,7 +425,8 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR,
+            DEFAULT_OPEN_STATE
         );
 
         assertEq(factory.getAllBinSteps().length, 3, "test_RemovePreset::1");
@@ -605,60 +619,55 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.setFlashLoanFee(maxFlashLoanFee + 1);
     }
 
-    function testFuzz_OpenPresets(uint8 binStep) public {
+    function testFuzz_OpenPresets(uint16 binStep) public {
         uint256 minBinStep = factory.getMinBinStep();
-        uint256 maxBinStep = factory.getMaxBinStep();
+        uint256 maxBinStep = type(uint16).max;
 
-        binStep = uint8(bound(binStep, minBinStep, maxBinStep));
+        binStep = uint16(bound(binStep, minBinStep, maxBinStep));
 
         // Preset are not open to the public by default
-        assertFalse(factory.isPresetOpen(binStep), "testFuzz_OpenPresets::1");
+        if (binStep == DEFAULT_BIN_STEP) {
+            assertFalse(isPresetOpen(binStep), "testFuzz_OpenPresets::1");
+        } else {
+            vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__BinStepHasNoPreset.selector, binStep));
+            factory.getPreset(binStep);
+        }
 
         // Can be opened
         vm.expectEmit(true, true, true, true);
-        emit OpenPresetChanged(binStep, true);
-        factory.setOpenPreset(binStep, true);
+        emit PresetOpenStateChanged(binStep, true);
+        factory.setPreset(
+            binStep,
+            DEFAULT_BASE_FACTOR,
+            DEFAULT_FILTER_PERIOD,
+            DEFAULT_DECAY_PERIOD,
+            DEFAULT_REDUCTION_FACTOR,
+            DEFAULT_VARIABLE_FEE_CONTROL,
+            DEFAULT_PROTOCOL_SHARE,
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR,
+            true
+        );
 
-        for (uint256 i = minBinStep; i < maxBinStep; i++) {
-            if (i == binStep) {
-                assertTrue(factory.isPresetOpen(uint8(i)), "testFuzz_OpenPresets::2");
-            } else {
-                assertFalse(factory.isPresetOpen(uint8(i)), "testFuzz_OpenPresets::3");
-            }
-        }
-
-        // Setting neighboring presets to true does not change the state of the preset
-        uint8 nextBinStep = uint8(bound(binStep + 1, minBinStep, maxBinStep));
-        uint8 previousBinStep = uint8(bound(binStep + maxBinStep - minBinStep - 1, minBinStep, maxBinStep));
-
-        factory.setOpenPreset(nextBinStep, true);
-        factory.setOpenPreset(previousBinStep, true);
-
-        assertTrue(factory.isPresetOpen(binStep), "testFuzz_OpenPresets::4");
-        assertTrue(factory.isPresetOpen(nextBinStep), "testFuzz_OpenPresets::5");
-        assertTrue(factory.isPresetOpen(previousBinStep), "testFuzz_OpenPresets::6");
-
+        assertTrue(isPresetOpen(binStep), "testFuzz_OpenPresets::2");
         // Can't set to the same state
-        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SamePresetOpenState.selector));
-        factory.setOpenPreset(binStep, true);
+        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__PresetOpenStateIsAlreadyInTheSameState.selector));
+        factory.setPresetOpenState(binStep, true);
 
         // Can be closed
         vm.expectEmit(true, true, true, true);
-        emit OpenPresetChanged(binStep, false);
-        factory.setOpenPreset(binStep, false);
+        emit PresetOpenStateChanged(binStep, false);
+        factory.setPresetOpenState(binStep, false);
 
-        assertFalse(factory.isPresetOpen(binStep), "testFuzz_OpenPresets::7");
-        assertTrue(factory.isPresetOpen(nextBinStep), "testFuzz_OpenPresets::8");
-        assertTrue(factory.isPresetOpen(previousBinStep), "testFuzz_OpenPresets::9");
+        assertFalse(isPresetOpen(binStep), "testFuzz_OpenPresets::3");
 
         // Can't open if not the owner
         vm.prank(ALICE);
         vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
-        factory.setOpenPreset(binStep, true);
+        factory.setPresetOpenState(binStep, true);
 
         // Can't set to the same state
-        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SamePresetOpenState.selector));
-        factory.setOpenPreset(binStep, false);
+        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__PresetOpenStateIsAlreadyInTheSameState.selector));
+        factory.setPresetOpenState(binStep, false);
     }
 
     function test_AddQuoteAsset() public {
@@ -736,7 +745,8 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR,
+            DEFAULT_OPEN_STATE
         );
 
         factory.setPreset(
@@ -747,7 +757,8 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_REDUCTION_FACTOR,
             DEFAULT_VARIABLE_FEE_CONTROL,
             DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
+            DEFAULT_MAX_VOLATILITY_ACCUMULATOR,
+            DEFAULT_OPEN_STATE
         );
 
         ILBPair pair1 = factory.createLBPair(weth, usdc, ID_ONE, 5);

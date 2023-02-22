@@ -153,7 +153,7 @@ contract BinHelperTest is TestHelper {
     function testFuzz_GetCompositionFees(
         uint128 reserveX,
         uint128 reserveY,
-        uint8 binStep,
+        uint16 binStep,
         uint128 amountXIn,
         uint128 amountYIn,
         uint256 price,

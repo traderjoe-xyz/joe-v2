@@ -163,7 +163,7 @@ library BinHelper {
     function getCompositionFees(
         bytes32 binReserves,
         bytes32 parameters,
-        uint8 binStep,
+        uint16 binStep,
         bytes32 amountsIn,
         uint256 totalSupply,
         uint256 shares
@@ -211,7 +211,7 @@ library BinHelper {
     function getAmounts(
         bytes32 binReserves,
         bytes32 parameters,
-        uint8 binStep,
+        uint16 binStep,
         bool swapForY, // swap `swapForY` and `activeId` to avoid stack too deep
         uint24 activeId,
         bytes32 amountsInLeft

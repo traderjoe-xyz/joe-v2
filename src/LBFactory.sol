@@ -3,6 +3,7 @@
 pragma solidity 0.8.10;
 
 import {EnumerableSet} from "openzeppelin/utils/structs/EnumerableSet.sol";
+import {EnumerableMap} from "openzeppelin/utils/structs/EnumerableMap.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 import {BinHelper, PairParameterHelper} from "./libraries/BinHelper.sol";
@@ -21,18 +22,22 @@ import {ILBPair} from "./interfaces/ILBPair.sol";
  * @author Trader Joe
  * @notice Contract used to deploy and register new LBPairs.
  * Enables setting fee parameters, flashloan fees and LBPair implementation.
- * Unless the `_isPresetOpen` is `true`, only the owner of the factory can create pairs.
+ * Unless the `isOpen` is `true`, only the owner of the factory can create pairs.
  */
 contract LBFactory is PendingOwnable, ILBFactory {
     using SafeCast for uint256;
     using Encoded for bytes32;
     using PairParameterHelper for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableSet for EnumerableSet.UintSet;
+    using EnumerableMap for EnumerableMap.UintToUintMap;
 
-    uint256 private constant _MIN_BIN_STEP = 1; // 0.01%
-    uint256 private constant _MAX_BIN_STEP = 200; // 1%, can't be greater than 247 for indexing reasons
+    uint256 private constant _OFFSET_IS_PRESET_OPEN = 255;
+
+    uint256 private constant _MIN_BIN_STEP = 1; // 0.001%
 
     uint256 private constant _MAX_FLASHLOAN_FEE = 0.1e18; // 10%
+
     address private _feeRecipient;
     uint256 private _flashLoanFee;
 
@@ -40,35 +45,20 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     ILBPair[] private _allLBPairs;
 
-    uint256 private constant _TRUE = 1;
-    uint256 private constant _FALSE = 0;
-
     /**
      * @dev Mapping from a (tokenA, tokenB, binStep) to a LBPair. The tokens are ordered to save gas, but they can be
      * in the reverse order in the actual pair. Always query one of the 2 tokens of the pair to assert the order of the 2 tokens
      */
     mapping(IERC20 => mapping(IERC20 => mapping(uint256 => LBPairInformation))) private _lbPairsInfo;
 
-    /**
-     * @dev Whether a preset was set or not, if the bit at `index` is 1, it means that the binStep `index` was set
-     * The max binStep set is 247. We use this method instead of an array to keep it ordered and to reduce gas
-     */
-    bytes32 private _availablePresets;
-
-    /**
-     * @dev Whether a preset is open to anyone to create pairs, if the bit at `index` is 1, it means that the binStep `index` was set
-     */
-    bytes32 private _openPresets;
-
-    mapping(uint256 => bytes32) private _presets;
-
+    EnumerableMap.UintToUintMap private _presets;
     EnumerableSet.AddressSet private _quoteAssetWhitelist;
 
     /**
      * @dev Whether a LBPair was created with a bin step, if the bit at `index` is 1, it means that the LBPair with binStep `index` exists
      * The max binStep set is 247. We use this method instead of an array to keep it ordered and to reduce gas
      */
-    mapping(IERC20 => mapping(IERC20 => bytes32)) private _availableLBPairBinSteps;
+    mapping(IERC20 => mapping(IERC20 => EnumerableSet.UintSet)) private _availableLBPairBinSteps;
 
     /**
      * @notice Constructor
@@ -89,23 +79,15 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @notice Get the minimum bin step a pair can have
      * @return minBinStep
      */
-    function getMinBinStep() external pure returns (uint256 minBinStep) {
+    function getMinBinStep() external pure override returns (uint256 minBinStep) {
         return _MIN_BIN_STEP;
-    }
-
-    /**
-     * @notice Get the maximum bin step a pair can have
-     * @return maxBinStep
-     */
-    function getMaxBinStep() external pure returns (uint256 maxBinStep) {
-        return _MAX_BIN_STEP;
     }
 
     /**
      * @notice Get the protocol fee recipient
      * @return feeRecipient
      */
-    function getFeeRecipient() external view returns (address feeRecipient) {
+    function getFeeRecipient() external view override returns (address feeRecipient) {
         return _feeRecipient;
     }
 
@@ -113,7 +95,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @notice Get the maximum fee percentage for flashLoans
      * @return maxFee
      */
-    function getMaxFlashLoanFee() external pure returns (uint256 maxFee) {
+    function getMaxFlashLoanFee() external pure override returns (uint256 maxFee) {
         return _MAX_FLASHLOAN_FEE;
     }
 
@@ -121,7 +103,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @notice Get the fee for flash loans
      * @return flashloanFee
      */
-    function getFlashLoanFee() external view returns (uint256 flashloanFee) {
+    function getFlashLoanFee() external view override returns (uint256 flashloanFee) {
         return _flashLoanFee;
     }
 
@@ -129,7 +111,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @notice Get the address of the LBPair implementation
      * @return lbPairImplementation
      */
-    function getLBPairImplementation() external view returns (address lbPairImplementation) {
+    function getLBPairImplementation() external view override returns (address lbPairImplementation) {
         return _lbPairImplementation;
     }
 
@@ -146,7 +128,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param index The index
      * @return lbPair The address of the LBPair at index `index`
      */
-    function getLBPairAtIndex(uint256 index) external view returns (ILBPair lbPair) {
+    function getLBPairAtIndex(uint256 index) external view override returns (ILBPair lbPair) {
         return _allLBPairs[index];
     }
 
@@ -187,6 +169,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     function getLBPairInformation(IERC20 tokenA, IERC20 tokenB, uint256 binStep)
         external
         view
+        override
         returns (LBPairInformation memory lbPairInformation)
     {
         return _getLBPairInformation(tokenA, tokenB, binStep);
@@ -194,6 +177,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice View function to return the different parameters of the preset
+     * Will revert if the preset doesn't exist
      * @param binStep The bin step of the preset
      * @return baseFactor The base factor
      * @return filterPeriod The filter period of the preset
@@ -202,6 +186,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @return variableFeeControl The variable fee control of the preset
      * @return protocolShare The protocol share of the preset
      * @return maxVolatilityAccumulator The max volatility accumulator of the preset
+     * @return isOpen Whether the preset is open or not
      */
     function getPreset(uint256 binStep)
         external
@@ -214,11 +199,13 @@ contract LBFactory is PendingOwnable, ILBFactory {
             uint256 reductionFactor,
             uint256 variableFeeControl,
             uint256 protocolShare,
-            uint256 maxVolatilityAccumulator
+            uint256 maxVolatilityAccumulator,
+            bool isOpen
         )
     {
-        bytes32 preset = _presets[binStep];
-        if (preset == bytes32(0)) revert LBFactory__BinStepHasNoPreset(binStep);
+        if (!_presets.contains(binStep)) revert LBFactory__BinStepHasNoPreset(binStep);
+
+        bytes32 preset = bytes32(_presets.get(binStep));
 
         baseFactor = preset.getBaseFactor();
         filterPeriod = preset.getFilterPeriod();
@@ -227,17 +214,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
         variableFeeControl = preset.getVariableFeeControl();
         protocolShare = preset.getProtocolShare();
         maxVolatilityAccumulator = preset.getMaxVolatilityAccumulator();
-    }
 
-    /**
-     * @notice View function to return whether a preset is available to anyone for pair creation (true) or not (false)
-     * @param binStep The bin step of the preset
-     * @return isAvailable Whether the preset is available or not
-     */
-    function isPresetOpen(uint8 binStep) external view returns (bool isAvailable) {
-        bytes32 openPresets = _openPresets;
-
-        return _isPresetOpen(openPresets, binStep);
+        isOpen = preset.decodeBool(_OFFSET_IS_PRESET_OPEN);
     }
 
     /**
@@ -245,22 +223,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @return binStepWithPreset The list of binStep
      */
     function getAllBinSteps() external view override returns (uint256[] memory binStepWithPreset) {
-        unchecked {
-            bytes32 avPresets = _availablePresets;
-            uint256 nbPresets = avPresets.decodeUint8(248);
-
-            if (nbPresets > 0) {
-                binStepWithPreset = new uint256[](nbPresets);
-
-                uint256 index;
-                for (uint256 i = _MIN_BIN_STEP; i <= _MAX_BIN_STEP; ++i) {
-                    if (avPresets.decodeUint1(i) == _TRUE) {
-                        binStepWithPreset[index] = i;
-                        if (++index == nbPresets) break;
-                    }
-                }
-            }
-        }
+        return _presets.keys();
     }
 
     /**
@@ -278,25 +241,24 @@ contract LBFactory is PendingOwnable, ILBFactory {
         unchecked {
             (IERC20 tokenA, IERC20 tokenB) = _sortTokens(tokenX, tokenY);
 
-            bytes32 avLBPairBinSteps = _availableLBPairBinSteps[tokenA][tokenB];
-            uint256 nbAvailable = avLBPairBinSteps.decodeUint8(248);
+            EnumerableSet.UintSet storage addressSet = _availableLBPairBinSteps[tokenA][tokenB];
 
-            if (nbAvailable > 0) {
-                lbPairsAvailable = new LBPairInformation[](nbAvailable);
+            uint256 length = addressSet.length();
 
-                uint256 index;
-                for (uint256 i = _MIN_BIN_STEP; i <= _MAX_BIN_STEP; ++i) {
-                    if (avLBPairBinSteps.decodeUint1(i) == _TRUE) {
-                        LBPairInformation memory pairInformation = _lbPairsInfo[tokenA][tokenB][i];
+            if (length > 0) {
+                lbPairsAvailable = new LBPairInformation[](length);
 
-                        lbPairsAvailable[index] = LBPairInformation({
-                            binStep: i.safe8(),
-                            LBPair: pairInformation.LBPair,
-                            createdByOwner: pairInformation.createdByOwner,
-                            ignoredForRouting: pairInformation.ignoredForRouting
-                        });
-                        if (++index == nbAvailable) break;
-                    }
+                mapping(uint256 => LBPairInformation) storage lbPairsInfo = _lbPairsInfo[tokenA][tokenB];
+
+                for (uint256 i = 0; i < length; ++i) {
+                    uint16 binStep = addressSet.at(i).safe16();
+
+                    lbPairsAvailable[i] = LBPairInformation({
+                        binStep: binStep,
+                        LBPair: lbPairsInfo[binStep].LBPair,
+                        createdByOwner: lbPairsInfo[binStep].createdByOwner,
+                        ignoredForRouting: lbPairsInfo[binStep].ignoredForRouting
+                    });
                 }
             }
         }
@@ -327,15 +289,19 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param tokenX The address of the first token
      * @param tokenY The address of the second token
      * @param activeId The active id of the pair
-     * @param binStep The bin step in basis point, used to calculate log(1 + binStep)
+     * @param binStep The bin step in basis point, used to calculate log(1 + binStep / 10_000)
      * @return pair The address of the newly created LBPair
      */
-    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint8 binStep)
+    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
         external
         override
         returns (ILBPair pair)
     {
-        if (!_isPresetOpen(_openPresets, binStep) && msg.sender != owner()) {
+        if (!_presets.contains(binStep)) revert LBFactory__BinStepHasNoPreset(binStep);
+
+        bytes32 preset = bytes32(_presets.get(binStep));
+
+        if (!_isPresetOpen(preset) && msg.sender != owner()) {
             revert LBFactory__FunctionIsLockedForUsers(msg.sender, binStep);
         }
 
@@ -358,30 +324,24 @@ contract LBFactory is PendingOwnable, ILBFactory {
             revert LBFactory__LBPairAlreadyExists(tokenX, tokenY, binStep);
         }
 
-        // We remove the bits that are not part of the feeParameters
-        {
-            bytes32 salt = keccak256(abi.encode(tokenA, tokenB, binStep));
-            pair = ILBPair(
-                ImmutableClone.cloneDeterministic(implementation, abi.encodePacked(tokenX, tokenY, binStep), salt)
-            );
-        }
+        pair = ILBPair(
+            ImmutableClone.cloneDeterministic(
+                implementation,
+                abi.encodePacked(tokenX, tokenY, binStep),
+                keccak256(abi.encode(tokenA, tokenB, binStep))
+            )
+        );
 
-        {
-            bytes32 preset = _presets[binStep];
-
-            if (preset == bytes32(0)) revert LBFactory__BinStepHasNoPreset(binStep);
-
-            pair.initialize(
-                preset.getBaseFactor(),
-                preset.getFilterPeriod(),
-                preset.getDecayPeriod(),
-                preset.getReductionFactor(),
-                preset.getVariableFeeControl(),
-                preset.getProtocolShare(),
-                preset.getMaxVolatilityAccumulator(),
-                activeId
-            );
-        }
+        pair.initialize(
+            preset.getBaseFactor(),
+            preset.getFilterPeriod(),
+            preset.getDecayPeriod(),
+            preset.getReductionFactor(),
+            preset.getVariableFeeControl(),
+            preset.getProtocolShare(),
+            preset.getMaxVolatilityAccumulator(),
+            activeId
+        );
 
         _lbPairsInfo[tokenA][tokenB][binStep] = LBPairInformation({
             binStep: binStep,
@@ -391,18 +351,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         });
 
         _allLBPairs.push(pair);
-
-        {
-            bytes32 avLBPairBinSteps = _availableLBPairBinSteps[tokenA][tokenB];
-            // We add a 1 at bit `binStep` as this binStep is now set
-            avLBPairBinSteps = avLBPairBinSteps.set(_TRUE, Encoded.MASK_UINT1, binStep);
-
-            // Increase the number of lb pairs by 1
-            avLBPairBinSteps = bytes32(uint256(avLBPairBinSteps) + (1 << 248));
-
-            // Save the changes
-            _availableLBPairBinSteps[tokenA][tokenB] = avLBPairBinSteps;
-        }
+        _availableLBPairBinSteps[tokenA][tokenB].add(binStep);
 
         emit LBPairCreated(tokenX, tokenY, binStep, pair, _allLBPairs.length - 1);
     }
@@ -414,15 +363,13 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param binStep The bin step in basis point of the pair
      * @param ignored Whether to ignore (true) or not (false) the pair for routing
      */
-    function setLBPairIgnored(IERC20 tokenX, IERC20 tokenY, uint256 binStep, bool ignored)
-        external
-        override
-        onlyOwner
-    {
+    function setLBPairIgnored(IERC20 tokenX, IERC20 tokenY, uint16 binStep, bool ignored) external override onlyOwner {
         (IERC20 tokenA, IERC20 tokenB) = _sortTokens(tokenX, tokenY);
 
         LBPairInformation memory pairInformation = _lbPairsInfo[tokenA][tokenB][binStep];
-        if (address(pairInformation.LBPair) == address(0)) revert LBFactory__AddressZero();
+        if (address(pairInformation.LBPair) == address(0)) {
+            revert LBFactory__LBPairDoesNotExist(tokenX, tokenY, binStep);
+        }
 
         if (pairInformation.ignoredForRouting == ignored) revert LBFactory__LBPairIgnoredIsAlreadyInTheSameState();
 
@@ -433,7 +380,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Sets the preset parameters of a bin step
-     * @param binStep The bin step in basis point, used to calculate log(1 + binStep)
+     * @param binStep The bin step in basis point, used to calculate the price
      * @param baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
      * @param filterPeriod The period where the accumulator value is untouched, prevent spam
      * @param decayPeriod The period where the accumulator value is halved
@@ -443,18 +390,19 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param maxVolatilityAccumulator The max value of the volatility accumulator
      */
     function setPreset(
-        uint8 binStep,
+        uint16 binStep,
         uint16 baseFactor,
         uint16 filterPeriod,
         uint16 decayPeriod,
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulator
+        uint24 maxVolatilityAccumulator,
+        bool isOpen
     ) external override onlyOwner {
-        bytes32 preset;
+        if (binStep < _MIN_BIN_STEP) revert LBFactory__BinStepTooLow(binStep);
 
-        _presets[binStep] = preset.setStaticFeeParameters(
+        bytes32 preset = bytes32(0).setStaticFeeParameters(
             baseFactor,
             filterPeriod,
             decayPeriod,
@@ -464,17 +412,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
             maxVolatilityAccumulator
         );
 
-        bytes32 avPresets = _availablePresets;
-        if (avPresets.decodeUint1(binStep) == 0) {
-            // We add a 1 at bit `binStep` as this binStep is now set
-            avPresets = avPresets.set(_TRUE, Encoded.MASK_UINT1, binStep);
-
-            // Increase the number of preset by 1
-            avPresets = bytes32(uint256(avPresets) + (1 << 248));
-
-            // Save the changes
-            _availablePresets = avPresets;
+        if (isOpen) {
+            preset = preset.setBool(true, _OFFSET_IS_PRESET_OPEN);
         }
+
+        _presets.set(binStep, uint256(preset));
 
         emit PresetSet(
             binStep,
@@ -486,49 +428,35 @@ contract LBFactory is PendingOwnable, ILBFactory {
             protocolShare,
             maxVolatilityAccumulator
             );
+
+        emit PresetOpenStateChanged(binStep, isOpen);
     }
 
     /**
-     * @notice Sets the open state of a preset. If true, anyone can create a pair with this preset,
-     * if false, it is restricted to the owner of the factory
-     * @param binStep The bin step to open or close
-     * @param isOpen Whether the preset will be open or not
+     * @notice Sets if the preset is open or not to be used by users
+     * @param binStep The bin step in basis point, used to calculate the price
+     * @param isOpen Whether the preset is open or not
      */
-    function setOpenPreset(uint8 binStep, bool isOpen) external onlyOwner {
-        bytes32 openPresets = _openPresets;
-        bool isPresetOpenCurrent = _isPresetOpen(openPresets, binStep);
+    function setPresetOpenState(uint16 binStep, bool isOpen) external override onlyOwner {
+        if (!_presets.contains(binStep)) revert LBFactory__BinStepHasNoPreset(binStep);
 
-        if (isOpen) {
-            if (isPresetOpenCurrent) revert LBFactory__SamePresetOpenState();
+        bytes32 preset = bytes32(_presets.get(binStep));
 
-            // We add a 1 at bit `binStep` as this binStep is now open
-            _openPresets = _openPresets.set(_TRUE, Encoded.MASK_UINT1, binStep);
-        } else {
-            if (!isPresetOpenCurrent) revert LBFactory__SamePresetOpenState();
-
-            // We remove a 1 at bit `binStep` as this binStep is now closed
-            _openPresets = _openPresets.set(_FALSE, Encoded.MASK_UINT1, binStep);
+        if (preset.decodeBool(_OFFSET_IS_PRESET_OPEN) == isOpen) {
+            revert LBFactory__PresetOpenStateIsAlreadyInTheSameState();
         }
 
-        emit OpenPresetChanged(binStep, isOpen);
+        _presets.set(binStep, uint256(preset.setBool(isOpen, _OFFSET_IS_PRESET_OPEN)));
+
+        emit PresetOpenStateChanged(binStep, isOpen);
     }
 
     /**
      * @notice Remove the preset linked to a binStep
      * @param binStep The bin step to remove
      */
-    function removePreset(uint8 binStep) external override onlyOwner {
-        if (_presets[binStep] == bytes32(0)) revert LBFactory__BinStepHasNoPreset(binStep);
-
-        // Set the bit `binStep` to 0
-        bytes32 avPresets = _availablePresets;
-
-        avPresets = avPresets.set(_FALSE, Encoded.MASK_UINT1, binStep);
-        avPresets = bytes32(uint256(avPresets) - (1 << 248));
-
-        // Save the changes
-        _availablePresets = avPresets;
-        delete _presets[binStep];
+    function removePreset(uint16 binStep) external override onlyOwner {
+        if (!_presets.remove(binStep)) revert LBFactory__BinStepHasNoPreset(binStep);
 
         emit PresetRemoved(binStep);
     }
@@ -537,7 +465,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @notice Function to set the fee parameter of a LBPair
      * @param tokenX The address of the first token
      * @param tokenY The address of the second token
-     * @param binStep The bin step in basis point, used to calculate log(1 + binStep)
+     * @param binStep The bin step in basis point, used to calculate the price
      * @param baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
      * @param filterPeriod The period where the accumulator value is untouched, prevent spam
      * @param decayPeriod The period where the accumulator value is halved
@@ -549,7 +477,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     function setFeesParametersOnPair(
         IERC20 tokenX,
         IERC20 tokenY,
-        uint8 binStep,
+        uint16 binStep,
         uint16 baseFactor,
         uint16 filterPeriod,
         uint16 decayPeriod,
@@ -617,8 +545,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
         emit QuoteAssetRemoved(quoteAsset);
     }
 
-    function _isPresetOpen(bytes32 openPresets, uint8 binStep) internal pure returns (bool) {
-        return openPresets.decodeUint1(binStep) == 1;
+    function _isPresetOpen(bytes32 preset) internal pure returns (bool) {
+        return preset.decodeBool(_OFFSET_IS_PRESET_OPEN);
     }
 
     /**

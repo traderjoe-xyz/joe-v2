@@ -88,7 +88,7 @@ interface ILBPair is ILBToken {
 
     function getTokenY() external view returns (IERC20 tokenY);
 
-    function getBinStep() external view returns (uint8 binStep);
+    function getBinStep() external view returns (uint16 binStep);
 
     function getReserves() external view returns (uint128 reserveX, uint128 reserveY);
 

@@ -126,7 +126,7 @@ interface ILBRouter {
         view
         returns (uint128 amountInLeft, uint128 amountOut, uint128 fee);
 
-    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint8 binStep)
+    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
         external
         returns (ILBPair pair);
 
@@ -156,7 +156,7 @@ interface ILBRouter {
     function removeLiquidity(
         IERC20 tokenX,
         IERC20 tokenY,
-        uint8 binStep,
+        uint16 binStep,
         uint256 amountXMin,
         uint256 amountYMin,
         uint256[] memory ids,
@@ -167,7 +167,7 @@ interface ILBRouter {
 
     function removeLiquidityNATIVE(
         IERC20 token,
-        uint8 binStep,
+        uint16 binStep,
         uint256 amountTokenMin,
         uint256 amountNATIVEMin,
         uint256[] memory ids,

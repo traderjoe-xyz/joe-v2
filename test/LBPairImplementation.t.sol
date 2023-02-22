@@ -16,7 +16,7 @@ contract LBPairImplementationTest is Test {
         implementation = address(new LBPair(ILBFactory(factory)));
     }
 
-    function testFuzz_Getters(address tokenX, address tokenY, uint8 binStep) public {
+    function testFuzz_Getters(address tokenX, address tokenY, uint16 binStep) public {
         bytes32 salt = keccak256(abi.encodePacked(tokenX, tokenY, binStep));
         bytes memory data = abi.encodePacked(tokenX, tokenY, binStep);
 

@@ -143,12 +143,12 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
     /**
      * @notice Returns the bin step of the Liquidity Book Pair
-     * @dev The bin step is the increase in price between two consecutive bins, in 20_000th.
-     * For example, a bin step of 1 means that the price of the next bin is 0.005% higher than the price of the previous bin.
+     * @dev The bin step is the increase in price between two consecutive bins, in basis points.
+     * For example, a bin step of 1 means that the price of the next bin is 0.01% higher than the price of the previous bin.
      * The maximum bin step is 200, which means that the price of the next bin is 1% higher than the price of the previous bin.
-     * @return binStep The bin step of the Liquidity Book Pair, in 20_000th
+     * @return binStep The bin step of the Liquidity Book Pair, in 10_000th
      */
-    function getBinStep() external pure override returns (uint8) {
+    function getBinStep() external pure override returns (uint16) {
         return _binStep();
     }
 
@@ -166,7 +166,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @notice Returns the active id of the Liquidity Book Pair
      * @dev The active id is the id of the bin that is currently being used for swaps.
      * The price of the active bin is the price of the Liquidity Book Pair and can be calculated as follows:
-     * `price = (1 + binStep / 20_000) ^ (activeId - 2^23)`
+     * `price = (1 + binStep / 10_000) ^ (activeId - 2^23)`
      * @return activeId The active id of the Liquidity Book Pair
      */
     function getActiveId() external view override returns (uint24 activeId) {
@@ -370,7 +370,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         amountOutLeft = amountOut;
 
         bytes32 parameters = _parameters;
-        uint8 binStep = _binStep();
+        uint16 binStep = _binStep();
 
         uint24 id = parameters.getActiveId();
 
@@ -431,7 +431,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         bytes32 amountsInLeft = amountIn.encode(swapForY);
 
         bytes32 parameters = _parameters;
-        uint8 binStep = _binStep();
+        uint16 binStep = _binStep();
 
         uint24 id = parameters.getActiveId();
 
@@ -491,7 +491,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         if (amountsLeft == 0) revert LBPair__InsufficientAmountIn();
 
         bytes32 parameters = _parameters;
-        uint8 binStep = _binStep();
+        uint16 binStep = _binStep();
 
         uint24 activeId = parameters.getActiveId();
 
@@ -830,11 +830,11 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
     }
 
     /**
-     * @dev Returns the bin step of the pool, in 20_000ths.
+     * @dev Returns the bin step of the pool, in basis points
      * @return The bin step of the pool
      */
-    function _binStep() internal pure returns (uint8) {
-        return _getArgUint8(40);
+    function _binStep() internal pure returns (uint16) {
+        return _getArgUint16(40);
     }
 
     /**
@@ -904,7 +904,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         );
 
         {
-            uint8 binStep = _binStep();
+            uint16 binStep = _binStep();
             bytes32 maxParameters = parameters.setVolatilityAccumulator(maxVolatilityAccumulator);
             uint256 totalFee = maxParameters.getBaseFee(binStep) + maxParameters.getVariableFee(binStep);
             if (totalFee > _MAX_TOTAL_FEE) {
@@ -941,7 +941,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         returns (uint256 shares, bytes32 amountsIn, bytes32 amountsInToBin)
     {
         bytes32 binReserves = _bins[id];
-        uint8 binStep = _binStep();
+        uint16 binStep = _binStep();
 
         uint256 price = id.getPriceFromId(binStep);
         uint256 supply = totalSupply(id);

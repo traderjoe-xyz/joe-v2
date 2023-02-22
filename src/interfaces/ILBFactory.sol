@@ -18,25 +18,19 @@ interface ILBFactory is IPendingOwnable {
     error LBFactory__QuoteAssetAlreadyWhitelisted(IERC20 quoteAsset);
     error LBFactory__AddressZero();
     error LBFactory__LBPairAlreadyExists(IERC20 tokenX, IERC20 tokenY, uint256 _binStep);
-    error LBFactory__LBPairDoesNotExists(IERC20 tokenX, IERC20 tokenY, uint256 _binStep);
+    error LBFactory__LBPairDoesNotExist(IERC20 tokenX, IERC20 tokenY, uint256 binStep);
     error LBFactory__LBPairNotCreated(IERC20 tokenX, IERC20 tokenY, uint256 binStep);
-    error LBFactory__DecreasingPeriods(uint16 filterPeriod, uint16 decayPeriod);
-    error LBFactory__ReductionFactorOverflows(uint16 reductionFactor, uint256 max);
-    error LBFactory__VariableFeeControlOverflows(uint16 variableFeeControl, uint256 max);
-    error LBFactory__BaseFeesBelowMin(uint256 baseFees, uint256 minBaseFees);
-    error LBFactory__FeesAboveMax(uint256 fees, uint256 maxFees);
     error LBFactory__FlashLoanFeeAboveMax(uint256 fees, uint256 maxFees);
-    error LBFactory__BinStepRequirementsBreached(uint256 lowerBound, uint16 binStep, uint256 higherBound);
-    error LBFactory__ProtocolShareOverflows(uint16 protocolShare, uint256 max);
-    error LBFactory__FunctionIsLockedForUsers(address user, uint8 binStep);
+    error LBFactory__BinStepTooLow(uint256 binStep);
+    error LBFactory__FunctionIsLockedForUsers(address user, uint256 binStep);
     error LBFactory__LBPairIgnoredIsAlreadyInTheSameState();
     error LBFactory__BinStepHasNoPreset(uint256 binStep);
+    error LBFactory__PresetOpenStateIsAlreadyInTheSameState();
     error LBFactory__SameFeeRecipient(address feeRecipient);
     error LBFactory__SameFlashLoanFee(uint256 flashLoanFee);
     error LBFactory__LBPairSafetyCheckFailed(address LBPairImplementation);
     error LBFactory__SameImplementation(address LBPairImplementation);
     error LBFactory__ImplementationNotSet();
-    error LBFactory__SamePresetOpenState();
 
     /**
      * @dev Structure to store the LBPair information, such as:
@@ -46,7 +40,7 @@ interface ILBFactory is IPendingOwnable {
      * ignoredForRouting: Whether the pair is ignored for routing or not. An ignored pair will not be explored during routes finding
      */
     struct LBPairInformation {
-        uint8 binStep;
+        uint16 binStep;
         ILBPair LBPair;
         bool createdByOwner;
         bool ignoredForRouting;
@@ -75,35 +69,33 @@ interface ILBFactory is IPendingOwnable {
         uint256 maxVolatilityAccumulator
     );
 
+    event PresetOpenStateChanged(uint256 indexed binStep, bool indexed isOpen);
+
     event PresetRemoved(uint256 indexed binStep);
 
     event QuoteAssetAdded(IERC20 indexed quoteAsset);
 
     event QuoteAssetRemoved(IERC20 indexed quoteAsset);
 
-    event OpenPresetChanged(uint8 indexed binStep, bool open);
+    function getMinBinStep() external pure returns (uint256);
+
+    function getFeeRecipient() external view returns (address);
 
     function getMaxFlashLoanFee() external pure returns (uint256);
 
-    function getMinBinStep() external pure returns (uint256);
-
-    function getMaxBinStep() external pure returns (uint256);
+    function getFlashLoanFee() external view returns (uint256);
 
     function getLBPairImplementation() external view returns (address);
+
+    function getNumberOfLBPairs() external view returns (uint256);
+
+    function getLBPairAtIndex(uint256 id) external returns (ILBPair);
 
     function getNumberOfQuoteAssets() external view returns (uint256);
 
     function getQuoteAssetAtIndex(uint256 index) external view returns (IERC20);
 
     function isQuoteAsset(IERC20 token) external view returns (bool);
-
-    function getFeeRecipient() external view returns (address);
-
-    function getFlashLoanFee() external view returns (uint256);
-
-    function getLBPairAtIndex(uint256 id) external returns (ILBPair);
-
-    function getNumberOfLBPairs() external view returns (uint256);
 
     function getLBPairInformation(IERC20 tokenX, IERC20 tokenY, uint256 binStep)
         external
@@ -120,7 +112,8 @@ interface ILBFactory is IPendingOwnable {
             uint256 reductionFactor,
             uint256 variableFeeControl,
             uint256 protocolShare,
-            uint256 maxAccumulator
+            uint256 maxAccumulator,
+            bool isOpen
         );
 
     function getAllBinSteps() external view returns (uint256[] memory presetsBinStep);
@@ -132,29 +125,32 @@ interface ILBFactory is IPendingOwnable {
 
     function setLBPairImplementation(address lbPairImplementation) external;
 
-    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint8 binStep)
+    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
         external
         returns (ILBPair pair);
 
-    function setLBPairIgnored(IERC20 tokenX, IERC20 tokenY, uint256 binStep, bool ignored) external;
+    function setLBPairIgnored(IERC20 tokenX, IERC20 tokenY, uint16 binStep, bool ignored) external;
 
     function setPreset(
-        uint8 binStep,
+        uint16 binStep,
         uint16 baseFactor,
         uint16 filterPeriod,
         uint16 decayPeriod,
         uint16 reductionFactor,
         uint24 variableFeeControl,
         uint16 protocolShare,
-        uint24 maxVolatilityAccumulator
+        uint24 maxVolatilityAccumulator,
+        bool isOpen
     ) external;
 
-    function removePreset(uint8 binStep) external;
+    function setPresetOpenState(uint16 binStep, bool isOpen) external;
+
+    function removePreset(uint16 binStep) external;
 
     function setFeesParametersOnPair(
         IERC20 tokenX,
         IERC20 tokenY,
-        uint8 binStep,
+        uint16 binStep,
         uint16 baseFactor,
         uint16 filterPeriod,
         uint16 decayPeriod,

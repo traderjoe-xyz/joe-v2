@@ -220,31 +220,31 @@ library PairParameterHelper {
     /**
      * @dev Calculates the base fee, with 18 decimals
      * @param params The encoded pair parameters
-     * @param binStep The bin step (in 20_000th)
+     * @param binStep The bin step (in basis points)
      * @return baseFee The base fee
      */
-    function getBaseFee(bytes32 params, uint8 binStep) internal pure returns (uint256) {
+    function getBaseFee(bytes32 params, uint16 binStep) internal pure returns (uint256) {
         unchecked {
-            // Base factor is in basis points, binStep is in 20_000th, so we multiply by 5e9
-            return uint256(getBaseFactor(params)) * binStep * 5e9;
+            // Base factor is in basis points, binStep is in basis points, so we multiply by 1e10
+            return uint256(getBaseFactor(params)) * binStep * 1e10;
         }
     }
 
     /**
      * @dev Calculates the variable fee
      * @param params The encoded pair parameters
-     * @param binStep The bin step (in 20_000th)
+     * @param binStep The bin step (in basis points)
      * @return variableFee The variable fee
      */
-    function getVariableFee(bytes32 params, uint8 binStep) internal pure returns (uint256 variableFee) {
+    function getVariableFee(bytes32 params, uint16 binStep) internal pure returns (uint256 variableFee) {
         uint256 variableFeeControl = getVariableFeeControl(params);
 
         if (variableFeeControl != 0) {
             unchecked {
-                // The volatility accumulator is in basis points, binStep is in 20_000th,
-                // and the variable fee control is in basis points, so the result is in 400e18th
+                // The volatility accumulator is in basis points, binStep is in basis points,
+                // and the variable fee control is in basis points, so the result is in 100e18th
                 uint256 prod = uint256(getVolatilityAccumulator(params)) * binStep;
-                variableFee = (prod * prod * variableFeeControl + 399) / 400;
+                variableFee = (prod * prod * variableFeeControl + 99) / 100;
             }
         }
     }
@@ -252,10 +252,10 @@ library PairParameterHelper {
     /**
      * @dev Calculates the total fee, which is the sum of the base fee and the variable fee
      * @param params The encoded pair parameters
-     * @param binStep The bin step (in 20_000th)
+     * @param binStep The bin step (in basis points)
      * @return totalFee The total fee
      */
-    function getTotalFee(bytes32 params, uint8 binStep) internal pure returns (uint128) {
+    function getTotalFee(bytes32 params, uint16 binStep) internal pure returns (uint128) {
         unchecked {
             return (getBaseFee(params, binStep) + getVariableFee(params, binStep)).safe128();
         }

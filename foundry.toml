@@ -15,6 +15,8 @@ avalanche = "https://api.avax.network/ext/bc/C/rpc"
 fuji = "https://api.avax-test.network/ext/bc/C/rpc"
 
 [etherscan]
+arbitrum = { key = "${ARBISCAN_API_KEY}", chain = 42161 }
+avalanche = { key = "${SNOWTRACE_API_KEY}", chain = 43114 }
 arbitrum_goerli = { key = "${ARBISCAN_API_KEY}", chain = 421613 }
 fuji = { key = "${SNOWTRACE_API_KEY}", chain = 43113 }
 

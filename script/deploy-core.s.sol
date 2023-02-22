@@ -9,6 +9,8 @@ import {ILBRouter, IJoeFactory, ILBLegacyFactory, ILBLegacyRouter, IWNATIVE, LBR
 import {IERC20, LBPair} from "src/LBPair.sol";
 import {LBQuoter} from "src/LBQuoter.sol";
 
+import {BipsConfig} from "./config/bips-config.sol";
+
 contract CoreDeployer is Script {
     using stdJson for string;
 
@@ -53,12 +55,12 @@ contract CoreDeployer is Script {
 
             vm.broadcast(deployer);
             LBRouter router = new LBRouter(
-                                    factory, 
-                                    IJoeFactory(deployment.factoryV1),
-                                    ILBLegacyFactory(deployment.factoryV2),
-                                    ILBLegacyRouter(deployment.routerV2), 
-                                    IWNATIVE(deployment.wNative)
-                                );
+                factory, 
+                IJoeFactory(deployment.factoryV1),
+                ILBLegacyFactory(deployment.factoryV2),
+                ILBLegacyRouter(deployment.routerV2), 
+                IWNATIVE(deployment.wNative)
+            );
             console.log("LBRouter deployed -->", address(router));
 
             vm.startBroadcast(deployer);
@@ -76,29 +78,19 @@ contract CoreDeployer is Script {
                 console.log("Quote asset whitelisted -->", address(quoteAsset));
             }
 
-            uint256[] memory binSteps = ILBLegacyFactory(deployment.factoryV2).getAllBinSteps();
-            for (uint256 j = 0; j < binSteps.length; j++) {
-                (
-                    uint256 baseFactor,
-                    uint256 filterPeriod,
-                    uint256 decayPeriod,
-                    uint256 reductionFactor,
-                    uint256 variableFeeControl,
-                    uint256 protocolShare,
-                    uint256 maxAccumulator,
-                ) = ILBLegacyFactory(deployment.factoryV2).getPreset(uint16(binSteps[j]));
-
+            uint256[] memory presetList = BipsConfig.getPresetList();
+            for (uint256 j; j < presetList.length; j++) {
+                BipsConfig.FactoryPreset memory preset = BipsConfig.getPreset(presetList[j]);
                 factory.setPreset(
-                    uint8(binSteps[j]),
-                    uint16(baseFactor),
-                    uint16(filterPeriod),
-                    uint16(decayPeriod),
-                    uint16(reductionFactor),
-                    uint24(variableFeeControl),
-                    uint16(protocolShare),
-                    uint24(maxAccumulator)
+                    preset.binStep,
+                    preset.baseFactor,
+                    preset.filterPeriod,
+                    preset.decayPeriod,
+                    preset.reductionFactor,
+                    preset.variableFeeControl,
+                    preset.protocolShare,
+                    preset.maxVolatilityAccumulated
                 );
-                console.log("Bin step %s configured ", binSteps[j]);
             }
 
             factory.setPendingOwner(deployment.multisig);

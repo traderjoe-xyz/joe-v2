@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 library BipsConfig {
     struct FactoryPreset {
-        uint16 binStep;
+        uint8 binStep;
         uint16 baseFactor;
         uint16 filterPeriod;
         uint16 decayPeriod;

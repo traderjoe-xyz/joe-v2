@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 
 library BipsConfig {
     struct FactoryPreset {
-        uint8 binStep;
+        uint16 binStep;
         uint16 baseFactor;
         uint16 filterPeriod;
         uint16 decayPeriod;
@@ -13,6 +13,7 @@ library BipsConfig {
         uint16 protocolShare;
         uint24 maxVolatilityAccumulated;
         uint16 sampleLifetime;
+        bool isOpen;
     }
 
     function getPreset(uint256 _bp) internal pure returns (FactoryPreset memory preset) {
@@ -26,6 +27,7 @@ library BipsConfig {
             preset.protocolShare = 0;
             preset.maxVolatilityAccumulated = 100_000;
             preset.sampleLifetime = 120;
+            preset.isOpen = false;
         } else if (_bp == 2) {
             preset.binStep = 2;
             preset.baseFactor = 15_000;
@@ -36,6 +38,7 @@ library BipsConfig {
             preset.protocolShare = 0;
             preset.maxVolatilityAccumulated = 250_000;
             preset.sampleLifetime = 120;
+            preset.isOpen = false;
         } else if (_bp == 5) {
             preset.binStep = 5;
             preset.baseFactor = 8_000;
@@ -46,6 +49,7 @@ library BipsConfig {
             preset.protocolShare = 0;
             preset.maxVolatilityAccumulated = 300_000;
             preset.sampleLifetime = 120;
+            preset.isOpen = false;
         } else if (_bp == 10) {
             preset.binStep = 10;
             preset.baseFactor = 10_000;
@@ -56,6 +60,7 @@ library BipsConfig {
             preset.protocolShare = 0;
             preset.maxVolatilityAccumulated = 350_000;
             preset.sampleLifetime = 120;
+            preset.isOpen = false;
         } else if (_bp == 15) {
             preset.binStep = 15;
             preset.baseFactor = 10_000;
@@ -66,6 +71,7 @@ library BipsConfig {
             preset.protocolShare = 0;
             preset.maxVolatilityAccumulated = 350_000;
             preset.sampleLifetime = 120;
+            preset.isOpen = false;
         } else if (_bp == 20) {
             preset.binStep = 20;
             preset.baseFactor = 10_000;
@@ -76,6 +82,7 @@ library BipsConfig {
             preset.protocolShare = 0;
             preset.maxVolatilityAccumulated = 350_000;
             preset.sampleLifetime = 120;
+            preset.isOpen = false;
         } else if (_bp == 25) {
             preset.binStep = 25;
             preset.baseFactor = 10_000;
@@ -86,6 +93,7 @@ library BipsConfig {
             preset.protocolShare = 0;
             preset.maxVolatilityAccumulated = 350_000;
             preset.sampleLifetime = 120;
+            preset.isOpen = false;
         }
     }
 

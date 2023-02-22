@@ -89,7 +89,8 @@ contract CoreDeployer is Script {
                     preset.reductionFactor,
                     preset.variableFeeControl,
                     preset.protocolShare,
-                    preset.maxVolatilityAccumulated
+                    preset.maxVolatilityAccumulated,
+                    preset.isOpen
                 );
             }
 

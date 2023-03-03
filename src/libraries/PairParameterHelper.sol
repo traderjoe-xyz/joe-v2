@@ -31,6 +31,7 @@ library PairParameterHelper {
 
     error PairParametersHelper__InvalidParameter();
 
+    uint256 internal constant OFFSET_BASE_FACTOR = 0;
     uint256 internal constant OFFSET_FILTER_PERIOD = 16;
     uint256 internal constant OFFSET_DECAY_PERIOD = 28;
     uint256 internal constant OFFSET_REDUCTION_FACTOR = 40;
@@ -56,7 +57,7 @@ library PairParameterHelper {
      * @return baseFactor The base factor
      */
     function getBaseFactor(bytes32 params) internal pure returns (uint16 baseFactor) {
-        baseFactor = params.decodeUint16(0);
+        baseFactor = params.decodeUint16(OFFSET_BASE_FACTOR);
     }
 
     /**
@@ -315,7 +316,7 @@ library PairParameterHelper {
      * @param variableFeeControl The variable fee control
      * @param protocolShare The protocol share
      * @param maxVolatilityAccumulator The max volatility accumulator
-     * @return The updated encoded pair parameters
+     * @return newParams The updated encoded pair parameters
      */
     function setStaticFeeParameters(
         bytes32 params,
@@ -326,25 +327,22 @@ library PairParameterHelper {
         uint24 variableFeeControl,
         uint16 protocolShare,
         uint24 maxVolatilityAccumulator
-    ) internal pure returns (bytes32) {
+    ) internal pure returns (bytes32 newParams) {
         if (
             filterPeriod > decayPeriod || decayPeriod > Encoded.MASK_UINT12
                 || reductionFactor > Constants.BASIS_POINT_MAX || protocolShare > MAX_PROTOCOL_SHARE
                 || maxVolatilityAccumulator > Encoded.MASK_UINT20
         ) revert PairParametersHelper__InvalidParameter();
 
-        uint256 staticParams;
+        newParams = newParams.set(baseFactor, Encoded.MASK_UINT16, OFFSET_BASE_FACTOR);
+        newParams = newParams.set(filterPeriod, Encoded.MASK_UINT12, OFFSET_FILTER_PERIOD);
+        newParams = newParams.set(decayPeriod, Encoded.MASK_UINT12, OFFSET_DECAY_PERIOD);
+        newParams = newParams.set(reductionFactor, Encoded.MASK_UINT16, OFFSET_REDUCTION_FACTOR);
+        newParams = newParams.set(variableFeeControl, Encoded.MASK_UINT24, OFFSET_VAR_FEE_CONTROL);
+        newParams = newParams.set(protocolShare, Encoded.MASK_UINT16, OFFSET_PROTOCOL_SHARE);
+        newParams = newParams.set(maxVolatilityAccumulator, Encoded.MASK_UINT24, OFFSET_MAX_VOL_ACC);
 
-        assembly {
-            staticParams := or(baseFactor, shl(OFFSET_FILTER_PERIOD, filterPeriod))
-            staticParams := or(staticParams, shl(OFFSET_DECAY_PERIOD, decayPeriod))
-            staticParams := or(staticParams, shl(OFFSET_REDUCTION_FACTOR, reductionFactor))
-            staticParams := or(staticParams, shl(OFFSET_VAR_FEE_CONTROL, variableFeeControl))
-            staticParams := or(staticParams, shl(OFFSET_PROTOCOL_SHARE, protocolShare))
-            staticParams := or(staticParams, shl(OFFSET_MAX_VOL_ACC, maxVolatilityAccumulator))
-        }
-
-        return params.set(staticParams, MASK_STATIC_PARAMETER, 0);
+        return params.set(uint256(newParams), MASK_STATIC_PARAMETER, 0);
     }
 
     /**

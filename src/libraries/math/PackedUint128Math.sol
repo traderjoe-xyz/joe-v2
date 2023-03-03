@@ -29,7 +29,7 @@ library PackedUint128Math {
      */
     function encode(uint128 x1, uint128 x2) internal pure returns (bytes32 z) {
         assembly {
-            z := or(x1, shl(OFFSET, x2))
+            z := or(and(x1, MASK_128), shl(OFFSET, x2))
         }
     }
 
@@ -42,7 +42,7 @@ library PackedUint128Math {
      */
     function encodeFirst(uint128 x1) internal pure returns (bytes32 z) {
         assembly {
-            z := x1
+            z := and(x1, MASK_128)
         }
     }
 

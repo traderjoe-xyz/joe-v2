@@ -17,6 +17,7 @@ library LiquidityConfigurations {
 
     error LiquidityConfigurations__InvalidConfig();
 
+    uint256 private constant OFFSET_ID = 0;
     uint256 private constant OFFSET_DISTRIBUTION_Y = 24;
     uint256 private constant OFFSET_DISTRIBUTION_X = 88;
 
@@ -38,9 +39,9 @@ library LiquidityConfigurations {
         pure
         returns (bytes32 config)
     {
-        assembly {
-            config := or(shl(OFFSET_DISTRIBUTION_X, distributionX), or(shl(OFFSET_DISTRIBUTION_Y, distributionY), id))
-        }
+        config = config.set(distributionX, Encoded.MASK_UINT64, OFFSET_DISTRIBUTION_X);
+        config = config.set(distributionY, Encoded.MASK_UINT64, OFFSET_DISTRIBUTION_Y);
+        config = config.set(id, Encoded.MASK_UINT24, OFFSET_ID);
     }
 
     /**
@@ -61,7 +62,7 @@ library LiquidityConfigurations {
     {
         distributionX = config.decodeUint64(OFFSET_DISTRIBUTION_X);
         distributionY = config.decodeUint64(OFFSET_DISTRIBUTION_Y);
-        id = config.decodeUint24(0);
+        id = config.decodeUint24(OFFSET_ID);
 
         if (uint256(config) > type(uint152).max || distributionX > PRECISION || distributionY > PRECISION) {
             revert LiquidityConfigurations__InvalidConfig();

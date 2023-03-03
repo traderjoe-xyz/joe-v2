@@ -19,6 +19,45 @@ contract PairParameterHelperTest is Test {
         uint24 maxVolatilityAccumulator;
     }
 
+    function testFuzz_StaticFeeParametersDirtyBits(bytes32 params, StaticFeeParameters memory sfp) external {
+        vm.assume(
+            sfp.filterPeriod <= sfp.decayPeriod && sfp.decayPeriod <= Encoded.MASK_UINT12
+                && sfp.reductionFactor <= Constants.BASIS_POINT_MAX
+                && sfp.protocolShare <= PairParameterHelper.MAX_PROTOCOL_SHARE
+                && sfp.maxVolatilityAccumulator <= Encoded.MASK_UINT20
+        );
+
+        uint256 dirtyBits = type(uint256).max << 24;
+
+        bytes32 newParams = params.setStaticFeeParameters(
+            uint16(uint256(sfp.baseFactor) | dirtyBits),
+            uint16(uint256(sfp.filterPeriod) | dirtyBits),
+            uint16(uint256(sfp.decayPeriod) | dirtyBits),
+            uint16(uint256(sfp.reductionFactor) | dirtyBits),
+            uint24(uint256(sfp.variableFeeControl) | dirtyBits),
+            uint16(uint256(sfp.protocolShare) | dirtyBits),
+            uint24(uint256(sfp.maxVolatilityAccumulator) | dirtyBits)
+        );
+
+        assertEq(
+            newParams >> PairParameterHelper.OFFSET_VOL_ACC,
+            params >> PairParameterHelper.OFFSET_VOL_ACC,
+            "testFuzz_StaticFeeParametersDirtyBits::1"
+        );
+
+        assertEq(newParams.getBaseFactor(), sfp.baseFactor, "testFuzz_StaticFeeParametersDirtyBits::2");
+        assertEq(newParams.getFilterPeriod(), sfp.filterPeriod, "testFuzz_StaticFeeParametersDirtyBits::3");
+        assertEq(newParams.getDecayPeriod(), sfp.decayPeriod, "testFuzz_StaticFeeParametersDirtyBits::4");
+        assertEq(newParams.getReductionFactor(), sfp.reductionFactor, "testFuzz_StaticFeeParametersDirtyBits::5");
+        assertEq(newParams.getVariableFeeControl(), sfp.variableFeeControl, "testFuzz_StaticFeeParametersDirtyBits::6");
+        assertEq(newParams.getProtocolShare(), sfp.protocolShare, "testFuzz_StaticFeeParametersDirtyBits::7");
+        assertEq(
+            newParams.getMaxVolatilityAccumulator(),
+            sfp.maxVolatilityAccumulator,
+            "testFuzz_StaticFeeParametersDirtyBits::8"
+        );
+    }
+
     function testFuzz_StaticFeeParameters(bytes32 params, StaticFeeParameters memory sfp) external {
         vm.assume(
             sfp.filterPeriod <= sfp.decayPeriod && sfp.decayPeriod <= Encoded.MASK_UINT12

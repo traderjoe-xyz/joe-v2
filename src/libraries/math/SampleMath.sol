@@ -20,6 +20,7 @@ import {Encoded} from "./Encoded.sol";
 library SampleMath {
     using Encoded for bytes32;
 
+    uint256 internal constant OFFSET_ORACLE_LENGTH = 0;
     uint256 internal constant OFFSET_CUMULATIVE_ID = 16;
     uint256 internal constant OFFSET_CUMULATIVE_VOLATILITY = 80;
     uint256 internal constant OFFSET_CUMULATIVE_BIN_CROSSED = 144;
@@ -44,13 +45,12 @@ library SampleMath {
         uint8 sampleLifetime,
         uint40 createdAt
     ) internal pure returns (bytes32 sample) {
-        assembly {
-            sample := or(oracleLength, shl(OFFSET_CUMULATIVE_ID, cumulativeId))
-            sample := or(sample, shl(OFFSET_CUMULATIVE_VOLATILITY, cumulativeVolatility))
-            sample := or(sample, shl(OFFSET_CUMULATIVE_BIN_CROSSED, cumulativeBinCrossed))
-            sample := or(sample, shl(OFFSET_SAMPLE_LIFETIME, sampleLifetime))
-            sample := or(sample, shl(OFFSET_SAMPLE_CREATION, createdAt))
-        }
+        sample = sample.set(oracleLength, Encoded.MASK_UINT16, OFFSET_ORACLE_LENGTH);
+        sample = sample.set(cumulativeId, Encoded.MASK_UINT64, OFFSET_CUMULATIVE_ID);
+        sample = sample.set(cumulativeVolatility, Encoded.MASK_UINT64, OFFSET_CUMULATIVE_VOLATILITY);
+        sample = sample.set(cumulativeBinCrossed, Encoded.MASK_UINT64, OFFSET_CUMULATIVE_BIN_CROSSED);
+        sample = sample.set(sampleLifetime, Encoded.MASK_UINT8, OFFSET_SAMPLE_LIFETIME);
+        sample = sample.set(createdAt, Encoded.MASK_UINT40, OFFSET_SAMPLE_CREATION);
     }
 
     /**

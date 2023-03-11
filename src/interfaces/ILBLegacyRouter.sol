@@ -31,6 +31,12 @@ interface ILBLegacyRouter {
         uint256 deadline;
     }
 
+    function factory() external view returns (address);
+
+    function wavax() external view returns (address);
+
+    function oldFactory() external view returns (address);
+
     function getIdFromPrice(ILBLegacyPair LBPair, uint256 price) external view returns (uint24);
 
     function getPriceFromId(ILBLegacyPair LBPair, uint24 id) external view returns (uint256);

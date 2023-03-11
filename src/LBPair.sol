@@ -325,7 +325,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
             uint40 deltaTime = lookupTimestamp - timeOfLastUpdate;
 
-            cumulativeId += uint64(parameters.getIdReference()) * deltaTime;
+            cumulativeId += uint64(parameters.getActiveId()) * deltaTime;
             cumulativeVolatility += uint64(parameters.getVolatilityAccumulator()) * deltaTime;
         }
     }

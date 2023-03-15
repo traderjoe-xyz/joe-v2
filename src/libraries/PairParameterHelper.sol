@@ -204,11 +204,11 @@ library PairParameterHelper {
     }
 
     /**
-     * @dev Get the delta between the active index and the reference index
+     * @dev Get the delta between the current active index and the cached active index
      * @param params The encoded pair parameters, as follows:
      * [0 - 232[: other parameters
      * [232 - 256[: active index (24 bits)
-     * @param activeId The active index
+     * @param activeId The current active index
      * @return The delta
      */
     function getDeltaId(bytes32 params, uint24 activeId) internal pure returns (uint24) {

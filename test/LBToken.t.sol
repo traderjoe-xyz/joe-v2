@@ -302,9 +302,6 @@ contract LBTokenTest is Test {
         vm.assume(ids.length != amounts.length && ids.length != 0);
 
         vm.expectRevert(abi.encodeWithSelector(ILBToken.LBToken__InvalidLength.selector));
-        lbToken.mintBatch(address(1), ids, amounts);
-
-        vm.expectRevert(abi.encodeWithSelector(ILBToken.LBToken__InvalidLength.selector));
         vm.prank(address(1));
         lbToken.batchTransferFrom(address(1), address(2), ids, amounts);
     }
@@ -361,10 +358,16 @@ contract LBTokenTest is Test {
 
 contract LBTokenCoverage is LBToken {
     function mintBatch(address to, uint256[] calldata ids, uint256[] calldata amounts) external {
-        _mintBatch(to, ids, amounts);
+        // _mintBatch(to, ids, amounts);
+        for (uint256 i = 0; i < ids.length; i++) {
+            _mint(to, ids[i], amounts[i]);
+        }
     }
 
     function batchBurnFrom(address from, uint256[] calldata ids, uint256[] calldata amounts) external {
-        _burnBatch(from, ids, amounts);
+        // _batchBurnFrom(from, ids, amounts);
+        for (uint256 i = 0; i < ids.length; i++) {
+            _burn(from, ids[i], amounts[i]);
+        }
     }
 }

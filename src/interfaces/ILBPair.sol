@@ -28,6 +28,12 @@ interface ILBPair is ILBToken {
     error LBPair__ZeroShares(uint24 id);
     error LBPair__MaxTotalFeeExceeded();
 
+    struct MintArrays {
+        uint256[] ids;
+        bytes32[] amounts;
+        uint256[] liquidityMinted;
+    }
+
     event DepositedToBins(address indexed sender, address indexed to, uint256[] ids, bytes32[] amounts);
 
     event WithdrawnFromBins(address indexed sender, address indexed to, uint256[] ids, bytes32[] amounts);

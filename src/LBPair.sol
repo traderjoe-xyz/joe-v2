@@ -629,42 +629,25 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
     {
         if (liquidityConfigs.length == 0) revert LBPair__EmptyMarketConfigs();
 
-        liquidityMinted = new uint256[](liquidityConfigs.length);
-
-        uint256[] memory ids = new uint256[](liquidityConfigs.length);
-        bytes32[] memory amounts = new bytes32[](liquidityConfigs.length);
+        MintArrays memory arrays = MintArrays({
+            ids: new uint256[](liquidityConfigs.length),
+            amounts: new bytes32[](liquidityConfigs.length),
+            liquidityMinted: new uint256[](liquidityConfigs.length)
+        });
 
         bytes32 reserves = _reserves;
 
-        bytes32 parameters = _parameters;
-        uint24 activeId = parameters.getActiveId();
-
         amountsReceived = reserves.received(_tokenX(), _tokenY());
-        amountsLeft = amountsReceived;
-
-        for (uint256 i; i < liquidityConfigs.length;) {
-            (bytes32 maxAmountsInToBin, uint24 id) = liquidityConfigs[i].getAmountsAndId(amountsReceived);
-            (uint256 shares, bytes32 amountsIn, bytes32 amountsInToBin) =
-                _mintBin(activeId, id, maxAmountsInToBin, parameters);
-
-            amountsLeft = amountsLeft.sub(amountsIn);
-
-            ids[i] = id;
-            amounts[i] = amountsInToBin;
-            liquidityMinted[i] = shares;
-
-            unchecked {
-                ++i;
-            }
-        }
+        amountsLeft = _mintBins(liquidityConfigs, amountsReceived, to, arrays);
 
         _reserves = reserves.add(amountsReceived.sub(amountsLeft));
 
-        _mintBatch(to, ids, liquidityMinted);
-
         if (amountsLeft > 0) amountsLeft.transfer(_tokenX(), _tokenY(), refundTo);
 
-        emit DepositedToBins(msg.sender, to, ids, amounts);
+        liquidityMinted = arrays.liquidityMinted;
+
+        emit TransferBatch(msg.sender, address(0), to, arrays.ids, liquidityMinted);
+        emit DepositedToBins(msg.sender, to, arrays.ids, arrays.amounts);
     }
 
     /**
@@ -698,6 +681,8 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             bytes32 binReserves = _bins[id];
             uint256 supply = totalSupply(id);
 
+            _burn(from, id, amountToBurn);
+
             bytes32 amountsOutFromBin = binReserves.getAmountOutOfBin(amountToBurn, supply);
 
             if (amountsOutFromBin == 0) revert LBPair__ZeroAmountsOut(id);
@@ -717,10 +702,9 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         _reserves = _reserves.sub(amountsOut);
 
-        _burnBatch(from, ids, amountsToBurn);
-
         amountsOut.transfer(_tokenX(), _tokenY(), to);
 
+        emit TransferBatch(msg.sender, from, address(0), ids, amountsToBurn);
         emit WithdrawnFromBins(msg.sender, to, ids, amounts);
     }
 
@@ -930,7 +914,48 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
     }
 
     /**
-     * @dev Helper function to mint liquidity in a bin
+     * @dev Helper function to mint liquidity in each bin in the liquidity configurations
+     * @param liquidityConfigs The liquidity configurations
+     * @param amountsReceived The amounts received
+     * @param to The address to mint the liquidity to
+     * @param arrays The arrays to store the results
+     * @return amountsLeft The amounts left
+     */
+    function _mintBins(
+        bytes32[] calldata liquidityConfigs,
+        bytes32 amountsReceived,
+        address to,
+        MintArrays memory arrays
+    ) private returns (bytes32 amountsLeft) {
+        uint16 binStep = _binStep();
+
+        bytes32 parameters = _parameters;
+        uint24 activeId = parameters.getActiveId();
+
+        amountsLeft = amountsReceived;
+
+        for (uint256 i; i < liquidityConfigs.length;) {
+            (bytes32 maxAmountsInToBin, uint24 id) = liquidityConfigs[i].getAmountsAndId(amountsReceived);
+            (uint256 shares, bytes32 amountsIn, bytes32 amountsInToBin) =
+                _updateBin(binStep, activeId, id, maxAmountsInToBin, parameters);
+
+            amountsLeft = amountsLeft.sub(amountsIn);
+
+            arrays.ids[i] = id;
+            arrays.amounts[i] = amountsInToBin;
+            arrays.liquidityMinted[i] = shares;
+
+            _mint(to, id, shares);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /**
+     * @dev Helper function to update a bin during minting
+     * @param binStep The bin step of the pair
      * @param activeId The id of the active bin
      * @param id The id of the bin
      * @param maxAmountsInToBin The maximum amounts in to the bin
@@ -939,12 +964,11 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @return amountsIn The amounts in
      * @return amountsInToBin The amounts in to the bin
      */
-    function _mintBin(uint24 activeId, uint24 id, bytes32 maxAmountsInToBin, bytes32 parameters)
+    function _updateBin(uint16 binStep, uint24 activeId, uint24 id, bytes32 maxAmountsInToBin, bytes32 parameters)
         internal
         returns (uint256 shares, bytes32 amountsIn, bytes32 amountsInToBin)
     {
         bytes32 binReserves = _bins[id];
-        uint16 binStep = _binStep();
 
         uint256 price = id.getPriceFromId(binStep);
         uint256 supply = totalSupply(id);

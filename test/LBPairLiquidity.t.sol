@@ -333,6 +333,8 @@ contract LBPairLiquidityTest is TestHelper {
         ids[0] = activeId;
         balances[0] = 1;
 
+        addLiquidity(DEV, DEV, pairWnative, activeId, 1e18, 1e18, 1, 1);
+
         vm.expectRevert(abi.encodeWithSelector(ILBPair.LBPair__ZeroAmountsOut.selector, activeId));
         pairWnative.burn(DEV, DEV, ids, balances);
     }

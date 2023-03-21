@@ -14,7 +14,7 @@ import {ILBToken} from "./interfaces/ILBToken.sol";
  * As it's only for ERC20s, the uri function is not implemented.
  * The contract is made for batch operations.
  */
-contract LBToken is ILBToken {
+abstract contract LBToken is ILBToken {
     /**
      * @dev The mapping from account to token id to account balance.
      */
@@ -160,65 +160,39 @@ contract LBToken is ILBToken {
     }
 
     /**
-     * @dev Batch mints `amounts` of `ids` to `account`.
-     * The `account` must not be the zero address and the `ids` and `amounts` must have the same length.
+     * @dev Mint `amount` of `id` to `account`.
+     * The `account` must not be the zero address.
+     * The event should be emitted by the contract that inherits this contract.
      * @param account The address of the owner.
-     * @param ids The list of token ids.
-     * @param amounts The list of amounts to mint for each token id in `ids`.
+     * @param id The token id.
+     * @param amount The amount to mint.
      */
-    function _mintBatch(address account, uint256[] memory ids, uint256[] memory amounts)
-        internal
-        notAddressZeroOrThis(account)
-        checkLength(ids.length, amounts.length)
-    {
-        mapping(uint256 => uint256) storage accountBalances = _balances[account];
+    function _mint(address account, uint256 id, uint256 amount) internal notAddressZeroOrThis(account) {
+        _totalSupplies[id] += amount;
 
-        for (uint256 i; i < ids.length;) {
-            uint256 id = ids[i];
-            uint256 amount = amounts[i];
-
-            _totalSupplies[id] += amount;
-
-            unchecked {
-                accountBalances[id] += amount;
-
-                ++i;
-            }
+        unchecked {
+            _balances[account][id] += amount;
         }
-
-        emit TransferBatch(msg.sender, address(0), account, ids, amounts);
     }
 
     /**
-     * @dev Batch burns `amounts` of `ids` from `account`.
-     * The `ids` and `amounts` must have the same length.
+     * @dev Burn `amount` of `id` from `account`.
+     * The `account` must not be the zero address.
+     * The event should be emitted by the contract that inherits this contract.
      * @param account The address of the owner.
-     * @param ids The list of token ids.
-     * @param amounts The list of amounts to burn for each token id in `ids`.
+     * @param id The token id.
+     * @param amount The amount to burn.
      */
-    function _burnBatch(address account, uint256[] memory ids, uint256[] memory amounts)
-        internal
-        notAddressZeroOrThis(account)
-        checkLength(ids.length, amounts.length)
-    {
+    function _burn(address account, uint256 id, uint256 amount) internal notAddressZeroOrThis(account) {
         mapping(uint256 => uint256) storage accountBalances = _balances[account];
 
-        for (uint256 i; i < ids.length;) {
-            uint256 id = ids[i];
-            uint256 amount = amounts[i];
+        uint256 balance = accountBalances[id];
+        if (balance < amount) revert LBToken__BurnExceedsBalance(account, id, amount);
 
-            uint256 balance = accountBalances[id];
-            if (balance < amount) revert LBToken__BurnExceedsBalance(account, id, amount);
-
-            unchecked {
-                _totalSupplies[id] -= amount;
-                accountBalances[id] -= amount;
-
-                ++i;
-            }
+        unchecked {
+            _totalSupplies[id] -= amount;
+            accountBalances[id] -= amount;
         }
-
-        emit TransferBatch(msg.sender, account, address(0), ids, amounts);
     }
 
     /**

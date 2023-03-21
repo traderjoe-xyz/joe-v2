@@ -102,4 +102,24 @@ contract LBPairFlashloanTest is TestHelper {
         vm.expectRevert(ILBPair.LBPair__ZeroBorrowAmount.selector);
         pairWnative.flashLoan(borrower, 0, "");
     }
+
+    function test_EdgeCaseFlashLoanBinDOS() external {
+        // remove the active liquidity
+        removeLiquidity(DEV, DEV, pairWnative, ID_ONE, 1e18, 1, 1);
+
+        bytes32 amountsBorrowed = uint128(1e17).encode(uint128(1e17));
+        bytes memory data = abi.encode(type(uint128).max, type(uint128).max, Constants.CALLBACK_SUCCESS, 0);
+
+        pairWnative.flashLoan(borrower, amountsBorrowed, data);
+
+        (uint256 x, uint256 y) = pairWnative.getBin(ID_ONE);
+
+        assertEq(x, 0, "test_EdgeCaseFlashLoanBinDOS::1");
+        assertEq(y, 0, "test_EdgeCaseFlashLoanBinDOS::2");
+
+        addLiquidity(DEV, DEV, pairWnative, ID_ONE, 1e18, 1e18, 1, 1);
+
+        assertEq(pairWnative.getNextNonEmptyBin(true, ID_ONE + 1), ID_ONE, "test_EdgeCaseFlashLoanBinDOS::3");
+        assertEq(pairWnative.getNextNonEmptyBin(false, ID_ONE - 1), ID_ONE, "test_EdgeCaseFlashLoanBinDOS::4");
+    }
 }

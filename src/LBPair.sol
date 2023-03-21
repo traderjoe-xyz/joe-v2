@@ -592,8 +592,10 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         totalFees = balancesAfter.sub(reservesBefore);
 
-        bytes32 protocolFees = totalFees.scalarMulDivBasisPointRoundDown(parameters.getProtocolShare());
         uint24 activeId = parameters.getActiveId();
+        bytes32 protocolFees = totalSupply(activeId) == 0
+            ? totalFees
+            : totalFees.scalarMulDivBasisPointRoundDown(parameters.getProtocolShare());
 
         _reserves = balancesAfter;
 
@@ -694,14 +696,15 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             if (amountToBurn == 0) revert LBPair__ZeroAmount(id);
 
             bytes32 binReserves = _bins[id];
+            uint256 supply = totalSupply(id);
 
-            bytes32 amountsOutFromBin = binReserves.getAmountOutOfBin(amountToBurn, totalSupply(id));
+            bytes32 amountsOutFromBin = binReserves.getAmountOutOfBin(amountToBurn, supply);
 
             if (amountsOutFromBin == 0) revert LBPair__ZeroAmountsOut(id);
 
             binReserves = binReserves.sub(amountsOutFromBin);
 
-            if (binReserves == 0) _tree.remove(id);
+            if (supply == amountToBurn) _tree.remove(id);
 
             _bins[id] = binReserves;
             amounts[i] = amountsOutFromBin;
@@ -977,7 +980,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         if (shares == 0 || amountsInToBin == 0) revert LBPair__ZeroShares(id);
 
-        if (binReserves == 0) _tree.add(id);
+        if (supply == 0) _tree.add(id);
 
         _bins[id] = binReserves.add(amountsInToBin);
     }

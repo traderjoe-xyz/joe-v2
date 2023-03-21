@@ -118,6 +118,8 @@ interface ILBFactory is IPendingOwnable {
 
     function getAllBinSteps() external view returns (uint256[] memory presetsBinStep);
 
+    function getOpenBinSteps() external view returns (uint256[] memory openBinStep);
+
     function getAllLBPairs(IERC20 tokenX, IERC20 tokenY)
         external
         view

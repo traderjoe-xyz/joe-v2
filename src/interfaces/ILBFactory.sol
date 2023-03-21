@@ -22,7 +22,7 @@ interface ILBFactory is IPendingOwnable {
     error LBFactory__LBPairNotCreated(IERC20 tokenX, IERC20 tokenY, uint256 binStep);
     error LBFactory__FlashLoanFeeAboveMax(uint256 fees, uint256 maxFees);
     error LBFactory__BinStepTooLow(uint256 binStep);
-    error LBFactory__FunctionIsLockedForUsers(address user, uint256 binStep);
+    error LBFactory__PresetIsLockedForUsers(address user, uint256 binStep);
     error LBFactory__LBPairIgnoredIsAlreadyInTheSameState();
     error LBFactory__BinStepHasNoPreset(uint256 binStep);
     error LBFactory__PresetOpenStateIsAlreadyInTheSameState();

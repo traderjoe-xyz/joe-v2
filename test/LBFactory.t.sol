@@ -100,6 +100,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         LBFactory anotherFactory = new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
 
         anotherFactory.setPreset(1, 1, 1, 1, 1, 1, 1, 1, false);
+        anotherFactory.addQuoteAsset(usdc);
 
         // Reverts if there is no implementation set
         vm.expectRevert(ILBFactory.LBFactory__ImplementationNotSet.selector);
@@ -176,7 +177,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         // Users should not be able to create pairs by default
         vm.prank(ALICE);
         vm.expectRevert(
-            abi.encodeWithSelector(ILBFactory.LBFactory__FunctionIsLockedForUsers.selector, ALICE, DEFAULT_BIN_STEP)
+            abi.encodeWithSelector(ILBFactory.LBFactory__PresetIsLockedForUsers.selector, ALICE, DEFAULT_BIN_STEP)
         );
         factory.createLBPair(link, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
@@ -211,7 +212,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         vm.prank(ALICE);
         vm.expectRevert(
-            abi.encodeWithSelector(ILBFactory.LBFactory__FunctionIsLockedForUsers.selector, ALICE, DEFAULT_BIN_STEP)
+            abi.encodeWithSelector(ILBFactory.LBFactory__PresetIsLockedForUsers.selector, ALICE, DEFAULT_BIN_STEP)
         );
         factory.createLBPair(link, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
@@ -222,7 +223,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         // Alice can't create a pair if the factory is locked
         vm.prank(ALICE);
         vm.expectRevert(
-            abi.encodeWithSelector(ILBFactory.LBFactory__FunctionIsLockedForUsers.selector, ALICE, DEFAULT_BIN_STEP)
+            abi.encodeWithSelector(ILBFactory.LBFactory__PresetIsLockedForUsers.selector, ALICE, DEFAULT_BIN_STEP)
         );
         factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
@@ -245,11 +246,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_OPEN_STATE
         );
 
-        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__ImplementationNotSet.selector));
-        newFactory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
-
         // Can't create pair if the quote asset is not whitelisted
-        newFactory.setLBPairImplementation(address(new LBPair(newFactory)));
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__QuoteAssetNotWhitelisted.selector, usdc));
         newFactory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
@@ -262,6 +259,11 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__AddressZero.selector));
         newFactory.createLBPair(IERC20(address(0)), usdc, ID_ONE, DEFAULT_BIN_STEP);
 
+        // Can't create a pair if the implementation is not set
+        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__ImplementationNotSet.selector));
+        newFactory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
+
+        newFactory.setLBPairImplementation(address(new LBPair(newFactory)));
         // Can't create the same pair twice (a revision should be created instead)
         newFactory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
         vm.expectRevert(

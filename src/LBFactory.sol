@@ -6,8 +6,7 @@ import {EnumerableSet} from "openzeppelin/utils/structs/EnumerableSet.sol";
 import {EnumerableMap} from "openzeppelin/utils/structs/EnumerableMap.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-import {BinHelper, PairParameterHelper} from "./libraries/BinHelper.sol";
-import {Constants} from "./libraries/Constants.sol";
+import {PairParameterHelper} from "./libraries/PairParameterHelper.sol";
 import {Encoded} from "./libraries/math/Encoded.sol";
 import {ImmutableClone} from "./libraries/ImmutableClone.sol";
 import {PendingOwnable} from "./libraries/PendingOwnable.sol";
@@ -47,7 +46,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @dev Mapping from a (tokenA, tokenB, binStep) to a LBPair. The tokens are ordered to save gas, but they can be
-     * in the reverse order in the actual pair. Always query one of the 2 tokens of the pair to assert the order of the 2 tokens
+     * in the reverse order in the actual pair.
+     * Always query one of the 2 tokens of the pair to assert the order of the 2 tokens
      */
     mapping(IERC20 => mapping(IERC20 => mapping(uint256 => LBPairInformation))) private _lbPairsInfo;
 
@@ -55,8 +55,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
     EnumerableSet.AddressSet private _quoteAssetWhitelist;
 
     /**
-     * @dev Whether a LBPair was created with a bin step, if the bit at `index` is 1, it means that the LBPair with binStep `index` exists
-     * The max binStep set is 247. We use this method instead of an array to keep it ordered and to reduce gas
+     * @dev Mapping from a (tokenA, tokenB) to a set of available bin steps, this is used to keep track of the
+     * bin steps that are already used for a pair.
+     * The tokens are ordered to save gas, but they can be in the reverse order in the actual pair.
+     * Always query one of the 2 tokens of the pair to assert the order of the 2 tokens
      */
     mapping(IERC20 => mapping(IERC20 => EnumerableSet.UintSet)) private _availableLBPairBinSteps;
 
@@ -64,7 +66,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @notice Constructor
      * @param feeRecipient The address of the fee recipient
      * @param flashLoanFee The value of the fee for flash loan
-     *
      */
     constructor(address feeRecipient, uint256 flashLoanFee) {
         if (flashLoanFee > _MAX_FLASHLOAN_FEE) revert LBFactory__FlashLoanFeeAboveMax(flashLoanFee, _MAX_FLASHLOAN_FEE);
@@ -100,10 +101,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
     }
 
     /**
-     * @notice Get the fee for flash loans
-     * @return flashloanFee
+     * @notice Get the fee for flash loans, in 1e18
+     * @return flashLoanFee The fee for flash loans, in 1e18
      */
-    function getFlashLoanFee() external view override returns (uint256 flashloanFee) {
+    function getFlashLoanFee() external view override returns (uint256 flashLoanFee) {
         return _flashLoanFee;
     }
 
@@ -412,7 +413,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param binStep The bin step in basis point, used to calculate the price
      * @param baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
      * @param filterPeriod The period where the accumulator value is untouched, prevent spam
-     * @param decayPeriod The period where the accumulator value is halved
+     * @param decayPeriod The period where the accumulator value is decayed, by the reduction factor
      * @param reductionFactor The reduction factor, used to calculate the reduction of the accumulator
      * @param variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable it
      * @param protocolShare The share of the fees received by the protocol
@@ -497,7 +498,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param binStep The bin step in basis point, used to calculate the price
      * @param baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
      * @param filterPeriod The period where the accumulator value is untouched, prevent spam
-     * @param decayPeriod The period where the accumulator value is halved
+     * @param decayPeriod The period where the accumulator value is decayed, by the reduction factor
      * @param reductionFactor The reduction factor, used to calculate the reduction of the accumulator
      * @param variableFeeControl The variable fee control, used to control the variable fee, can be 0 to disable it
      * @param protocolShare The share of the fees received by the protocol

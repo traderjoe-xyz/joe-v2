@@ -330,14 +330,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
         if (!_presets.contains(binStep)) revert LBFactory__BinStepHasNoPreset(binStep);
 
         bytes32 preset = bytes32(_presets.get(binStep));
+        bool isOwner = msg.sender == owner();
 
-        if (!_isPresetOpen(preset) && msg.sender != owner()) {
-            revert LBFactory__FunctionIsLockedForUsers(msg.sender, binStep);
+        if (!_isPresetOpen(preset) && !isOwner) {
+            revert LBFactory__PresetIsLockedForUsers(msg.sender, binStep);
         }
-
-        address implementation = _lbPairImplementation;
-
-        if (implementation == address(0)) revert LBFactory__ImplementationNotSet();
 
         if (!_quoteAssetWhitelist.contains(address(tokenY))) revert LBFactory__QuoteAssetNotWhitelisted(tokenY);
 
@@ -354,13 +351,19 @@ contract LBFactory is PendingOwnable, ILBFactory {
             revert LBFactory__LBPairAlreadyExists(tokenX, tokenY, binStep);
         }
 
-        pair = ILBPair(
-            ImmutableClone.cloneDeterministic(
-                implementation,
-                abi.encodePacked(tokenX, tokenY, binStep),
-                keccak256(abi.encode(tokenA, tokenB, binStep))
-            )
-        );
+        {
+            address implementation = _lbPairImplementation;
+
+            if (implementation == address(0)) revert LBFactory__ImplementationNotSet();
+
+            pair = ILBPair(
+                ImmutableClone.cloneDeterministic(
+                    implementation,
+                    abi.encodePacked(tokenX, tokenY, binStep),
+                    keccak256(abi.encode(tokenA, tokenB, binStep))
+                )
+            );
+        }
 
         pair.initialize(
             preset.getBaseFactor(),
@@ -373,12 +376,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
             activeId
         );
 
-        _lbPairsInfo[tokenA][tokenB][binStep] = LBPairInformation({
-            binStep: binStep,
-            LBPair: pair,
-            createdByOwner: msg.sender == owner(),
-            ignoredForRouting: false
-        });
+        _lbPairsInfo[tokenA][tokenB][binStep] =
+            LBPairInformation({binStep: binStep, LBPair: pair, createdByOwner: isOwner, ignoredForRouting: false});
 
         _allLBPairs.push(pair);
         _availableLBPairBinSteps[tokenA][tokenB].add(binStep);

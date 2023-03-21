@@ -63,7 +63,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                ILBFactory.LBFactory__FunctionIsLockedForUsers.selector, address(router), DEFAULT_BIN_STEP
+                ILBFactory.LBFactory__PresetIsLockedForUsers.selector, address(router), DEFAULT_BIN_STEP
             )
         );
         router.createLBPair(bnb, usdc, ID_ONE, DEFAULT_BIN_STEP);

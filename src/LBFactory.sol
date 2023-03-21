@@ -227,6 +227,35 @@ contract LBFactory is PendingOwnable, ILBFactory {
     }
 
     /**
+     * @notice View function to return the list of open binSteps
+     * @return openBinStep The list of open binSteps
+     */
+    function getOpenBinSteps() external view override returns (uint256[] memory openBinStep) {
+        uint256 length = _presets.length();
+
+        if (length > 0) {
+            openBinStep = new uint256[](length);
+
+            uint256 index;
+
+            for (uint256 i; i < length; ++i) {
+                (uint256 binStep, uint256 preset) = _presets.at(i);
+
+                if (_isPresetOpen(bytes32(preset))) {
+                    openBinStep[index] = binStep;
+                    index++;
+                }
+            }
+
+            if (index < length) {
+                assembly {
+                    mstore(openBinStep, index)
+                }
+            }
+        }
+    }
+
+    /**
      * @notice View function to return all the LBPair of a pair of tokens
      * @param tokenX The first token of the pair
      * @param tokenY The second token of the pair

@@ -89,12 +89,10 @@ contract LBPairFlashloanTest is TestHelper {
     }
 
     function testFuzz_revert_FlashLoanReentrant(bytes32 callback) external {
-        vm.assume(callback != Constants.CALLBACK_SUCCESS);
-
         bytes32 amountsBorrowed = bytes32(uint256(1));
         bytes memory data = abi.encode(0, 0, callback, 1);
 
-        vm.expectRevert(ReentrancyGuard.ReentrancyGuard__ReentrantCall.selector);
+        vm.expectRevert(ILBPair.LBPair__FlashLoanCallbackFailed.selector);
         pairWnative.flashLoan(borrower, amountsBorrowed, data);
     }
 

@@ -256,7 +256,7 @@ library BinHelper {
     }
 
     /**
-     * @dev Returns the encoded amounts that was transferred to the contract
+     * @dev Returns the encoded amounts that were transferred to the contract
      * @param reserves The reserves
      * @param tokenX The token X
      * @param tokenY The token Y
@@ -269,7 +269,7 @@ library BinHelper {
     }
 
     /**
-     * @dev Returns the encoded amounts that was transferred to the contract, only for token X
+     * @dev Returns the encoded amounts that were transferred to the contract, only for token X
      * @param reserves The reserves
      * @param tokenX The token X
      * @return amounts The amounts, encoded as follows:
@@ -282,7 +282,7 @@ library BinHelper {
     }
 
     /**
-     * @dev Returns the encoded amounts that was transferred to the contract, only for token Y
+     * @dev Returns the encoded amounts that were transferred to the contract, only for token Y
      * @param reserves The reserves
      * @param tokenY The token Y
      * @return amounts The amounts, encoded as follows:

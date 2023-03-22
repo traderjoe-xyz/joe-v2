@@ -145,7 +145,6 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @notice Returns the bin step of the Liquidity Book Pair
      * @dev The bin step is the increase in price between two consecutive bins, in basis points.
      * For example, a bin step of 1 means that the price of the next bin is 0.01% higher than the price of the previous bin.
-     * The maximum bin step is 200, which means that the price of the next bin is 1% higher than the price of the previous bin.
      * @return binStep The bin step of the Liquidity Book Pair, in 10_000th
      */
     function getBinStep() external pure override returns (uint16) {
@@ -615,8 +614,8 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @dev Any excess amount of token will be sent to the `to` address.
      * @param to The address that will receive the LB tokens
      * @param liquidityConfigs The encoded liquidity configurations, each one containing the id of the bin and the
-     * @param refundTo The address that will receive the excess amount of tokens
      * percentage of token X and token Y to add to the bin.
+     * @param refundTo The address that will receive the excess amount of tokens
      * @return amountsReceived The amounts of token X and token Y received by the pool
      * @return amountsLeft The amounts of token X and token Y that were not added to the pool and were sent to `to`
      * @return liquidityMinted The amounts of LB tokens minted for each bin

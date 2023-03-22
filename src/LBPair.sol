@@ -382,7 +382,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
                 uint128 amountOutOfBin = binReserves > amountOutLeft ? amountOutLeft : binReserves;
 
-                parameters = parameters.updateVolatilityParameters(id);
+                parameters = parameters.updateVolatilityAccumulator(id);
 
                 uint128 amountInWithoutFee = uint128(
                     swapForY
@@ -485,9 +485,9 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         bytes32 protocolFees = _protocolFees;
 
         bytes32 amountsLeft = swapForY ? reserves.receivedX(_tokenX()) : reserves.receivedY(_tokenY());
-        reserves = reserves.add(amountsLeft);
-
         if (amountsLeft == 0) revert LBPair__InsufficientAmountIn();
+
+        reserves = reserves.add(amountsLeft);
 
         bytes32 parameters = _parameters;
         uint16 binStep = _binStep();

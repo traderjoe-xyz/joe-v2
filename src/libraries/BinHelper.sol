@@ -75,7 +75,9 @@ library BinHelper {
         pure
         returns (uint256 shares, bytes32 effectiveAmountsIn)
     {
-        uint256 userLiquidity = getLiquidity(amountsIn, price);
+        (uint256 x, uint256 y) = amountsIn.decode();
+
+        uint256 userLiquidity = getLiquidity(x, y, price);
         if (totalSupply == 0 || userLiquidity == 0) return (userLiquidity, amountsIn);
 
         uint256 binLiquidity = getLiquidity(binReserves, price);
@@ -86,8 +88,6 @@ library BinHelper {
 
         if (userLiquidity > effectiveLiquidity) {
             uint256 deltaLiquidity = userLiquidity - effectiveLiquidity;
-
-            (uint256 x, uint256 y) = amountsIn.decode();
 
             // The other way might be more efficient, but as y is the quote asset, it is more valuable
             if (deltaLiquidity >= Constants.SCALE) {
@@ -119,10 +119,21 @@ library BinHelper {
      */
     function getLiquidity(bytes32 amounts, uint256 price) internal pure returns (uint256 liquidity) {
         (uint256 x, uint256 y) = amounts.decode();
+        return getLiquidity(x, y, price);
+    }
+
+    /**
+     * @dev Returns the amount of liquidity following the constant sum formula `L = price * x + y`
+     * @param x The amount of the token X
+     * @param y The amount of the token Y
+     * @param price The price of the bin
+     * @return liquidity The amount of liquidity
+     */
+    function getLiquidity(uint256 x, uint256 y, uint256 price) internal pure returns (uint256 liquidity) {
         if (x > 0) {
             unchecked {
                 liquidity = price * x;
-                if (x != 0 && liquidity / x != price) revert BinHelper__LiquidityOverflow();
+                if (liquidity / x != price) revert BinHelper__LiquidityOverflow();
             }
         }
         if (y > 0) {

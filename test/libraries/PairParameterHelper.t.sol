@@ -22,8 +22,7 @@ contract PairParameterHelperTest is Test {
     function testFuzz_StaticFeeParametersDirtyBits(bytes32 params, StaticFeeParameters memory sfp) external {
         vm.assume(
             sfp.filterPeriod <= sfp.decayPeriod && sfp.decayPeriod <= Encoded.MASK_UINT12
-                && sfp.reductionFactor <= Constants.BASIS_POINT_MAX
-                && sfp.protocolShare <= PairParameterHelper.MAX_PROTOCOL_SHARE
+                && sfp.reductionFactor <= Constants.BASIS_POINT_MAX && sfp.protocolShare <= Constants.MAX_PROTOCOL_SHARE
                 && sfp.maxVolatilityAccumulator <= Encoded.MASK_UINT20
         );
 
@@ -61,8 +60,7 @@ contract PairParameterHelperTest is Test {
     function testFuzz_StaticFeeParameters(bytes32 params, StaticFeeParameters memory sfp) external {
         vm.assume(
             sfp.filterPeriod <= sfp.decayPeriod && sfp.decayPeriod <= Encoded.MASK_UINT12
-                && sfp.reductionFactor <= Constants.BASIS_POINT_MAX
-                && sfp.protocolShare <= PairParameterHelper.MAX_PROTOCOL_SHARE
+                && sfp.reductionFactor <= Constants.BASIS_POINT_MAX && sfp.protocolShare <= Constants.MAX_PROTOCOL_SHARE
                 && sfp.maxVolatilityAccumulator <= Encoded.MASK_UINT20
         );
 
@@ -96,8 +94,7 @@ contract PairParameterHelperTest is Test {
     function testFuzz_revert_StaticFeeParameters(bytes32 params, StaticFeeParameters memory sfp) external {
         vm.assume(
             sfp.filterPeriod > sfp.decayPeriod || sfp.decayPeriod > Encoded.MASK_UINT12
-                || sfp.reductionFactor > Constants.BASIS_POINT_MAX
-                || sfp.protocolShare > PairParameterHelper.MAX_PROTOCOL_SHARE
+                || sfp.reductionFactor > Constants.BASIS_POINT_MAX || sfp.protocolShare > Constants.MAX_PROTOCOL_SHARE
                 || sfp.maxVolatilityAccumulator > Encoded.MASK_UINT20
         );
 
@@ -269,8 +266,7 @@ contract PairParameterHelperTest is Test {
     {
         vm.assume(
             previousTime <= time && sfp.filterPeriod <= sfp.decayPeriod && sfp.decayPeriod <= Encoded.MASK_UINT12
-                && sfp.reductionFactor <= Constants.BASIS_POINT_MAX
-                && sfp.protocolShare <= PairParameterHelper.MAX_PROTOCOL_SHARE
+                && sfp.reductionFactor <= Constants.BASIS_POINT_MAX && sfp.protocolShare <= Constants.MAX_PROTOCOL_SHARE
                 && sfp.maxVolatilityAccumulator <= Encoded.MASK_UINT20
         );
 
@@ -333,8 +329,7 @@ contract PairParameterHelperTest is Test {
     ) external {
         vm.assume(
             previousTime <= time && sfp.filterPeriod <= sfp.decayPeriod && sfp.decayPeriod <= Encoded.MASK_UINT12
-                && sfp.reductionFactor <= Constants.BASIS_POINT_MAX
-                && sfp.protocolShare <= PairParameterHelper.MAX_PROTOCOL_SHARE
+                && sfp.reductionFactor <= Constants.BASIS_POINT_MAX && sfp.protocolShare <= Constants.MAX_PROTOCOL_SHARE
                 && sfp.maxVolatilityAccumulator <= Encoded.MASK_UINT20
         );
 

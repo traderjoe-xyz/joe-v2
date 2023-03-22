@@ -47,8 +47,6 @@ library PairParameterHelper {
 
     uint256 internal constant MASK_STATIC_PARAMETER = 0xffffffffffffffffffffffffffff;
 
-    uint256 internal constant MAX_PROTOCOL_SHARE = 2_500;
-
     /**
      * @dev Get the base factor from the encoded pair parameters
      * @param params The encoded pair parameters, as follows:
@@ -330,7 +328,7 @@ library PairParameterHelper {
     ) internal pure returns (bytes32 newParams) {
         if (
             filterPeriod > decayPeriod || decayPeriod > Encoded.MASK_UINT12
-                || reductionFactor > Constants.BASIS_POINT_MAX || protocolShare > MAX_PROTOCOL_SHARE
+                || reductionFactor > Constants.BASIS_POINT_MAX || protocolShare > Constants.MAX_PROTOCOL_SHARE
                 || maxVolatilityAccumulator > Encoded.MASK_UINT20
         ) revert PairParametersHelper__InvalidParameter();
 

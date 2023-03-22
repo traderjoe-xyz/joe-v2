@@ -93,13 +93,13 @@ library PackedUint128Math {
     /**
      * @dev Decodes a bytes32 into a uint128 as the first uint128
      * @param z The encoded bytes32 as follows:
-     * [0 - 128[: x1
+     * [0 - 128[: x
      * [128 - 256[: any
-     * @return x1 The first uint128
+     * @return x The first uint128
      */
-    function decodeX(bytes32 z) internal pure returns (uint128 x1) {
+    function decodeX(bytes32 z) internal pure returns (uint128 x) {
         assembly {
-            x1 := and(z, MASK_128)
+            x := and(z, MASK_128)
         }
     }
 
@@ -107,12 +107,12 @@ library PackedUint128Math {
      * @dev Decodes a bytes32 into a uint128 as the second uint128
      * @param z The encoded bytes32 as follows:
      * [0 - 128[: any
-     * [128 - 256[: x2
-     * @return x2 The second uint128
+     * [128 - 256[: y
+     * @return y The second uint128
      */
-    function decodeY(bytes32 z) internal pure returns (uint128 x2) {
+    function decodeY(bytes32 z) internal pure returns (uint128 y) {
         assembly {
-            x2 := shr(OFFSET, z)
+            y := shr(OFFSET, z)
         }
     }
 
@@ -207,7 +207,7 @@ library PackedUint128Math {
     }
 
     /**
-     * @dev Returns whether any of the uint128 of x is greater than the corresponding uint128 of y
+     * @dev Returns whether any of the uint128 of x is strictly greater than the corresponding uint128 of y
      * @param x The first bytes32 encoded as follows:
      * [0 - 128[: x1
      * [128 - 256[: x2
@@ -224,7 +224,7 @@ library PackedUint128Math {
     }
 
     /**
-     * @dev Returns whether any of the uint128 of x is greater than or equal to the corresponding uint128 of y
+     * @dev Returns whether any of the uint128 of x is strictly greater than the corresponding uint128 of y
      * @param x The first bytes32 encoded as follows:
      * [0 - 128[: x1
      * [128 - 256[: x2
@@ -238,36 +238,6 @@ library PackedUint128Math {
         (uint128 y1, uint128 y2) = decode(y);
 
         return x1 > y1 || x2 > y2;
-    }
-
-    /**
-     * @dev Multiplies an encoded bytes32 by a uint256 then shifts the result 128 bits to the right, rounding up
-     * @param x The bytes32 encoded as follows:
-     * [0 - 128[: x1
-     * [128 - 256[: x2
-     * @param multiplier The uint128 to multiply by
-     * @return z The product of x and multiplier encoded as follows:
-     * [0 - 128[: ceil((x1 * multiplier) / 2**128)
-     * [128 - 256[: ceil((x2 * multiplier) / 2**128)
-     */
-    function scalarMulShiftRoundUp(bytes32 x, uint256 multiplier) internal pure returns (bytes32 z) {
-        if (multiplier == 0) return 0;
-        if (multiplier > MASK_128_PLUS_ONE) revert PackedUint128Math__MultiplierTooLarge();
-
-        (uint128 x1, uint128 x2) = decode(x);
-
-        // Can't overflow because:
-        // ```
-        // max(x{1,2} * multiplier) = type(uint128).max * type(uint128).max
-        //                      = type(uint256).max - (2**129 - 2)
-        // MASK_128 = 2**128 - 1 < 2**129 - 2
-        // ```
-        assembly {
-            x1 := shr(OFFSET, add(mul(x1, multiplier), MASK_128))
-            x2 := shr(OFFSET, add(mul(x2, multiplier), MASK_128))
-        }
-
-        return encode(x1, x2);
     }
 
     /**

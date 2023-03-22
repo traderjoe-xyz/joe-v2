@@ -10,7 +10,7 @@ import {IPendingOwnable} from "../interfaces/IPendingOwnable.sol";
  * @notice Contract module which provides a basic access control mechanism, where
  * there is an account (an owner) that can be granted exclusive access to
  * specific functions. The ownership of this contract is transferred using the
- * push and pull pattern, the current owner set a `pendingOwner` using
+ * push and pull pattern, the current owner sets a `pendingOwner` using
  * {setPendingOwner} and that address can then call {becomeOwner} to become the
  * owner of that contract. The main logic and comments comes from OpenZeppelin's
  * Ownable contract.

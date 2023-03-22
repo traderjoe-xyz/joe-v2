@@ -97,7 +97,7 @@ abstract contract LBToken is ILBToken {
      * @param ids The token ids.
      * @return batchBalances The balance for each (account, id) pair.
      */
-    function balanceOfBatch(address[] memory accounts, uint256[] memory ids)
+    function balanceOfBatch(address[] calldata accounts, uint256[] calldata ids)
         public
         view
         virtual
@@ -140,7 +140,7 @@ abstract contract LBToken is ILBToken {
      * @param ids The list of token ids.
      * @param amounts The list of amounts to transfer for each token id in `ids`.
      */
-    function batchTransferFrom(address from, address to, uint256[] memory ids, uint256[] memory amounts)
+    function batchTransferFrom(address from, address to, uint256[] calldata ids, uint256[] calldata amounts)
         public
         virtual
         override
@@ -203,7 +203,7 @@ abstract contract LBToken is ILBToken {
      * @param ids The list of token ids.
      * @param amounts The list of amounts to transfer for each token id in `ids`.
      */
-    function _batchTransferFrom(address from, address to, uint256[] memory ids, uint256[] memory amounts)
+    function _batchTransferFrom(address from, address to, uint256[] calldata ids, uint256[] calldata amounts)
         internal
         checkLength(ids.length, amounts.length)
         notAddressZeroOrThis(to)

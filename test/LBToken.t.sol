@@ -219,7 +219,8 @@ contract LBTokenTest is Test {
 
     function testFuzz_ApprovedForAll(address from, address to, uint256 id, uint256 amount) external {
         vm.assume(
-            from != address(0) && to != address(lbToken) && to != address(0) && to != address(lbToken) && from != to
+            from != address(lbToken) && from != address(0) && to != address(lbToken) && to != address(0)
+                && to != address(lbToken) && from != to
         );
 
         uint256[] memory ids = new uint256[](1);

@@ -13,7 +13,7 @@ contract FeeHelperTest is Test {
 
     function testFuzz_GetFeeAmountFrom(uint128 amountWithFee, uint128 fee) external {
         if (fee > Constants.MAX_FEE) {
-            vm.expectRevert(FeeHelper.FeeHelper__FeeOverflow.selector);
+            vm.expectRevert(FeeHelper.FeeHelper__FeeTooLarge.selector);
             amountWithFee.getFeeAmountFrom(fee);
         } else {
             uint256 expectedFeeAmount = (uint256(amountWithFee) * fee + 1e18 - 1) / 1e18;
@@ -25,7 +25,7 @@ contract FeeHelperTest is Test {
 
     function testFuzz_GetFeeAmount(uint128 amount, uint128 fee) external {
         if (fee > Constants.MAX_FEE) {
-            vm.expectRevert(FeeHelper.FeeHelper__FeeOverflow.selector);
+            vm.expectRevert(FeeHelper.FeeHelper__FeeTooLarge.selector);
             amount.getFeeAmount(fee);
         } else {
             uint128 denominator = 1e18 - fee;
@@ -39,7 +39,7 @@ contract FeeHelperTest is Test {
 
     function testFuzz_GetCompositionFee(uint128 amountWithFee, uint128 fee) external {
         if (fee > Constants.MAX_FEE) {
-            vm.expectRevert(FeeHelper.FeeHelper__FeeOverflow.selector);
+            vm.expectRevert(FeeHelper.FeeHelper__FeeTooLarge.selector);
             amountWithFee.getCompositionFee(fee);
         }
 
@@ -54,7 +54,7 @@ contract FeeHelperTest is Test {
 
     function testFuzz_GetProtocolFeeAmount(uint128 amount, uint128 fee) external {
         if (fee > Constants.MAX_PROTOCOL_SHARE) {
-            vm.expectRevert(FeeHelper.FeeHelper__ProtocolShareOverflow.selector);
+            vm.expectRevert(FeeHelper.FeeHelper__ProtocolShareTooLarge.selector);
             amount.getProtocolFeeAmount(fee);
         } else {
             uint256 expectedProtocolFeeAmount = (uint256(amount) * fee) / 1e4;

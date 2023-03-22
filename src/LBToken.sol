@@ -9,7 +9,7 @@ import {ILBToken} from "./interfaces/ILBToken.sol";
  * @author Trader Joe
  * @notice The LBToken is an implementation of a multi-token.
  * It allows to create multi-ERC20 represented by their ids.
- * Its implementation is really similar to the ERC1155 standardn the main difference
+ * Its implementation is really similar to the ERC1155 standard the main difference
  * is that it doesn't do any call to the receiver contract to prevent reentrancy.
  * As it's only for ERC20s, the uri function is not implemented.
  * The contract is made for batch operations.
@@ -115,10 +115,10 @@ abstract contract LBToken is ILBToken {
     }
 
     /**
-     * @notice Returns true if `spender` is approved to transfer `account`'s tokens.
+     * @notice Returns true if `spender` is approved to transfer `owner`'s tokens or if `spender` is the `owner`.
      * @param owner The address of the owner.
      * @param spender The address of the spender.
-     * @return True if `spender` is approved to transfer `account`'s tokens.
+     * @return True if `spender` is approved to transfer `owner`'s tokens.
      */
     function isApprovedForAll(address owner, address spender) public view virtual override returns (bool) {
         return _isApprovedForAll(owner, spender);
@@ -150,7 +150,7 @@ abstract contract LBToken is ILBToken {
     }
 
     /**
-     * @notice Returns true if `spender` is approved to transfer `owner`'s tokens or if `sender` is the `owner`.
+     * @notice Returns true if `spender` is approved to transfer `owner`'s tokens or if `spender` is the `owner`.
      * @param owner The address of the owner.
      * @param spender The address of the spender.
      * @return True if `spender` is approved to transfer `owner`'s tokens.

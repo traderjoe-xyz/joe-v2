@@ -3,7 +3,6 @@
 pragma solidity 0.8.10;
 
 import {Constants} from "./Constants.sol";
-import {SafeCast} from "./math/SafeCast.sol";
 
 /**
  * @title Liquidity Book Fee Helper Library
@@ -11,26 +10,24 @@ import {SafeCast} from "./math/SafeCast.sol";
  * @notice This library contains functions to calculate fees
  */
 library FeeHelper {
-    using SafeCast for uint256;
-
-    error FeeHelper__FeeOverflow();
-    error FeeHelper__ProtocolShareOverflow();
+    error FeeHelper__FeeTooLarge();
+    error FeeHelper__ProtocolShareTooLarge();
 
     /**
-     * @dev Modifier to check that the fee does not overflow
+     * @dev Modifier to check that the fee is not too large
      * @param fee The fee
      */
-    modifier checkFeeOverflow(uint128 fee) {
-        if (fee > Constants.MAX_FEE) revert FeeHelper__FeeOverflow();
+    modifier verifyFee(uint128 fee) {
+        if (fee > Constants.MAX_FEE) revert FeeHelper__FeeTooLarge();
         _;
     }
 
     /**
-     * @dev Modifier to check that the protocol share does not overflow
+     * @dev Modifier to check that the protocol share is not too large
      * @param protocolShare The protocol share
      */
-    modifier checkProtocolShareOverflow(uint128 protocolShare) {
-        if (protocolShare > Constants.MAX_PROTOCOL_SHARE) revert FeeHelper__ProtocolShareOverflow();
+    modifier verifyProtocolShare(uint128 protocolShare) {
+        if (protocolShare > Constants.MAX_PROTOCOL_SHARE) revert FeeHelper__ProtocolShareTooLarge();
         _;
     }
 
@@ -43,7 +40,7 @@ library FeeHelper {
     function getFeeAmountFrom(uint128 amountWithFees, uint128 totalFee)
         internal
         pure
-        checkFeeOverflow(totalFee)
+        verifyFee(totalFee)
         returns (uint128)
     {
         unchecked {
@@ -58,12 +55,7 @@ library FeeHelper {
      * @param totalFee The total fee
      * @return feeAmount The fee amount
      */
-    function getFeeAmount(uint128 amount, uint128 totalFee)
-        internal
-        pure
-        checkFeeOverflow(totalFee)
-        returns (uint128)
-    {
+    function getFeeAmount(uint128 amount, uint128 totalFee) internal pure verifyFee(totalFee) returns (uint128) {
         unchecked {
             uint256 denominator = Constants.PRECISION - totalFee;
             // Can't overflow, max(result) = (type(uint128).max * 0.1e18 + (1e18 - 1)) / 0.9e18 < 2^128
@@ -80,7 +72,7 @@ library FeeHelper {
     function getCompositionFee(uint128 amountWithFees, uint128 totalFee)
         internal
         pure
-        checkFeeOverflow(totalFee)
+        verifyFee(totalFee)
         returns (uint128)
     {
         unchecked {
@@ -99,7 +91,7 @@ library FeeHelper {
     function getProtocolFeeAmount(uint128 feeAmount, uint128 protocolShare)
         internal
         pure
-        checkProtocolShareOverflow(protocolShare)
+        verifyProtocolShare(protocolShare)
         returns (uint128)
     {
         unchecked {

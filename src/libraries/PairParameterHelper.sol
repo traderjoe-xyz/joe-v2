@@ -335,10 +335,10 @@ library PairParameterHelper {
         newParams = newParams.set(baseFactor, Encoded.MASK_UINT16, OFFSET_BASE_FACTOR);
         newParams = newParams.set(filterPeriod, Encoded.MASK_UINT12, OFFSET_FILTER_PERIOD);
         newParams = newParams.set(decayPeriod, Encoded.MASK_UINT12, OFFSET_DECAY_PERIOD);
-        newParams = newParams.set(reductionFactor, Encoded.MASK_UINT16, OFFSET_REDUCTION_FACTOR);
+        newParams = newParams.set(reductionFactor, Encoded.MASK_UINT14, OFFSET_REDUCTION_FACTOR);
         newParams = newParams.set(variableFeeControl, Encoded.MASK_UINT24, OFFSET_VAR_FEE_CONTROL);
-        newParams = newParams.set(protocolShare, Encoded.MASK_UINT16, OFFSET_PROTOCOL_SHARE);
-        newParams = newParams.set(maxVolatilityAccumulator, Encoded.MASK_UINT24, OFFSET_MAX_VOL_ACC);
+        newParams = newParams.set(protocolShare, Encoded.MASK_UINT14, OFFSET_PROTOCOL_SHARE);
+        newParams = newParams.set(maxVolatilityAccumulator, Encoded.MASK_UINT20, OFFSET_MAX_VOL_ACC);
 
         return params.set(uint256(newParams), MASK_STATIC_PARAMETER, 0);
     }

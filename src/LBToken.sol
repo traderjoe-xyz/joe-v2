@@ -167,7 +167,7 @@ abstract contract LBToken is ILBToken {
      * @param id The token id.
      * @param amount The amount to mint.
      */
-    function _mint(address account, uint256 id, uint256 amount) internal notAddressZeroOrThis(account) {
+    function _mint(address account, uint256 id, uint256 amount) internal {
         _totalSupplies[id] += amount;
 
         unchecked {
@@ -183,7 +183,7 @@ abstract contract LBToken is ILBToken {
      * @param id The token id.
      * @param amount The amount to burn.
      */
-    function _burn(address account, uint256 id, uint256 amount) internal notAddressZeroOrThis(account) {
+    function _burn(address account, uint256 id, uint256 amount) internal {
         mapping(uint256 => uint256) storage accountBalances = _balances[account];
 
         uint256 balance = accountBalances[id];
@@ -191,7 +191,7 @@ abstract contract LBToken is ILBToken {
 
         unchecked {
             _totalSupplies[id] -= amount;
-            accountBalances[id] -= amount;
+            accountBalances[id] = balance - amount;
         }
     }
 
@@ -235,7 +235,7 @@ abstract contract LBToken is ILBToken {
      * @param spender The address of the spender
      * @param approved The boolean value to grant or revoke permission
      */
-    function _approveForAll(address owner, address spender, bool approved) internal {
+    function _approveForAll(address owner, address spender, bool approved) internal notAddressZeroOrThis(owner) {
         if (owner == spender) revert LBToken__SelfApproval(owner);
 
         _spenderApprovals[owner][spender] = approved;

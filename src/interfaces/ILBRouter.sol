@@ -70,7 +70,8 @@ interface ILBRouter {
      * - distributionX: The distribution of tokenX with sum(distributionX) = 100e18 (100%) or 0 (0%)
      * - distributionY: The distribution of tokenY with sum(distributionY) = 100e18 (100%) or 0 (0%)
      * - to: The address of the recipient
-     * - deadline: The deadline of the tx
+     * - refundTo: The address of the recipient of the refunded tokens if too much tokens are sent
+     * - deadline: The deadline of the transaction
      */
     struct LiquidityParameters {
         IERC20 tokenX;

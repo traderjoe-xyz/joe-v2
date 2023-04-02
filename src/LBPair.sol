@@ -633,6 +633,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         external
         override
         nonReentrant
+        notAddressZeroOrThis(to)
         returns (bytes32 amountsReceived, bytes32 amountsLeft, uint256[] memory liquidityMinted)
     {
         if (liquidityConfigs.length == 0) revert LBPair__EmptyMarketConfigs();

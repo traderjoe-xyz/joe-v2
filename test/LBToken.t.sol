@@ -266,26 +266,12 @@ contract LBTokenTest is Test {
         uint256[] memory amounts = new uint256[](1);
 
         vm.expectRevert(abi.encodeWithSelector(ILBToken.LBToken__AddressThisOrZero.selector));
-        lbToken.mintBatch(address(0), ids, amounts);
-
-        vm.expectRevert(abi.encodeWithSelector(ILBToken.LBToken__AddressThisOrZero.selector));
         vm.prank(address(1));
         lbToken.batchTransferFrom(address(1), address(0), ids, amounts);
 
         vm.expectRevert(abi.encodeWithSelector(ILBToken.LBToken__AddressThisOrZero.selector));
         vm.prank(address(1));
-        lbToken.batchBurnFrom(address(0), ids, amounts);
-
-        vm.expectRevert(abi.encodeWithSelector(ILBToken.LBToken__AddressThisOrZero.selector));
-        lbToken.mintBatch(address(lbToken), ids, amounts);
-
-        vm.expectRevert(abi.encodeWithSelector(ILBToken.LBToken__AddressThisOrZero.selector));
-        vm.prank(address(1));
         lbToken.batchTransferFrom(address(1), address(lbToken), ids, amounts);
-
-        vm.expectRevert(abi.encodeWithSelector(ILBToken.LBToken__AddressThisOrZero.selector));
-        vm.prank(address(1));
-        lbToken.batchBurnFrom(address(lbToken), ids, amounts);
     }
 
     function testFuzz_SetApprovalOnSelf(address account) external {

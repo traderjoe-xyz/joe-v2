@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.10;
 
-import "openzeppelin/token/ERC20/IERC20.sol";
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 /// @title Liquidity Book Flashloan Callback Interface
 /// @author Trader Joe
@@ -10,9 +10,10 @@ import "openzeppelin/token/ERC20/IERC20.sol";
 interface ILBFlashLoanCallback {
     function LBFlashLoanCallback(
         address sender,
-        IERC20 token,
-        uint256 amount,
-        uint256 fee,
+        IERC20 tokenX,
+        IERC20 tokenY,
+        bytes32 amounts,
+        bytes32 totalFees,
         bytes calldata data
     ) external returns (bytes32);
 }

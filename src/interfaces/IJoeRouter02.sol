@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.10;
 
-import "./IJoeRouter01.sol";
+import {IJoeRouter01} from "./IJoeRouter01.sol";
 
 /// @title Joe V1 Router Interface
 /// @notice Interface to interact with Joe V1 Router

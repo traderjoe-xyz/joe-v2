@@ -2,585 +2,548 @@
 
 pragma solidity 0.8.10;
 
-import "./TestHelper.sol";
+import "test/helpers/TestHelper.sol";
 
+/**
+ * Test scenarios:
+ * 1. Receive
+ * 2. Create LBPair
+ * 3. Add Liquidity
+ * 4. Add liquidity NATIVE
+ * 5. Remove liquidity
+ * 6. Remove liquidity NATIVE
+ * 7. Sweep ERC20s
+ * 8. Sweep LBToken
+ */
 contract LiquidityBinRouterTest is TestHelper {
-    event AVAXreceived();
+    bool blockReceive;
 
-    function setUp() public {
-        token6D = new ERC20MockDecimals(6);
-        token18D = new ERC20MockDecimals(18);
-        wavax = new WAVAX();
+    function setUp() public override {
+        super.setUp();
 
-        factory = new LBFactory(DEV, 8e14);
-        ILBPair _LBPairImplementation = new LBPair(factory);
-        factory.setLBPairImplementation(address(_LBPairImplementation));
-        setDefaultFactoryPresets(DEFAULT_BIN_STEP);
-        addAllAssetsToQuoteWhitelist(factory);
-        router = new LBRouter(factory, IJoeFactory(JOE_V1_FACTORY_ADDRESS), IWAVAX(address(wavax)));
+        factory.setPresetOpenState(DEFAULT_BIN_STEP, true);
 
-        pair = createLBPairDefaultFees(token6D, token18D);
+        // Create necessary pairs
+        router.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
+        router.createLBPair(wnative, usdc, ID_ONE, DEFAULT_BIN_STEP);
+        router.createLBPair(taxToken, usdc, ID_ONE, DEFAULT_BIN_STEP);
+
+        uint256 startingBalance = type(uint112).max;
+        deal(address(usdc), address(this), startingBalance);
+        deal(address(usdt), address(this), startingBalance);
+        deal(address(bnb), address(this), startingBalance);
+        deal(address(weth), address(this), startingBalance);
     }
 
-    function testAddLiquidityNoSlippage() public {
-        uint256 _amountYIn = 100e18;
-        uint24 _startId = ID_ONE;
-        uint24 _numberBins = 9;
-        uint24 _gap = 2;
-
-        (int256[] memory _deltaIds, , , uint256 amountXIn) = addLiquidityFromRouter(
-            token6D,
-            token18D,
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap,
-            DEFAULT_BIN_STEP
-        );
-
-        uint256[] memory amounts = new uint256[](_numberBins);
-        uint256[] memory ids = new uint256[](_numberBins);
-        uint256 totalXbalance;
-        uint256 totalYBalance;
-        for (uint256 i; i < _numberBins; i++) {
-            ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            uint256 LBTokenAmount = pair.balanceOf(DEV, ids[i]);
-            amounts[i] = LBTokenAmount;
-            (uint256 reserveX, uint256 reserveY) = pair.getBin(uint24(ids[i]));
-            bool hasXBalanceInBin = (LBTokenAmount != 0) && (reserveX != 0);
-            bool hasYBalanceInBin = (LBTokenAmount != 0) && (reserveY != 0);
-            totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
-            totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
-        }
-        assertApproxEqAbs(totalXbalance, amountXIn, 1000);
-        assertApproxEqAbs(totalYBalance, _amountYIn, 1000);
-
-        pair.setApprovalForAll(address(router), true);
-
-        router.removeLiquidity(
-            token6D,
-            token18D,
-            DEFAULT_BIN_STEP,
-            totalXbalance,
-            totalYBalance,
-            ids,
-            amounts,
-            DEV,
-            block.timestamp
-        );
-
-        assertEq(token6D.balanceOf(DEV), amountXIn);
-        assertEq(token18D.balanceOf(DEV), _amountYIn);
+    function test_Constructor() public {
+        assertEq(address(router.getFactory()), address(factory), "test_Constructor::1");
+        assertEq(address(router.getLegacyFactory()), address(legacyFactoryV2), "test_Constructor::2");
+        assertEq(address(router.getV1Factory()), address(factoryV1), "test_Constructor::3");
+        assertEq(address(router.getLegacyRouter()), address(legacyRouterV2), "test_Constructor::4");
+        assertEq(address(router.getWNATIVE()), address(wnative), "test_Constructor::5");
     }
 
-    function testRemoveLiquidityReverseOrder() public {
-        uint256 _amountYIn = 100e18;
-        uint24 _startId = ID_ONE;
-        uint24 _numberBins = 9;
-        uint24 _gap = 2;
+    function test_ReceiveNATIVE() public {
+        // Users can't send NATIVE to the router
+        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__SenderIsNotWNATIVE.selector));
+        (bool success,) = address(router).call{value: 1e18}("");
 
-        (int256[] memory _deltaIds, , , uint256 amountXIn) = addLiquidityFromRouter(
-            token6D,
-            token18D,
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap,
-            DEFAULT_BIN_STEP
-        );
+        // WNATIVE can
+        deal(address(wnative), 1e18);
+        vm.prank(address(wnative));
+        (success,) = address(router).call{value: 1e18}("");
 
-        uint256[] memory amounts = new uint256[](_numberBins);
-        uint256[] memory ids = new uint256[](_numberBins);
-        uint256 totalXbalance;
-        uint256 totalYBalance;
-        for (uint256 i; i < _numberBins; i++) {
-            ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            uint256 LBTokenAmount = pair.balanceOf(DEV, ids[i]);
-            amounts[i] = LBTokenAmount;
-            (uint256 reserveX, uint256 reserveY) = pair.getBin(uint24(ids[i]));
-            bool hasXBalanceInBin = (LBTokenAmount != 0) && (reserveX != 0);
-            bool hasYBalanceInBin = (LBTokenAmount != 0) && (reserveY != 0);
-            totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
-            totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
-        }
-        assertApproxEqAbs(totalXbalance, amountXIn, 1000);
-        assertApproxEqAbs(totalYBalance, _amountYIn, 1000);
-
-        pair.setApprovalForAll(address(router), true);
-
-        router.removeLiquidity(
-            token18D,
-            token6D,
-            DEFAULT_BIN_STEP,
-            _amountYIn,
-            totalXbalance,
-            ids,
-            amounts,
-            DEV,
-            block.timestamp
-        );
-
-        assertEq(token6D.balanceOf(DEV), amountXIn);
-        assertEq(token18D.balanceOf(DEV), _amountYIn);
+        assertTrue(success, "test_ReceiveNATIVE::1");
     }
 
-    function testRemoveLiquiditySlippageReverts() public {
-        uint256 _amountYIn = 100e18;
-        uint24 _startId = ID_ONE;
-        uint24 _numberBins = 23;
-        uint24 _gap = 2;
+    function test_CreatePair() public {
+        router.createLBPair(weth, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
-        (int256[] memory _deltaIds, , , uint256 amountXIn) = addLiquidityFromRouter(
-            token6D,
-            token18D,
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap,
-            DEFAULT_BIN_STEP
-        );
+        factory.setPresetOpenState(DEFAULT_BIN_STEP, false);
 
-        uint256[] memory amounts = new uint256[](_numberBins);
-        uint256[] memory ids = new uint256[](_numberBins);
-        uint256 totalXbalance;
-        uint256 totalYBalance;
-        for (uint256 i; i < _numberBins; i++) {
-            ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            uint256 LBTokenAmount = pair.balanceOf(DEV, ids[i]);
-            amounts[i] = LBTokenAmount;
-            (uint256 reserveX, uint256 reserveY) = pair.getBin(uint24(ids[i]));
-            bool hasXBalanceInBin = (LBTokenAmount != 0) && (reserveX != 0);
-            bool hasYBalanceInBin = (LBTokenAmount != 0) && (reserveY != 0);
-            totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
-            totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
-        }
-        assertApproxEqAbs(totalXbalance, amountXIn, 1000);
-        assertApproxEqAbs(totalYBalance, _amountYIn, 1000);
-
-        pair.setApprovalForAll(address(router), true);
         vm.expectRevert(
             abi.encodeWithSelector(
-                LBRouter__AmountSlippageCaught.selector,
-                totalXbalance + 1,
-                totalXbalance,
-                totalYBalance,
-                totalYBalance
+                ILBFactory.LBFactory__PresetIsLockedForUsers.selector, address(router), DEFAULT_BIN_STEP
+            )
+        );
+        router.createLBPair(bnb, usdc, ID_ONE, DEFAULT_BIN_STEP);
+    }
+
+    function testFuzz_AddLiquidityNoSlippage(uint256 amountYIn, uint24 binNumber, uint24 gap) public {
+        amountYIn = bound(amountYIn, 5_000, type(uint112).max);
+        binNumber = uint24(bound(binNumber, 0, 400));
+        binNumber = binNumber * 2 + 1;
+        gap = uint24(bound(gap, 0, 20));
+
+        ILBRouter.LiquidityParameters memory liquidityParameters =
+            getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+        liquidityParameters.refundTo = BOB;
+
+        // Add liquidity
+        (
+            uint256 amountXAdded,
+            uint256 amountYAdded,
+            uint256 amountXLeft,
+            uint256 amountYLeft,
+            uint256[] memory depositIds,
+            uint256[] memory liquidityMinted
+        ) = router.addLiquidity(liquidityParameters);
+
+        // Check amounts
+        assertEq(amountXAdded, liquidityParameters.amountX, "testFuzz_AddLiquidityNoSlippage::1");
+        assertEq(amountYAdded, liquidityParameters.amountY, "testFuzz_AddLiquidityNoSlippage::2");
+        assertLt(amountXLeft, amountXAdded, "testFuzz_AddLiquidityNoSlippage::3");
+        assertLt(amountYLeft, amountYAdded, "testFuzz_AddLiquidityNoSlippage::4");
+
+        assertEq(usdt.balanceOf(BOB), amountXLeft, "usdt balance");
+        assertEq(usdc.balanceOf(BOB), amountYLeft, "usdc balance");
+
+        // Check liquidity minted
+        assertEq(liquidityMinted.length, binNumber, "testFuzz_AddLiquidityNoSlippage::5");
+        assertEq(depositIds.length, binNumber, "testFuzz_AddLiquidityNoSlippage::6");
+    }
+
+    function test_revert_AddLiquidity() public {
+        uint256 amountYIn = 1e18;
+        uint24 binNumber = 7;
+        uint24 gap = 2;
+
+        // Revert if tokens are in the wrong order
+        ILBRouter.LiquidityParameters memory liquidityParameters =
+            getLiquidityParameters(usdc, usdt, amountYIn, ID_ONE, binNumber, gap);
+
+        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__WrongTokenOrder.selector));
+        router.addLiquidity(liquidityParameters);
+
+        // Revert if the liquidity arrays are not the same length
+        liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+        liquidityParameters.deltaIds = new int256[](binNumber - 1);
+
+        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__LengthsMismatch.selector));
+        router.addLiquidity(liquidityParameters);
+
+        liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+        liquidityParameters.distributionY = new uint256[](binNumber - 1);
+
+        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__LengthsMismatch.selector));
+        router.addLiquidity(liquidityParameters);
+
+        // Active Id required can't be greater than type(uint24).max
+        liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+        liquidityParameters.activeIdDesired = uint256(type(uint24).max) + 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILBRouter.LBRouter__IdDesiredOverflows.selector,
+                liquidityParameters.activeIdDesired,
+                liquidityParameters.idSlippage
+            )
+        );
+        router.addLiquidity(liquidityParameters);
+
+        liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+        liquidityParameters.idSlippage = uint256(type(uint24).max) + 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILBRouter.LBRouter__IdDesiredOverflows.selector,
+                liquidityParameters.activeIdDesired,
+                liquidityParameters.idSlippage
+            )
+        );
+        router.addLiquidity(liquidityParameters);
+
+        // Absolute IDs can't overflow
+        liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+        liquidityParameters.deltaIds[0] = -int256(uint256(ID_ONE)) - 1;
+
+        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__IdOverflows.selector, type(uint256).max));
+        router.addLiquidity(liquidityParameters);
+
+        liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+        liquidityParameters.deltaIds[0] = int256(uint256(ID_ONE));
+
+        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__IdOverflows.selector, uint256(type(uint24).max) + 1));
+        router.addLiquidity(liquidityParameters);
+
+        // Revert if ID slippage is caught
+        liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+        liquidityParameters.activeIdDesired = ID_ONE - 10;
+        liquidityParameters.idSlippage = 5;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILBRouter.LBRouter__IdSlippageCaught.selector,
+                liquidityParameters.activeIdDesired,
+                liquidityParameters.idSlippage,
+                ID_ONE
+            )
+        );
+        router.addLiquidity(liquidityParameters);
+
+        liquidityParameters.activeIdDesired = ID_ONE + 10;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILBRouter.LBRouter__IdSlippageCaught.selector,
+                liquidityParameters.activeIdDesired,
+                liquidityParameters.idSlippage,
+                ID_ONE
+            )
+        );
+        router.addLiquidity(liquidityParameters);
+
+        // Revert if slippage is too high
+        liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+        liquidityParameters.amountXMin = liquidityParameters.amountX + 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILBRouter.LBRouter__AmountSlippageCaught.selector,
+                liquidityParameters.amountXMin,
+                liquidityParameters.amountX,
+                liquidityParameters.amountYMin,
+                liquidityParameters.amountY
+            )
+        );
+        router.addLiquidity(liquidityParameters);
+
+        liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+        liquidityParameters.amountYMin = liquidityParameters.amountY + 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILBRouter.LBRouter__AmountSlippageCaught.selector,
+                liquidityParameters.amountXMin,
+                liquidityParameters.amountX,
+                liquidityParameters.amountYMin,
+                liquidityParameters.amountY
+            )
+        );
+        router.addLiquidity(liquidityParameters);
+
+        // Revert is the deadline passed
+        liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+
+        skip(2_000);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILBRouter.LBRouter__DeadlineExceeded.selector, liquidityParameters.deadline, block.timestamp
+            )
+        );
+        router.addLiquidity(liquidityParameters);
+    }
+
+    function test_AddLiquidityNATIVE() public {
+        uint256 amountYIn = 1e18;
+        uint24 binNumber = 7;
+        uint24 gap = 2;
+
+        ILBRouter.LiquidityParameters memory liquidityParameters =
+            getLiquidityParameters(wnative, usdc, amountYIn, ID_ONE, binNumber, gap);
+
+        // Add liquidity
+        (
+            uint256 amountXAdded,
+            uint256 amountYAdded,
+            uint256 amountXLeft,
+            uint256 amountYLeft,
+            uint256[] memory depositIds,
+            uint256[] memory liquidityMinted
+        ) = router.addLiquidityNATIVE{value: liquidityParameters.amountX}(liquidityParameters);
+
+        // Check amounts
+        assertEq(amountXAdded, liquidityParameters.amountX, "test_AddLiquidityNATIVE::1");
+        assertEq(amountYAdded, liquidityParameters.amountY, "test_AddLiquidityNATIVE::2");
+        assertLt(amountXLeft, amountXAdded, "test_AddLiquidityNATIVE::3");
+        assertLt(amountYLeft, amountYAdded, "test_AddLiquidityNATIVE::4");
+
+        // Check liquidity minted
+        assertEq(liquidityMinted.length, binNumber, "test_AddLiquidityNATIVE::5");
+        assertEq(depositIds.length, binNumber, "test_AddLiquidityNATIVE::6");
+
+        // Test with NATIVE as token Y
+        router.createLBPair(bnb, wnative, ID_ONE, DEFAULT_BIN_STEP);
+
+        liquidityParameters = getLiquidityParameters(bnb, wnative, amountYIn, ID_ONE, binNumber, gap);
+
+        router.addLiquidityNATIVE{value: liquidityParameters.amountY}(liquidityParameters);
+    }
+
+    function test_revert_AddLiquidityNATIVE() public {
+        uint256 amountYIn = 1e18;
+        uint24 binNumber = 7;
+        uint24 gap = 2;
+
+        // Revert if tokens are in the wrong order
+        ILBRouter.LiquidityParameters memory liquidityParameters =
+            getLiquidityParameters(usdc, wnative, amountYIn, ID_ONE, binNumber, gap);
+
+        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__WrongTokenOrder.selector));
+        router.addLiquidityNATIVE{value: liquidityParameters.amountY}(liquidityParameters);
+
+        // Revert if for non WNATIVE pairs
+        liquidityParameters = getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILBRouter.LBRouter__WrongNativeLiquidityParameters.selector,
+                address(liquidityParameters.tokenX),
+                address(liquidityParameters.tokenY),
+                liquidityParameters.amountX,
+                liquidityParameters.amountY,
+                liquidityParameters.amountY
+            )
+        );
+        router.addLiquidityNATIVE{value: liquidityParameters.amountY}(liquidityParameters);
+
+        // Revert if the amount of NATIVE isn't correct
+        liquidityParameters = getLiquidityParameters(wnative, usdc, amountYIn, ID_ONE, binNumber, gap);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILBRouter.LBRouter__WrongNativeLiquidityParameters.selector,
+                address(liquidityParameters.tokenX),
+                address(liquidityParameters.tokenY),
+                liquidityParameters.amountX,
+                liquidityParameters.amountY,
+                liquidityParameters.amountY
+            )
+        );
+        // liquidityParameters.amountX should be sent as message value
+        router.addLiquidityNATIVE{value: liquidityParameters.amountY}(liquidityParameters);
+    }
+
+    function test_RemoveLiquidity() public {
+        uint256 amountYIn = 1e18;
+        uint24 binNumber = 7;
+        uint24 gap = 2;
+
+        ILBRouter.LiquidityParameters memory liquidityParameters =
+            getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+
+        // Add liquidity
+        (uint256 amountXAdded, uint256 amountYAdded,,, uint256[] memory depositIds, uint256[] memory liquidityMinted) =
+            router.addLiquidity(liquidityParameters);
+
+        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).LBPair;
+
+        pair.approveForAll(address(router), true);
+
+        (uint256 amountXOut, uint256 amountYOut) = router.removeLiquidity(
+            usdt, usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp
+        );
+
+        assertApproxEqAbs(amountXOut, amountXAdded, 10, "test_RemoveLiquidity::1");
+        assertApproxEqAbs(amountYOut, amountYAdded, 10, "test_RemoveLiquidity::2");
+
+        assertLe(amountXOut, amountXAdded, "test_RemoveLiquidity::3");
+        assertLe(amountYOut, amountYAdded, "test_RemoveLiquidity::4");
+
+        for (uint256 i = 0; i < depositIds.length; i++) {
+            assertEq(pair.balanceOf(address(this), depositIds[i]), 0, "test_RemoveLiquidity::5");
+        }
+
+        // Try with the token inversed
+        (amountXAdded, amountYAdded,,, depositIds, liquidityMinted) = router.addLiquidity(liquidityParameters);
+
+        (amountYOut, amountXOut) = router.removeLiquidity(
+            usdc, usdt, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp
+        );
+
+        assertApproxEqAbs(amountXOut, amountXAdded, 10, "test_RemoveLiquidity::6");
+        assertApproxEqAbs(amountYOut, amountYAdded, 10, "test_RemoveLiquidity::7");
+
+        // Try removing half of the liquidity
+        (amountXAdded, amountYAdded,,, depositIds, liquidityMinted) = router.addLiquidity(liquidityParameters);
+
+        for (uint256 i = 0; i < depositIds.length; i++) {
+            liquidityMinted[i] = liquidityMinted[i] / 2;
+        }
+
+        (amountXOut, amountYOut) = router.removeLiquidity(
+            usdt, usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp
+        );
+
+        assertApproxEqAbs(amountXOut, amountXAdded / 2, 10, "test_RemoveLiquidity::8");
+        assertApproxEqAbs(amountYOut, amountYAdded / 2, 10, "test_RemoveLiquidity::9");
+    }
+
+    function test_revert_RemoveLiquidity() public {
+        uint256 amountYIn = 1e18;
+        uint24 binNumber = 7;
+        uint24 gap = 2;
+
+        ILBRouter.LiquidityParameters memory liquidityParameters =
+            getLiquidityParameters(usdt, usdc, amountYIn, ID_ONE, binNumber, gap);
+
+        // Add liquidity
+        (uint256 amountXAdded, uint256 amountYAdded,,, uint256[] memory depositIds, uint256[] memory liquidityMinted) =
+            router.addLiquidity(liquidityParameters);
+
+        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).LBPair;
+        pair.approveForAll(address(router), true);
+
+        // Revert if the deadline is passed
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBRouter.LBRouter__DeadlineExceeded.selector, block.timestamp - 1, block.timestamp)
+        );
+        router.removeLiquidity(
+            usdt, usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, address(this), block.timestamp - 1
+        );
+
+        // Revert if the slippage is caught
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILBRouter.LBRouter__AmountSlippageCaught.selector, amountXAdded + 1, amountXAdded - 2, 0, amountYAdded
             )
         );
         router.removeLiquidity(
-            token6D,
-            token18D,
+            usdt,
+            usdc,
             DEFAULT_BIN_STEP,
-            totalXbalance + 1,
-            totalYBalance,
-            ids,
-            amounts,
-            DEV,
+            amountXAdded + 1,
+            0,
+            depositIds,
+            liquidityMinted,
+            address(this),
             block.timestamp
         );
+
         vm.expectRevert(
             abi.encodeWithSelector(
-                LBRouter__AmountSlippageCaught.selector,
-                totalXbalance,
-                totalXbalance,
-                totalYBalance + 1,
-                totalYBalance
+                ILBRouter.LBRouter__AmountSlippageCaught.selector, 0, amountXAdded - 2, amountYAdded + 1, amountYAdded
             )
         );
         router.removeLiquidity(
-            token6D,
-            token18D,
+            usdt,
+            usdc,
             DEFAULT_BIN_STEP,
-            totalXbalance,
-            totalYBalance + 1,
-            ids,
-            amounts,
-            DEV,
+            0,
+            amountYAdded + 1,
+            depositIds,
+            liquidityMinted,
+            address(this),
             block.timestamp
         );
     }
 
-    function testAddLiquidityAVAX() public {
-        pair = createLBPairDefaultFees(token6D, wavax);
-        uint24 _numberBins = 23;
-        uint256 _amountYIn = 100e18; //AVAX
-        uint24 _gap = 2;
+    function test_RemoveLiquidityNATIVE() public {
+        uint256 amountYIn = 1e18;
+        uint24 binNumber = 7;
+        uint24 gap = 2;
 
-        (int256[] memory _deltaIds, , , uint256 amountXIn) = addLiquidityFromRouter(
-            token6D,
-            ERC20MockDecimals(address(wavax)),
-            _amountYIn,
-            ID_ONE,
-            _numberBins,
-            _gap,
-            DEFAULT_BIN_STEP
+        ILBRouter.LiquidityParameters memory liquidityParameters =
+            getLiquidityParameters(wnative, usdc, amountYIn, ID_ONE, binNumber, gap);
+
+        // Add liquidity
+        (uint256 amountXAdded, uint256 amountYAdded,,, uint256[] memory depositIds, uint256[] memory liquidityMinted) =
+            router.addLiquidityNATIVE{value: liquidityParameters.amountX}(liquidityParameters);
+
+        ILBPair pair = factory.getLBPairInformation(wnative, usdc, DEFAULT_BIN_STEP).LBPair;
+        pair.approveForAll(address(router), true);
+
+        uint256 balanceNATIVEBefore = address(this).balance;
+        uint256 balanceUSDCBefore = usdc.balanceOf(address(this));
+
+        (uint256 amountToken, uint256 amountNATIVE) = router.removeLiquidityNATIVE(
+            usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, payable(address(this)), block.timestamp
         );
 
-        uint256[] memory amounts = new uint256[](_numberBins);
-        uint256[] memory ids = new uint256[](_numberBins);
-        uint256 totalXbalance;
-        uint256 totalYBalance;
-        for (uint256 i; i < _numberBins; i++) {
-            ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            uint256 LBTokenAmount = pair.balanceOf(DEV, ids[i]);
-            amounts[i] = LBTokenAmount;
-            (uint256 reserveX, uint256 reserveY) = pair.getBin(uint24(ids[i]));
-            bool hasXBalanceInBin = (LBTokenAmount != 0) && (reserveX != 0);
-            bool hasYBalanceInBin = (LBTokenAmount != 0) && (reserveY != 0);
-            totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
-            totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
+        assertApproxEqAbs(amountNATIVE, amountXAdded, 10, "test_RemoveLiquidityNATIVE::1");
+        assertApproxEqAbs(amountToken, amountYAdded, 10, "test_RemoveLiquidityNATIVE::2");
+
+        assertEq(address(this).balance, balanceNATIVEBefore + amountNATIVE, "test_RemoveLiquidityNATIVE::3");
+        assertEq(usdc.balanceOf(address(this)), balanceUSDCBefore + amountToken, "test_RemoveLiquidityNATIVE::4");
+    }
+
+    function test_revert_RemoveLiquidityNATIVE() public {
+        uint256 amountYIn = 1e18;
+        uint24 binNumber = 7;
+        uint24 gap = 2;
+
+        ILBRouter.LiquidityParameters memory liquidityParameters =
+            getLiquidityParameters(wnative, usdc, amountYIn, ID_ONE, binNumber, gap);
+
+        // Add liquidity
+        (uint256 amountXAdded,,,, uint256[] memory depositIds, uint256[] memory liquidityMinted) =
+            router.addLiquidityNATIVE{value: liquidityParameters.amountX}(liquidityParameters);
+
+        ILBPair pair = factory.getLBPairInformation(wnative, usdc, DEFAULT_BIN_STEP).LBPair;
+        pair.approveForAll(address(router), true);
+
+        // Revert if the deadline is passed
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBRouter.LBRouter__DeadlineExceeded.selector, block.timestamp - 1, block.timestamp)
+        );
+        router.removeLiquidityNATIVE(
+            usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, payable(address(this)), block.timestamp - 1
+        );
+
+        // Revert if the contract does not have a receive function
+        blockReceive = true;
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBRouter.LBRouter__FailedToSendNATIVE.selector, address(this), amountXAdded - 2)
+        );
+        router.removeLiquidityNATIVE(
+            usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, payable(address(this)), block.timestamp
+        );
+    }
+
+    function test_SweepERC20() public {
+        uint256 amount = 1e18;
+        usdc.mint(address(router), amount);
+
+        uint256 balanceBefore = usdc.balanceOf(address(this));
+        router.sweep(usdc, address(this), amount);
+        assertEq(usdc.balanceOf(address(this)), balanceBefore + amount, "test_SweepERC20::1");
+
+        deal(address(router), amount);
+
+        balanceBefore = address(this).balance;
+        router.sweep(IERC20(address(0)), address(this), type(uint256).max);
+        assertEq(address(this).balance, balanceBefore + amount, "test_SweepERC20::2");
+
+        // Can't sweep if non owner
+        usdc.mint(address(router), amount);
+        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__NotFactoryOwner.selector));
+        vm.prank(ALICE);
+        router.sweep(usdc, address(this), amount);
+    }
+
+    function test_SweepLBTokens() public {
+        ILBRouter.LiquidityParameters memory liquidityParameters =
+            getLiquidityParameters(usdt, usdc, 1e18, ID_ONE, 1, 0);
+
+        liquidityParameters.to = address(router);
+        (,,,, uint256[] memory depositIds, uint256[] memory liquidityMinted) = router.addLiquidity(liquidityParameters);
+
+        ILBPair pair = factory.getLBPairInformation(usdt, usdc, DEFAULT_BIN_STEP).LBPair;
+
+        uint256[] memory balancesBefore = new uint256[](depositIds.length);
+        for (uint256 i = 0; i < depositIds.length; i++) {
+            balancesBefore[i] = pair.balanceOf(DEV, depositIds[i]);
         }
-        assertApproxEqAbs(totalXbalance, amountXIn, 1000);
-        assertApproxEqAbs(totalYBalance, _amountYIn, 1000);
 
-        pair.setApprovalForAll(address(router), true);
+        router.sweepLBToken(pair, DEV, depositIds, liquidityMinted);
 
-        uint256 AVAXBalanceBefore = address(DEV).balance;
-        {
-            router.removeLiquidityAVAX(
-                token6D,
-                DEFAULT_BIN_STEP,
-                totalXbalance,
-                totalYBalance,
-                ids,
-                amounts,
-                DEV,
-                block.timestamp
+        for (uint256 i = 0; i < depositIds.length; i++) {
+            assertEq(
+                pair.balanceOf(DEV, depositIds[i]), balancesBefore[i] + liquidityMinted[i], "test_SweepLBTokens::1"
             );
         }
-        assertEq(token6D.balanceOf(DEV), amountXIn);
-        assertEq(address(DEV).balance - AVAXBalanceBefore, totalYBalance);
+
+        (,,,, depositIds, liquidityMinted) = router.addLiquidity(liquidityParameters);
+
+        // Can't sweep if non owner
+        vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__NotFactoryOwner.selector));
+        vm.prank(ALICE);
+        router.sweepLBToken(pair, DEV, depositIds, liquidityMinted);
     }
 
-    function testAddLiquidityAVAXReversed() public {
-        pair = createLBPairDefaultFees(wavax, token6D);
-        uint24 _numberBins = 21;
-        uint256 amountTokenIn = 100e18;
-        uint24 _gap = 2;
-        (int256[] memory _deltaIds, , , uint256 _amountAVAXIn) = addLiquidityFromRouter(
-            ERC20MockDecimals(address(wavax)),
-            token6D,
-            amountTokenIn,
-            ID_ONE,
-            _numberBins,
-            _gap,
-            DEFAULT_BIN_STEP
-        );
-        uint256[] memory amounts = new uint256[](_numberBins);
-        uint256[] memory ids = new uint256[](_numberBins);
-        uint256 totalXbalance;
-        uint256 totalYBalance;
-        for (uint256 i; i < _numberBins; i++) {
-            ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            uint256 LBTokenAmount = pair.balanceOf(DEV, ids[i]);
-            amounts[i] = LBTokenAmount;
-            (uint256 reserveX, uint256 reserveY) = pair.getBin(uint24(ids[i]));
-            bool hasXBalanceInBin = (LBTokenAmount != 0) && (reserveX != 0);
-            bool hasYBalanceInBin = (LBTokenAmount != 0) && (reserveY != 0);
-            totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
-            totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
+    receive() external payable {
+        if (blockReceive) {
+            revert("No receive function on the contract");
         }
-        assertApproxEqAbs(totalXbalance, _amountAVAXIn, 1000);
-        assertApproxEqAbs(totalYBalance, amountTokenIn, 1000);
-
-        pair.setApprovalForAll(address(router), true);
-        uint256 AVAXBalanceBefore = address(DEV).balance;
-        {
-            router.removeLiquidityAVAX(
-                token6D,
-                DEFAULT_BIN_STEP,
-                totalYBalance,
-                totalXbalance,
-                ids,
-                amounts,
-                DEV,
-                block.timestamp
-            );
-        }
-        assertEq(token6D.balanceOf(DEV), amountTokenIn);
-        assertEq(address(DEV).balance - AVAXBalanceBefore, totalXbalance);
     }
-
-    function testAddLiquidityTaxToken() public {
-        taxToken = new ERC20WithTransferTax();
-        pair = createLBPairDefaultFees(taxToken, wavax);
-        uint24 _numberBins = 9;
-        uint256 _amountAVAXIn = 100e18;
-        uint24 _gap = 2;
-
-        (int256[] memory _deltaIds, , , uint256 amountTokenIn) = addLiquidityFromRouter(
-            ERC20MockDecimals(address(taxToken)),
-            ERC20MockDecimals(address(wavax)),
-            _amountAVAXIn,
-            ID_ONE,
-            _numberBins,
-            _gap,
-            DEFAULT_BIN_STEP
-        );
-
-        uint256[] memory amounts = new uint256[](_numberBins);
-        uint256[] memory ids = new uint256[](_numberBins);
-        uint256 totalXbalance;
-        uint256 totalYBalance;
-        for (uint256 i; i < _numberBins; i++) {
-            ids[i] = uint256(int256(uint256(ID_ONE)) + _deltaIds[i]);
-            uint256 LBTokenAmount = pair.balanceOf(DEV, ids[i]);
-            amounts[i] = LBTokenAmount;
-            (uint256 reserveX, uint256 reserveY) = pair.getBin(uint24(ids[i]));
-            bool hasXBalanceInBin = (LBTokenAmount != 0) && (reserveX != 0);
-            bool hasYBalanceInBin = (LBTokenAmount != 0) && (reserveY != 0);
-            totalXbalance += hasXBalanceInBin ? (LBTokenAmount * reserveX - 1) / pair.totalSupply(ids[i]) + 1 : 0;
-            totalYBalance += hasYBalanceInBin ? (LBTokenAmount * reserveY - 1) / pair.totalSupply(ids[i]) + 1 : 0;
-        }
-
-        pair.setApprovalForAll(address(router), true);
-
-        vm.expectRevert(bytes("ERC20: burn amount exceeds balance"));
-        router.removeLiquidityAVAX(
-            taxToken,
-            DEFAULT_BIN_STEP,
-            totalXbalance,
-            _amountAVAXIn,
-            ids,
-            amounts,
-            DEV,
-            block.timestamp
-        );
-
-        router.removeLiquidity(
-            taxToken,
-            wavax,
-            DEFAULT_BIN_STEP,
-            totalXbalance,
-            _amountAVAXIn,
-            ids,
-            amounts,
-            DEV,
-            block.timestamp
-        );
-
-        assertEq(taxToken.balanceOf(DEV), amountTokenIn / 4 + 1); //2 transfers with 50% tax
-        assertEq(wavax.balanceOf(DEV), _amountAVAXIn);
-    }
-
-    function testAddLiquidityIgnored() public {
-        uint256 _amountYIn = 100e18;
-        uint24 _startId = ID_ONE;
-        uint24 _numberBins = 9;
-        uint24 _gap = 2;
-
-        addLiquidityFromRouter(token6D, token18D, _amountYIn, _startId, _numberBins, _gap, DEFAULT_BIN_STEP);
-
-        factory.setLBPairIgnored(token6D, token18D, DEFAULT_BIN_STEP, true);
-        ILBRouter.LiquidityParameters memory _liquidityParameters = prepareLiquidityParameters(
-            token6D,
-            token18D,
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap,
-            DEFAULT_BIN_STEP
-        );
-
-        router.addLiquidity(_liquidityParameters);
-    }
-
-    function testForIdSlippageCaughtReverts() public {
-        uint256 _amountYIn = 100e18;
-        uint24 _startId = ID_ONE;
-        uint24 _numberBins = 9;
-        uint24 _gap = 2;
-
-        addLiquidityFromRouter(token6D, token18D, _amountYIn, _startId, _numberBins, _gap, DEFAULT_BIN_STEP);
-
-        (, , , uint256 amountXIn) = spreadLiquidityForRouter(_amountYIn, _startId, _numberBins, _gap);
-
-        ILBRouter.LiquidityParameters memory _liquidityParameters = prepareLiquidityParameters(
-            token6D,
-            token18D,
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap,
-            DEFAULT_BIN_STEP
-        );
-        _liquidityParameters.amountXMin = 0;
-        _liquidityParameters.amountYMin = 0;
-        _liquidityParameters.idSlippage = 0;
-
-        //_liq.activeIdDesired + _liq.idSlippage < _activeId
-        token18D.mint(address(pair), _amountYIn);
-        pair.swap(false, ALICE);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                LBRouter__IdSlippageCaught.selector,
-                8388608,
-                _liquidityParameters.idSlippage,
-                8388620
-            )
-        );
-        router.addLiquidity(_liquidityParameters);
-
-        // _activeId + _liq.idSlippage < _liq.activeIdDesired
-        token6D.mint(address(pair), 2 * amountXIn);
-        pair.swap(true, ALICE);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                LBRouter__IdSlippageCaught.selector,
-                8388608,
-                _liquidityParameters.idSlippage,
-                8388596
-            )
-        );
-        router.addLiquidity(_liquidityParameters);
-    }
-
-    function testForAmountSlippageCaughtReverts() public {
-        uint256 _amountYIn = 100e18;
-        uint24 _startId = ID_ONE;
-        uint24 _numberBins = 9;
-        uint24 _gap = 2;
-        addLiquidityFromRouter(token6D, token18D, _amountYIn, _startId, _numberBins, _gap, DEFAULT_BIN_STEP);
-
-        ILBRouter.LiquidityParameters memory _liquidityParameters = prepareLiquidityParameters(
-            token6D,
-            token18D,
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap,
-            DEFAULT_BIN_STEP
-        );
-
-        (, , , uint256 amountXIn) = spreadLiquidityForRouter(_amountYIn, _startId, _numberBins, _gap);
-
-        token18D.mint(address(pair), _amountYIn / 3);
-        pair.swap(false, ALICE);
-
-        //no slippage allowed
-        _liquidityParameters.amountXMin = amountXIn;
-        _liquidityParameters.amountYMin = _amountYIn;
-
-        //Amount slippage is low in every case - depends only on C [bin composition] change in active bin
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                LBRouter__AmountSlippageCaught.selector,
-                98518565614280135938,
-                98515492353722968299,
-                100000000000000000000,
-                100000000000000000000
-            )
-        );
-        router.addLiquidity(_liquidityParameters);
-    }
-
-    function testForIdDesiredOverflowReverts() public {
-        uint256 _amountYIn = 100e18;
-        uint24 _startId = ID_ONE;
-        uint24 _numberBins = 9;
-        uint24 _gap = 2;
-        uint256 overflown24 = uint256(type(uint24).max) + 1;
-
-        ILBRouter.LiquidityParameters memory _liquidityParameters = prepareLiquidityParameters(
-            token6D,
-            token18D,
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap,
-            DEFAULT_BIN_STEP
-        );
-        //this will fail until n16 from audit will be fixed
-        _liquidityParameters.activeIdDesired = overflown24;
-        _liquidityParameters.idSlippage = 0;
-        vm.expectRevert(abi.encodeWithSelector(LBRouter__IdDesiredOverflows.selector, overflown24, 0));
-        router.addLiquidity(_liquidityParameters);
-
-        _liquidityParameters.activeIdDesired = 0;
-        _liquidityParameters.idSlippage = overflown24;
-        vm.expectRevert(abi.encodeWithSelector(LBRouter__IdDesiredOverflows.selector, 0, overflown24));
-        router.addLiquidity(_liquidityParameters);
-
-        _liquidityParameters.activeIdDesired = overflown24;
-        _liquidityParameters.idSlippage = overflown24;
-        vm.expectRevert(abi.encodeWithSelector(LBRouter__IdDesiredOverflows.selector, overflown24, overflown24));
-        router.addLiquidity(_liquidityParameters);
-    }
-
-    function testForLengthsMismatchReverts() public {
-        uint256 _amountYIn = 100e18;
-        uint24 _startId = ID_ONE;
-        uint24 _numberBins = 9;
-        uint24 _gap = 2;
-
-        ILBRouter.LiquidityParameters memory _liquidityParameters = prepareLiquidityParameters(
-            token6D,
-            token18D,
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap,
-            DEFAULT_BIN_STEP
-        );
-
-        int256[] memory _wrongLengthDeltaIds = new int256[](_numberBins - 1);
-
-        _liquidityParameters.deltaIds = _wrongLengthDeltaIds;
-
-        vm.expectRevert(LBRouter__LengthsMismatch.selector);
-        router.addLiquidity(_liquidityParameters);
-    }
-
-    function testWrongTokenOrderReverts() public {
-        uint256 _amountYIn = 100e18;
-        uint24 _startId = ID_ONE;
-        uint24 _numberBins = 9;
-        uint24 _gap = 2;
-
-        ILBRouter.LiquidityParameters memory _liquidityParameters = prepareLiquidityParameters(
-            token18D,
-            token6D,
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap,
-            DEFAULT_BIN_STEP
-        );
-
-        vm.expectRevert(LBRouter__WrongTokenOrder.selector);
-        router.addLiquidity(_liquidityParameters);
-        vm.expectRevert(LBRouter__WrongTokenOrder.selector);
-        router.addLiquidityAVAX(_liquidityParameters);
-    }
-
-    function testAddLiquidityAVAXnotAVAXReverts() public {
-        uint256 _amountYIn = 100e18;
-        uint24 _startId = ID_ONE;
-        uint24 _numberBins = 9;
-        uint24 _gap = 2;
-
-        ILBRouter.LiquidityParameters memory _liquidityParameters = prepareLiquidityParameters(
-            token6D,
-            token18D,
-            _amountYIn,
-            _startId,
-            _numberBins,
-            _gap,
-            DEFAULT_BIN_STEP
-        );
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                LBRouter__WrongAvaxLiquidityParameters.selector,
-                _liquidityParameters.tokenX,
-                _liquidityParameters.tokenY,
-                _liquidityParameters.amountX,
-                _liquidityParameters.amountY,
-                0
-            )
-        );
-        router.addLiquidityAVAX(_liquidityParameters);
-    }
-
-    receive() external payable {}
 }

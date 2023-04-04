@@ -5,11 +5,19 @@ libs = ['lib']
 optimizer = true
 optimizer_runs = 800
 
+fs_permissions = [{ access = "read", path = "./"}]
+
 [fuzz]
 runs = 1024
 
 [rpc_endpoints]
 avalanche = "https://api.avax.network/ext/bc/C/rpc"
 fuji = "https://api.avax-test.network/ext/bc/C/rpc"
+
+[etherscan]
+arbitrum = { key = "${ARBISCAN_API_KEY}", chain = 42161 }
+avalanche = { key = "${SNOWTRACE_API_KEY}", chain = 43114 }
+arbitrum_goerli = { key = "${ARBISCAN_API_KEY}", chain = 421613 }
+fuji = { key = "${SNOWTRACE_API_KEY}", chain = 43113 }
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

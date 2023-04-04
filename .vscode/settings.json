@@ -1,0 +1,6 @@
+{
+    "solidity.formatter": "forge",
+    "slither.solcPath": "",
+    "slither.hiddenDetectors": [],
+    "coverage-gutters.showLineCoverage": true
+}

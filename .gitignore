@@ -1,5 +1,5 @@
 .env
-.vscode
 cache
 out
 broadcast
+slither-results.json

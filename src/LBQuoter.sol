@@ -154,9 +154,9 @@ contract LBQuoter {
                 (uint256 reserveIn, uint256 reserveOut) = _getReserves(quote.pairs[i], route[i], route[i + 1]);
 
                 if (reserveIn > 0 && reserveOut > 0) {
-                    quote.amounts[i + 1] = (JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut)).safe128();
-                    quote.virtualAmountsWithoutSlippage[i + 1] = (
-                        JoeLibrary.quote(quote.virtualAmountsWithoutSlippage[i] * 997, reserveIn * 1000, reserveOut)
+                    quote.amounts[i + 1] = JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut).safe128();
+                    quote.virtualAmountsWithoutSlippage[i + 1] = JoeLibrary.quote(
+                        quote.virtualAmountsWithoutSlippage[i] * 997, reserveIn * 1000, reserveOut
                     ).safe128();
                     quote.fees[i] = 0.003e18; // 0.3%
                     quote.versions[i] = ILBRouter.Version.V1;
@@ -175,7 +175,7 @@ contract LBQuoter {
                             legacyLBPairsAvailable[j].LBPair, quote.amounts[i], swapForY
                         ) returns (uint256 swapAmountOut, uint256 fees) {
                             if (swapAmountOut > quote.amounts[i + 1]) {
-                                quote.amounts[i + 1] = (swapAmountOut).safe128();
+                                quote.amounts[i + 1] = swapAmountOut.safe128();
                                 quote.pairs[i] = address(legacyLBPairsAvailable[j].LBPair);
                                 quote.binSteps[i] = legacyLBPairsAvailable[j].binStep;
                                 quote.versions[i] = ILBRouter.Version.V2;
@@ -262,7 +262,7 @@ contract LBQuoter {
                 (uint256 reserveIn, uint256 reserveOut) = _getReserves(quote.pairs[i - 1], route[i - 1], route[i]);
 
                 if (reserveIn > 0 && reserveOut > quote.amounts[i]) {
-                    quote.amounts[i - 1] = (JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut)).safe128();
+                    quote.amounts[i - 1] = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut).safe128();
                     quote.virtualAmountsWithoutSlippage[i - 1] = (
                         JoeLibrary.quote(quote.virtualAmountsWithoutSlippage[i] * 1000, reserveOut * 997, reserveIn) + 1
                     ).safe128();
@@ -297,7 +297,7 @@ contract LBQuoter {
                                     uint24(activeId),
                                     quote.binSteps[i - 1],
                                     !swapForY
-                                ) + (fees).safe128();
+                                ) + fees.safe128();
 
                                 quote.fees[i - 1] = ((fees * 1e18) / quote.amounts[i - 1]).safe128(); // fee percentage in amountIn
                             }

@@ -8,6 +8,7 @@ import {Constants} from "./libraries/Constants.sol";
 import {JoeLibrary} from "./libraries/JoeLibrary.sol";
 import {PriceHelper} from "./libraries/PriceHelper.sol";
 import {Uint256x256Math} from "./libraries/math/Uint256x256Math.sol";
+import {SafeCast} from "./libraries/math/SafeCast.sol";
 
 import {IJoeFactory} from "./interfaces/IJoeFactory.sol";
 import {ILBFactory} from "./interfaces/ILBFactory.sol";
@@ -25,6 +26,7 @@ import {ILBRouter} from "./interfaces/ILBRouter.sol";
  */
 contract LBQuoter {
     using Uint256x256Math for uint256;
+    using SafeCast for uint256;
 
     error LBQuoter_InvalidLength();
 
@@ -187,7 +189,7 @@ contract LBQuoter {
                                     swapForY
                                 );
 
-                                quote.fees[i] = uint128((fees * 1e18) / quote.amounts[i]); // fee percentage in amountIn
+                                quote.fees[i] = ((fees * 1e18) / quote.amounts[i]).safe128(); // fee percentage in amountIn
                             }
                         } catch {}
                     }
@@ -340,7 +342,7 @@ contract LBQuoter {
                                     )
                                 ) + fees;
 
-                                quote.fees[i - 1] = (fees * 1e18) / quote.amounts[i - 1]; // fee percentage in amountIn
+                                quote.fees[i - 1] = ((uint256(fees) * 1e18) / quote.amounts[i - 1]).safe128(); // fee percentage in amountIn
                             }
                         } catch {}
                     }

@@ -8,6 +8,7 @@ import {Constants} from "./libraries/Constants.sol";
 import {JoeLibrary} from "./libraries/JoeLibrary.sol";
 import {PriceHelper} from "./libraries/PriceHelper.sol";
 import {Uint256x256Math} from "./libraries/math/Uint256x256Math.sol";
+import {SafeCast} from "./libraries/math/SafeCast.sol";
 
 import {IJoeFactory} from "./interfaces/IJoeFactory.sol";
 import {ILBFactory} from "./interfaces/ILBFactory.sol";
@@ -25,6 +26,7 @@ import {ILBRouter} from "./interfaces/ILBRouter.sol";
  */
 contract LBQuoter {
     using Uint256x256Math for uint256;
+    using SafeCast for uint256;
 
     error LBQuoter_InvalidLength();
 
@@ -152,10 +154,10 @@ contract LBQuoter {
                 (uint256 reserveIn, uint256 reserveOut) = _getReserves(quote.pairs[i], route[i], route[i + 1]);
 
                 if (reserveIn > 0 && reserveOut > 0) {
-                    quote.amounts[i + 1] = uint128(JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut));
-                    quote.virtualAmountsWithoutSlippage[i + 1] = uint128(
-                        JoeLibrary.quote(quote.virtualAmountsWithoutSlippage[i] * 997, reserveIn * 1000, reserveOut)
-                    );
+                    quote.amounts[i + 1] = JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut).safe128();
+                    quote.virtualAmountsWithoutSlippage[i + 1] = JoeLibrary.quote(
+                        quote.virtualAmountsWithoutSlippage[i] * 997, reserveIn * 1000, reserveOut
+                    ).safe128();
                     quote.fees[i] = 0.003e18; // 0.3%
                     quote.versions[i] = ILBRouter.Version.V1;
                 }
@@ -173,7 +175,7 @@ contract LBQuoter {
                             legacyLBPairsAvailable[j].LBPair, quote.amounts[i], swapForY
                         ) returns (uint256 swapAmountOut, uint256 fees) {
                             if (swapAmountOut > quote.amounts[i + 1]) {
-                                quote.amounts[i + 1] = uint128(swapAmountOut);
+                                quote.amounts[i + 1] = swapAmountOut.safe128();
                                 quote.pairs[i] = address(legacyLBPairsAvailable[j].LBPair);
                                 quote.binSteps[i] = legacyLBPairsAvailable[j].binStep;
                                 quote.versions[i] = ILBRouter.Version.V2;
@@ -182,12 +184,12 @@ contract LBQuoter {
                                 (,, uint256 activeId) = legacyLBPairsAvailable[j].LBPair.getReservesAndId();
                                 quote.virtualAmountsWithoutSlippage[i + 1] = _getV2Quote(
                                     quote.virtualAmountsWithoutSlippage[i] - fees,
-                                    uint24(activeId),
+                                    (activeId).safe24(),
                                     quote.binSteps[i],
                                     swapForY
                                 );
 
-                                quote.fees[i] = uint128((fees * 1e18) / quote.amounts[i]); // fee percentage in amountIn
+                                quote.fees[i] = ((fees * 1e18) / quote.amounts[i]).safe128(); // fee percentage in amountIn
                             }
                         } catch {}
                     }
@@ -213,16 +215,11 @@ contract LBQuoter {
 
                                 // Getting current price
                                 uint24 activeId = LBPairsAvailable[j].LBPair.getActiveId();
-                                quote.virtualAmountsWithoutSlippage[i + 1] = uint128(
-                                    _getV2Quote(
-                                        quote.virtualAmountsWithoutSlippage[i] - fees,
-                                        activeId,
-                                        quote.binSteps[i],
-                                        swapForY
-                                    )
+                                quote.virtualAmountsWithoutSlippage[i + 1] = _getV2Quote(
+                                    quote.virtualAmountsWithoutSlippage[i] - fees, activeId, quote.binSteps[i], swapForY
                                 );
 
-                                quote.fees[i] = (fees * 1e18) / quote.amounts[i]; // fee percentage in amountIn
+                                quote.fees[i] = ((uint256(fees) * 1e18) / quote.amounts[i]).safe128(); // fee percentage in amountIn
                             }
                         } catch {}
                     }
@@ -265,10 +262,10 @@ contract LBQuoter {
                 (uint256 reserveIn, uint256 reserveOut) = _getReserves(quote.pairs[i - 1], route[i - 1], route[i]);
 
                 if (reserveIn > 0 && reserveOut > quote.amounts[i]) {
-                    quote.amounts[i - 1] = uint128(JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut));
-                    quote.virtualAmountsWithoutSlippage[i - 1] = uint128(
+                    quote.amounts[i - 1] = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut).safe128();
+                    quote.virtualAmountsWithoutSlippage[i - 1] = (
                         JoeLibrary.quote(quote.virtualAmountsWithoutSlippage[i] * 1000, reserveOut * 997, reserveIn) + 1
-                    );
+                    ).safe128();
 
                     quote.fees[i - 1] = 0.003e18; // 0.3%
                     quote.versions[i - 1] = ILBRouter.Version.V1;
@@ -288,7 +285,7 @@ contract LBQuoter {
                         ) returns (uint256 swapAmountIn, uint256 fees) {
                             if (swapAmountIn != 0 && (swapAmountIn < quote.amounts[i - 1] || quote.amounts[i - 1] == 0))
                             {
-                                quote.amounts[i - 1] = uint128(swapAmountIn);
+                                quote.amounts[i - 1] = (swapAmountIn).safe128();
                                 quote.pairs[i - 1] = address(legacyLBPairsAvailable[j].LBPair);
                                 quote.binSteps[i - 1] = legacyLBPairsAvailable[j].binStep;
                                 quote.versions[i - 1] = ILBRouter.Version.V2;
@@ -300,9 +297,9 @@ contract LBQuoter {
                                     uint24(activeId),
                                     quote.binSteps[i - 1],
                                     !swapForY
-                                ) + uint128(fees);
+                                ) + fees.safe128();
 
-                                quote.fees[i - 1] = uint128((fees * 1e18) / quote.amounts[i - 1]); // fee percentage in amountIn
+                                quote.fees[i - 1] = ((fees * 1e18) / quote.amounts[i - 1]).safe128(); // fee percentage in amountIn
                             }
                         } catch {}
                     }
@@ -331,16 +328,11 @@ contract LBQuoter {
 
                                 // Getting current price
                                 uint24 activeId = LBPairsAvailable[j].LBPair.getActiveId();
-                                quote.virtualAmountsWithoutSlippage[i - 1] = uint128(
-                                    _getV2Quote(
-                                        quote.virtualAmountsWithoutSlippage[i],
-                                        activeId,
-                                        quote.binSteps[i - 1],
-                                        !swapForY
-                                    )
+                                quote.virtualAmountsWithoutSlippage[i - 1] = _getV2Quote(
+                                    quote.virtualAmountsWithoutSlippage[i], activeId, quote.binSteps[i - 1], !swapForY
                                 ) + fees;
 
-                                quote.fees[i - 1] = (fees * 1e18) / quote.amounts[i - 1]; // fee percentage in amountIn
+                                quote.fees[i - 1] = ((uint256(fees) * 1e18) / quote.amounts[i - 1]).safe128(); // fee percentage in amountIn
                             }
                         } catch {}
                     }
@@ -382,13 +374,13 @@ contract LBQuoter {
         returns (uint128 quote)
     {
         if (swapForY) {
-            quote = uint128(
-                PriceHelper.getPriceFromId(activeId, uint16(binStep)).mulShiftRoundDown(amount, Constants.SCALE_OFFSET)
-            );
+            quote = PriceHelper.getPriceFromId(activeId, uint16(binStep)).mulShiftRoundDown(
+                amount, Constants.SCALE_OFFSET
+            ).safe128();
         } else {
-            quote = uint128(
-                amount.shiftDivRoundDown(Constants.SCALE_OFFSET, PriceHelper.getPriceFromId(activeId, uint16(binStep)))
-            );
+            quote = amount.shiftDivRoundDown(
+                Constants.SCALE_OFFSET, PriceHelper.getPriceFromId(activeId, uint16(binStep))
+            ).safe128();
         }
     }
 }

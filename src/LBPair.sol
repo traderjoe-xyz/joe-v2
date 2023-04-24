@@ -9,9 +9,8 @@ import {Clone} from "./libraries/Clone.sol";
 import {Constants} from "./libraries/Constants.sol";
 import {FeeHelper} from "./libraries/FeeHelper.sol";
 import {LiquidityConfigurations} from "./libraries/math/LiquidityConfigurations.sol";
-import {ILBFactory} from "./interfaces/ILBFactory.sol";
+import {ILBFactory, ILBPair} from "./interfaces/ILBPairFactory.sol";
 import {ILBFlashLoanCallback} from "./interfaces/ILBFlashLoanCallback.sol";
-import {ILBPair} from "./interfaces/ILBPair.sol";
 import {LBToken} from "./LBToken.sol";
 import {OracleHelper} from "./libraries/OracleHelper.sol";
 import {PackedUint128Math} from "./libraries/math/PackedUint128Math.sol";
@@ -304,20 +303,19 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @return cumulativeVolatility The cumulative volatility of the Liquidity Book Pair at the given timestamp
      * @return cumulativeBinCrossed The cumulative bin crossed of the Liquidity Book Pair at the given timestamp
      */
-    function getOracleSampleAt(uint40 lookupTimestamp)
-        external
-        view
-        override
-        returns (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed)
-    {
+    function getOracleSampleAt(
+        uint40 lookupTimestamp
+    ) external view override returns (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed) {
         bytes32 parameters = _parameters;
         uint16 oracleId = parameters.getOracleId();
 
         if (oracleId == 0 || lookupTimestamp > block.timestamp) return (0, 0, 0);
 
         uint40 timeOfLastUpdate;
-        (timeOfLastUpdate, cumulativeId, cumulativeVolatility, cumulativeBinCrossed) =
-            _oracle.getSampleAt(oracleId, lookupTimestamp);
+        (timeOfLastUpdate, cumulativeId, cumulativeVolatility, cumulativeBinCrossed) = _oracle.getSampleAt(
+            oracleId,
+            lookupTimestamp
+        );
 
         if (timeOfLastUpdate < lookupTimestamp) {
             parameters.updateVolatilityParameters(parameters.getActiveId());
@@ -360,12 +358,10 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @return amountOutLeft The amount of token Y or X that cannot be swapped out
      * @return fee The fee of the swap
      */
-    function getSwapIn(uint128 amountOut, bool swapForY)
-        external
-        view
-        override
-        returns (uint128 amountIn, uint128 amountOutLeft, uint128 fee)
-    {
+    function getSwapIn(
+        uint128 amountOut,
+        bool swapForY
+    ) external view override returns (uint128 amountIn, uint128 amountOutLeft, uint128 fee) {
         amountOutLeft = amountOut;
 
         bytes32 parameters = _parameters;
@@ -421,12 +417,10 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @return amountOut The amount of token Y or X that can be swapped out
      * @return fee The fee of the swap
      */
-    function getSwapOut(uint128 amountIn, bool swapForY)
-        external
-        view
-        override
-        returns (uint128 amountInLeft, uint128 amountOut, uint128 fee)
-    {
+    function getSwapOut(
+        uint128 amountIn,
+        bool swapForY
+    ) external view override returns (uint128 amountInLeft, uint128 amountOut, uint128 fee) {
         bytes32 amountsInLeft = amountIn.encode(swapForY);
 
         bytes32 parameters = _parameters;
@@ -441,8 +435,13 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             if (!binReserves.isEmpty(!swapForY)) {
                 parameters = parameters.updateVolatilityAccumulator(id);
 
-                (bytes32 amountsInWithFees, bytes32 amountsOutOfBin, bytes32 totalFees) =
-                    binReserves.getAmounts(parameters, binStep, swapForY, id, amountsInLeft);
+                (bytes32 amountsInWithFees, bytes32 amountsOutOfBin, bytes32 totalFees) = binReserves.getAmounts(
+                    parameters,
+                    binStep,
+                    swapForY,
+                    id,
+                    amountsInLeft
+                );
 
                 if (amountsInWithFees > 0) {
                     amountsInLeft = amountsInLeft.sub(amountsInWithFees);
@@ -501,8 +500,13 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             if (!binReserves.isEmpty(!swapForY)) {
                 parameters = parameters.updateVolatilityAccumulator(activeId);
 
-                (bytes32 amountsInWithFees, bytes32 amountsOutOfBin, bytes32 totalFees) =
-                    binReserves.getAmounts(parameters, binStep, swapForY, activeId, amountsLeft);
+                (bytes32 amountsInWithFees, bytes32 amountsOutOfBin, bytes32 totalFees) = binReserves.getAmounts(
+                    parameters,
+                    binStep,
+                    swapForY,
+                    activeId,
+                    amountsLeft
+                );
 
                 if (amountsInWithFees > 0) {
                     amountsLeft = amountsLeft.sub(amountsInWithFees);
@@ -526,7 +530,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
                         parameters.getVolatilityAccumulator(),
                         totalFees,
                         pFees
-                        );
+                    );
                 }
             }
 
@@ -564,11 +568,11 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @param amounts The encoded amounts of token X and token Y to flash loan
      * @param data Any data that will be passed to the callback function
      */
-    function flashLoan(ILBFlashLoanCallback receiver, bytes32 amounts, bytes calldata data)
-        external
-        override
-        nonReentrant
-    {
+    function flashLoan(
+        ILBFlashLoanCallback receiver,
+        bytes32 amounts,
+        bytes calldata data
+    ) external override nonReentrant {
         if (amounts == 0) revert LBPair__ZeroBorrowAmount();
 
         bytes32 reservesBefore = _reserves;
@@ -629,7 +633,11 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @return amountsLeft The amounts of token X and token Y that were not added to the pool and were sent to `to`
      * @return liquidityMinted The amounts of LB tokens minted for each bin
      */
-    function mint(address to, bytes32[] calldata liquidityConfigs, address refundTo)
+    function mint(
+        address to,
+        bytes32[] calldata liquidityConfigs,
+        address refundTo
+    )
         external
         override
         nonReentrant
@@ -668,20 +676,19 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @param amountsToBurn The amounts of LB tokens to burn for each bin
      * @return amounts The amounts of token X and token Y received by the user
      */
-    function burn(address from, address to, uint256[] calldata ids, uint256[] calldata amountsToBurn)
-        external
-        override
-        nonReentrant
-        checkApproval(from, msg.sender)
-        returns (bytes32[] memory amounts)
-    {
+    function burn(
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amountsToBurn
+    ) external override nonReentrant checkApproval(from, msg.sender) returns (bytes32[] memory amounts) {
         if (ids.length == 0 || ids.length != amountsToBurn.length) revert LBPair__InvalidInput();
 
         amounts = new bytes32[](ids.length);
 
         bytes32 amountsOut;
 
-        for (uint256 i; i < ids.length;) {
+        for (uint256 i; i < ids.length; ) {
             uint24 id = ids[i].safe24();
             uint256 amountToBurn = amountsToBurn[i];
 
@@ -883,8 +890,13 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         uint24 maxVolatilityAccumulator
     ) internal {
         if (
-            baseFactor == 0 && filterPeriod == 0 && decayPeriod == 0 && reductionFactor == 0 && variableFeeControl == 0
-                && protocolShare == 0 && maxVolatilityAccumulator == 0
+            baseFactor == 0 &&
+            filterPeriod == 0 &&
+            decayPeriod == 0 &&
+            reductionFactor == 0 &&
+            variableFeeControl == 0 &&
+            protocolShare == 0 &&
+            maxVolatilityAccumulator == 0
         ) {
             revert LBPair__InvalidStaticFeeParameters();
         }
@@ -919,7 +931,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             variableFeeControl,
             protocolShare,
             maxVolatilityAccumulator
-            );
+        );
     }
 
     /**
@@ -943,10 +955,15 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         amountsLeft = amountsReceived;
 
-        for (uint256 i; i < liquidityConfigs.length;) {
+        for (uint256 i; i < liquidityConfigs.length; ) {
             (bytes32 maxAmountsInToBin, uint24 id) = liquidityConfigs[i].getAmountsAndId(amountsReceived);
-            (uint256 shares, bytes32 amountsIn, bytes32 amountsInToBin) =
-                _updateBin(binStep, activeId, id, maxAmountsInToBin, parameters);
+            (uint256 shares, bytes32 amountsIn, bytes32 amountsInToBin) = _updateBin(
+                binStep,
+                activeId,
+                id,
+                maxAmountsInToBin,
+                parameters
+            );
 
             amountsLeft = amountsLeft.sub(amountsIn);
 
@@ -973,10 +990,13 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @return amountsIn The amounts in
      * @return amountsInToBin The amounts in to the bin
      */
-    function _updateBin(uint16 binStep, uint24 activeId, uint24 id, bytes32 maxAmountsInToBin, bytes32 parameters)
-        internal
-        returns (uint256 shares, bytes32 amountsIn, bytes32 amountsInToBin)
-    {
+    function _updateBin(
+        uint16 binStep,
+        uint24 activeId,
+        uint24 id,
+        bytes32 maxAmountsInToBin,
+        bytes32 parameters
+    ) internal returns (uint256 shares, bytes32 amountsIn, bytes32 amountsInToBin) {
         bytes32 binReserves = _bins[id];
 
         uint256 price = id.getPriceFromId(binStep);

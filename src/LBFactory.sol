@@ -13,8 +13,7 @@ import {PendingOwnable} from "./libraries/PendingOwnable.sol";
 import {PriceHelper} from "./libraries/PriceHelper.sol";
 import {SafeCast} from "./libraries/math/SafeCast.sol";
 
-import {ILBFactory} from "./interfaces/ILBFactory.sol";
-import {ILBPair} from "./interfaces/ILBPair.sol";
+import {ILBFactory, ILBPair} from "./interfaces/ILBPairFactory.sol";
 
 /**
  * @title Liquidity Book Factory
@@ -167,12 +166,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param binStep The bin step of the LBPair
      * @return lbPairInformation The LBPairInformation
      */
-    function getLBPairInformation(IERC20 tokenA, IERC20 tokenB, uint256 binStep)
-        external
-        view
-        override
-        returns (LBPairInformation memory lbPairInformation)
-    {
+    function getLBPairInformation(
+        IERC20 tokenA,
+        IERC20 tokenB,
+        uint256 binStep
+    ) external view override returns (LBPairInformation memory lbPairInformation) {
         return _getLBPairInformation(tokenA, tokenB, binStep);
     }
 
@@ -189,7 +187,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @return maxVolatilityAccumulator The max volatility accumulator of the preset
      * @return isOpen Whether the preset is open or not
      */
-    function getPreset(uint256 binStep)
+    function getPreset(
+        uint256 binStep
+    )
         external
         view
         override
@@ -262,12 +262,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param tokenY The second token of the pair
      * @return lbPairsAvailable The list of available LBPairs
      */
-    function getAllLBPairs(IERC20 tokenX, IERC20 tokenY)
-        external
-        view
-        override
-        returns (LBPairInformation[] memory lbPairsAvailable)
-    {
+    function getAllLBPairs(
+        IERC20 tokenX,
+        IERC20 tokenY
+    ) external view override returns (LBPairInformation[] memory lbPairsAvailable) {
         unchecked {
             (IERC20 tokenA, IERC20 tokenB) = _sortTokens(tokenX, tokenY);
 
@@ -322,11 +320,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param binStep The bin step in basis point, used to calculate log(1 + binStep / 10_000)
      * @return pair The address of the newly created LBPair
      */
-    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
-        external
-        override
-        returns (ILBPair pair)
-    {
+    function createLBPair(
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint24 activeId,
+        uint16 binStep
+    ) external override returns (ILBPair pair) {
         if (!_presets.contains(binStep)) revert LBFactory__BinStepHasNoPreset(binStep);
 
         bytes32 preset = bytes32(_presets.get(binStep));
@@ -376,8 +375,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
             activeId
         );
 
-        _lbPairsInfo[tokenA][tokenB][binStep] =
-            LBPairInformation({binStep: binStep, LBPair: pair, createdByOwner: isOwner, ignoredForRouting: false});
+        _lbPairsInfo[tokenA][tokenB][binStep] = LBPairInformation({
+            binStep: binStep,
+            LBPair: pair,
+            createdByOwner: isOwner,
+            ignoredForRouting: false
+        });
 
         _allLBPairs.push(pair);
         _availableLBPairBinSteps[tokenA][tokenB].add(binStep);
@@ -456,7 +459,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             variableFeeControl,
             protocolShare,
             maxVolatilityAccumulator
-            );
+        );
 
         emit PresetOpenStateChanged(binStep, isOpen);
     }
@@ -604,11 +607,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param binStep The bin step of the LBPair
      * @return The LBPairInformation
      */
-    function _getLBPairInformation(IERC20 tokenA, IERC20 tokenB, uint256 binStep)
-        private
-        view
-        returns (LBPairInformation memory)
-    {
+    function _getLBPairInformation(
+        IERC20 tokenA,
+        IERC20 tokenB,
+        uint256 binStep
+    ) private view returns (LBPairInformation memory) {
         (tokenA, tokenB) = _sortTokens(tokenA, tokenB);
         return _lbPairsInfo[tokenA][tokenB][binStep];
     }

@@ -5,10 +5,9 @@ pragma solidity 0.8.10;
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 import {IJoeFactory} from "./IJoeFactory.sol";
-import {ILBFactory} from "./ILBFactory.sol";
+import {ILBFactory, ILBPair} from "./ILBPairFactory.sol";
 import {ILBLegacyFactory} from "./ILBLegacyFactory.sol";
 import {ILBLegacyRouter} from "./ILBLegacyRouter.sol";
-import {ILBPair} from "./ILBPair.sol";
 import {ILBToken} from "./ILBToken.sol";
 import {IWNATIVE} from "./IWNATIVE.sol";
 
@@ -40,7 +39,11 @@ interface ILBRouter {
     error LBRouter__InvalidTokenPath(address wrongToken);
     error LBRouter__InvalidVersion(uint256 version);
     error LBRouter__WrongNativeLiquidityParameters(
-        address tokenX, address tokenY, uint256 amountX, uint256 amountY, uint256 msgValue
+        address tokenX,
+        address tokenY,
+        uint256 amountX,
+        uint256 amountY,
+        uint256 msgValue
     );
 
     /**
@@ -117,21 +120,28 @@ interface ILBRouter {
 
     function getPriceFromId(ILBPair LBPair, uint24 id) external view returns (uint256);
 
-    function getSwapIn(ILBPair LBPair, uint128 amountOut, bool swapForY)
-        external
-        view
-        returns (uint128 amountIn, uint128 amountOutLeft, uint128 fee);
+    function getSwapIn(
+        ILBPair LBPair,
+        uint128 amountOut,
+        bool swapForY
+    ) external view returns (uint128 amountIn, uint128 amountOutLeft, uint128 fee);
 
-    function getSwapOut(ILBPair LBPair, uint128 amountIn, bool swapForY)
-        external
-        view
-        returns (uint128 amountInLeft, uint128 amountOut, uint128 fee);
+    function getSwapOut(
+        ILBPair LBPair,
+        uint128 amountIn,
+        bool swapForY
+    ) external view returns (uint128 amountInLeft, uint128 amountOut, uint128 fee);
 
-    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
-        external
-        returns (ILBPair pair);
+    function createLBPair(
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint24 activeId,
+        uint16 binStep
+    ) external returns (ILBPair pair);
 
-    function addLiquidity(LiquidityParameters calldata liquidityParameters)
+    function addLiquidity(
+        LiquidityParameters calldata liquidityParameters
+    )
         external
         returns (
             uint256 amountXAdded,
@@ -142,7 +152,9 @@ interface ILBRouter {
             uint256[] memory liquidityMinted
         );
 
-    function addLiquidityNATIVE(LiquidityParameters calldata liquidityParameters)
+    function addLiquidityNATIVE(
+        LiquidityParameters calldata liquidityParameters
+    )
         external
         payable
         returns (
@@ -193,10 +205,12 @@ interface ILBRouter {
         uint256 deadline
     ) external returns (uint256 amountOut);
 
-    function swapExactNATIVEForTokens(uint256 amountOutMin, Path memory path, address to, uint256 deadline)
-        external
-        payable
-        returns (uint256 amountOut);
+    function swapExactNATIVEForTokens(
+        uint256 amountOutMin,
+        Path memory path,
+        address to,
+        uint256 deadline
+    ) external payable returns (uint256 amountOut);
 
     function swapTokensForExactTokens(
         uint256 amountOut,
@@ -214,10 +228,12 @@ interface ILBRouter {
         uint256 deadline
     ) external returns (uint256[] memory amountsIn);
 
-    function swapNATIVEForExactTokens(uint256 amountOut, Path memory path, address to, uint256 deadline)
-        external
-        payable
-        returns (uint256[] memory amountsIn);
+    function swapNATIVEForExactTokens(
+        uint256 amountOut,
+        Path memory path,
+        address to,
+        uint256 deadline
+    ) external payable returns (uint256[] memory amountsIn);
 
     function swapExactTokensForTokensSupportingFeeOnTransferTokens(
         uint256 amountIn,
@@ -244,6 +260,10 @@ interface ILBRouter {
 
     function sweep(IERC20 token, address to, uint256 amount) external;
 
-    function sweepLBToken(ILBToken _lbToken, address _to, uint256[] calldata _ids, uint256[] calldata _amounts)
-        external;
+    function sweepLBToken(
+        ILBToken _lbToken,
+        address _to,
+        uint256[] calldata _ids,
+        uint256[] calldata _amounts
+    ) external;
 }

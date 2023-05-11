@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.10;
 
 /**
  * @title Liquidity Book Joe Library Helper Library

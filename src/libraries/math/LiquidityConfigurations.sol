@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.10;
 
 import {PackedUint128Math} from "./PackedUint128Math.sol";
 import {Encoded} from "./Encoded.sol";

@@ -303,8 +303,11 @@ abstract contract TestHelper is Test {
         uint8 nbBinX,
         uint8 nbBinY
     ) public {
-        deal(address(wnative), from, amountX);
-        deal(address(usdc), from, amountY);
+        IERC20 tokenX = lbPair.getTokenX();
+        IERC20 tokenY = lbPair.getTokenY();
+
+        deal(address(tokenX), from, amountX);
+        deal(address(tokenY), from, amountY);
 
         uint256 total = getTotalBins(nbBinX, nbBinY);
 
@@ -320,8 +323,8 @@ abstract contract TestHelper is Test {
         }
 
         vm.startPrank(from);
-        wnative.transfer(address(lbPair), amountX);
-        usdc.transfer(address(lbPair), amountY);
+        tokenX.transfer(address(lbPair), amountX);
+        tokenY.transfer(address(lbPair), amountY);
         vm.stopPrank();
 
         lbPair.mint(to, liquidityConfigurations, from);

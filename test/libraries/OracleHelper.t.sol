@@ -193,11 +193,12 @@ contract OracleHelperTest is Test {
     }
 
     function testFuzz_UpdateDeltaTsLowerThan2Minutes(Updateinputs memory inputs) external {
-        vm.assume(
-            inputs.oracleId > 0 && inputs.oracleLength >= inputs.oracleId && inputs.createdAt <= inputs.timestamp
-                && inputs.timestamp - inputs.createdAt <= 120 && inputs.volatility <= Encoded.MASK_UINT20
-                && inputs.previousVolatility <= Encoded.MASK_UINT20
-        );
+        inputs.oracleId = uint16(bound(inputs.oracleId, 1, type(uint16).max));
+        inputs.oracleLength = uint16(bound(inputs.oracleLength, inputs.oracleId, type(uint16).max));
+        inputs.createdAt =
+            uint40(bound(inputs.createdAt, inputs.timestamp > 120 ? inputs.timestamp - 120 : 0, inputs.timestamp));
+        inputs.volatility = uint24(bound(inputs.volatility, 1, Encoded.MASK_UINT20));
+        inputs.previousVolatility = uint24(bound(inputs.previousVolatility, 1, Encoded.MASK_UINT20));
 
         vm.warp(inputs.createdAt);
 

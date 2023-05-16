@@ -8,6 +8,10 @@ import "../../src/libraries/Clone.sol";
 import "../../src/libraries/ImmutableClone.sol";
 
 contract TestImmutableClone is Test {
+    function cloneDeterministic(address implementation, bytes memory data, bytes32 salt) public returns (address) {
+        return ImmutableClone.cloneDeterministic(implementation, data, salt);
+    }
+
     function testFuzz_CloneDeterministic(bytes32 salt) public {
         address clone = address(ImmutableClone.cloneDeterministic(address(1), "", salt));
 
@@ -17,9 +21,9 @@ contract TestImmutableClone is Test {
             "testFuzz_CloneDeterministic::1"
         );
 
-        // Check that cloning twice with the same salt reverts
+        // Check that cloning twice with the same salt reverts, needs to call the contract for the error to be caught
         vm.expectRevert(ImmutableClone.DeploymentFailed.selector);
-        ImmutableClone.cloneDeterministic(address(1), "", salt);
+        this.cloneDeterministic(address(1), "", salt);
     }
 
     function testFuzz_Implementation(bytes memory data) public {
@@ -60,7 +64,7 @@ contract TestImmutableClone is Test {
         address implementation = address(new Implementation());
         address clone = ImmutableClone.cloneDeterministic(implementation, b, bytes32(0));
 
-        assertEq(Implementation(clone).getBytes(b.length), b, "testFuzz_CloneDeterministicMaxLength::1");
+        assertEq(Implementation(clone).getBytes(b.length), b, "test_CloneDeterministicMaxLength::1");
     }
 
     function test_CloneDeterministicTooBig() public {

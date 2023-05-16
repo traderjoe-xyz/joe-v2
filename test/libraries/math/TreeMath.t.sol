@@ -31,6 +31,47 @@ contract TreeMathTest is Test {
         }
     }
 
+    function testFuzz_AddAndRemove(uint24 id) external {
+        _tree.add(id);
+
+        assertEq(_tree.contains(id), true, "testFuzz_AddAndRemove::1");
+
+        assertGt(uint256(_tree.level0), 0, "testFuzz_AddAndRemove::2");
+        assertGt(uint256(_tree.level1[bytes32(uint256(id >> 16))]), 0, "testFuzz_AddAndRemove::3");
+        assertGt(uint256(_tree.level2[bytes32(uint256(id >> 8))]), 0, "testFuzz_AddAndRemove::4");
+
+        _tree.remove(id);
+
+        assertEq(_tree.contains(id), false, "testFuzz_AddAndRemove::5");
+
+        assertEq(uint256(_tree.level0), 0, "testFuzz_AddAndRemove::6");
+        assertEq(uint256(_tree.level1[bytes32(uint256(id >> 16))]), 0, "testFuzz_AddAndRemove::7");
+        assertEq(uint256(_tree.level2[bytes32(uint256(id >> 8))]), 0, "testFuzz_AddAndRemove::8");
+    }
+
+    function testFuzz_RemoveLogicAndSearchRight(uint24 id) external {
+        vm.assume(id > 0);
+
+        _tree.add(id);
+        _tree.add(id - 1);
+
+        assertEq(_tree.findFirstRight(id), id - 1, "testFuzz_RemoveLogicAndSearchRight::1");
+
+        _tree.remove(id - 1);
+        assertEq(_tree.findFirstRight(id), type(uint24).max, "testFuzz_RemoveLogicAndSearchRight::2");
+    }
+
+    function testFuzz_RemoveLogicAndSearchLeft(uint24 id) external {
+        vm.assume(id < type(uint24).max);
+
+        _tree.add(id);
+        _tree.add(id + 1);
+        assertEq(_tree.findFirstLeft(id), id + 1, "testFuzz_RemoveLogicAndSearchLeft::1");
+
+        _tree.remove(id + 1);
+        assertEq(_tree.findFirstLeft(id), 0, "testFuzz_RemoveLogicAndSearchLeft::2");
+    }
+
     function test_FindFirst() external {
         _tree.add(0);
         _tree.add(1);

@@ -43,6 +43,27 @@ contract LiquidityBinRouterTest is TestHelper {
         assertEq(address(router.getWNATIVE()), address(wnative), "test_Constructor::5");
     }
 
+    function test_AddLiquidityBadId() public {
+        factory.setPreset(1, 10_000, 1, 10, 5_000, 1, 0, 1, false);
+
+        uint24 id = 1 << 23;
+        LBPair lbPair = createLBPairFromStartIdAndBinStep(usdt, usdc, id, 1);
+
+        addLiquidity(DEV, DEV, lbPair, id - 1, 0, 1e18, 0, 1);
+        addLiquidity(DEV, DEV, lbPair, id, 1e18, 1e18, 1, 1);
+
+        removeLiquidity(DEV, DEV, lbPair, id - 1, 1e18, 1, 1);
+
+        addLiquidity(DEV, DEV, lbPair, 8000000, 0, 1e18, 0, 1);
+
+        deal(address(usdt), address(DEV), 2e18);
+
+        vm.prank(DEV);
+        usdt.transfer(address(lbPair), 2e18);
+
+        lbPair.swap(true, DEV);
+    }
+
     function test_ReceiveNATIVE() public {
         // Users can't send NATIVE to the router
         vm.expectRevert(abi.encodeWithSelector(ILBRouter.LBRouter__SenderIsNotWNATIVE.selector));

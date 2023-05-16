@@ -79,11 +79,11 @@ library TreeMath {
 
             if (newLeaves == 0) {
                 bytes32 key1 = key2 >> 8;
-                leaves = tree.level1[key1];
+                newLeaves = tree.level1[key1] & ~bytes32(1 << (uint256(key2) & type(uint8).max));
 
-                tree.level1[key1] = leaves & ~bytes32(1 << (uint256(key2) & type(uint8).max));
+                tree.level1[key1] = newLeaves;
 
-                if (leaves == 0) tree.level0 &= ~bytes32(1 << (uint256(key1) & type(uint8).max));
+                if (newLeaves == 0) tree.level0 &= ~bytes32(1 << (uint256(key1) & type(uint8).max));
             }
 
             return true;

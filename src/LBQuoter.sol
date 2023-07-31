@@ -147,21 +147,37 @@ contract LBQuoter {
         quote.virtualAmountsWithoutSlippage[0] = amountIn;
 
         for (uint256 i; i < swapLength; i++) {
-            // Fetch swap for V1
-            if (_factoryV1 != address(0)) {
-                quote.pairs[i] = IJoeFactory(_factoryV1).getPair(route[i], route[i + 1]);
+            if (_factoryV2 != address(0)) {
+                // Fetch swaps for V2.1
+                ILBFactory.LBPairInformation[] memory LBPairsAvailable =
+                    ILBFactory(_factoryV2).getAllLBPairs(IERC20(route[i]), IERC20(route[i + 1]));
 
-                if (quote.pairs[i] != address(0) && quote.amounts[i] > 0) {
-                    (uint256 reserveIn, uint256 reserveOut) = _getReserves(quote.pairs[i], route[i], route[i + 1]);
+                if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
+                    for (uint256 j; j < LBPairsAvailable.length; j++) {
+                        if (!LBPairsAvailable[j].ignoredForRouting) {
+                            bool swapForY = address(LBPairsAvailable[j].LBPair.getTokenY()) == route[i + 1];
 
-                    if (reserveIn > 0 && reserveOut > 0) {
-                        quote.amounts[i + 1] =
-                            JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut).safe128();
-                        quote.virtualAmountsWithoutSlippage[i + 1] = JoeLibrary.quote(
-                            quote.virtualAmountsWithoutSlippage[i] * 997, reserveIn * 1000, reserveOut
-                        ).safe128();
-                        quote.fees[i] = 0.003e18; // 0.3%
-                        quote.versions[i] = ILBRouter.Version.V1;
+                            try ILBRouter(_routerV2).getSwapOut(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
+                            returns (uint128 amountInLeft, uint128 swapAmountOut, uint128 fees) {
+                                if (amountInLeft == 0 && swapAmountOut > quote.amounts[i + 1]) {
+                                    quote.amounts[i + 1] = swapAmountOut;
+                                    quote.pairs[i] = address(LBPairsAvailable[j].LBPair);
+                                    quote.binSteps[i] = uint16(LBPairsAvailable[j].binStep);
+                                    quote.versions[i] = ILBRouter.Version.V2_1;
+
+                                    // Getting current price
+                                    uint24 activeId = LBPairsAvailable[j].LBPair.getActiveId();
+                                    quote.virtualAmountsWithoutSlippage[i + 1] = _getV2Quote(
+                                        quote.virtualAmountsWithoutSlippage[i] - fees,
+                                        activeId,
+                                        quote.binSteps[i],
+                                        swapForY
+                                    );
+
+                                    quote.fees[i] = ((uint256(fees) * 1e18) / quote.amounts[i]).safe128(); // fee percentage in amountIn
+                                }
+                            } catch {}
+                        }
                     }
                 }
             }
@@ -201,36 +217,26 @@ contract LBQuoter {
                 }
             }
 
-            if (_factoryV2 != address(0)) {
-                // Fetch swaps for V2.1
-                ILBFactory.LBPairInformation[] memory LBPairsAvailable =
-                    ILBFactory(_factoryV2).getAllLBPairs(IERC20(route[i]), IERC20(route[i + 1]));
+            // Fetch swap for V1
+            if (_factoryV1 != address(0)) {
+                address pair = IJoeFactory(_factoryV1).getPair(route[i], route[i + 1]);
 
-                if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
-                    for (uint256 j; j < LBPairsAvailable.length; j++) {
-                        if (!LBPairsAvailable[j].ignoredForRouting) {
-                            bool swapForY = address(LBPairsAvailable[j].LBPair.getTokenY()) == route[i + 1];
+                if (pair != address(0) && quote.amounts[i] > 0) {
+                    (uint256 reserveIn, uint256 reserveOut) = _getReserves(pair, route[i], route[i + 1]);
 
-                            try ILBRouter(_routerV2).getSwapOut(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
-                            returns (uint128 amountInLeft, uint128 swapAmountOut, uint128 fees) {
-                                if (amountInLeft == 0 && swapAmountOut > quote.amounts[i + 1]) {
-                                    quote.amounts[i + 1] = swapAmountOut;
-                                    quote.pairs[i] = address(LBPairsAvailable[j].LBPair);
-                                    quote.binSteps[i] = uint16(LBPairsAvailable[j].binStep);
-                                    quote.versions[i] = ILBRouter.Version.V2_1;
+                    if (reserveIn > 0 && reserveOut > 0) {
+                        uint256 swapAmountOut = JoeLibrary.getAmountOut(quote.amounts[i], reserveIn, reserveOut);
 
-                                    // Getting current price
-                                    uint24 activeId = LBPairsAvailable[j].LBPair.getActiveId();
-                                    quote.virtualAmountsWithoutSlippage[i + 1] = _getV2Quote(
-                                        quote.virtualAmountsWithoutSlippage[i] - fees,
-                                        activeId,
-                                        quote.binSteps[i],
-                                        swapForY
-                                    );
+                        if (swapAmountOut > quote.amounts[i + 1]) {
+                            quote.amounts[i + 1] = swapAmountOut.safe128();
+                            quote.pairs[i] = pair;
+                            quote.virtualAmountsWithoutSlippage[i + 1] = JoeLibrary.quote(
+                                quote.virtualAmountsWithoutSlippage[i] * 997, reserveIn * 1000, reserveOut
+                            ).safe128();
 
-                                    quote.fees[i] = ((uint256(fees) * 1e18) / quote.amounts[i]).safe128(); // fee percentage in amountIn
-                                }
-                            } catch {}
+                            quote.fees[i] = 0.003e18; // 0.3%
+                            quote.versions[i] = ILBRouter.Version.V1;
+                            quote.binSteps[i] = 0;
                         }
                     }
                 }
@@ -258,29 +264,47 @@ contract LBQuoter {
         quote.pairs = new address[](swapLength);
         quote.binSteps = new uint256[](swapLength);
         quote.versions = new ILBRouter.Version[](swapLength);
-        quote.fees = new uint128[](swapLength);
         quote.amounts = new uint128[](route.length);
         quote.virtualAmountsWithoutSlippage = new uint128[](route.length);
+        quote.fees = new uint128[](swapLength);
 
         quote.amounts[swapLength] = amountOut;
         quote.virtualAmountsWithoutSlippage[swapLength] = amountOut;
 
         for (uint256 i = swapLength; i > 0; i--) {
-            if (_factoryV1 != address(0)) {
-                // Fetch swap for V1
-                quote.pairs[i - 1] = IJoeFactory(_factoryV1).getPair(route[i - 1], route[i]);
-                if (quote.pairs[i - 1] != address(0) && quote.amounts[i] > 0) {
-                    (uint256 reserveIn, uint256 reserveOut) = _getReserves(quote.pairs[i - 1], route[i - 1], route[i]);
+            if (_factoryV2 != address(0)) {
+                // Fetch swaps for V2.1
+                ILBFactory.LBPairInformation[] memory LBPairsAvailable =
+                    ILBFactory(_factoryV2).getAllLBPairs(IERC20(route[i - 1]), IERC20(route[i]));
 
-                    if (reserveIn > 0 && reserveOut > quote.amounts[i]) {
-                        quote.amounts[i - 1] = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut).safe128();
-                        quote.virtualAmountsWithoutSlippage[i - 1] = (
-                            JoeLibrary.quote(quote.virtualAmountsWithoutSlippage[i] * 1000, reserveOut * 997, reserveIn)
-                                + 1
-                        ).safe128();
+                if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
+                    for (uint256 j; j < LBPairsAvailable.length; j++) {
+                        if (!LBPairsAvailable[j].ignoredForRouting) {
+                            bool swapForY = address(LBPairsAvailable[j].LBPair.getTokenY()) == route[i];
+                            try ILBRouter(_routerV2).getSwapIn(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
+                            returns (uint128 swapAmountIn, uint128 amountOutLeft, uint128 fees) {
+                                if (
+                                    amountOutLeft == 0 && swapAmountIn != 0
+                                        && (swapAmountIn < quote.amounts[i - 1] || quote.amounts[i - 1] == 0)
+                                ) {
+                                    quote.amounts[i - 1] = swapAmountIn;
+                                    quote.pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
+                                    quote.binSteps[i - 1] = uint16(LBPairsAvailable[j].binStep);
+                                    quote.versions[i - 1] = ILBRouter.Version.V2_1;
 
-                        quote.fees[i - 1] = 0.003e18; // 0.3%
-                        quote.versions[i - 1] = ILBRouter.Version.V1;
+                                    // Getting current price
+                                    uint24 activeId = LBPairsAvailable[j].LBPair.getActiveId();
+                                    quote.virtualAmountsWithoutSlippage[i - 1] = _getV2Quote(
+                                        quote.virtualAmountsWithoutSlippage[i],
+                                        activeId,
+                                        quote.binSteps[i - 1],
+                                        !swapForY
+                                    ) + fees;
+
+                                    quote.fees[i - 1] = ((uint256(fees) * 1e18) / quote.amounts[i - 1]).safe128(); // fee percentage in amountIn
+                                }
+                            } catch {}
+                        }
                     }
                 }
             }
@@ -323,38 +347,27 @@ contract LBQuoter {
                 }
             }
 
-            if (_factoryV2 != address(0)) {
-                // Fetch swaps for V2.1
-                ILBFactory.LBPairInformation[] memory LBPairsAvailable =
-                    ILBFactory(_factoryV2).getAllLBPairs(IERC20(route[i - 1]), IERC20(route[i]));
+            if (_factoryV1 != address(0)) {
+                // Fetch swap for V1
+                address pair = IJoeFactory(_factoryV1).getPair(route[i - 1], route[i]);
+                if (pair != address(0) && quote.amounts[i] > 0) {
+                    (uint256 reserveIn, uint256 reserveOut) = _getReserves(pair, route[i - 1], route[i]);
 
-                if (LBPairsAvailable.length > 0 && quote.amounts[i] > 0) {
-                    for (uint256 j; j < LBPairsAvailable.length; j++) {
-                        if (!LBPairsAvailable[j].ignoredForRouting) {
-                            bool swapForY = address(LBPairsAvailable[j].LBPair.getTokenY()) == route[i];
-                            try ILBRouter(_routerV2).getSwapIn(LBPairsAvailable[j].LBPair, quote.amounts[i], swapForY)
-                            returns (uint128 swapAmountIn, uint128 amountOutLeft, uint128 fees) {
-                                if (
-                                    amountOutLeft == 0 && swapAmountIn != 0
-                                        && (swapAmountIn < quote.amounts[i - 1] || quote.amounts[i - 1] == 0)
-                                ) {
-                                    quote.amounts[i - 1] = swapAmountIn;
-                                    quote.pairs[i - 1] = address(LBPairsAvailable[j].LBPair);
-                                    quote.binSteps[i - 1] = uint16(LBPairsAvailable[j].binStep);
-                                    quote.versions[i - 1] = ILBRouter.Version.V2_1;
+                    if (reserveIn > 0 && reserveOut > quote.amounts[i]) {
+                        uint256 swapAmountIn = JoeLibrary.getAmountIn(quote.amounts[i], reserveIn, reserveOut);
 
-                                    // Getting current price
-                                    uint24 activeId = LBPairsAvailable[j].LBPair.getActiveId();
-                                    quote.virtualAmountsWithoutSlippage[i - 1] = _getV2Quote(
-                                        quote.virtualAmountsWithoutSlippage[i],
-                                        activeId,
-                                        quote.binSteps[i - 1],
-                                        !swapForY
-                                    ) + fees;
+                        if (swapAmountIn < quote.amounts[i - 1] || quote.amounts[i - 1] == 0) {
+                            quote.amounts[i - 1] = swapAmountIn.safe128();
+                            quote.pairs[i - 1] = pair;
+                            quote.virtualAmountsWithoutSlippage[i - 1] = (
+                                JoeLibrary.quote(
+                                    quote.virtualAmountsWithoutSlippage[i] * 1000, reserveOut * 997, reserveIn
+                                ) + 1
+                            ).safe128();
 
-                                    quote.fees[i - 1] = ((uint256(fees) * 1e18) / quote.amounts[i - 1]).safe128(); // fee percentage in amountIn
-                                }
-                            } catch {}
+                            quote.fees[i - 1] = 0.003e18; // 0.3%
+                            quote.versions[i - 1] = ILBRouter.Version.V1;
+                            quote.binSteps[i - 1] = 0;
                         }
                     }
                 }

@@ -5,27 +5,11 @@ pragma solidity 0.8.10;
 import "../helpers/TestHelper.sol";
 
 /**
- * Market deployed:
- * - USDT/USDC, V1 with low liquidity, V2 with high liquidity
- * - WNATIVE/USDC, V1 with high liquidity, V2 with low liquidity
- * - WETH/USDC, V1 with low liquidity, V2.1 with high liquidity
- * - BNB/USDC, V2 with high liquidity, V2.1 with low liquidity
- *
- * Every market with low liquidity has a slighly higher price.
- * It should be picked with small amounts but not with large amounts.
- * All tokens are considered 18 decimals for simplification purposes.
+ * Makes sure that the new quoter picks the version 2.1 over the version 2 if both outputs are exactly the same
  */
-
 contract LiquidityBinQuoterPriorityTest is Test {
     address internal constant factory = 0x8e42f2F4101563bF679975178e880FD87d3eFd4e;
     address internal constant router = 0xb4315e873dBcf96Ffd0acd8EA43f689D8c20fB30;
-    address internal constant routerV1 = 0x60aE616a2155Ee3d9A68541Ba4544862310933d4;
-    address internal constant factoryV1 = 0x9Ad6C38BE94206cA50bb0d90783181662f0Cfa10;
-    address internal constant legacyRouterV2 = 0xE3Ffc583dC176575eEA7FD9dF2A7c65F7E23f4C3;
-    address internal constant legacyFactoryV2 = 0x6E77932A92582f504FF6c4BdbCef7Da6c198aEEf;
-
-    address internal constant usdc = 0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E;
-    address internal constant usdt = 0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7;
 
     address internal constant legacyUsdcUsdtPair = 0x1D7A1a79e2b4Ef88D2323f3845246D24a3c20F1d;
     address internal constant newUsdcUsdtPair = 0x9B2Cc8E6a2Bbb56d6bE4682891a91B0e48633c72;
@@ -36,13 +20,14 @@ contract LiquidityBinQuoterPriorityTest is Test {
     function setUp() public {
         vm.createSelectFork(vm.rpcUrl("avalanche"), 33313442);
 
-        newQuoter = new LBQuoter(factoryV1, legacyFactoryV2, factory, legacyRouterV2, router);
+        newQuoter =
+        new LBQuoter(AvalancheAddresses.JOE_V1_FACTORY, AvalancheAddresses.JOE_V2_FACTORY, factory, AvalancheAddresses.JOE_V2_ROUTER, router);
     }
 
     function test_QuoteFromAmountIn() public {
         address[] memory route = new address[](2);
-        route[0] = address(usdt);
-        route[1] = address(usdc);
+        route[0] = address(AvalancheAddresses.USDT);
+        route[1] = address(AvalancheAddresses.USDC);
 
         uint128 amountIn = 1e6;
 
@@ -76,8 +61,8 @@ contract LiquidityBinQuoterPriorityTest is Test {
 
         assertEq(newQuote.fees[0], oldQuote.fees[0], "test_QuoteFromAmountIn::12");
 
-        route[0] = address(usdc);
-        route[1] = address(usdt);
+        route[0] = address(AvalancheAddresses.USDC);
+        route[1] = address(AvalancheAddresses.USDT);
 
         newQuote = newQuoter.findBestPathFromAmountIn(route, amountIn);
         oldQuote = oldQuoter.findBestPathFromAmountIn(route, amountIn);
@@ -112,8 +97,8 @@ contract LiquidityBinQuoterPriorityTest is Test {
 
     function test_QuoteFromAmounOut() public {
         address[] memory route = new address[](2);
-        route[0] = address(usdc);
-        route[1] = address(usdt);
+        route[0] = address(AvalancheAddresses.USDC);
+        route[1] = address(AvalancheAddresses.USDT);
 
         uint128 amountOut = 1e6;
 
@@ -147,8 +132,8 @@ contract LiquidityBinQuoterPriorityTest is Test {
 
         assertEq(newQuote.fees[0], oldQuote.fees[0], "test_QuoteFromAmounOut::12");
 
-        route[0] = address(usdt);
-        route[1] = address(usdc);
+        route[0] = address(AvalancheAddresses.USDT);
+        route[1] = address(AvalancheAddresses.USDC);
 
         newQuote = newQuoter.findBestPathFromAmountOut(route, amountOut);
         oldQuote = oldQuoter.findBestPathFromAmountOut(route, amountOut);

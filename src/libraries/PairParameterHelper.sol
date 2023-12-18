@@ -356,10 +356,11 @@ library PairParameterHelper {
     /**
      * @dev Updates the time of last update in the encoded pair parameters
      * @param params The encoded pair parameters
+     * @param timestamp The timestamp
      * @return newParams The updated encoded pair parameters
      */
-    function updateTimeOfLastUpdate(bytes32 params) internal view returns (bytes32 newParams) {
-        uint40 currentTime = block.timestamp.safe40();
+    function updateTimeOfLastUpdate(bytes32 params, uint256 timestamp) internal pure returns (bytes32 newParams) {
+        uint40 currentTime = timestamp.safe40();
         return params.set(currentTime, Encoded.MASK_UINT40, OFFSET_TIME_LAST_UPDATE);
     }
 
@@ -407,27 +408,33 @@ library PairParameterHelper {
     /**
      * @dev Updates the volatility reference and the volatility accumulator in the encoded pair parameters
      * @param params The encoded pair parameters
+     * @param timestamp The timestamp
      * @return The updated encoded pair parameters
      */
-    function updateReferences(bytes32 params) internal view returns (bytes32) {
-        uint256 dt = block.timestamp - getTimeOfLastUpdate(params);
+    function updateReferences(bytes32 params, uint256 timestamp) internal pure returns (bytes32) {
+        uint256 dt = timestamp - getTimeOfLastUpdate(params);
 
         if (dt >= getFilterPeriod(params)) {
             params = updateIdReference(params);
             params = dt < getDecayPeriod(params) ? updateVolatilityReference(params) : setVolatilityReference(params, 0);
         }
 
-        return updateTimeOfLastUpdate(params);
+        return updateTimeOfLastUpdate(params, timestamp);
     }
 
     /**
      * @dev Updates the volatility reference and the volatility accumulator in the encoded pair parameters
      * @param params The encoded pair parameters
      * @param activeId The active id
+     * @param timestamp The timestamp
      * @return The updated encoded pair parameters
      */
-    function updateVolatilityParameters(bytes32 params, uint24 activeId) internal view returns (bytes32) {
-        params = updateReferences(params);
+    function updateVolatilityParameters(bytes32 params, uint24 activeId, uint256 timestamp)
+        internal
+        pure
+        returns (bytes32)
+    {
+        params = updateReferences(params, timestamp);
         return updateVolatilityAccumulator(params, activeId);
     }
 }

@@ -130,8 +130,9 @@ abstract contract TestHelper is Test {
         router = new LBRouter(factory, factoryV1, legacyFactoryV2, legacyRouterV2, IWNATIVE(address(wnative)));
 
         // Create quoter
-        quoter =
-        new LBQuoter( address(factoryV1), address(legacyFactoryV2), address(factory), address(legacyRouterV2), address(router));
+        quoter = new LBQuoter(
+            address(factoryV1), address(legacyFactoryV2), address(factory), address(legacyRouterV2), address(router)
+        );
 
         // Label deployed contracts
         vm.label(address(router), "router");
@@ -348,9 +349,10 @@ abstract contract TestHelper is Test {
 
         for (uint256 i; i < total; ++i) {
             uint24 id = getId(activeId, i, nbBinY);
+            uint256 b = lbPair.balanceOf(from, id);
 
             ids[i] = id;
-            amounts[i] = lbPair.balanceOf(from, id) * percentToBurn / Constants.PRECISION;
+            amounts[i] = b.mulDivRoundDown(percentToBurn, Constants.PRECISION);
         }
 
         vm.prank(from);

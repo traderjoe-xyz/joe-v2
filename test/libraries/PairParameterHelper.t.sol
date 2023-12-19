@@ -211,7 +211,7 @@ contract PairParameterHelperTest is Test {
     }
 
     function testFuzz_UpdateTimeOfLastUpdate(bytes32 params) external {
-        bytes32 newParams = params.updateTimeOfLastUpdate();
+        bytes32 newParams = params.updateTimeOfLastUpdate(block.timestamp);
 
         assertEq(newParams.getTimeOfLastUpdate(), block.timestamp, "test_UpdateTimeOfLastUpdate::1");
         assertEq(
@@ -280,7 +280,7 @@ contract PairParameterHelperTest is Test {
             sfp.variableFeeControl,
             sfp.protocolShare,
             sfp.maxVolatilityAccumulator
-        ).updateTimeOfLastUpdate();
+        ).updateTimeOfLastUpdate(block.timestamp);
 
         vm.warp(time);
 
@@ -294,7 +294,7 @@ contract PairParameterHelperTest is Test {
                 deltaTime >= sfp.decayPeriod ? 0 : params.updateVolatilityReference().getVolatilityReference();
         }
 
-        bytes32 newParams = params.updateReferences();
+        bytes32 newParams = params.updateReferences(block.timestamp);
 
         assertEq(newParams.getIdReference(), idReference, "test_UpdateReferences::1");
         assertEq(newParams.getVolatilityReference(), volReference, "test_UpdateReferences::2");
@@ -312,12 +312,12 @@ contract PairParameterHelperTest is Test {
 
         vm.warp(previousTime);
 
-        bytes32 params = bytes32(0).updateTimeOfLastUpdate();
+        bytes32 params = bytes32(0).updateTimeOfLastUpdate(block.timestamp);
 
         vm.warp(time);
 
         vm.expectRevert();
-        params.updateReferences();
+        params.updateReferences(block.timestamp);
     }
 
     function testFuzz_UpdateVolatilityParameters(
@@ -343,12 +343,12 @@ contract PairParameterHelperTest is Test {
             sfp.variableFeeControl,
             sfp.protocolShare,
             sfp.maxVolatilityAccumulator
-        ).updateTimeOfLastUpdate();
+        ).updateTimeOfLastUpdate(block.timestamp);
 
         vm.warp(time);
 
-        bytes32 trustedParams = params.updateReferences().updateVolatilityAccumulator(activeId);
-        bytes32 newParams = params.updateVolatilityParameters(activeId);
+        bytes32 trustedParams = params.updateReferences(block.timestamp).updateVolatilityAccumulator(activeId);
+        bytes32 newParams = params.updateVolatilityParameters(activeId, block.timestamp);
 
         assertEq(newParams.getIdReference(), trustedParams.getIdReference(), "test_UpdateVolatilityParameters::1");
         assertEq(

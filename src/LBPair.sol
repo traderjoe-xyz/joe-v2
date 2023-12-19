@@ -320,7 +320,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             _oracle.getSampleAt(oracleId, lookupTimestamp);
 
         if (timeOfLastUpdate < lookupTimestamp) {
-            parameters.updateVolatilityParameters(parameters.getActiveId());
+            parameters = parameters.updateVolatilityParameters(parameters.getActiveId(), lookupTimestamp);
 
             uint40 deltaTime = lookupTimestamp - timeOfLastUpdate;
 
@@ -373,7 +373,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         uint24 id = parameters.getActiveId();
 
-        parameters = parameters.updateReferences();
+        parameters = parameters.updateReferences(block.timestamp);
 
         while (true) {
             uint128 binReserves = _bins[id].decode(!swapForY);
@@ -434,7 +434,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         uint24 id = parameters.getActiveId();
 
-        parameters = parameters.updateReferences();
+        parameters = parameters.updateReferences(block.timestamp);
 
         while (true) {
             bytes32 binReserves = _bins[id];
@@ -494,7 +494,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         uint24 activeId = parameters.getActiveId();
 
-        parameters = parameters.updateReferences();
+        parameters = parameters.updateReferences(block.timestamp);
 
         while (true) {
             bytes32 binReserves = _bins[activeId];
@@ -526,7 +526,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
                         parameters.getVolatilityAccumulator(),
                         totalFees,
                         pFees
-                        );
+                    );
                 }
             }
 
@@ -919,7 +919,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             variableFeeControl,
             protocolShare,
             maxVolatilityAccumulator
-            );
+        );
     }
 
     /**
@@ -986,7 +986,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         amountsInToBin = amountsIn;
 
         if (id == activeId) {
-            parameters = parameters.updateVolatilityParameters(id);
+            parameters = parameters.updateVolatilityParameters(id, block.timestamp);
 
             bytes32 fees = binReserves.getCompositionFees(parameters, binStep, amountsIn, supply, shares);
 

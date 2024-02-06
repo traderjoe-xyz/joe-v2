@@ -55,17 +55,18 @@ contract CoreDeployer is Script {
 
             vm.broadcast(deployer);
             LBRouter router = new LBRouter(
-                factory, 
+                factory,
                 IJoeFactory(deployment.factoryV1),
                 ILBLegacyFactory(deployment.factoryV2),
-                ILBLegacyRouter(deployment.routerV2), 
+                ILBLegacyRouter(deployment.routerV2),
                 IWNATIVE(deployment.wNative)
             );
             console.log("LBRouter deployed -->", address(router));
 
             vm.startBroadcast(deployer);
-            LBQuoter quoter =
-            new LBQuoter(deployment.factoryV1, deployment.factoryV2, address(factory),deployment.routerV2, address(router));
+            LBQuoter quoter = new LBQuoter(
+                deployment.factoryV1, deployment.factoryV2, address(factory), deployment.routerV2, address(router)
+            );
             console.log("LBQuoter deployed -->", address(quoter));
 
             factory.setLBPairImplementation(address(pairImplementation));

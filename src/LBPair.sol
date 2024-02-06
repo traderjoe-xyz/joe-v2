@@ -838,7 +838,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
     function setHooksParameters(Hooks.Parameters memory hooksParameters) external override onlyFactory {
         _hooksParameters = Hooks.encode(hooksParameters);
 
-        emit HooksSet(msg.sender, hooksParameters);
+        emit HooksParametersSet(msg.sender, hooksParameters);
     }
 
     /**

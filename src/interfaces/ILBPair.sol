@@ -65,7 +65,7 @@ interface ILBPair is ILBToken {
         uint24 maxVolatilityAccumulator
     );
 
-    event HooksSet(address indexed sender, Hooks.Parameters hooksParameters);
+    event HooksParametersSet(address indexed sender, Hooks.Parameters hooksParameters);
 
     event FlashLoan(
         address indexed sender,

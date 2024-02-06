@@ -232,8 +232,8 @@ contract LBRouter is ILBRouter {
         );
         if (liquidityParameters.tokenX != lbPair.getTokenX()) revert LBRouter__WrongTokenOrder();
 
-        liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(lbPair), liquidityParameters.amountX);
-        liquidityParameters.tokenY.safeTransferFrom(msg.sender, address(lbPair), liquidityParameters.amountY);
+        _safeTransferFrom(liquidityParameters.tokenX, msg.sender, address(lbPair), liquidityParameters.amountX);
+        _safeTransferFrom(liquidityParameters.tokenY, msg.sender, address(lbPair), liquidityParameters.amountY);
 
         (amountXAdded, amountYAdded, amountXLeft, amountYLeft, depositIds, liquidityMinted) =
             _addLiquidity(liquidityParameters, lbPair);
@@ -271,11 +271,11 @@ contract LBRouter is ILBRouter {
         if (liquidityParameters.tokenX != _LBPair.getTokenX()) revert LBRouter__WrongTokenOrder();
 
         if (liquidityParameters.tokenX == _wnative && liquidityParameters.amountX == msg.value) {
-            _wnativeDepositAndTransfer(address(_LBPair), msg.value);
-            liquidityParameters.tokenY.safeTransferFrom(msg.sender, address(_LBPair), liquidityParameters.amountY);
+            _safeTransferFrom(liquidityParameters.tokenY, msg.sender, address(_LBPair), liquidityParameters.amountY);
+            _wNativeDepositAndTransfer(address(_LBPair), msg.value);
         } else if (liquidityParameters.tokenY == _wnative && liquidityParameters.amountY == msg.value) {
-            liquidityParameters.tokenX.safeTransferFrom(msg.sender, address(_LBPair), liquidityParameters.amountX);
-            _wnativeDepositAndTransfer(address(_LBPair), msg.value);
+            _safeTransferFrom(liquidityParameters.tokenX, msg.sender, address(_LBPair), liquidityParameters.amountX);
+            _wNativeDepositAndTransfer(address(_LBPair), msg.value);
         } else {
             revert LBRouter__WrongNativeLiquidityParameters(
                 address(liquidityParameters.tokenX),
@@ -352,12 +352,10 @@ contract LBRouter is ILBRouter {
         address payable to,
         uint256 deadline
     ) external override ensure(deadline) returns (uint256 amountToken, uint256 amountNATIVE) {
-        IWNATIVE wnative = _wnative;
-
-        ILBPair lbPair = ILBPair(_getLBPairInformation(token, IERC20(wnative), binStep, Version.V2_1));
+        ILBPair lbPair = ILBPair(_getLBPairInformation(token, IERC20(_wnative), binStep, Version.V2_1));
 
         {
-            bool isNATIVETokenY = IERC20(wnative) == lbPair.getTokenY();
+            bool isNATIVETokenY = IERC20(_wnative) == lbPair.getTokenY();
 
             if (!isNATIVETokenY) {
                 (amountTokenMin, amountNATIVEMin) = (amountNATIVEMin, amountTokenMin);
@@ -369,10 +367,8 @@ contract LBRouter is ILBRouter {
             (amountToken, amountNATIVE) = isNATIVETokenY ? (amountX, amountY) : (amountY, amountX);
         }
 
-        token.safeTransfer(to, amountToken);
-
-        wnative.withdraw(amountNATIVE);
-        _safeTransferNATIVE(to, amountNATIVE);
+        _safeTransfer(token, to, amountToken);
+        _wNativeWithdrawAndTransfer(to, amountNATIVE);
     }
 
     /**
@@ -393,7 +389,7 @@ contract LBRouter is ILBRouter {
     ) external override ensure(deadline) verifyPathValidity(path) returns (uint256 amountOut) {
         address[] memory pairs = _getPairs(path.pairBinSteps, path.versions, path.tokenPath);
 
-        path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountIn);
+        _safeTransferFrom(path.tokenPath[0], msg.sender, pairs[0], amountIn);
 
         amountOut = _swapExactTokensForTokens(amountIn, pairs, path.versions, path.tokenPath, to);
 
@@ -422,14 +418,13 @@ contract LBRouter is ILBRouter {
 
         address[] memory pairs = _getPairs(path.pairBinSteps, path.versions, path.tokenPath);
 
-        path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountIn);
+        _safeTransferFrom(path.tokenPath[0], msg.sender, pairs[0], amountIn);
 
         amountOut = _swapExactTokensForTokens(amountIn, pairs, path.versions, path.tokenPath, address(this));
 
         if (amountOutMinNATIVE > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMinNATIVE, amountOut);
 
-        _wnative.withdraw(amountOut);
-        _safeTransferNATIVE(to, amountOut);
+        _wNativeWithdrawAndTransfer(to, amountOut);
     }
 
     /**
@@ -452,7 +447,7 @@ contract LBRouter is ILBRouter {
 
         address[] memory pairs = _getPairs(path.pairBinSteps, path.versions, path.tokenPath);
 
-        _wnativeDepositAndTransfer(pairs[0], msg.value);
+        _wNativeDepositAndTransfer(pairs[0], msg.value);
 
         amountOut = _swapExactTokensForTokens(msg.value, pairs, path.versions, path.tokenPath, to);
 
@@ -482,7 +477,7 @@ contract LBRouter is ILBRouter {
 
             if (amountsIn[0] > amountInMax) revert LBRouter__MaxAmountInExceeded(amountInMax, amountsIn[0]);
 
-            path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountsIn[0]);
+            _safeTransferFrom(path.tokenPath[0], msg.sender, pairs[0], amountsIn[0]);
 
             uint256 _amountOutReal = _swapTokensForExactTokens(pairs, path.versions, path.tokenPath, amountsIn, to);
 
@@ -515,15 +510,14 @@ contract LBRouter is ILBRouter {
 
         if (amountsIn[0] > amountInMax) revert LBRouter__MaxAmountInExceeded(amountInMax, amountsIn[0]);
 
-        path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountsIn[0]);
+        _safeTransferFrom(path.tokenPath[0], msg.sender, pairs[0], amountsIn[0]);
 
         uint256 _amountOutReal =
             _swapTokensForExactTokens(pairs, path.versions, path.tokenPath, amountsIn, address(this));
 
         if (_amountOutReal < amountNATIVEOut) revert LBRouter__InsufficientAmountOut(amountNATIVEOut, _amountOutReal);
 
-        _wnative.withdraw(_amountOutReal);
-        _safeTransferNATIVE(to, _amountOutReal);
+        _wNativeWithdrawAndTransfer(to, _amountOutReal);
     }
 
     /**
@@ -550,13 +544,13 @@ contract LBRouter is ILBRouter {
 
         if (amountsIn[0] > msg.value) revert LBRouter__MaxAmountInExceeded(msg.value, amountsIn[0]);
 
-        _wnativeDepositAndTransfer(pairs[0], amountsIn[0]);
+        _wNativeDepositAndTransfer(pairs[0], amountsIn[0]);
 
         uint256 amountOutReal = _swapTokensForExactTokens(pairs, path.versions, path.tokenPath, amountsIn, to);
 
         if (amountOutReal < amountOut) revert LBRouter__InsufficientAmountOut(amountOut, amountOutReal);
 
-        if (msg.value > amountsIn[0]) _safeTransferNATIVE(msg.sender, msg.value - amountsIn[0]);
+        if (msg.value > amountsIn[0]) _safeTransferNative(msg.sender, msg.value - amountsIn[0]);
     }
 
     /**
@@ -581,7 +575,7 @@ contract LBRouter is ILBRouter {
 
         uint256 balanceBefore = targetToken.balanceOf(to);
 
-        path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountIn);
+        _safeTransferFrom(path.tokenPath[0], msg.sender, pairs[0], amountIn);
 
         _swapSupportingFeeOnTransferTokens(pairs, path.versions, path.tokenPath, to);
 
@@ -613,15 +607,14 @@ contract LBRouter is ILBRouter {
 
         uint256 balanceBefore = _wnative.balanceOf(address(this));
 
-        path.tokenPath[0].safeTransferFrom(msg.sender, pairs[0], amountIn);
+        _safeTransferFrom(path.tokenPath[0], msg.sender, pairs[0], amountIn);
 
         _swapSupportingFeeOnTransferTokens(pairs, path.versions, path.tokenPath, address(this));
 
         amountOut = _wnative.balanceOf(address(this)) - balanceBefore;
         if (amountOutMinNATIVE > amountOut) revert LBRouter__InsufficientAmountOut(amountOutMinNATIVE, amountOut);
 
-        _wnative.withdraw(amountOut);
-        _safeTransferNATIVE(to, amountOut);
+        _wNativeWithdrawAndTransfer(to, amountOut);
     }
 
     /**
@@ -646,7 +639,7 @@ contract LBRouter is ILBRouter {
 
         uint256 balanceBefore = targetToken.balanceOf(to);
 
-        _wnativeDepositAndTransfer(pairs[0], msg.value);
+        _wNativeDepositAndTransfer(pairs[0], msg.value);
 
         _swapSupportingFeeOnTransferTokens(pairs, path.versions, path.tokenPath, to);
 
@@ -663,10 +656,12 @@ contract LBRouter is ILBRouter {
      */
     function sweep(IERC20 token, address to, uint256 amount) external override onlyFactoryOwner {
         if (address(token) == address(0)) {
-            if (amount == type(uint256).max) amount = address(this).balance;
-            _safeTransferNATIVE(to, amount);
+            amount = amount == type(uint256).max ? address(this).balance : amount;
+
+            _safeTransferNative(to, amount);
         } else {
-            if (amount == type(uint256).max) amount = token.balanceOf(address(this));
+            amount = amount == type(uint256).max ? token.balanceOf(address(this)) : amount;
+
             token.safeTransfer(to, amount);
         }
     }
@@ -1077,22 +1072,63 @@ contract LBRouter is ILBRouter {
     }
 
     /**
-     * @notice Helper function to transfer NATIVE
+     * @notice Helper function to transfer tokens to `to`
+     * @param token The address of the token
      * @param to The address of the recipient
-     * @param amount The NATIVE amount to send
+     * @param amount The amount to send
      */
-    function _safeTransferNATIVE(address to, uint256 amount) private {
+    function _safeTransfer(IERC20 token, address to, uint256 amount) private {
+        if (amount == 0) return;
+
+        token.safeTransfer(to, amount);
+    }
+
+    /**
+     * @notice Helper function to transfer tokens from `from` to `to`
+     * @param token The address of the token
+     * @param from The address of the sender
+     * @param to The address of the recipient
+     * @param amount The amount to send
+     */
+    function _safeTransferFrom(IERC20 token, address from, address to, uint256 amount) private {
+        if (amount == 0) return;
+
+        token.safeTransferFrom(from, to, amount);
+    }
+
+    /**
+     * @notice Helper function to transfer NATIVE to `to`
+     * @param to The address of the recipient
+     * @param amount The amount to send
+     */
+    function _safeTransferNative(address to, uint256 amount) private {
+        if (amount == 0) return;
+
         (bool success,) = to.call{value: amount}("");
         if (!success) revert LBRouter__FailedToSendNATIVE(to, amount);
     }
 
     /**
-     * @notice Helper function to deposit and transfer _wnative
+     * @notice Helper function to deposit and transfer WNative to `to`
      * @param to The address of the recipient
-     * @param amount The NATIVE amount to wrap
+     * @param amount The amount to deposit and transfer
      */
-    function _wnativeDepositAndTransfer(address to, uint256 amount) private {
+    function _wNativeDepositAndTransfer(address to, uint256 amount) private {
+        if (amount == 0) return;
+
         _wnative.deposit{value: amount}();
         _wnative.safeTransfer(to, amount);
+    }
+
+    /**
+     * @notice Helper function to withdraw and transfer WNative to `to`
+     * @param to The address of the recipient
+     * @param amount The amount to withdraw and transfer
+     */
+    function _wNativeWithdrawAndTransfer(address to, uint256 amount) private {
+        if (amount == 0) return;
+
+        _wnative.withdraw(amount);
+        _safeTransferNative(to, amount);
     }
 }

@@ -12,7 +12,7 @@ import {LiquidityConfigurations} from "./libraries/math/LiquidityConfigurations.
 import {ILBFactory} from "./interfaces/ILBFactory.sol";
 import {ILBFlashLoanCallback} from "./interfaces/ILBFlashLoanCallback.sol";
 import {ILBPair} from "./interfaces/ILBPair.sol";
-import {LBToken} from "./LBToken.sol";
+import {LBToken, ILBToken} from "./LBToken.sol";
 import {OracleHelper} from "./libraries/OracleHelper.sol";
 import {PackedUint128Math} from "./libraries/math/PackedUint128Math.sol";
 import {PairParameterHelper} from "./libraries/PairParameterHelper.sol";
@@ -851,6 +851,27 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         _parameters = parameters.updateIdReference().updateVolatilityReference();
 
         emit ForcedDecay(msg.sender, parameters.getIdReference(), parameters.getVolatilityReference());
+    }
+
+    /**
+     * @notice Overrides the batch transfer function to call the hooks before and after the transfer
+     * @param from The address to transfer from
+     * @param to The address to transfer to
+     * @param ids The ids of the tokens to transfer
+     * @param amounts The amounts of the tokens to transfer
+     */
+    function batchTransferFrom(address from, address to, uint256[] calldata ids, uint256[] calldata amounts)
+        public
+        override(LBToken, ILBToken)
+        nonReentrant
+    {
+        bytes32 hooksParameters = _hooksParameters;
+
+        Hooks.beforeBatchTransferFrom(hooksParameters, msg.sender, from, to, ids, amounts);
+
+        LBToken.batchTransferFrom(from, to, ids, amounts);
+
+        Hooks.afterBatchTransferFrom(hooksParameters, msg.sender, from, to, ids, amounts);
     }
 
     /**

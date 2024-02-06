@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {IHooks} from "../interfaces/IHooks.sol";
+import {ILBHooks} from "../interfaces/ILBHooks.sol";
 
 library Hooks {
     error Hooks__CallFailed();
@@ -14,6 +14,8 @@ library Hooks {
     bytes32 private constant _AFTER_MINT_FLAG = bytes32(uint256(1 << 165));
     bytes32 private constant _BEFORE_BURN_FLAG = bytes32(uint256(1 << 166));
     bytes32 private constant _AFTER_BURN_FLAG = bytes32(uint256(1 << 167));
+    bytes32 private constant _BEFORE_TRANSFER_FLAG = bytes32(uint256(1 << 168));
+    bytes32 private constant _AFTER_TRANSFER_FLAG = bytes32(uint256(1 << 169));
 
     struct Parameters {
         address hooks;
@@ -25,6 +27,8 @@ library Hooks {
         bool afterMint;
         bool beforeBurn;
         bool afterBurn;
+        bool beforeBatchTransferFrom;
+        bool afterBatchTransferFrom;
     }
 
     function encode(Parameters memory parameters) internal pure returns (bytes32 hooksParameters) {
@@ -40,6 +44,8 @@ library Hooks {
         if (parameters.afterMint) hooksParameters |= _AFTER_MINT_FLAG;
         if (parameters.beforeBurn) hooksParameters |= _BEFORE_BURN_FLAG;
         if (parameters.afterBurn) hooksParameters |= _AFTER_BURN_FLAG;
+        if (parameters.beforeBatchTransferFrom) hooksParameters |= _BEFORE_TRANSFER_FLAG;
+        if (parameters.afterBatchTransferFrom) hooksParameters |= _AFTER_TRANSFER_FLAG;
     }
 
     function decode(bytes32 hooksParameters) internal pure returns (Parameters memory parameters) {
@@ -53,6 +59,8 @@ library Hooks {
         parameters.afterMint = (hooksParameters & _AFTER_MINT_FLAG) != 0;
         parameters.beforeBurn = (hooksParameters & _BEFORE_BURN_FLAG) != 0;
         parameters.afterBurn = (hooksParameters & _AFTER_BURN_FLAG) != 0;
+        parameters.beforeBatchTransferFrom = (hooksParameters & _BEFORE_TRANSFER_FLAG) != 0;
+        parameters.afterBatchTransferFrom = (hooksParameters & _AFTER_TRANSFER_FLAG) != 0;
     }
 
     function beforeSwap(bytes32 hooksParameters, address sender, address to, bool swapForY, bytes32 amountsIn)
@@ -60,7 +68,7 @@ library Hooks {
     {
         if ((hooksParameters & _BEFORE_SWAP_FLAG) != 0) {
             _safeCall(
-                hooksParameters, abi.encodeWithSelector(IHooks.beforeSwap.selector, sender, to, swapForY, amountsIn)
+                hooksParameters, abi.encodeWithSelector(ILBHooks.beforeSwap.selector, sender, to, swapForY, amountsIn)
             );
         }
     }
@@ -70,20 +78,20 @@ library Hooks {
     {
         if ((hooksParameters & _AFTER_SWAP_FLAG) != 0) {
             _safeCall(
-                hooksParameters, abi.encodeWithSelector(IHooks.afterSwap.selector, sender, to, swapForY, amountsOut)
+                hooksParameters, abi.encodeWithSelector(ILBHooks.afterSwap.selector, sender, to, swapForY, amountsOut)
             );
         }
     }
 
     function beforeFlashLoan(bytes32 hooksParameters, address sender, address to, bytes32 amounts) internal {
         if ((hooksParameters & _BEFORE_FLASH_LOAN_FLAG) != 0) {
-            _safeCall(hooksParameters, abi.encodeWithSelector(IHooks.beforeFlashLoan.selector, sender, to, amounts));
+            _safeCall(hooksParameters, abi.encodeWithSelector(ILBHooks.beforeFlashLoan.selector, sender, to, amounts));
         }
     }
 
     function afterFlashLoan(bytes32 hooksParameters, address sender, address to, bytes32 amounts) internal {
         if ((hooksParameters & _AFTER_FLASH_LOAN_FLAG) != 0) {
-            _safeCall(hooksParameters, abi.encodeWithSelector(IHooks.afterFlashLoan.selector, sender, to, amounts));
+            _safeCall(hooksParameters, abi.encodeWithSelector(ILBHooks.afterFlashLoan.selector, sender, to, amounts));
         }
     }
 
@@ -97,7 +105,7 @@ library Hooks {
         if ((hooksParameters & _BEFORE_MINT_FLAG) != 0) {
             _safeCall(
                 hooksParameters,
-                abi.encodeWithSelector(IHooks.beforeMint.selector, sender, to, liquidityConfigs, amountsReceived)
+                abi.encodeWithSelector(ILBHooks.beforeMint.selector, sender, to, liquidityConfigs, amountsReceived)
             );
         }
     }
@@ -112,7 +120,7 @@ library Hooks {
         if ((hooksParameters & _AFTER_MINT_FLAG) != 0) {
             _safeCall(
                 hooksParameters,
-                abi.encodeWithSelector(IHooks.afterMint.selector, sender, to, liquidityConfigs, amountsIn)
+                abi.encodeWithSelector(ILBHooks.afterMint.selector, sender, to, liquidityConfigs, amountsIn)
             );
         }
     }
@@ -128,7 +136,7 @@ library Hooks {
         if ((hooksParameters & _BEFORE_BURN_FLAG) != 0) {
             _safeCall(
                 hooksParameters,
-                abi.encodeWithSelector(IHooks.beforeBurn.selector, sender, from, to, ids, amountsToBurn)
+                abi.encodeWithSelector(ILBHooks.beforeBurn.selector, sender, from, to, ids, amountsToBurn)
             );
         }
     }
@@ -143,7 +151,40 @@ library Hooks {
     ) internal {
         if ((hooksParameters & _AFTER_BURN_FLAG) != 0) {
             _safeCall(
-                hooksParameters, abi.encodeWithSelector(IHooks.afterBurn.selector, sender, from, to, ids, amountsToBurn)
+                hooksParameters,
+                abi.encodeWithSelector(ILBHooks.afterBurn.selector, sender, from, to, ids, amountsToBurn)
+            );
+        }
+    }
+
+    function beforeBatchTransferFrom(
+        bytes32 hooksParameters,
+        address sender,
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amounts
+    ) internal {
+        if ((hooksParameters & _BEFORE_TRANSFER_FLAG) != 0) {
+            _safeCall(
+                hooksParameters,
+                abi.encodeWithSelector(ILBHooks.beforeBatchTransferFrom.selector, sender, from, to, ids, amounts)
+            );
+        }
+    }
+
+    function afterBatchTransferFrom(
+        bytes32 hooksParameters,
+        address sender,
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amounts
+    ) internal {
+        if ((hooksParameters & _AFTER_TRANSFER_FLAG) != 0) {
+            _safeCall(
+                hooksParameters,
+                abi.encodeWithSelector(ILBHooks.afterBatchTransferFrom.selector, sender, from, to, ids, amounts)
             );
         }
     }

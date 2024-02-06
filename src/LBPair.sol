@@ -574,8 +574,6 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         if (amounts == 0) revert LBPair__ZeroBorrowAmount();
 
         bytes32 reservesBefore = _reserves;
-        bytes32 parameters = _parameters;
-
         bytes32 totalFees = _getFlashLoanFees(amounts);
 
         amounts.transfer(_tokenX(), _tokenY(), address(receiver));
@@ -602,17 +600,10 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         totalFees = balancesAfter.sub(reservesBefore);
 
-        uint24 activeId = parameters.getActiveId();
-        bytes32 protocolFees = totalSupply(activeId) == 0
-            ? totalFees
-            : totalFees.scalarMulDivBasisPointRoundDown(parameters.getProtocolShare());
-
         _reserves = balancesAfter;
+        _protocolFees = _protocolFees.add(totalFees);
 
-        _protocolFees = _protocolFees.add(protocolFees);
-        _bins[activeId] = _bins[activeId].add(totalFees.sub(protocolFees));
-
-        emit FlashLoan(msg.sender, receiver, activeId, amounts, totalFees, protocolFees);
+        emit FlashLoan(msg.sender, receiver, _parameters.getActiveId(), amounts, bytes32(0), totalFees);
     }
 
     /**

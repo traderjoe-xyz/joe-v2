@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
+import {Hooks} from "../libraries/Hooks.sol";
 import {ILBFactory} from "./ILBFactory.sol";
 import {ILBFlashLoanCallback} from "./ILBFlashLoanCallback.sol";
 import {ILBToken} from "./ILBToken.sol";
@@ -64,6 +65,8 @@ interface ILBPair is ILBToken {
         uint24 maxVolatilityAccumulator
     );
 
+    event HooksSet(address indexed sender, Hooks.Parameters hooksParameters);
+
     event FlashLoan(
         address indexed sender,
         ILBFlashLoanCallback indexed receiver,
@@ -121,6 +124,8 @@ interface ILBPair is ILBToken {
             uint24 maxVolatilityAccumulator
         );
 
+    function getHooksParameters() external view returns (Hooks.Parameters memory hooksParameters);
+
     function getVariableFeeParameters()
         external
         view
@@ -175,6 +180,8 @@ interface ILBPair is ILBToken {
         uint16 protocolShare,
         uint24 maxVolatilityAccumulator
     ) external;
+
+    function setHooksParameters(Hooks.Parameters memory hooksParameters) external;
 
     function forceDecay() external;
 }

@@ -103,8 +103,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         uint24 variableFeeControl,
         uint16 protocolShare,
         uint24 maxVolatilityAccumulator,
-        uint24 activeId,
-        Hooks.Parameters memory hooksParameters
+        uint24 activeId
     ) external override onlyFactory {
         bytes32 parameters = _parameters;
         if (parameters != 0) revert LBPair__AlreadyInitialized();
@@ -121,8 +120,6 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             protocolShare,
             maxVolatilityAccumulator
         );
-
-        _setHooks(hooksParameters);
     }
 
     /**
@@ -836,10 +833,12 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
     /**
      * @notice Sets the hooks parameter of the pool
      * @dev Can only be called by the factory
-     * @param parameters The hooks parameter
+     * @param hooksParameters The hooks parameter
      */
-    function setHooksParameters(Hooks.Parameters memory parameters) external override onlyFactory {
-        _setHooks(parameters);
+    function setHooksParameters(Hooks.Parameters memory hooksParameters) external override onlyFactory {
+        _hooksParameters = Hooks.encode(hooksParameters);
+
+        emit HooksSet(msg.sender, hooksParameters);
     }
 
     /**
@@ -965,16 +964,6 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             protocolShare,
             maxVolatilityAccumulator
         );
-    }
-
-    /**
-     * @dev Sets the hooks parameter of the pair
-     * @param parameters The hooks parameter
-     */
-    function _setHooks(Hooks.Parameters memory parameters) internal {
-        _hooksParameters = Hooks.encode(parameters);
-
-        emit HooksSet(msg.sender, parameters);
     }
 
     /**

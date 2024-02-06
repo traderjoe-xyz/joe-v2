@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
+import {Hooks, IHooks} from "../libraries/Hooks.sol";
 import {ILBPair} from "./ILBPair.sol";
 import {IPendingOwnable} from "./IPendingOwnable.sol";
 
@@ -31,6 +32,9 @@ interface ILBFactory is IPendingOwnable {
     error LBFactory__LBPairSafetyCheckFailed(address LBPairImplementation);
     error LBFactory__SameImplementation(address LBPairImplementation);
     error LBFactory__ImplementationNotSet();
+    error LBFactory__SameHooksImplementation(address hooksImplementation);
+    error LBFactory__InvalidHooksParameters();
+    error LBFactory__HooksNotSet();
 
     /**
      * @dev Structure to store the LBPair information, such as:
@@ -55,6 +59,10 @@ interface ILBFactory is IPendingOwnable {
     event FlashLoanFeeSet(uint256 oldFlashLoanFee, uint256 newFlashLoanFee);
 
     event LBPairImplementationSet(address oldLBPairImplementation, address LBPairImplementation);
+
+    event HooksParametersSet(Hooks.Parameters oldParameters, Hooks.Parameters newParameters);
+
+    event HooksCreated(ILBPair indexed lbPair, IHooks hooks, uint256 pid);
 
     event LBPairIgnoredStateChanged(ILBPair indexed LBPair, bool ignored);
 
@@ -87,9 +95,15 @@ interface ILBFactory is IPendingOwnable {
 
     function getLBPairImplementation() external view returns (address);
 
+    function getHooksParameters() external view returns (Hooks.Parameters memory);
+
     function getNumberOfLBPairs() external view returns (uint256);
 
     function getLBPairAtIndex(uint256 id) external returns (ILBPair);
+
+    function getNumberOfHooks() external view returns (uint256);
+
+    function getHooksAtIndex(uint256 id) external returns (IHooks);
 
     function getNumberOfQuoteAssets() external view returns (uint256);
 
@@ -127,6 +141,8 @@ interface ILBFactory is IPendingOwnable {
 
     function setLBPairImplementation(address lbPairImplementation) external;
 
+    function setHooksParameters(Hooks.Parameters memory hooksParameters) external;
+
     function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
         external
         returns (ILBPair pair);
@@ -161,6 +177,10 @@ interface ILBFactory is IPendingOwnable {
         uint16 protocolShare,
         uint24 maxVolatilityAccumulator
     ) external;
+
+    function createHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep) external returns (IHooks hooks);
+
+    function removeHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep) external;
 
     function setFeeRecipient(address feeRecipient) external;
 

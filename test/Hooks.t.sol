@@ -19,20 +19,20 @@ contract HooksTest is Test {
 
         bytes32 hooksParameters = Hooks.encode(parameters);
 
-        assertEq(parameters.hooks, Hooks.decode(hooksParameters).hooks, "test_Hooks::1");
-        assertEq(parameters.beforeSwap, Hooks.decode(hooksParameters).beforeSwap, "test_Hooks::2");
-        assertEq(parameters.afterSwap, Hooks.decode(hooksParameters).afterSwap, "test_Hooks::3");
-        assertEq(parameters.beforeFlashLoan, Hooks.decode(hooksParameters).beforeFlashLoan, "test_Hooks::4");
-        assertEq(parameters.afterFlashLoan, Hooks.decode(hooksParameters).afterFlashLoan, "test_Hooks::5");
-        assertEq(parameters.beforeMint, Hooks.decode(hooksParameters).beforeMint, "test_Hooks::6");
-        assertEq(parameters.afterMint, Hooks.decode(hooksParameters).afterMint, "test_Hooks::7");
-        assertEq(parameters.beforeBurn, Hooks.decode(hooksParameters).beforeBurn, "test_Hooks::8");
-        assertEq(parameters.afterBurn, Hooks.decode(hooksParameters).afterBurn, "test_Hooks::9");
+        assertEq(parameters.hooks, Hooks.decode(hooksParameters).hooks, "test_EncodeHooks::1");
+        assertEq(parameters.beforeSwap, Hooks.decode(hooksParameters).beforeSwap, "test_EncodeHooks::2");
+        assertEq(parameters.afterSwap, Hooks.decode(hooksParameters).afterSwap, "test_EncodeHooks::3");
+        assertEq(parameters.beforeFlashLoan, Hooks.decode(hooksParameters).beforeFlashLoan, "test_EncodeHooks::4");
+        assertEq(parameters.afterFlashLoan, Hooks.decode(hooksParameters).afterFlashLoan, "test_EncodeHooks::5");
+        assertEq(parameters.beforeMint, Hooks.decode(hooksParameters).beforeMint, "test_EncodeHooks::6");
+        assertEq(parameters.afterMint, Hooks.decode(hooksParameters).afterMint, "test_EncodeHooks::7");
+        assertEq(parameters.beforeBurn, Hooks.decode(hooksParameters).beforeBurn, "test_EncodeHooks::8");
+        assertEq(parameters.afterBurn, Hooks.decode(hooksParameters).afterBurn, "test_EncodeHooks::9");
         assertEq(
-            parameters.beforeBatchTransferFrom, Hooks.decode(hooksParameters).beforeBatchTransferFrom, "test_Hooks::10"
+            parameters.beforeBatchTransferFrom, Hooks.decode(hooksParameters).beforeBatchTransferFrom, "test_EncodeHooks::10"
         );
         assertEq(
-            parameters.afterBatchTransferFrom, Hooks.decode(hooksParameters).afterBatchTransferFrom, "test_Hooks::11"
+            parameters.afterBatchTransferFrom, Hooks.decode(hooksParameters).afterBatchTransferFrom, "test_EncodeHooks::11"
         );
     }
 
@@ -52,10 +52,10 @@ contract HooksTest is Test {
             assertEq(
                 keccak256(hooks.data()),
                 keccak256(abi.encodeWithSelector(ILBHooks.beforeSwap.selector, account, account, false, bytes32(0))),
-                "test_Hooks::1"
+                "test_CallHooks::1"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_Hooks::2");
+            assertEq(hooks.data().length, 0, "test_CallHooks::2");
         }
 
         hooks.reset();
@@ -65,10 +65,10 @@ contract HooksTest is Test {
             assertEq(
                 keccak256(hooks.data()),
                 keccak256(abi.encodeWithSelector(ILBHooks.afterSwap.selector, account, account, false, bytes32(0))),
-                "test_Hooks::3"
+                "test_CallHooks::3"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_Hooks::4");
+            assertEq(hooks.data().length, 0, "test_CallHooks::4");
         }
 
         hooks.reset();
@@ -78,10 +78,10 @@ contract HooksTest is Test {
             assertEq(
                 keccak256(hooks.data()),
                 keccak256(abi.encodeWithSelector(ILBHooks.beforeFlashLoan.selector, account, account, bytes32(0))),
-                "test_Hooks::5"
+                "test_CallHooks::5"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_Hooks::6");
+            assertEq(hooks.data().length, 0, "test_CallHooks::6");
         }
 
         hooks.reset();
@@ -91,10 +91,10 @@ contract HooksTest is Test {
             assertEq(
                 keccak256(hooks.data()),
                 keccak256(abi.encodeWithSelector(ILBHooks.afterFlashLoan.selector, account, account, bytes32(0))),
-                "test_Hooks::7"
+                "test_CallHooks::7"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_Hooks::8");
+            assertEq(hooks.data().length, 0, "test_CallHooks::8");
         }
 
         hooks.reset();
@@ -106,10 +106,10 @@ contract HooksTest is Test {
                 keccak256(
                     abi.encodeWithSelector(ILBHooks.beforeMint.selector, account, account, liquidityConfigs, bytes32(0))
                 ),
-                "test_Hooks::9"
+                "test_CallHooks::9"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_Hooks::10");
+            assertEq(hooks.data().length, 0, "test_CallHooks::10");
         }
 
         hooks.reset();
@@ -121,10 +121,10 @@ contract HooksTest is Test {
                 keccak256(
                     abi.encodeWithSelector(ILBHooks.afterMint.selector, account, account, liquidityConfigs, bytes32(0))
                 ),
-                "test_Hooks::11"
+                "test_CallHooks::11"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_Hooks::12");
+            assertEq(hooks.data().length, 0, "test_CallHooks::12");
         }
 
         hooks.reset();
@@ -134,10 +134,10 @@ contract HooksTest is Test {
             assertEq(
                 keccak256(hooks.data()),
                 keccak256(abi.encodeWithSelector(ILBHooks.beforeBurn.selector, account, account, account, ids, ids)),
-                "test_Hooks::13"
+                "test_CallHooks::13"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_Hooks::14");
+            assertEq(hooks.data().length, 0, "test_CallHooks::14");
         }
 
         hooks.reset();
@@ -147,10 +147,10 @@ contract HooksTest is Test {
             assertEq(
                 keccak256(hooks.data()),
                 keccak256(abi.encodeWithSelector(ILBHooks.afterBurn.selector, account, account, account, ids, ids)),
-                "test_Hooks::15"
+                "test_CallHooks::15"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_Hooks::16");
+            assertEq(hooks.data().length, 0, "test_CallHooks::16");
         }
 
         hooks.reset();
@@ -164,10 +164,10 @@ contract HooksTest is Test {
                         ILBHooks.beforeBatchTransferFrom.selector, account, account, account, ids, ids
                     )
                 ),
-                "test_Hooks::17"
+                "test_CallHooks::17"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_Hooks::18");
+            assertEq(hooks.data().length, 0, "test_CallHooks::18");
         }
 
         hooks.reset();
@@ -181,10 +181,10 @@ contract HooksTest is Test {
                         ILBHooks.afterBatchTransferFrom.selector, account, account, account, ids, ids
                     )
                 ),
-                "test_Hooks::19"
+                "test_CallHooks::19"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_Hooks::20");
+            assertEq(hooks.data().length, 0, "test_CallHooks::20");
         }
     }
 

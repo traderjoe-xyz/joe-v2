@@ -91,7 +91,7 @@ contract BinHelperTest is TestHelper {
 
         uint256 userLiquidity = amountsIn.getLiquidity(price);
         uint256 expectedShares = binLiquidity == 0 || totalSupply == 0
-            ? userLiquidity
+            ? userLiquidity.sqrt()
             : userLiquidity.mulDivRoundDown(totalSupply, binLiquidity);
 
         assertEq(shares, expectedShares, "testFuzz_getSharesAndEffectiveAmountsIn::2");

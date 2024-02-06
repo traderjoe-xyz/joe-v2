@@ -78,10 +78,10 @@ library BinHelper {
         (uint256 x, uint256 y) = amountsIn.decode();
 
         uint256 userLiquidity = getLiquidity(x, y, price);
-        if (totalSupply == 0 || userLiquidity == 0) return (userLiquidity, amountsIn);
+        if (userLiquidity == 0) return (0, 0);
 
         uint256 binLiquidity = getLiquidity(binReserves, price);
-        if (binLiquidity == 0) return (userLiquidity, amountsIn);
+        if (binLiquidity == 0 || totalSupply == 0) return (userLiquidity.sqrt(), amountsIn);
 
         shares = userLiquidity.mulDivRoundDown(totalSupply, binLiquidity);
         uint256 effectiveLiquidity = shares.mulDivRoundUp(binLiquidity, totalSupply);

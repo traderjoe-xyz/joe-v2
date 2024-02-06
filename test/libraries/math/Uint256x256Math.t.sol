@@ -127,6 +127,22 @@ contract Uint256x256MathTest is Test {
         }
     }
 
+    function testFuzz_Sqrt(uint256 x) external {
+        uint256 sqrtX = x.sqrt();
+
+        assertLe(sqrtX * sqrtX, x, "testFuzz_Sqrt::1");
+
+        uint256 sqrtXPlus1 = sqrtX + 1;
+
+        unchecked {
+            uint256 sqrtXPlus1Squared = sqrtXPlus1 * sqrtXPlus1;
+
+            if (sqrtXPlus1Squared / sqrtXPlus1 == sqrtXPlus1) {
+                assertGt(sqrtXPlus1Squared, x, "testFuzz_Sqrt::2");
+            }
+        }
+    }
+
     function _getProds(uint256 x, uint256 y) private pure returns (uint256 prod0, uint256 prod1) {
         assembly {
             let mm := mulmod(x, y, not(0))

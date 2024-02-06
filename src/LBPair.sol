@@ -55,6 +55,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
     uint256 private constant _MAX_TOTAL_FEE = 0.1e18; // 10%
 
+    address public immutable override implementation;
     ILBFactory private immutable _factory;
 
     bytes32 private _parameters;
@@ -73,6 +74,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      */
     constructor(ILBFactory factory_) {
         _factory = factory_;
+        implementation = address(this);
 
         // Disable the initialize function
         _parameters = bytes32(uint256(1));

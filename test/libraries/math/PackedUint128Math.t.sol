@@ -48,7 +48,7 @@ contract PackedUint128MathTest is Test {
     function test_AddSelf() external {
         bytes32 x = bytes32(uint256(1 << 128 | 1));
 
-        assertEq(x.add(x), bytes32(uint256(2 << 128 | 2)), "testFuzz_AddSelf::1");
+        assertEq(x.add(x), bytes32(uint256(2 << 128 | 2)), "test_AddSelf::1");
     }
 
     function test_AddOverflow() external {
@@ -95,7 +95,7 @@ contract PackedUint128MathTest is Test {
     function test_SubSelf() external {
         bytes32 x = bytes32(uint256(1 << 128 | 1));
 
-        assertEq(x.sub(x), bytes32(0), "testFuzz_SubSelf::1");
+        assertEq(x.sub(x), bytes32(0), "test_SubSelf::1");
     }
 
     function test_SubUnderflow() external {
@@ -105,9 +105,9 @@ contract PackedUint128MathTest is Test {
         bytes32 y2 = bytes32(uint256(1 << 128));
         bytes32 y3 = y1 | y2;
 
-        assertEq(y1.sub(x), y1, "testFuzz_SubUnderflow::1");
-        assertEq(y2.sub(x), y2, "testFuzz_SubUnderflow::2");
-        assertEq(y3.sub(x), y3, "testFuzz_SubUnderflow::3");
+        assertEq(y1.sub(x), y1, "test_SubUnderflow::1");
+        assertEq(y2.sub(x), y2, "test_SubUnderflow::2");
+        assertEq(y3.sub(x), y3, "test_SubUnderflow::3");
 
         vm.expectRevert(PackedUint128Math.PackedUint128Math__SubUnderflow.selector);
         x.sub(y1);

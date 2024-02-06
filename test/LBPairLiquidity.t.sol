@@ -77,17 +77,17 @@ contract LBPairLiquidityTest is TestHelper {
             (uint128 binReserveX, uint128 binReserveY) = pairWnative.getBin(id);
 
             if (id < activeId) {
-                assertEq(binReserveX, 0, "test_SimpleMint::1");
-                assertEq(binReserveY, 2 * (amountY * (PRECISION / nbBinY) / 1e18), "test_SimpleMint::2");
+                assertEq(binReserveX, 0, "test_MintTwice::1");
+                assertEq(binReserveY, 2 * (amountY * (PRECISION / nbBinY) / 1e18), "test_MintTwice::2");
             } else if (id == activeId) {
-                assertApproxEqRel(binReserveX, 2 * (amountX * (PRECISION / nbBinX) / 1e18), 1e15, "test_SimpleMint::3");
-                assertApproxEqRel(binReserveY, 2 * (amountY * (PRECISION / nbBinY) / 1e18), 1e15, "test_SimpleMint::4");
+                assertApproxEqRel(binReserveX, 2 * (amountX * (PRECISION / nbBinX) / 1e18), 1e15, "test_MintTwice::3");
+                assertApproxEqRel(binReserveY, 2 * (amountY * (PRECISION / nbBinY) / 1e18), 1e15, "test_MintTwice::4");
             } else {
-                assertEq(binReserveX, 2 * (amountX * (PRECISION / nbBinX) / 1e18), "test_SimpleMint::5");
-                assertEq(binReserveY, 0, "test_SimpleMint::6");
+                assertEq(binReserveX, 2 * (amountX * (PRECISION / nbBinX) / 1e18), "test_MintTwice::5");
+                assertEq(binReserveY, 0, "test_MintTwice::6");
             }
 
-            assertEq(pairWnative.balanceOf(BOB, id), 2 * balances[i], "test_DoubleMint::7");
+            assertEq(pairWnative.balanceOf(BOB, id), 2 * balances[i], "test_MintTwice::7");
         }
     }
 
@@ -153,8 +153,8 @@ contract LBPairLiquidityTest is TestHelper {
         assertEq(usdc.balanceOf(BOB), reserveY, "test_SimpleBurn::2");
         (reserveX, reserveY) = pairWnative.getReserves();
 
-        assertEq(reserveX, 0, "test_BurnPartial::3");
-        assertEq(reserveY, 0, "test_BurnPartial::4");
+        assertEq(reserveX, 0, "test_SimpleBurn::3");
+        assertEq(reserveY, 0, "test_SimpleBurn::4");
     }
 
     function test_BurnHalfTwice() external {
@@ -186,19 +186,19 @@ contract LBPairLiquidityTest is TestHelper {
         vm.prank(BOB);
         pairWnative.burn(BOB, BOB, ids, halfbalances);
 
-        assertApproxEqRel(wnative.balanceOf(BOB), reserveX / 2, 1e10, "test_BurnPartial::1");
-        assertApproxEqRel(usdc.balanceOf(BOB), reserveY / 2, 1e10, "test_BurnPartial::2");
+        assertApproxEqRel(wnative.balanceOf(BOB), reserveX / 2, 1e10, "test_BurnHalfTwice::1");
+        assertApproxEqRel(usdc.balanceOf(BOB), reserveY / 2, 1e10, "test_BurnHalfTwice::2");
 
         vm.prank(BOB);
         pairWnative.burn(BOB, BOB, ids, balances);
 
-        assertEq(wnative.balanceOf(BOB), reserveX, "test_BurnPartial::3");
-        assertEq(usdc.balanceOf(BOB), reserveY, "test_BurnPartial::4");
+        assertEq(wnative.balanceOf(BOB), reserveX, "test_BurnHalfTwice::3");
+        assertEq(usdc.balanceOf(BOB), reserveY, "test_BurnHalfTwice::4");
 
         (reserveX, reserveY) = pairWnative.getReserves();
 
-        assertEq(reserveX, 0, "test_BurnPartial::5");
-        assertEq(reserveY, 0, "test_BurnPartial::6");
+        assertEq(reserveX, 0, "test_BurnHalfTwice::5");
+        assertEq(reserveY, 0, "test_BurnHalfTwice::6");
     }
 
     function test_GetNextNonEmptyBin() external {

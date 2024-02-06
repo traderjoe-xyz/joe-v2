@@ -19,8 +19,8 @@ contract OracleHelperTest is Test {
         vm.assume(oracleId > 0);
 
         oracle.setSample(oracleId, sample);
-        assertEq(oracle.getSample(oracleId), sample, "test_SetSample::1");
-        assertEq(oracle.samples[oracleId - 1], sample, "test_SetSample::2");
+        assertEq(oracle.getSample(oracleId), sample, "testFuzz_SetAndGetSample::1");
+        assertEq(oracle.samples[oracleId - 1], sample, "testFuzz_SetAndGetSample::2");
     }
 
     function testFuzz_revert_SetAndGetSample(bytes32 sample) external {
@@ -44,33 +44,33 @@ contract OracleHelperTest is Test {
 
         (bytes32 previous, bytes32 next) = oracle.binarySearch(3, 0, 3);
 
-        assertEq(previous, sample1, "test_binarySearch::1");
-        assertEq(next, sample1, "test_binarySearch::2");
+        assertEq(previous, sample1, "test_BinarySearchSimple::1");
+        assertEq(next, sample1, "test_BinarySearchSimple::2");
 
         (previous, next) = oracle.binarySearch(3, 1, 3);
 
-        assertEq(previous, sample1, "test_binarySearch::3");
-        assertEq(next, sample2, "test_binarySearch::4");
+        assertEq(previous, sample1, "test_BinarySearchSimple::3");
+        assertEq(next, sample2, "test_BinarySearchSimple::4");
 
         (previous, next) = oracle.binarySearch(3, 9, 3);
 
-        assertEq(previous, sample1, "test_binarySearch::5");
-        assertEq(next, sample2, "test_binarySearch::6");
+        assertEq(previous, sample1, "test_BinarySearchSimple::5");
+        assertEq(next, sample2, "test_BinarySearchSimple::6");
 
         (previous, next) = oracle.binarySearch(3, 10, 3);
 
-        assertEq(previous, sample2, "test_binarySearch::7");
-        assertEq(next, sample2, "test_binarySearch::8");
+        assertEq(previous, sample2, "test_BinarySearchSimple::7");
+        assertEq(next, sample2, "test_BinarySearchSimple::8");
 
         (previous, next) = oracle.binarySearch(3, 11, 3);
 
-        assertEq(previous, sample2, "test_binarySearch::9");
-        assertEq(next, sample3, "test_binarySearch::10");
+        assertEq(previous, sample2, "test_BinarySearchSimple::9");
+        assertEq(next, sample3, "test_BinarySearchSimple::10");
 
         (previous, next) = oracle.binarySearch(3, 20, 3);
 
-        assertEq(previous, sample3, "test_binarySearch::11");
-        assertEq(next, sample3, "test_binarySearch::12");
+        assertEq(previous, sample3, "test_BinarySearchSimple::11");
+        assertEq(next, sample3, "test_BinarySearchSimple::12");
     }
 
     function test_BinarySearchCircular() external {
@@ -84,28 +84,28 @@ contract OracleHelperTest is Test {
 
         (bytes32 previous, bytes32 next) = oracle.binarySearch(1, 19, 3);
 
-        assertEq(previous, sample2, "test_binarySearch::1");
-        assertEq(next, sample2, "test_binarySearch::2");
+        assertEq(previous, sample2, "test_BinarySearchCircular::1");
+        assertEq(next, sample2, "test_BinarySearchCircular::2");
 
         (previous, next) = oracle.binarySearch(1, 24, 3);
 
-        assertEq(previous, sample2, "test_binarySearch::3");
-        assertEq(next, sample3, "test_binarySearch::4");
+        assertEq(previous, sample2, "test_BinarySearchCircular::3");
+        assertEq(next, sample3, "test_BinarySearchCircular::4");
 
         (previous, next) = oracle.binarySearch(1, 29, 3);
 
-        assertEq(previous, sample3, "test_binarySearch::5");
-        assertEq(next, sample3, "test_binarySearch::6");
+        assertEq(previous, sample3, "test_BinarySearchCircular::5");
+        assertEq(next, sample3, "test_BinarySearchCircular::6");
 
         (previous, next) = oracle.binarySearch(1, 30, 3);
 
-        assertEq(previous, sample3, "test_binarySearch::7");
-        assertEq(next, sample1, "test_binarySearch::8");
+        assertEq(previous, sample3, "test_BinarySearchCircular::7");
+        assertEq(next, sample1, "test_BinarySearchCircular::8");
 
         (previous, next) = oracle.binarySearch(1, 33, 3);
 
-        assertEq(previous, sample1, "test_binarySearch::9");
-        assertEq(next, sample1, "test_binarySearch::10");
+        assertEq(previous, sample1, "test_BinarySearchCircular::9");
+        assertEq(next, sample1, "test_BinarySearchCircular::10");
     }
 
     function test_revert_BinarySearch() external {
@@ -146,38 +146,38 @@ contract OracleHelperTest is Test {
         (uint40 lastUpdate, uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed) =
             oracle.getSampleAt(1, 15);
 
-        assertEq(lastUpdate, 15, "test_GetSampleAt::1");
-        assertEq(cumulativeId, 20, "test_GetSampleAt::2");
-        assertEq(cumulativeVolatility, 30, "test_GetSampleAt::3");
-        assertEq(cumulativeBinCrossed, 40, "test_GetSampleAt::4");
+        assertEq(lastUpdate, 15, "test_GetSampleAtFullyInitialized::1");
+        assertEq(cumulativeId, 20, "test_GetSampleAtFullyInitialized::2");
+        assertEq(cumulativeVolatility, 30, "test_GetSampleAtFullyInitialized::3");
+        assertEq(cumulativeBinCrossed, 40, "test_GetSampleAtFullyInitialized::4");
 
         (lastUpdate, cumulativeId, cumulativeVolatility, cumulativeBinCrossed) = oracle.getSampleAt(1, 20);
 
-        assertEq(lastUpdate, 20, "test_GetSampleAt::5");
-        assertEq(cumulativeId, 25, "test_GetSampleAt::6");
-        assertEq(cumulativeVolatility, 35, "test_GetSampleAt::7");
-        assertEq(cumulativeBinCrossed, 45, "test_GetSampleAt::8");
+        assertEq(lastUpdate, 20, "test_GetSampleAtFullyInitialized::5");
+        assertEq(cumulativeId, 25, "test_GetSampleAtFullyInitialized::6");
+        assertEq(cumulativeVolatility, 35, "test_GetSampleAtFullyInitialized::7");
+        assertEq(cumulativeBinCrossed, 45, "test_GetSampleAtFullyInitialized::8");
 
         (lastUpdate, cumulativeId, cumulativeVolatility, cumulativeBinCrossed) = oracle.getSampleAt(1, 25);
 
-        assertEq(lastUpdate, 25, "test_GetSampleAt::9");
-        assertEq(cumulativeId, 30, "test_GetSampleAt::10");
-        assertEq(cumulativeVolatility, 40, "test_GetSampleAt::11");
-        assertEq(cumulativeBinCrossed, 50, "test_GetSampleAt::12");
+        assertEq(lastUpdate, 25, "test_GetSampleAtFullyInitialized::9");
+        assertEq(cumulativeId, 30, "test_GetSampleAtFullyInitialized::10");
+        assertEq(cumulativeVolatility, 40, "test_GetSampleAtFullyInitialized::11");
+        assertEq(cumulativeBinCrossed, 50, "test_GetSampleAtFullyInitialized::12");
 
         (lastUpdate, cumulativeId, cumulativeVolatility, cumulativeBinCrossed) = oracle.getSampleAt(1, 30);
 
-        assertEq(lastUpdate, 30, "test_GetSampleAt::13");
-        assertEq(cumulativeId, 36, "test_GetSampleAt::14");
-        assertEq(cumulativeVolatility, 46, "test_GetSampleAt::15");
-        assertEq(cumulativeBinCrossed, 56, "test_GetSampleAt::16");
+        assertEq(lastUpdate, 30, "test_GetSampleAtFullyInitialized::13");
+        assertEq(cumulativeId, 36, "test_GetSampleAtFullyInitialized::14");
+        assertEq(cumulativeVolatility, 46, "test_GetSampleAtFullyInitialized::15");
+        assertEq(cumulativeBinCrossed, 56, "test_GetSampleAtFullyInitialized::16");
 
         (lastUpdate, cumulativeId, cumulativeVolatility, cumulativeBinCrossed) = oracle.getSampleAt(1, 40);
 
-        assertEq(lastUpdate, 33, "test_GetSampleAt::17");
-        assertEq(cumulativeId, 40, "test_GetSampleAt::18");
-        assertEq(cumulativeVolatility, 50, "test_GetSampleAt::19");
-        assertEq(cumulativeBinCrossed, 60, "test_GetSampleAt::20");
+        assertEq(lastUpdate, 33, "test_GetSampleAtFullyInitialized::17");
+        assertEq(cumulativeId, 40, "test_GetSampleAtFullyInitialized::18");
+        assertEq(cumulativeVolatility, 50, "test_GetSampleAtFullyInitialized::19");
+        assertEq(cumulativeBinCrossed, 60, "test_GetSampleAtFullyInitialized::20");
     }
 
     struct Updateinputs {
@@ -221,7 +221,7 @@ contract OracleHelperTest is Test {
 
         bytes32 newParams = oracle.update(parameters, inputs.activeId);
 
-        assertEq(newParams, parameters, "test_Update::1");
+        assertEq(newParams, parameters, "testFuzz_UpdateDeltaTsLowerThan2Minutes::1");
 
         sample = oracle.getSample(inputs.oracleId);
 
@@ -236,10 +236,10 @@ contract OracleHelperTest is Test {
             uint64(inputs.previousVolatility) * inputs.createdAt + uint64(inputs.volatility) * dt;
         uint64 cumulativeBinCrossed = uint64(inputs.previousBinCrossed) * inputs.createdAt + uint64(dId) * dt;
 
-        assertEq(sample.getOracleLength(), inputs.oracleLength, "test_Update::3");
-        assertEq(sample.getCumulativeId(), cumulativeId, "test_Update::4");
-        assertEq(sample.getCumulativeVolatility(), cumulativeVolatility, "test_Update::5");
-        assertEq(sample.getCumulativeBinCrossed(), cumulativeBinCrossed, "test_Update::6");
+        assertEq(sample.getOracleLength(), inputs.oracleLength, "testFuzz_UpdateDeltaTsLowerThan2Minutes::2");
+        assertEq(sample.getCumulativeId(), cumulativeId, "testFuzz_UpdateDeltaTsLowerThan2Minutes::3");
+        assertEq(sample.getCumulativeVolatility(), cumulativeVolatility, "testFuzz_UpdateDeltaTsLowerThan2Minutes::4");
+        assertEq(sample.getCumulativeBinCrossed(), cumulativeBinCrossed, "testFuzz_UpdateDeltaTsLowerThan2Minutes::5");
     }
 
     function testFuzz_UpdateDeltaTsGreaterThan2Minutes(Updateinputs memory inputs) external {
@@ -272,7 +272,7 @@ contract OracleHelperTest is Test {
 
         uint16 nextId = uint16(uint256(inputs.oracleId % inputs.oracleLength) + 1);
 
-        assertEq(newParameters, parameters.setOracleId(nextId), "test_Update::1");
+        assertEq(newParameters, parameters.setOracleId(nextId), "testFuzz_UpdateDeltaTsGreaterThan2Minutes::1");
         if (inputs.oracleLength > 1) assertEq(oracle.getSample(inputs.oracleId), sample, "test_Update::2");
 
         sample = oracle.getSample(nextId);
@@ -288,10 +288,10 @@ contract OracleHelperTest is Test {
             uint64(inputs.previousVolatility) * inputs.createdAt + uint64(inputs.volatility) * dt;
         uint64 cumulativeBinCrossed = uint64(inputs.previousBinCrossed) * inputs.createdAt + uint64(dId) * dt;
 
-        assertEq(sample.getOracleLength(), inputs.oracleLength, "test_Update::3");
-        assertEq(sample.getCumulativeId(), cumulativeId, "test_Update::4");
-        assertEq(sample.getCumulativeVolatility(), cumulativeVolatility, "test_Update::5");
-        assertEq(sample.getCumulativeBinCrossed(), cumulativeBinCrossed, "test_Update::6");
+        assertEq(sample.getOracleLength(), inputs.oracleLength, "testFuzz_UpdateDeltaTsGreaterThan2Minutes::2");
+        assertEq(sample.getCumulativeId(), cumulativeId, "testFuzz_UpdateDeltaTsGreaterThan2Minutes::3");
+        assertEq(sample.getCumulativeVolatility(), cumulativeVolatility, "testFuzz_UpdateDeltaTsGreaterThan2Minutes::4");
+        assertEq(sample.getCumulativeBinCrossed(), cumulativeBinCrossed, "testFuzz_UpdateDeltaTsGreaterThan2Minutes::5");
     }
 
     function testFuzz_IncreaseOracleLength(uint16 length, uint16 newLength) external {
@@ -303,7 +303,7 @@ contract OracleHelperTest is Test {
 
         oracle.increaseLength(oracleId, newLength);
 
-        assertEq(oracle.getSample(oracleId).getOracleLength(), newLength, "test_IncreaseOracleLength::1");
+        assertEq(oracle.getSample(oracleId).getOracleLength(), newLength, "testFuzz_IncreaseOracleLength::1");
     }
 
     function testFuzz_revert_IncreaseOracleLength(uint16 length, uint16 newLength) external {
@@ -393,20 +393,16 @@ contract OracleHelperTest is Test {
     function _verifyTimestampsIdsAndSize(bytes32 parameters, uint16 oracleId, bytes memory times, uint16 activeSize)
         internal
     {
-        assertEq(parameters.getOracleId(), oracleId, "_verifyTimestampsIdsAndSize::id");
+        assertEq(parameters.getOracleId(), oracleId, "_verifyTimestampsIdsAndSize::1");
 
         for (uint16 i = 0; i < times.length; i++) {
             bytes32 sample = oracle.getSample(i + 1);
 
-            assertEq(
-                sample.getOracleLength(),
-                uint256(uint8(times[i])),
-                string(abi.encodePacked("_verifyTimestampsIdsAndSize::", vm.toString(i)))
-            );
+            assertEq(sample.getOracleLength(), uint256(uint8(times[i])), "_verifyTimestampsIdsAndSize::2");
         }
 
         (, uint16 aSize) = oracle.getActiveSampleAndSize(oracleId);
 
-        assertEq(aSize, activeSize, "_verifyTimestampsIdsAndSize::activeSize");
+        assertEq(aSize, activeSize, "_verifyTimestampsIdsAndSize::3");
     }
 }

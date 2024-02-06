@@ -31,8 +31,8 @@ contract BinHelperTest is TestHelper {
         bytes32 amountOut = binReserves.getAmountOutOfBin(amountToBurn, totalSupply);
         (uint128 amountOutX, uint128 amountOutY) = amountOut.decode();
 
-        assertEq(amountOutX, amountToBurn.mulDivRoundDown(binReserveX, totalSupply), "test_GetAmountOutOfBin::1");
-        assertEq(amountOutY, amountToBurn.mulDivRoundDown(binReserveY, totalSupply), "test_GetAmountOutOfBin::2");
+        assertEq(amountOutX, amountToBurn.mulDivRoundDown(binReserveX, totalSupply), "testFuzz_GetAmountOutOfBin::1");
+        assertEq(amountOutY, amountToBurn.mulDivRoundDown(binReserveY, totalSupply), "testFuzz_GetAmountOutOfBin::2");
     }
 
     function testFuzz_GetLiquidity(uint128 amountInX, uint128 amountInY, uint256 price) external {
@@ -50,7 +50,7 @@ contract BinHelperTest is TestHelper {
             amountsIn.getLiquidity(price);
         } else {
             uint256 liquidity = amountsIn.getLiquidity(price);
-            assertEq(liquidity, price * amountInX + (uint256(amountInY) << 128), "test_GetLiquidity::1");
+            assertEq(liquidity, price * amountInX + (uint256(amountInY) << 128), "testFuzz_GetLiquidity::1");
         }
     }
 
@@ -87,14 +87,14 @@ contract BinHelperTest is TestHelper {
         (uint256 shares, bytes32 effectiveAmountsIn) =
             binReserves.getSharesAndEffectiveAmountsIn(amountsIn, price, totalSupply);
 
-        assertLe(uint256(effectiveAmountsIn), uint256(amountsIn), "test_getSharesAndEffectiveAmountsIn::1");
+        assertLe(uint256(effectiveAmountsIn), uint256(amountsIn), "testFuzz_getSharesAndEffectiveAmountsIn::1");
 
         uint256 userLiquidity = amountsIn.getLiquidity(price);
         uint256 expectedShares = binLiquidity == 0 || totalSupply == 0
             ? userLiquidity
             : userLiquidity.mulDivRoundDown(totalSupply, binLiquidity);
 
-        assertEq(shares, expectedShares, "test_getSharesAndEffectiveAmountsIn::2");
+        assertEq(shares, expectedShares, "testFuzz_getSharesAndEffectiveAmountsIn::2");
     }
 
     function testFuzz_TryExploitShares(
@@ -130,7 +130,7 @@ contract BinHelperTest is TestHelper {
         uint256 sentInY =
             price.mulShiftRoundDown(effectiveAmountsIn.decodeX(), Constants.SCALE_OFFSET) + effectiveAmountsIn.decodeY();
 
-        assertApproxEqAbs(receivedInY, sentInY, ((price - 1) >> 128) + 2, "test_TryExploitShares::1");
+        assertApproxEqAbs(receivedInY, sentInY, ((price - 1) >> 128) + 2, "testFuzz_TryExploitShares::1");
     }
 
     function testFuzz_VerifyAmountsNeqIds(uint128 amountX, uint128 amountY, uint24 activeId, uint24 id) external {
@@ -200,17 +200,17 @@ contract BinHelperTest is TestHelper {
         uint256 userC = amountXIn | amountYIn == 0 ? 0 : (uint256(amountYIn) << 128) / (uint256(amountXIn) + amountYIn);
 
         if (binC > userC) {
-            assertGe(uint256(compositionFees) << 128, 0, "test_GetCompositionFees::1");
+            assertGe(uint256(compositionFees) << 128, 0, "testFuzz_GetCompositionFees::1");
         } else {
-            assertGe(uint128(uint256(compositionFees)), 0, "test_GetCompositionFees::2");
+            assertGe(uint128(uint256(compositionFees)), 0, "testFuzz_GetCompositionFees::2");
         }
     }
 
     function testFuzz_BinIsEmpty(uint128 binReserveX, uint128 binReserveY) external {
         bytes32 binReserves = binReserveX.encode(binReserveY);
 
-        assertEq(binReserves.isEmpty(true), binReserveX == 0, "test_BinIsEmpty::1");
-        assertEq(binReserves.isEmpty(false), binReserveY == 0, "test_BinIsEmpty::2");
+        assertEq(binReserves.isEmpty(true), binReserveX == 0, "testFuzz_BinIsEmpty::1");
+        assertEq(binReserves.isEmpty(false), binReserveY == 0, "testFuzz_BinIsEmpty::2");
     }
 
     function testFuzz_GetAmountsLessThanBin(
@@ -248,7 +248,7 @@ contract BinHelperTest is TestHelper {
         (bytes32 amountsInToBin, bytes32 amountsOutOfBin, bytes32 totalFees) =
             reserves.getAmounts(parameters, DEFAULT_BIN_STEP, swapForY, activeId, amountIn.encode(swapForY));
 
-        assertLe(amountsInToBin.decode(swapForY), amountIn, "test_GetAmounts::1");
+        assertLe(amountsInToBin.decode(swapForY), amountIn, "testFuzz_GetAmountsLessThanBin::1");
 
         uint256 amountInWithoutFees = amountsInToBin.sub(totalFees).decode(swapForY);
 
@@ -259,13 +259,13 @@ contract BinHelperTest is TestHelper {
                 amountsOutOfBin.decodeX()
             );
 
-        assertGe(amountOutWithNoFees, amountOut, "test_GetAmounts::2");
+        assertGe(amountOutWithNoFees, amountOut, "testFuzz_GetAmountsLessThanBin::2");
 
         uint256 amountOutWithFees = swapForY
             ? price.mulShiftRoundDown(amountInWithoutFees, Constants.SCALE_OFFSET)
             : amountInWithoutFees.shiftDivRoundDown(Constants.SCALE_OFFSET, price);
 
-        assertEq(amountOut, amountOutWithFees, "test_GetAmounts::3");
+        assertEq(amountOut, amountOutWithFees, "testFuzz_GetAmountsLessThanBin::3");
     }
 
     function testFuzz_getAmountsFullBin(
@@ -303,7 +303,7 @@ contract BinHelperTest is TestHelper {
         (bytes32 amountsInToBin, bytes32 amountsOutOfBin, bytes32 totalFees) =
             reserves.getAmounts(parameters, DEFAULT_BIN_STEP, swapForY, activeId, amountIn.encode(swapForY));
 
-        assertLe(amountsInToBin.decode(swapForY), amountIn, "test_GetAmounts::1");
+        assertLe(amountsInToBin.decode(swapForY), amountIn, "testFuzz_getAmountsFullBin::1");
 
         {
             uint256 amountInForSwap = amountsInToBin.decode(swapForY);
@@ -312,7 +312,7 @@ contract BinHelperTest is TestHelper {
                 ? (price.mulShiftRoundDown(amountInForSwap, Constants.SCALE_OFFSET), amountsOutOfBin.decodeY())
                 : (uint256(amountInForSwap).shiftDivRoundDown(Constants.SCALE_OFFSET, price), amountsOutOfBin.decodeX());
 
-            assertGe(amountOutWithNoFees, amountOut, "test_GetAmounts::2");
+            assertGe(amountOutWithNoFees, amountOut, "testFuzz_getAmountsFullBin::2");
         }
 
         uint128 amountInToBin = amountsInToBin.sub(totalFees).decode(swapForY);
@@ -329,8 +329,8 @@ contract BinHelperTest is TestHelper {
                     uint256(amountInToBin - 1).shiftDivRoundDown(Constants.SCALE_OFFSET, price)
                 );
 
-        assertLe(amountsOutOfBin.decode(!swapForY), amountOutWithFees, "test_GetAmounts::3");
-        assertGe(amountsOutOfBin.decode(!swapForY), amountOutWithFeesAmountInSub1, "test_GetAmounts::4");
+        assertLe(amountsOutOfBin.decode(!swapForY), amountOutWithFees, "testFuzz_getAmountsFullBin::3");
+        assertGe(amountsOutOfBin.decode(!swapForY), amountOutWithFeesAmountInSub1, "testFuzz_getAmountsFullBin::4");
     }
 
     function testFuzz_Received(uint128 reserveX, uint128 reserveY, uint128 sentX, uint128 sentY) external {
@@ -347,18 +347,18 @@ contract BinHelperTest is TestHelper {
 
         (uint256 receivedX, uint256 receivedY) = received.decode();
 
-        assertEq(receivedX, sentX, "test_Received::1");
-        assertEq(receivedY, sentY, "test_Received::2");
+        assertEq(receivedX, sentX, "testFuzz_Received::1");
+        assertEq(receivedY, sentY, "testFuzz_Received::2");
 
         received = reserves.receivedX(IERC20(address(usdc)));
         receivedX = received.decodeX();
 
-        assertEq(receivedX, sentX, "test_Received::3");
+        assertEq(receivedX, sentX, "testFuzz_Received::3");
 
         received = reserves.receivedY(IERC20(address(wnative)));
         receivedY = received.decodeY();
 
-        assertEq(receivedY, sentY, "test_Received::4");
+        assertEq(receivedY, sentY, "testFuzz_Received::4");
     }
 
     function testFuzz_Transfer(uint128 amountX, uint128 amountY) external {
@@ -374,23 +374,23 @@ contract BinHelperTest is TestHelper {
 
         firstHalf.transfer(IERC20(address(usdc)), IERC20(address(wnative)), recipient);
 
-        assertEq(usdc.balanceOf(recipient), firstHalf.decodeX(), "test_Transfer::1");
-        assertEq(wnative.balanceOf(recipient), firstHalf.decodeY(), "test_Transfer::2");
-        assertEq(usdc.balanceOf(address(this)), secondHalf.decodeX(), "test_Transfer::3");
-        assertEq(wnative.balanceOf(address(this)), secondHalf.decodeY(), "test_Transfer::4");
+        assertEq(usdc.balanceOf(recipient), firstHalf.decodeX(), "testFuzz_Transfer::1");
+        assertEq(wnative.balanceOf(recipient), firstHalf.decodeY(), "testFuzz_Transfer::2");
+        assertEq(usdc.balanceOf(address(this)), secondHalf.decodeX(), "testFuzz_Transfer::3");
+        assertEq(wnative.balanceOf(address(this)), secondHalf.decodeY(), "testFuzz_Transfer::4");
 
         secondHalf.transferX(IERC20(address(usdc)), recipient);
 
-        assertEq(usdc.balanceOf(recipient), amounts.decodeX(), "test_Transfer::5");
-        assertEq(wnative.balanceOf(recipient), firstHalf.decodeY(), "test_Transfer::6");
-        assertEq(usdc.balanceOf(address(this)), 0, "test_Transfer::7");
-        assertEq(wnative.balanceOf(address(this)), secondHalf.decodeY(), "test_Transfer::8");
+        assertEq(usdc.balanceOf(recipient), amounts.decodeX(), "testFuzz_Transfer::5");
+        assertEq(wnative.balanceOf(recipient), firstHalf.decodeY(), "testFuzz_Transfer::6");
+        assertEq(usdc.balanceOf(address(this)), 0, "testFuzz_Transfer::7");
+        assertEq(wnative.balanceOf(address(this)), secondHalf.decodeY(), "testFuzz_Transfer::8");
 
         secondHalf.transferY(IERC20(address(wnative)), recipient);
 
-        assertEq(usdc.balanceOf(recipient), amounts.decodeX(), "test_Transfer::9");
-        assertEq(wnative.balanceOf(recipient), amounts.decodeY(), "test_Transfer::10");
-        assertEq(usdc.balanceOf(address(this)), 0, "test_Transfer::11");
-        assertEq(wnative.balanceOf(address(this)), 0, "test_Transfer::12");
+        assertEq(usdc.balanceOf(recipient), amounts.decodeX(), "testFuzz_Transfer::9");
+        assertEq(wnative.balanceOf(recipient), amounts.decodeY(), "testFuzz_Transfer::10");
+        assertEq(usdc.balanceOf(address(this)), 0, "testFuzz_Transfer::11");
+        assertEq(wnative.balanceOf(address(this)), 0, "testFuzz_Transfer::12");
     }
 }

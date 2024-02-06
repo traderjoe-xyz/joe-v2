@@ -66,7 +66,7 @@ contract Uint256x256MathTest is Test {
             vm.expectRevert(Uint256x256Math.Uint256x256Math__MulShiftOverflow.selector);
             x.mulShiftRoundDown(y, shift);
         } else {
-            assertEq(x.mulShiftRoundDown(y, shift), x.mulDivRoundDown(y, 1 << shift), "testFuzz_MulShiftRoundDown::1");
+            assertEq(x.mulShiftRoundDown(y, shift), x.mulDivRoundDown(y, 1 << shift), "testFuzz_mulShiftRoundDown::1");
         }
     }
 
@@ -76,7 +76,7 @@ contract Uint256x256MathTest is Test {
             vm.expectRevert(Uint256x256Math.Uint256x256Math__MulShiftOverflow.selector);
             x.mulShiftRoundUp(y, shift);
         } else {
-            assertEq(x.mulShiftRoundUp(y, shift), x.mulDivRoundUp(y, 1 << shift), "testFuzz_MulShiftRoundUp::1");
+            assertEq(x.mulShiftRoundUp(y, shift), x.mulDivRoundUp(y, 1 << shift), "testFuzz_mulShiftRoundUp::1");
         }
     }
 

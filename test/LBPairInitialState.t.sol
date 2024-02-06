@@ -41,8 +41,8 @@ contract LBPairInitialStateTest is TestHelper {
     function testFuzz_GetBin(uint24 id) external {
         (uint128 reserveX, uint128 reserveY) = pairWnative.getBin(id);
 
-        assertEq(reserveX, 0, "test_GetBin::1");
-        assertEq(reserveY, 0, "test_GetBin::2");
+        assertEq(reserveX, 0, "testFuzz_GetBin::1");
+        assertEq(reserveY, 0, "testFuzz_GetBin::2");
     }
 
     function test_GetNextNonEmptyBin() external {
@@ -71,43 +71,43 @@ contract LBPairInitialStateTest is TestHelper {
             uint24 maxVolatilityAccumulator
         ) = pairWnative.getStaticFeeParameters();
 
-        assertEq(baseFactor, DEFAULT_BASE_FACTOR, "test_GetParameters::1");
-        assertEq(filterPeriod, DEFAULT_FILTER_PERIOD, "test_GetParameters::2");
-        assertEq(decayPeriod, DEFAULT_DECAY_PERIOD, "test_GetParameters::3");
-        assertEq(reductionFactor, DEFAULT_REDUCTION_FACTOR, "test_GetParameters::4");
-        assertEq(variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL, "test_GetParameters::5");
-        assertEq(protocolShare, DEFAULT_PROTOCOL_SHARE, "test_GetParameters::6");
-        assertEq(maxVolatilityAccumulator, DEFAULT_MAX_VOLATILITY_ACCUMULATOR, "test_GetParameters::7");
+        assertEq(baseFactor, DEFAULT_BASE_FACTOR, "test_GetStaticFeeParameters::1");
+        assertEq(filterPeriod, DEFAULT_FILTER_PERIOD, "test_GetStaticFeeParameters::2");
+        assertEq(decayPeriod, DEFAULT_DECAY_PERIOD, "test_GetStaticFeeParameters::3");
+        assertEq(reductionFactor, DEFAULT_REDUCTION_FACTOR, "test_GetStaticFeeParameters::4");
+        assertEq(variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL, "test_GetStaticFeeParameters::5");
+        assertEq(protocolShare, DEFAULT_PROTOCOL_SHARE, "test_GetStaticFeeParameters::6");
+        assertEq(maxVolatilityAccumulator, DEFAULT_MAX_VOLATILITY_ACCUMULATOR, "test_GetStaticFeeParameters::7");
     }
 
     function test_GetVariableFeeParameters() external {
         (uint24 volatilityAccumulator, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate) =
             pairWnative.getVariableFeeParameters();
 
-        assertEq(volatilityAccumulator, 0, "test_GetParameters::1");
-        assertEq(volatilityReference, 0, "test_GetParameters::2");
-        assertEq(idReference, ID_ONE, "test_GetParameters::3");
-        assertEq(timeOfLastUpdate, 0, "test_GetParameters::4");
+        assertEq(volatilityAccumulator, 0, "test_GetVariableFeeParameters::1");
+        assertEq(volatilityReference, 0, "test_GetVariableFeeParameters::2");
+        assertEq(idReference, ID_ONE, "test_GetVariableFeeParameters::3");
+        assertEq(timeOfLastUpdate, 0, "test_GetVariableFeeParameters::4");
     }
 
     function test_GetOracleParameters() external {
         (uint8 sampleLifetime, uint16 size, uint16 activeSize, uint40 lastUpdated, uint40 firstTimestamp) =
             pairWnative.getOracleParameters();
 
-        assertEq(sampleLifetime, OracleHelper._MAX_SAMPLE_LIFETIME, "test_GetParameters::1");
-        assertEq(size, 0, "test_GetParameters::2");
-        assertEq(activeSize, 0, "test_GetParameters::3");
-        assertEq(lastUpdated, 0, "test_GetParameters::4");
-        assertEq(firstTimestamp, 0, "test_GetParameters::5");
+        assertEq(sampleLifetime, OracleHelper._MAX_SAMPLE_LIFETIME, "test_GetOracleParameters::1");
+        assertEq(size, 0, "test_GetOracleParameters::2");
+        assertEq(activeSize, 0, "test_GetOracleParameters::3");
+        assertEq(lastUpdated, 0, "test_GetOracleParameters::4");
+        assertEq(firstTimestamp, 0, "test_GetOracleParameters::5");
     }
 
     function test_GetOracleSampleAt() external {
         (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed) =
             pairWnative.getOracleSampleAt(1);
 
-        assertEq(cumulativeId, 0, "test_GetParameters::1");
-        assertEq(cumulativeVolatility, 0, "test_GetParameters::2");
-        assertEq(cumulativeBinCrossed, 0, "test_GetParameters::3");
+        assertEq(cumulativeId, 0, "test_GetOracleSampleAt::1");
+        assertEq(cumulativeVolatility, 0, "test_GetOracleSampleAt::2");
+        assertEq(cumulativeBinCrossed, 0, "test_GetOracleSampleAt::3");
     }
 
     function test_GetPriceFromId() external {
@@ -168,61 +168,61 @@ contract LBPairInitialStateTest is TestHelper {
             pairWnative.getIdFromPrice(924521306405372907020063908180274956666),
             1_000 + 2 ** 23,
             1,
-            "test_GetPriceFromId::1"
+            "test_GetIdFromPrice::1"
         );
         assertApproxEqAbs(
             pairWnative.getIdFromPrice(125245452360126660303600960578690115355),
             2 ** 23 - 1_000,
             1,
-            "test_GetPriceFromId::2"
+            "test_GetIdFromPrice::2"
         );
         assertApproxEqAbs(
             pairWnative.getIdFromPrice(7457860201113570250644758522304565438757805),
             2 ** 23 + 10_000,
             1,
-            "test_GetPriceFromId::3"
+            "test_GetIdFromPrice::3"
         );
         assertApproxEqAbs(
             pairWnative.getIdFromPrice(15526181252368702469753297095319515),
             2 ** 23 - 10_000,
             1,
-            "test_GetPriceFromId::4"
+            "test_GetIdFromPrice::4"
         );
         assertApproxEqAbs(
             pairWnative.getIdFromPrice(18114977146806524168130684952726477124021312024291123319263609183005067158),
             2 ** 23 + 80_000,
             1,
-            "test_GetPriceFromId::5"
+            "test_GetIdFromPrice::5"
         );
-        assertApproxEqAbs(pairWnative.getIdFromPrice(6392), 2 ** 23 - 80_000, 1, "test_GetPriceFromId::6");
+        assertApproxEqAbs(pairWnative.getIdFromPrice(6392), 2 ** 23 - 80_000, 1, "test_GetIdFromPrice::6");
         assertApproxEqAbs(
             pairWnative.getIdFromPrice(77718771515321296819382407317364352468140333),
             2 ** 23 + 12_345,
             1,
-            "test_GetPriceFromId::7"
+            "test_GetIdFromPrice::7"
         );
         assertApproxEqAbs(
             pairWnative.getIdFromPrice(1489885737765286392982993705955521),
             2 ** 23 - 12_345,
             1,
-            "test_GetPriceFromId::8"
+            "test_GetIdFromPrice::8"
         );
     }
 
     function testFuzz_GetSwapOut(uint128 amountOut, bool swapForY) external {
         (uint128 amountIn, uint128 amountOutLeft, uint128 fee) = pairWnative.getSwapIn(amountOut, swapForY);
 
-        assertEq(amountIn, 0, "testFuzz_GetSwapInOut::1");
-        assertEq(amountOutLeft, amountOut, "testFuzz_GetSwapInOut::2");
-        assertEq(fee, 0, "testFuzz_GetSwapInOut::3");
+        assertEq(amountIn, 0, "testFuzz_GetSwapOut::1");
+        assertEq(amountOutLeft, amountOut, "testFuzz_GetSwapOut::2");
+        assertEq(fee, 0, "testFuzz_GetSwapOut::3");
     }
 
     function testFuzz_GetSwapIn(uint128 amountIn, bool swapForY) external {
         (uint128 amountInLeft, uint128 amountOut, uint128 fee) = pairWnative.getSwapOut(amountIn, swapForY);
 
-        assertEq(amountInLeft, amountIn, "testFuzz_GetSwapInOut::1");
-        assertEq(amountOut, 0, "testFuzz_GetSwapInOut::2");
-        assertEq(fee, 0, "testFuzz_GetSwapInOut::3");
+        assertEq(amountInLeft, amountIn, "testFuzz_GetSwapIn::1");
+        assertEq(amountOut, 0, "testFuzz_GetSwapIn::2");
+        assertEq(fee, 0, "testFuzz_GetSwapIn::3");
     }
 
     function test_revert_SetStaticFeeParameters() external {

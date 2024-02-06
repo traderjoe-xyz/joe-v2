@@ -27,8 +27,8 @@ contract FaucetTest is Test {
     uint256 constant REQUEST_COOLDOWN = 24 hours;
 
     function setUp() public {
-        token6 = new ERC20Mock( 6);
-        token12 = new ERC20Mock( 12);
+        token6 = new ERC20Mock(6);
+        token12 = new ERC20Mock(12);
 
         faucet = new Faucet{value: 10 * NATIVE_PER_REQUEST}(NATIVE_PER_REQUEST, REQUEST_COOLDOWN);
 
@@ -99,12 +99,12 @@ contract FaucetTest is Test {
 
         IERC20 faucetToken;
         (faucetToken,) = faucet.faucetTokens(0);
-        assertEq(address(faucetToken), address(NATIVE));
+        assertEq(address(faucetToken), address(NATIVE), "testRemoveToken::1");
 
         (faucetToken,) = faucet.faucetTokens(1);
-        assertEq(address(faucetToken), address(token12));
+        assertEq(address(faucetToken), address(token12), "testRemoveToken::2");
 
-        assertEq(faucet.owner(), DEV);
+        assertEq(faucet.owner(), DEV, "testRemoveToken::3");
 
         vm.expectRevert("Not a faucet token");
         faucet.removeFaucetToken(IERC20(token6));
@@ -115,17 +115,17 @@ contract FaucetTest is Test {
         faucet.request();
         vm.stopPrank();
 
-        assertEq(token6.balanceOf(ALICE), TOKEN6_PER_REQUEST);
-        assertEq(token12.balanceOf(ALICE), TOKEN12_PER_REQUEST);
-        assertEq(ALICE.balance, NATIVE_PER_REQUEST);
+        assertEq(token6.balanceOf(ALICE), TOKEN6_PER_REQUEST, "testRequestFaucetTokens::1");
+        assertEq(token12.balanceOf(ALICE), TOKEN12_PER_REQUEST, "testRequestFaucetTokens::2");
+        assertEq(ALICE.balance, NATIVE_PER_REQUEST, "testRequestFaucetTokens::3");
 
         vm.startPrank(BOB, BOB);
         faucet.request();
         vm.stopPrank();
 
-        assertEq(token6.balanceOf(BOB), TOKEN6_PER_REQUEST);
-        assertEq(token12.balanceOf(BOB), TOKEN12_PER_REQUEST);
-        assertEq(BOB.balance, NATIVE_PER_REQUEST);
+        assertEq(token6.balanceOf(BOB), TOKEN6_PER_REQUEST, "testRequestFaucetTokens::4");
+        assertEq(token12.balanceOf(BOB), TOKEN12_PER_REQUEST, "testRequestFaucetTokens::5");
+        assertEq(BOB.balance, NATIVE_PER_REQUEST, "testRequestFaucetTokens::6");
     }
 
     function testRequestFaucetTokensByOperator() external {
@@ -146,13 +146,13 @@ contract FaucetTest is Test {
         faucet.request(BOB);
         vm.stopPrank();
 
-        assertEq(token6.balanceOf(ALICE), TOKEN6_PER_REQUEST);
-        assertEq(token12.balanceOf(ALICE), TOKEN12_PER_REQUEST);
-        assertEq(ALICE.balance, NATIVE_PER_REQUEST);
+        assertEq(token6.balanceOf(ALICE), TOKEN6_PER_REQUEST, "testRequestFaucetTokensByOperator::1");
+        assertEq(token12.balanceOf(ALICE), TOKEN12_PER_REQUEST, "testRequestFaucetTokensByOperator::2");
+        assertEq(ALICE.balance, NATIVE_PER_REQUEST, "testRequestFaucetTokensByOperator::3");
 
-        assertEq(token6.balanceOf(BOB), TOKEN6_PER_REQUEST);
-        assertEq(token12.balanceOf(BOB), TOKEN12_PER_REQUEST);
-        assertEq(BOB.balance, NATIVE_PER_REQUEST);
+        assertEq(token6.balanceOf(BOB), TOKEN6_PER_REQUEST, "testRequestFaucetTokensByOperator::4");
+        assertEq(token12.balanceOf(BOB), TOKEN12_PER_REQUEST, "testRequestFaucetTokensByOperator::5");
+        assertEq(BOB.balance, NATIVE_PER_REQUEST, "testRequestFaucetTokensByOperator::6");
 
         vm.startPrank(BOB, BOB);
         vm.expectRevert("Too many requests");
@@ -178,15 +178,15 @@ contract FaucetTest is Test {
         faucet.request();
         vm.stopPrank();
 
-        assertEq(token6.balanceOf(ALICE), newRequestToken6Amount);
-        assertEq(token12.balanceOf(ALICE), newRequestToken12Amount);
-        assertEq(ALICE.balance, newRequestNativeAmount);
+        assertEq(token6.balanceOf(ALICE), newRequestToken6Amount, "testSetRequestAmount::1");
+        assertEq(token12.balanceOf(ALICE), newRequestToken12Amount, "testSetRequestAmount::2");
+        assertEq(ALICE.balance, newRequestNativeAmount, "testSetRequestAmount::3");
     }
 
     function testWithdrawNative() external {
-        assertEq(ALICE.balance, 0);
+        assertEq(ALICE.balance, 0, "testWithdrawNative::1");
         faucet.withdrawToken(NATIVE, ALICE, 1e18);
-        assertEq(ALICE.balance, 1e18);
+        assertEq(ALICE.balance, 1e18, "testWithdrawNative::2");
 
         vm.startPrank(ALICE, ALICE);
         vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
@@ -195,22 +195,22 @@ contract FaucetTest is Test {
 
         // Leave 0.99...9 NATIVE in the contract
         faucet.withdrawToken(NATIVE, ALICE, address(faucet).balance - (NATIVE_PER_REQUEST - 1));
-        assertEq(address(faucet).balance, NATIVE_PER_REQUEST - 1);
+        assertEq(address(faucet).balance, NATIVE_PER_REQUEST - 1, "testWithdrawNative::3");
 
         vm.startPrank(BOB, BOB);
         faucet.request();
         vm.stopPrank();
 
-        assertEq(token6.balanceOf(BOB), TOKEN6_PER_REQUEST);
-        assertEq(token12.balanceOf(BOB), TOKEN12_PER_REQUEST);
-        assertEq(BOB.balance, 0);
+        assertEq(token6.balanceOf(BOB), TOKEN6_PER_REQUEST, "testWithdrawNative::4");
+        assertEq(token12.balanceOf(BOB), TOKEN12_PER_REQUEST, "testWithdrawNative::5");
+        assertEq(BOB.balance, 0, "testWithdrawNative::6");
     }
 
     function testWithdrawToken() external {
         // Tries to withdraw
-        assertEq(token12.balanceOf(ALICE), 0);
+        assertEq(token12.balanceOf(ALICE), 0, "testWithdrawToken::1");
         faucet.withdrawToken(IERC20(token12), ALICE, 2 * TOKEN6_PER_REQUEST);
-        assertEq(token12.balanceOf(ALICE), 2 * TOKEN6_PER_REQUEST);
+        assertEq(token12.balanceOf(ALICE), 2 * TOKEN6_PER_REQUEST, "testWithdrawToken::2");
 
         vm.startPrank(ALICE, ALICE);
         vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
@@ -219,15 +219,15 @@ contract FaucetTest is Test {
 
         // Leave 0.99...9 TOKEN6 in the contract
         faucet.withdrawToken(IERC20(token6), ALICE, token6.balanceOf(address(faucet)) - (TOKEN6_PER_REQUEST - 1));
-        assertEq(token6.balanceOf(address(faucet)), TOKEN6_PER_REQUEST - 1);
+        assertEq(token6.balanceOf(address(faucet)), TOKEN6_PER_REQUEST - 1, "testWithdrawToken::3");
 
         vm.startPrank(BOB, BOB);
         faucet.request();
         vm.stopPrank();
 
-        assertEq(token6.balanceOf(BOB), 0);
-        assertEq(token12.balanceOf(BOB), TOKEN12_PER_REQUEST);
-        assertEq(BOB.balance, NATIVE_PER_REQUEST);
+        assertEq(token6.balanceOf(BOB), 0, "testWithdrawToken::4");
+        assertEq(token12.balanceOf(BOB), TOKEN12_PER_REQUEST, "testWithdrawToken::5");
+        assertEq(BOB.balance, NATIVE_PER_REQUEST, "testWithdrawToken::6");
     }
 
     function testSetRequestCooldown() external {
@@ -235,12 +235,6 @@ contract FaucetTest is Test {
 
         vm.startPrank(ALICE, ALICE);
         faucet.request();
-        console.log(
-            token6.balanceOf(ALICE),
-            token6.balanceOf(DEV),
-            block.timestamp + faucet.requestCooldown(),
-            faucet.lastRequest(ALICE)
-        );
 
         // increase time
         vm.warp(timestamp + 1 hours);
@@ -248,12 +242,6 @@ contract FaucetTest is Test {
         vm.expectRevert("Too many requests");
         faucet.request();
         vm.stopPrank();
-        console.log(
-            token6.balanceOf(ALICE),
-            token6.balanceOf(DEV),
-            block.timestamp + faucet.requestCooldown(),
-            faucet.lastRequest(ALICE)
-        );
 
         faucet.setRequestCooldown(1 hours);
 
@@ -266,8 +254,8 @@ contract FaucetTest is Test {
         faucet.request();
         vm.stopPrank();
 
-        assertEq(token6.balanceOf(ALICE), 2 * TOKEN6_PER_REQUEST);
-        assertEq(token12.balanceOf(ALICE), 2 * TOKEN12_PER_REQUEST);
-        assertEq(ALICE.balance, 2 * NATIVE_PER_REQUEST);
+        assertEq(token6.balanceOf(ALICE), 2 * TOKEN6_PER_REQUEST, "testSetRequestCooldown::1");
+        assertEq(token12.balanceOf(ALICE), 2 * TOKEN12_PER_REQUEST, "testSetRequestCooldown::2");
+        assertEq(ALICE.balance, 2 * NATIVE_PER_REQUEST, "testSetRequestCooldown::3");
     }
 }

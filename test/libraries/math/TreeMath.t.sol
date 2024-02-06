@@ -77,23 +77,23 @@ contract TreeMathTest is Test {
         _tree.add(1);
         _tree.add(2);
 
-        assertEq(_tree.findFirstRight(2), 1, "testFuzz_FindFirst::1");
-        assertEq(_tree.findFirstRight(1), 0, "testFuzz_FindFirst::2");
+        assertEq(_tree.findFirstRight(2), 1, "test_FindFirst::1");
+        assertEq(_tree.findFirstRight(1), 0, "test_FindFirst::2");
 
-        assertEq(_tree.findFirstLeft(0), 1, "testFuzz_FindFirst::3");
-        assertEq(_tree.findFirstLeft(1), 2, "testFuzz_FindFirst::4");
+        assertEq(_tree.findFirstLeft(0), 1, "test_FindFirst::3");
+        assertEq(_tree.findFirstLeft(1), 2, "test_FindFirst::4");
 
-        assertEq(_tree.findFirstRight(0), type(uint24).max, "testFuzz_FindFirst::5");
-        assertEq(_tree.findFirstLeft(2), 0, "testFuzz_FindFirst::6");
+        assertEq(_tree.findFirstRight(0), type(uint24).max, "test_FindFirst::5");
+        assertEq(_tree.findFirstLeft(2), 0, "test_FindFirst::6");
     }
 
     function test_FindFirstFar() external {
         _tree.add(0);
         _tree.add(type(uint24).max);
 
-        assertEq(_tree.findFirstRight(type(uint24).max), 0, "testFuzz_FindFirstFar::1");
+        assertEq(_tree.findFirstRight(type(uint24).max), 0, "test_FindFirstFar::1");
 
-        assertEq(_tree.findFirstLeft(0), type(uint24).max, "testFuzz_FindFirstFar::2");
+        assertEq(_tree.findFirstLeft(0), type(uint24).max, "test_FindFirstFar::2");
     }
 
     function testFuzz_FindFirst(uint24[] calldata ids) external {

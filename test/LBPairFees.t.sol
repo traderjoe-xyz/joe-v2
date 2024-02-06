@@ -24,7 +24,7 @@ contract LBPairFeesTest is TestHelper {
         vm.assume(amountOut > 0 && amountOut <= 1e18);
 
         (uint128 amountIn, uint128 amountOutLeft,) = pairWnative.getSwapIn(amountOut, true);
-        assertEq(amountOutLeft, 0, "testFuzz_SwapInFeesAmounts::1");
+        assertEq(amountOutLeft, 0, "testFuzz_SwapInX::1");
 
         deal(address(wnative), ALICE, amountIn);
 
@@ -32,8 +32,8 @@ contract LBPairFeesTest is TestHelper {
         wnative.transfer(address(pairWnative), amountIn);
         pairWnative.swap(true, ALICE);
 
-        assertEq(wnative.balanceOf(ALICE), 0, "testFuzz_SwapInFeesAmounts::2");
-        assertEq(usdc.balanceOf(ALICE), amountOut, "testFuzz_SwapInFeesAmounts::3");
+        assertEq(wnative.balanceOf(ALICE), 0, "testFuzz_SwapInX::2");
+        assertEq(usdc.balanceOf(ALICE), amountOut, "testFuzz_SwapInX::3");
 
         removeLiquidity(DEV, DEV, pairWnative, ID_ONE, 1e18, 10, 10);
 
@@ -42,15 +42,15 @@ contract LBPairFeesTest is TestHelper {
         uint256 balanceX = wnative.balanceOf(DEV);
         uint256 balanceY = usdc.balanceOf(DEV);
 
-        assertEq(balanceX, amountX + amountIn - protocolFeeX, "testFuzz_SwapInFeesAmounts::4");
-        assertEq(balanceY, amountY - amountOut, "testFuzz_SwapInFeesAmounts::5");
+        assertEq(balanceX, amountX + amountIn - protocolFeeX, "testFuzz_SwapInX::4");
+        assertEq(balanceY, amountY - amountOut, "testFuzz_SwapInX::5");
     }
 
     function testFuzz_SwapInY(uint128 amountOut) external {
         vm.assume(amountOut > 0 && amountOut <= 1e18);
 
         (uint128 amountIn, uint128 amountOutLeft,) = pairWnative.getSwapIn(amountOut, false);
-        assertEq(amountOutLeft, 0, "testFuzz_SwapInFeesAmounts::1");
+        assertEq(amountOutLeft, 0, "testFuzz_SwapInY::1");
 
         deal(address(usdc), ALICE, amountIn);
 
@@ -58,8 +58,8 @@ contract LBPairFeesTest is TestHelper {
         usdc.transfer(address(pairWnative), amountIn);
         pairWnative.swap(false, ALICE);
 
-        assertEq(usdc.balanceOf(ALICE), 0, "testFuzz_SwapInFeesAmounts::2");
-        assertEq(wnative.balanceOf(ALICE), amountOut, "testFuzz_SwapInFeesAmounts::3");
+        assertEq(usdc.balanceOf(ALICE), 0, "testFuzz_SwapInY::2");
+        assertEq(wnative.balanceOf(ALICE), amountOut, "testFuzz_SwapInY::3");
 
         removeLiquidity(DEV, DEV, pairWnative, ID_ONE, 1e18, 10, 10);
 
@@ -68,8 +68,8 @@ contract LBPairFeesTest is TestHelper {
         uint256 balanceX = wnative.balanceOf(DEV);
         uint256 balanceY = usdc.balanceOf(DEV);
 
-        assertEq(balanceX, amountX - amountOut, "testFuzz_SwapInFeesAmounts::4");
-        assertEq(balanceY, amountY + amountIn - protocolFeeY, "testFuzz_SwapInFeesAmounts::5");
+        assertEq(balanceX, amountX - amountOut, "testFuzz_SwapInY::4");
+        assertEq(balanceY, amountY + amountIn - protocolFeeY, "testFuzz_SwapInY::5");
     }
 
     function testFuzz_SwapOutX(uint128 amountIn) external {
@@ -82,8 +82,8 @@ contract LBPairFeesTest is TestHelper {
         wnative.transfer(address(pairWnative), amountIn);
         pairWnative.swap(true, ALICE);
 
-        assertEq(wnative.balanceOf(ALICE), 0, "testFuzz_SwapInFeesAmounts::2");
-        assertEq(usdc.balanceOf(ALICE), amountOut, "testFuzz_SwapInFeesAmounts::3");
+        assertEq(wnative.balanceOf(ALICE), 0, "testFuzz_SwapOutX::1");
+        assertEq(usdc.balanceOf(ALICE), amountOut, "testFuzz_SwapOutX::2");
 
         removeLiquidity(DEV, DEV, pairWnative, ID_ONE, 1e18, 10, 10);
 
@@ -92,8 +92,8 @@ contract LBPairFeesTest is TestHelper {
         uint256 balanceX = wnative.balanceOf(DEV);
         uint256 balanceY = usdc.balanceOf(DEV);
 
-        assertEq(balanceX, amountX + amountIn - protocolFeeX, "testFuzz_SwapInFeesAmounts::4");
-        assertEq(balanceY, amountY - amountOut, "testFuzz_SwapInFeesAmounts::5");
+        assertEq(balanceX, amountX + amountIn - protocolFeeX, "testFuzz_SwapOutX::3");
+        assertEq(balanceY, amountY - amountOut, "testFuzz_SwapOutX::4");
     }
 
     function testFuzz_SwapOutY(uint128 amountIn) external {
@@ -106,8 +106,8 @@ contract LBPairFeesTest is TestHelper {
         usdc.transfer(address(pairWnative), amountIn);
         pairWnative.swap(false, ALICE);
 
-        assertEq(usdc.balanceOf(ALICE), 0, "testFuzz_SwapInFeesAmounts::2");
-        assertEq(wnative.balanceOf(ALICE), amountOut, "testFuzz_SwapInFeesAmounts::3");
+        assertEq(usdc.balanceOf(ALICE), 0, "testFuzz_SwapOutY::1");
+        assertEq(wnative.balanceOf(ALICE), amountOut, "testFuzz_SwapOutY::2");
 
         removeLiquidity(DEV, DEV, pairWnative, ID_ONE, 1e18, 10, 10);
 
@@ -116,15 +116,15 @@ contract LBPairFeesTest is TestHelper {
         uint256 balanceX = wnative.balanceOf(DEV);
         uint256 balanceY = usdc.balanceOf(DEV);
 
-        assertEq(balanceX, amountX - amountOut, "testFuzz_SwapInFeesAmounts::4");
-        assertEq(balanceY, amountY + amountIn - protocolFeeY, "testFuzz_SwapInFeesAmounts::5");
+        assertEq(balanceX, amountX - amountOut, "testFuzz_SwapOutY::3");
+        assertEq(balanceY, amountY + amountIn - protocolFeeY, "testFuzz_SwapOutY::4");
     }
 
     function testFuzz_SwapInXAndY(uint128 amountXOut, uint128 amountYOut) external {
         vm.assume(amountXOut > 0 && amountXOut <= 1e18 && amountYOut > 0 && amountYOut <= 1e18);
 
         (uint128 amountXIn, uint128 amountYOutLeft,) = pairWnative.getSwapIn(amountYOut, true);
-        assertEq(amountYOutLeft, 0, "testFuzz_SwapInFeesAmounts::1");
+        assertEq(amountYOutLeft, 0, "testFuzz_SwapInXAndY::1");
 
         deal(address(wnative), BOB, 1e36);
         deal(address(usdc), BOB, 1e36);
@@ -133,37 +133,37 @@ contract LBPairFeesTest is TestHelper {
         wnative.transfer(address(pairWnative), amountXIn);
         pairWnative.swap(true, ALICE);
 
-        assertEq(usdc.balanceOf(ALICE), amountYOut, "testFuzz_SwapInFeesAmounts::2");
+        assertEq(usdc.balanceOf(ALICE), amountYOut, "testFuzz_SwapInXAndY::2");
 
         (uint128 amountYIn, uint128 amountXOutLeft,) = pairWnative.getSwapIn(amountXOut, false);
-        assertEq(amountXOutLeft, 0, "testFuzz_SwapInFeesAmounts::3");
+        assertEq(amountXOutLeft, 0, "testFuzz_SwapInXAndY::3");
 
         vm.prank(BOB);
         usdc.transfer(address(pairWnative), amountYIn);
         pairWnative.swap(false, ALICE);
 
         uint256 realAmountXOut = wnative.balanceOf(ALICE);
-        assertGe(realAmountXOut, amountXOut, "testFuzz_SwapInFeesAmounts::4");
+        assertGe(realAmountXOut, amountXOut, "testFuzz_SwapInXAndY::4");
 
         removeLiquidity(DEV, DEV, pairWnative, ID_ONE, 1e18, 10, 10);
 
         (uint128 protocolFeeX, uint128 protocolFeeY) = pairWnative.getProtocolFees();
 
-        assertEq(wnative.balanceOf(address(pairWnative)), protocolFeeX, "testFuzz_SwapInFeesAmounts::5");
-        assertEq(usdc.balanceOf(address(pairWnative)), protocolFeeY, "testFuzz_SwapInFeesAmounts::6");
+        assertEq(wnative.balanceOf(address(pairWnative)), protocolFeeX, "testFuzz_SwapInXAndY::5");
+        assertEq(usdc.balanceOf(address(pairWnative)), protocolFeeY, "testFuzz_SwapInXAndY::6");
 
         uint256 balanceX = wnative.balanceOf(DEV);
         uint256 balanceY = usdc.balanceOf(DEV);
 
-        assertEq(balanceX, amountX + amountXIn - realAmountXOut - protocolFeeX, "testFuzz_SwapInFeesAmounts::7");
-        assertEq(balanceY, amountY + amountYIn - amountYOut - protocolFeeY, "testFuzz_SwapInFeesAmounts::8");
+        assertEq(balanceX, amountX + amountXIn - realAmountXOut - protocolFeeX, "testFuzz_SwapInXAndY::7");
+        assertEq(balanceY, amountY + amountYIn - amountYOut - protocolFeeY, "testFuzz_SwapInXAndY::8");
     }
 
     function testFuzz_SwapInYandX(uint128 amountYOut, uint128 amountXOut) external {
         vm.assume(amountXOut > 0 && amountXOut <= 1e18 && amountYOut > 0 && amountYOut <= 1e18);
 
         (uint128 amountYIn, uint128 amountXOutLeft,) = pairWnative.getSwapIn(amountXOut, false);
-        assertEq(amountXOutLeft, 0, "testFuzz_SwapInFeesAmounts::1");
+        assertEq(amountXOutLeft, 0, "testFuzz_SwapInYandX::1");
 
         deal(address(wnative), BOB, 1e36);
         deal(address(usdc), BOB, 1e36);
@@ -172,30 +172,30 @@ contract LBPairFeesTest is TestHelper {
         usdc.transfer(address(pairWnative), amountYIn);
         pairWnative.swap(false, ALICE);
 
-        assertEq(wnative.balanceOf(ALICE), amountXOut, "testFuzz_SwapInFeesAmounts::2");
+        assertEq(wnative.balanceOf(ALICE), amountXOut, "testFuzz_SwapInYandX::2");
 
         (uint128 amountXIn, uint128 amountYOutLeft,) = pairWnative.getSwapIn(amountYOut, true);
-        assertEq(amountYOutLeft, 0, "testFuzz_SwapInFeesAmounts::3");
+        assertEq(amountYOutLeft, 0, "testFuzz_SwapInYandX::3");
 
         vm.prank(BOB);
         wnative.transfer(address(pairWnative), amountXIn);
         pairWnative.swap(true, ALICE);
 
         uint256 realAmountYOut = usdc.balanceOf(ALICE);
-        assertGe(realAmountYOut, amountYOut, "testFuzz_SwapInFeesAmounts::4");
+        assertGe(realAmountYOut, amountYOut, "testFuzz_SwapInYandX::4");
 
         removeLiquidity(DEV, DEV, pairWnative, ID_ONE, 1e18, 10, 10);
 
         (uint128 protocolFeeX, uint128 protocolFeeY) = pairWnative.getProtocolFees();
 
-        assertEq(wnative.balanceOf(address(pairWnative)), protocolFeeX, "testFuzz_SwapInFeesAmounts::5");
-        assertEq(usdc.balanceOf(address(pairWnative)), protocolFeeY, "testFuzz_SwapInFeesAmounts::6");
+        assertEq(wnative.balanceOf(address(pairWnative)), protocolFeeX, "testFuzz_SwapInYandX::5");
+        assertEq(usdc.balanceOf(address(pairWnative)), protocolFeeY, "testFuzz_SwapInYandX::6");
 
         uint256 balanceX = wnative.balanceOf(DEV);
         uint256 balanceY = usdc.balanceOf(DEV);
 
-        assertEq(balanceX, amountX + amountXIn - amountXOut - protocolFeeX, "testFuzz_SwapInFeesAmounts::7");
-        assertEq(balanceY, amountY + amountYIn - realAmountYOut - protocolFeeY, "testFuzz_SwapInFeesAmounts::8");
+        assertEq(balanceX, amountX + amountXIn - amountXOut - protocolFeeX, "testFuzz_SwapInYandX::7");
+        assertEq(balanceY, amountY + amountYIn - realAmountYOut - protocolFeeY, "testFuzz_SwapInYandX::8");
     }
 
     function testFuzz_SwapOutXAndY(uint128 amountXIn, uint128 amountYIn) external {
@@ -209,7 +209,7 @@ contract LBPairFeesTest is TestHelper {
         wnative.transfer(address(pairWnative), amountXIn);
         pairWnative.swap(true, ALICE);
 
-        assertEq(usdc.balanceOf(ALICE), amountYOut, "testFuzz_SwapInFeesAmounts::1");
+        assertEq(usdc.balanceOf(ALICE), amountYOut, "testFuzz_SwapOutXAndY::1");
 
         (uint128 amountYInLeft, uint128 amountXOut,) = pairWnative.getSwapOut(amountYIn, false);
         vm.assume(amountYInLeft == 0 && amountXOut > 0);
@@ -219,20 +219,20 @@ contract LBPairFeesTest is TestHelper {
         pairWnative.swap(false, ALICE);
 
         uint256 realAmountXOut = wnative.balanceOf(ALICE);
-        assertGe(realAmountXOut, amountXOut, "testFuzz_SwapInFeesAmounts::2");
+        assertGe(realAmountXOut, amountXOut, "testFuzz_SwapOutXAndY::2");
 
         removeLiquidity(DEV, DEV, pairWnative, ID_ONE, 1e18, 10, 10);
 
         (uint128 protocolFeeX, uint128 protocolFeeY) = pairWnative.getProtocolFees();
 
-        assertEq(wnative.balanceOf(address(pairWnative)), protocolFeeX, "testFuzz_SwapInFeesAmounts::3");
-        assertEq(usdc.balanceOf(address(pairWnative)), protocolFeeY, "testFuzz_SwapInFeesAmounts::4");
+        assertEq(wnative.balanceOf(address(pairWnative)), protocolFeeX, "testFuzz_SwapOutXAndY::3");
+        assertEq(usdc.balanceOf(address(pairWnative)), protocolFeeY, "testFuzz_SwapOutXAndY::4");
 
         uint256 balanceX = wnative.balanceOf(DEV);
         uint256 balanceY = usdc.balanceOf(DEV);
 
-        assertEq(balanceX, amountX + amountXIn - realAmountXOut - protocolFeeX, "testFuzz_SwapInFeesAmounts::5");
-        assertEq(balanceY, amountY + amountYIn - amountYOut - protocolFeeY, "testFuzz_SwapInFeesAmounts::6");
+        assertEq(balanceX, amountX + amountXIn - realAmountXOut - protocolFeeX, "testFuzz_SwapOutXAndY::5");
+        assertEq(balanceY, amountY + amountYIn - amountYOut - protocolFeeY, "testFuzz_SwapOutXAndY::6");
     }
 
     function testFuzz_SwapOutYAndX(uint128 amountXIn, uint128 amountYIn) external {
@@ -246,7 +246,7 @@ contract LBPairFeesTest is TestHelper {
         usdc.transfer(address(pairWnative), amountYIn);
         pairWnative.swap(false, ALICE);
 
-        assertEq(wnative.balanceOf(ALICE), amountXOut, "testFuzz_SwapInFeesAmounts::1");
+        assertEq(wnative.balanceOf(ALICE), amountXOut, "testFuzz_SwapOutYAndX::1");
 
         (uint128 amountXInLeft, uint128 amountYOut,) = pairWnative.getSwapOut(amountXIn, true);
         vm.assume(amountXInLeft == 0 && amountYOut > 0);
@@ -256,20 +256,20 @@ contract LBPairFeesTest is TestHelper {
         pairWnative.swap(true, ALICE);
 
         uint256 realAmountYOut = usdc.balanceOf(ALICE);
-        assertGe(realAmountYOut, amountYOut, "testFuzz_SwapInFeesAmounts::2");
+        assertGe(realAmountYOut, amountYOut, "testFuzz_SwapOutYAndX::2");
 
         removeLiquidity(DEV, DEV, pairWnative, ID_ONE, 1e18, 10, 10);
 
         (uint128 protocolFeeX, uint128 protocolFeeY) = pairWnative.getProtocolFees();
 
-        assertEq(wnative.balanceOf(address(pairWnative)), protocolFeeX, "testFuzz_SwapInFeesAmounts::3");
-        assertEq(usdc.balanceOf(address(pairWnative)), protocolFeeY, "testFuzz_SwapInFeesAmounts::4");
+        assertEq(wnative.balanceOf(address(pairWnative)), protocolFeeX, "testFuzz_SwapOutYAndX::3");
+        assertEq(usdc.balanceOf(address(pairWnative)), protocolFeeY, "testFuzz_SwapOutYAndX::4");
 
         uint256 balanceX = wnative.balanceOf(DEV);
         uint256 balanceY = usdc.balanceOf(DEV);
 
-        assertEq(balanceX, amountX + amountXIn - amountXOut - protocolFeeX, "testFuzz_SwapInFeesAmounts::5");
-        assertEq(balanceY, amountY + amountYIn - realAmountYOut - protocolFeeY, "testFuzz_SwapInFeesAmounts::6");
+        assertEq(balanceX, amountX + amountXIn - amountXOut - protocolFeeX, "testFuzz_SwapOutYAndX::5");
+        assertEq(balanceY, amountY + amountYIn - realAmountYOut - protocolFeeY, "testFuzz_SwapOutYAndX::6");
     }
 
     function test_FeesX2LP() external {
@@ -414,13 +414,13 @@ contract LBPairFeesTest is TestHelper {
         vm.prank(feeRecipient);
         pairWnative.collectProtocolFees();
 
-        assertEq(wnative.balanceOf(feeRecipient), protocolFeeX - 1, "test_CollectProtocolFees::1");
-        assertEq(usdc.balanceOf(feeRecipient), 0, "test_CollectProtocolFees::2");
+        assertEq(wnative.balanceOf(feeRecipient), protocolFeeX - 1, "test_CollectProtocolFeesXTokens::1");
+        assertEq(usdc.balanceOf(feeRecipient), 0, "test_CollectProtocolFeesXTokens::2");
 
         (protocolFeeX, protocolFeeY) = pairWnative.getProtocolFees();
 
-        assertEq(protocolFeeX, 1, "test_CollectProtocolFees::3");
-        assertEq(protocolFeeY, 0, "test_CollectProtocolFees::4");
+        assertEq(protocolFeeX, 1, "test_CollectProtocolFeesXTokens::3");
+        assertEq(protocolFeeY, 0, "test_CollectProtocolFeesXTokens::4");
     }
 
     function test_CollectProtocolFeesYTokens() external {
@@ -439,13 +439,13 @@ contract LBPairFeesTest is TestHelper {
         vm.prank(feeRecipient);
         pairWnative.collectProtocolFees();
 
-        assertEq(wnative.balanceOf(feeRecipient), 0, "test_CollectProtocolFees::1");
-        assertEq(usdc.balanceOf(feeRecipient), protocolFeeY - 1, "test_CollectProtocolFees::2");
+        assertEq(wnative.balanceOf(feeRecipient), 0, "test_CollectProtocolFeesYTokens::1");
+        assertEq(usdc.balanceOf(feeRecipient), protocolFeeY - 1, "test_CollectProtocolFeesYTokens::2");
 
         (protocolFeeX, protocolFeeY) = pairWnative.getProtocolFees();
 
-        assertEq(protocolFeeX, 0, "test_CollectProtocolFees::3");
-        assertEq(protocolFeeY, 1, "test_CollectProtocolFees::4");
+        assertEq(protocolFeeX, 0, "test_CollectProtocolFeesYTokens::3");
+        assertEq(protocolFeeY, 1, "test_CollectProtocolFeesYTokens::4");
     }
 
     function test_CollectProtocolFeesBothTokens() external {
@@ -466,13 +466,13 @@ contract LBPairFeesTest is TestHelper {
         vm.prank(feeRecipient);
         pairWnative.collectProtocolFees();
 
-        assertEq(wnative.balanceOf(feeRecipient), protocolFeeX - 1, "test_CollectProtocolFees::1");
-        assertEq(usdc.balanceOf(feeRecipient), protocolFeeY - 1, "test_CollectProtocolFees::2");
+        assertEq(wnative.balanceOf(feeRecipient), protocolFeeX - 1, "test_CollectProtocolFeesBothTokens::1");
+        assertEq(usdc.balanceOf(feeRecipient), protocolFeeY - 1, "test_CollectProtocolFeesBothTokens::2");
 
         (protocolFeeX, protocolFeeY) = pairWnative.getProtocolFees();
 
-        assertEq(protocolFeeX, 1, "test_CollectProtocolFees::3");
-        assertEq(protocolFeeY, 1, "test_CollectProtocolFees::4");
+        assertEq(protocolFeeX, 1, "test_CollectProtocolFeesBothTokens::3");
+        assertEq(protocolFeeY, 1, "test_CollectProtocolFeesBothTokens::4");
     }
 
     function test_CollectProtocolFeesAfterSwap() external {
@@ -486,8 +486,8 @@ contract LBPairFeesTest is TestHelper {
         (uint128 protocolFeeX, uint128 protocolFeeY) = pairWnative.getProtocolFees();
         uint128 previousProtocolFeeX = protocolFeeX;
 
-        assertGt(protocolFeeX, 0, "test_CollectProtocolFees::1");
-        assertEq(protocolFeeY, 0, "test_CollectProtocolFees::2");
+        assertGt(protocolFeeX, 0, "test_CollectProtocolFeesAfterSwap::1");
+        assertEq(protocolFeeY, 0, "test_CollectProtocolFeesAfterSwap::2");
 
         (uint128 reserveX, uint128 reserveY) = pairWnative.getReserves();
 
@@ -498,16 +498,16 @@ contract LBPairFeesTest is TestHelper {
 
         (uint128 reserveXAfter, uint128 reserveYAfter) = pairWnative.getReserves();
 
-        assertEq(reserveXAfter, reserveX, "test_CollectProtocolFees::3");
-        assertEq(reserveYAfter, reserveY, "test_CollectProtocolFees::4");
+        assertEq(reserveXAfter, reserveX, "test_CollectProtocolFeesAfterSwap::3");
+        assertEq(reserveYAfter, reserveY, "test_CollectProtocolFeesAfterSwap::4");
 
-        assertEq(wnative.balanceOf(feeRecipient), protocolFeeX - 1, "test_CollectProtocolFees::5");
-        assertEq(usdc.balanceOf(feeRecipient), 0, "test_CollectProtocolFees::6");
+        assertEq(wnative.balanceOf(feeRecipient), protocolFeeX - 1, "test_CollectProtocolFeesAfterSwap::5");
+        assertEq(usdc.balanceOf(feeRecipient), 0, "test_CollectProtocolFeesAfterSwap::6");
 
         (protocolFeeX, protocolFeeY) = pairWnative.getProtocolFees();
 
-        assertEq(protocolFeeX, 1, "test_CollectProtocolFees::7");
-        assertEq(protocolFeeY, 0, "test_CollectProtocolFees::8");
+        assertEq(protocolFeeX, 1, "test_CollectProtocolFeesAfterSwap::7");
+        assertEq(protocolFeeY, 0, "test_CollectProtocolFeesAfterSwap::8");
 
         deal(address(usdc), address(BOB), 1e18);
 
@@ -518,8 +518,8 @@ contract LBPairFeesTest is TestHelper {
         (protocolFeeX, protocolFeeY) = pairWnative.getProtocolFees();
         uint128 previousProtocolFeeY = protocolFeeY;
 
-        assertEq(protocolFeeX, 1, "test_CollectProtocolFees::9");
-        assertGt(protocolFeeY, 0, "test_CollectProtocolFees::10");
+        assertEq(protocolFeeX, 1, "test_CollectProtocolFeesAfterSwap::9");
+        assertGt(protocolFeeY, 0, "test_CollectProtocolFeesAfterSwap::10");
 
         (reserveX, reserveY) = pairWnative.getReserves();
 
@@ -528,22 +528,22 @@ contract LBPairFeesTest is TestHelper {
 
         (reserveXAfter, reserveYAfter) = pairWnative.getReserves();
 
-        assertEq(reserveXAfter, reserveX, "test_CollectProtocolFees::11");
-        assertEq(reserveYAfter, reserveY, "test_CollectProtocolFees::12");
+        assertEq(reserveXAfter, reserveX, "test_CollectProtocolFeesAfterSwap::11");
+        assertEq(reserveYAfter, reserveY, "test_CollectProtocolFeesAfterSwap::12");
 
-        assertEq(wnative.balanceOf(feeRecipient), previousProtocolFeeX - 1, "test_CollectProtocolFees::13");
-        assertEq(usdc.balanceOf(feeRecipient), protocolFeeY - 1, "test_CollectProtocolFees::14");
+        assertEq(wnative.balanceOf(feeRecipient), previousProtocolFeeX - 1, "test_CollectProtocolFeesAfterSwap::13");
+        assertEq(usdc.balanceOf(feeRecipient), protocolFeeY - 1, "test_CollectProtocolFeesAfterSwap::14");
 
         (protocolFeeX, protocolFeeY) = pairWnative.getProtocolFees();
 
-        assertEq(protocolFeeX, 1, "test_CollectProtocolFees::15");
-        assertEq(protocolFeeY, 1, "test_CollectProtocolFees::16");
+        assertEq(protocolFeeX, 1, "test_CollectProtocolFeesAfterSwap::15");
+        assertEq(protocolFeeY, 1, "test_CollectProtocolFeesAfterSwap::16");
 
         vm.prank(feeRecipient);
         pairWnative.collectProtocolFees();
 
-        assertEq(wnative.balanceOf(feeRecipient), previousProtocolFeeX - 1, "test_CollectProtocolFees::19");
-        assertEq(usdc.balanceOf(feeRecipient), previousProtocolFeeY - 1, "test_CollectProtocolFees::20");
+        assertEq(wnative.balanceOf(feeRecipient), previousProtocolFeeX - 1, "test_CollectProtocolFeesAfterSwap::17");
+        assertEq(usdc.balanceOf(feeRecipient), previousProtocolFeeY - 1, "test_CollectProtocolFeesAfterSwap::18");
     }
 
     function test_revert_TotalFeeExceeded(

@@ -111,17 +111,17 @@ contract LiquidityBinRouterTest is TestHelper {
         ) = router.addLiquidity(liquidityParameters);
 
         // Check amounts
-        assertEq(amountXAdded, liquidityParameters.amountX, "testFuzz_AddLiquidityNoSlippage::1");
-        assertEq(amountYAdded, liquidityParameters.amountY, "testFuzz_AddLiquidityNoSlippage::2");
+        assertEq(amountXAdded, liquidityParameters.amountX - amountXLeft, "testFuzz_AddLiquidityNoSlippage::1");
+        assertEq(amountYAdded, liquidityParameters.amountY - amountYLeft, "testFuzz_AddLiquidityNoSlippage::2");
         assertLt(amountXLeft, amountXAdded, "testFuzz_AddLiquidityNoSlippage::3");
         assertLt(amountYLeft, amountYAdded, "testFuzz_AddLiquidityNoSlippage::4");
 
-        assertEq(usdt.balanceOf(BOB), amountXLeft, "usdt balance");
-        assertEq(usdc.balanceOf(BOB), amountYLeft, "usdc balance");
+        assertEq(usdt.balanceOf(BOB), amountXLeft, "testFuzz_AddLiquidityNoSlippage::5");
+        assertEq(usdc.balanceOf(BOB), amountYLeft, "testFuzz_AddLiquidityNoSlippage::6");
 
         // Check liquidity minted
-        assertEq(liquidityMinted.length, binNumber, "testFuzz_AddLiquidityNoSlippage::5");
-        assertEq(depositIds.length, binNumber, "testFuzz_AddLiquidityNoSlippage::6");
+        assertEq(liquidityMinted.length, binNumber, "testFuzz_AddLiquidityNoSlippage::7");
+        assertEq(depositIds.length, binNumber, "testFuzz_AddLiquidityNoSlippage::8");
     }
 
     function test_revert_AddLiquidity() public {
@@ -222,7 +222,7 @@ contract LiquidityBinRouterTest is TestHelper {
             abi.encodeWithSelector(
                 ILBRouter.LBRouter__AmountSlippageCaught.selector,
                 liquidityParameters.amountXMin,
-                liquidityParameters.amountX,
+                liquidityParameters.amountX - 2,
                 liquidityParameters.amountYMin,
                 liquidityParameters.amountY
             )
@@ -236,7 +236,7 @@ contract LiquidityBinRouterTest is TestHelper {
             abi.encodeWithSelector(
                 ILBRouter.LBRouter__AmountSlippageCaught.selector,
                 liquidityParameters.amountXMin,
-                liquidityParameters.amountX,
+                liquidityParameters.amountX - 2,
                 liquidityParameters.amountYMin,
                 liquidityParameters.amountY
             )
@@ -274,8 +274,8 @@ contract LiquidityBinRouterTest is TestHelper {
         ) = router.addLiquidityNATIVE{value: liquidityParameters.amountX}(liquidityParameters);
 
         // Check amounts
-        assertEq(amountXAdded, liquidityParameters.amountX, "test_AddLiquidityNATIVE::1");
-        assertEq(amountYAdded, liquidityParameters.amountY, "test_AddLiquidityNATIVE::2");
+        assertEq(amountXAdded, liquidityParameters.amountX - amountXLeft, "test_AddLiquidityNATIVE::1");
+        assertEq(amountYAdded, liquidityParameters.amountY - amountYLeft, "test_AddLiquidityNATIVE::2");
         assertLt(amountXLeft, amountXAdded, "test_AddLiquidityNATIVE::3");
         assertLt(amountYLeft, amountYAdded, "test_AddLiquidityNATIVE::4");
 
@@ -416,7 +416,7 @@ contract LiquidityBinRouterTest is TestHelper {
         // Revert if the slippage is caught
         vm.expectRevert(
             abi.encodeWithSelector(
-                ILBRouter.LBRouter__AmountSlippageCaught.selector, amountXAdded + 1, amountXAdded - 2, 0, amountYAdded
+                ILBRouter.LBRouter__AmountSlippageCaught.selector, amountXAdded + 1, amountXAdded, 0, amountYAdded
             )
         );
         router.removeLiquidity(
@@ -433,7 +433,7 @@ contract LiquidityBinRouterTest is TestHelper {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                ILBRouter.LBRouter__AmountSlippageCaught.selector, 0, amountXAdded - 2, amountYAdded + 1, amountYAdded
+                ILBRouter.LBRouter__AmountSlippageCaught.selector, 0, amountXAdded, amountYAdded + 1, amountYAdded
             )
         );
         router.removeLiquidity(
@@ -504,7 +504,7 @@ contract LiquidityBinRouterTest is TestHelper {
         // Revert if the contract does not have a receive function
         blockReceive = true;
         vm.expectRevert(
-            abi.encodeWithSelector(ILBRouter.LBRouter__FailedToSendNATIVE.selector, address(this), amountXAdded - 2)
+            abi.encodeWithSelector(ILBRouter.LBRouter__FailedToSendNATIVE.selector, address(this), amountXAdded)
         );
         router.removeLiquidityNATIVE(
             usdc, DEFAULT_BIN_STEP, 0, 0, depositIds, liquidityMinted, payable(address(this)), block.timestamp

@@ -86,7 +86,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.expectEmit(true, true, true, true);
         emit LBPairImplementationSet(pairImplementation, newImplementation);
         factory.setLBPairImplementation(address(newImplementation));
-        assertEq(factory.getLBPairImplementation(), address(newImplementation), "test_setLBPairImplementation:1");
+        assertEq(factory.getLBPairImplementation(), address(newImplementation), "test_SetLBPairImplementation::1");
     }
 
     function test_revert_SetLBPairImplementation() public {
@@ -156,21 +156,21 @@ contract LiquidityBinFactoryTest is TestHelper {
             uint24 maxVolatilityAccumulator
         ) = pair.getStaticFeeParameters();
 
-        assertEq(baseFactor, DEFAULT_BASE_FACTOR, "test_createLBPair::11");
-        assertEq(filterPeriod, DEFAULT_FILTER_PERIOD, "test_createLBPair::12");
-        assertEq(decayPeriod, DEFAULT_DECAY_PERIOD, "test_createLBPair::13");
-        assertEq(reductionFactor, DEFAULT_REDUCTION_FACTOR, "test_createLBPair::14");
-        assertEq(variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL, "test_createLBPair::15");
-        assertEq(protocolShare, DEFAULT_PROTOCOL_SHARE, "test_createLBPair::16");
-        assertEq(maxVolatilityAccumulator, DEFAULT_MAX_VOLATILITY_ACCUMULATOR, "test_createLBPair::17");
+        assertEq(baseFactor, DEFAULT_BASE_FACTOR, "test_CreateLBPair::11");
+        assertEq(filterPeriod, DEFAULT_FILTER_PERIOD, "test_CreateLBPair::12");
+        assertEq(decayPeriod, DEFAULT_DECAY_PERIOD, "test_CreateLBPair::13");
+        assertEq(reductionFactor, DEFAULT_REDUCTION_FACTOR, "test_CreateLBPair::14");
+        assertEq(variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL, "test_CreateLBPair::15");
+        assertEq(protocolShare, DEFAULT_PROTOCOL_SHARE, "test_CreateLBPair::16");
+        assertEq(maxVolatilityAccumulator, DEFAULT_MAX_VOLATILITY_ACCUMULATOR, "test_CreateLBPair::17");
 
         (uint24 volatilityAccumulator, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate) =
             pair.getVariableFeeParameters();
 
-        assertEq(volatilityAccumulator, 0, "test_createLBPair::18");
-        assertEq(volatilityReference, 0, "test_createLBPair::19");
-        assertEq(idReference, ID_ONE, "test_createLBPair::20");
-        assertEq(timeOfLastUpdate, 0, "test_createLBPair::21");
+        assertEq(volatilityAccumulator, 0, "test_CreateLBPair::18");
+        assertEq(volatilityReference, 0, "test_CreateLBPair::19");
+        assertEq(idReference, ID_ONE, "test_CreateLBPair::20");
+        assertEq(timeOfLastUpdate, 0, "test_CreateLBPair::21");
     }
 
     function test_CreateLBPairFactoryUnlocked() public {
@@ -367,13 +367,13 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Bin step DEFAULT_BIN_STEP is already there
         if (binStep != DEFAULT_BIN_STEP) {
-            assertEq(factory.getAllBinSteps().length, 2, "1");
+            assertEq(factory.getAllBinSteps().length, 2, "testFuzz_SetPreset::1");
 
-            assertEq(factory.getAllBinSteps()[0], DEFAULT_BIN_STEP, "2");
-            assertEq(factory.getAllBinSteps()[1], binStep, "3");
+            assertEq(factory.getAllBinSteps()[0], DEFAULT_BIN_STEP, "testFuzz_SetPreset::2");
+            assertEq(factory.getAllBinSteps()[1], binStep, "testFuzz_SetPreset::3");
         } else {
-            assertEq(factory.getAllBinSteps().length, 1, "4");
-            assertEq(factory.getAllBinSteps()[0], binStep, "5");
+            assertEq(factory.getAllBinSteps().length, 1, "testFuzz_SetPreset::4");
+            assertEq(factory.getAllBinSteps()[0], binStep, "testFuzz_SetPreset::5");
         }
 
         // Check splitted in two to avoid stack too deep errors
@@ -381,10 +381,10 @@ contract LiquidityBinFactoryTest is TestHelper {
             (uint256 baseFactorView, uint256 filterPeriodView, uint256 decayPeriodView, uint256 reductionFactorView,,,,)
             = factory.getPreset(binStep);
 
-            assertEq(baseFactorView, baseFactor);
-            assertEq(filterPeriodView, filterPeriod);
-            assertEq(decayPeriodView, decayPeriod);
-            assertEq(reductionFactorView, reductionFactor);
+            assertEq(baseFactorView, baseFactor, "testFuzz_SetPreset::6");
+            assertEq(filterPeriodView, filterPeriod, "testFuzz_SetPreset::7");
+            assertEq(decayPeriodView, decayPeriod, "testFuzz_SetPreset::8");
+            assertEq(reductionFactorView, reductionFactor, "testFuzz_SetPreset::9");
         }
 
         {
@@ -399,10 +399,10 @@ contract LiquidityBinFactoryTest is TestHelper {
                 bool isOpenView
             ) = factory.getPreset(binStep);
 
-            assertEq(variableFeeControlView, variableFeeControl);
-            assertEq(protocolShareView, protocolShare);
-            assertEq(maxVolatilityAccumulatorView, maxVolatilityAccumulator);
-            assertEq(isOpenView, isOpen);
+            assertEq(variableFeeControlView, variableFeeControl, "testFuzz_SetPreset::10");
+            assertEq(protocolShareView, protocolShare, "testFuzz_SetPreset::11");
+            assertEq(maxVolatilityAccumulatorView, maxVolatilityAccumulator, "testFuzz_SetPreset::12");
+            assertEq(isOpenView, isOpen, "testFuzz_SetPreset::13");
         }
     }
 

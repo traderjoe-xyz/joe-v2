@@ -22,9 +22,9 @@ contract LBPairImplementationTest is Test {
 
         LBPair pair = LBPair(ImmutableClone.cloneDeterministic(implementation, data, salt));
 
-        assertEq(address(pair.getTokenX()), tokenX);
-        assertEq(address(pair.getTokenY()), tokenY);
-        assertEq(pair.getBinStep(), binStep);
+        assertEq(address(pair.getTokenX()), tokenX, "testFuzz_Getters::1");
+        assertEq(address(pair.getTokenY()), tokenY, "testFuzz_Getters::2");
+        assertEq(pair.getBinStep(), binStep, "testFuzz_Getters::3");
     }
 
     function testFuzz_revert_InitializeImplementation() public {

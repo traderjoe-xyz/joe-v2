@@ -43,14 +43,14 @@ contract LBPairFlashloanTest is TestHelper {
 
         pairWnative.flashLoan(borrower, amountsBorrowed, data);
 
-        assertEq(wnative.balanceOf(address(pairWnative)), balanceX + feeX, "TestFuzz_Flashloan::1");
-        assertEq(usdc.balanceOf(address(pairWnative)), balanceY + feeY, "TestFuzz_Flashloan::2");
+        assertEq(wnative.balanceOf(address(pairWnative)), balanceX + feeX, "testFuzz_FlashLoan::1");
+        assertEq(usdc.balanceOf(address(pairWnative)), balanceY + feeY, "testFuzz_FlashLoan::2");
 
         (uint256 reserveX, uint256 reserveY) = pairWnative.getReserves();
         (uint256 protocolFeeX, uint256 protocolFeeY) = pairWnative.getProtocolFees();
 
-        assertEq(reserveX + protocolFeeX, balanceX + feeX, "TestFuzz_Flashloan::3");
-        assertEq(reserveY + protocolFeeY, balanceY + feeY, "TestFuzz_Flashloan::4");
+        assertEq(reserveX + protocolFeeX, balanceX + feeX, "testFuzz_FlashLoan::3");
+        assertEq(reserveY + protocolFeeY, balanceY + feeY, "testFuzz_FlashLoan::4");
     }
 
     function testFuzz_revert_FlashLoanInsufficientAmount(uint128 amountX, uint128 amountY) external {

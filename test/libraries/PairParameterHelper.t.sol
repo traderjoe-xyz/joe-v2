@@ -182,15 +182,15 @@ contract PairParameterHelperTest is Test {
         uint256 baseFee = params.getBaseFee(binStep);
         uint256 variableFee = params.getVariableFee(binStep);
 
-        assertEq(baseFee, uint256(params.getBaseFactor()) * binStep * 1e10, "test_getBaseAndVariableFees::1");
+        assertEq(baseFee, uint256(params.getBaseFactor()) * binStep * 1e10, "testFuzz_getBaseAndVariableFees::1");
 
         uint256 prod = uint256(params.getVolatilityAccumulator()) * binStep;
         assertEq(
-            variableFee, (prod * prod * params.getVariableFeeControl() + 99) / 100, "test_getBaseAndVariableFees::2"
+            variableFee, (prod * prod * params.getVariableFeeControl() + 99) / 100, "testFuzz_getBaseAndVariableFees::2"
         );
 
         if (baseFee + variableFee < type(uint128).max) {
-            assertEq(params.getTotalFee(binStep), baseFee + variableFee, "test_getBaseAndVariableFees::3");
+            assertEq(params.getTotalFee(binStep), baseFee + variableFee, "testFuzz_getBaseAndVariableFees::3");
         } else {
             vm.expectRevert(SafeCast.SafeCast__Exceeds128Bits.selector);
             params.getTotalFee(binStep);
@@ -202,22 +202,22 @@ contract PairParameterHelperTest is Test {
 
         bytes32 newParams = params.updateIdReference();
 
-        assertEq(newParams.getIdReference(), activeId, "test_UpdateIdReference::1");
+        assertEq(newParams.getIdReference(), activeId, "testFuzz_UpdateIdReference::1");
         assertEq(
             newParams & bytes32(~Encoded.MASK_UINT24 << PairParameterHelper.OFFSET_ACTIVE_ID),
             params & bytes32(~Encoded.MASK_UINT24 << PairParameterHelper.OFFSET_ACTIVE_ID),
-            "test_UpdateIdReference::2"
+            "testFuzz_UpdateIdReference::2"
         );
     }
 
     function testFuzz_UpdateTimeOfLastUpdate(bytes32 params) external {
         bytes32 newParams = params.updateTimeOfLastUpdate(block.timestamp);
 
-        assertEq(newParams.getTimeOfLastUpdate(), block.timestamp, "test_UpdateTimeOfLastUpdate::1");
+        assertEq(newParams.getTimeOfLastUpdate(), block.timestamp, "testFuzz_UpdateTimeOfLastUpdate::1");
         assertEq(
             newParams & bytes32(~Encoded.MASK_UINT40 << PairParameterHelper.OFFSET_TIME_LAST_UPDATE),
             params & bytes32(~Encoded.MASK_UINT40 << PairParameterHelper.OFFSET_TIME_LAST_UPDATE),
-            "test_UpdateTimeOfLastUpdate::2"
+            "testFuzz_UpdateTimeOfLastUpdate::2"
         );
     }
 
@@ -233,11 +233,11 @@ contract PairParameterHelperTest is Test {
         } else {
             bytes32 newParams = params.updateVolatilityReference();
 
-            assertEq(newParams.getVolatilityReference(), newVolAccumulator, "test_UpdateVolatilityReference::1");
+            assertEq(newParams.getVolatilityReference(), newVolAccumulator, "testFuzz_UpdateVolatilityReference::1");
             assertEq(
                 newParams & bytes32(~Encoded.MASK_UINT20 << PairParameterHelper.OFFSET_VOL_REF),
                 params & bytes32(~Encoded.MASK_UINT20 << PairParameterHelper.OFFSET_VOL_REF),
-                "test_UpdateVolatilityReference::2"
+                "testFuzz_UpdateVolatilityReference::2"
             );
         }
     }
@@ -253,11 +253,11 @@ contract PairParameterHelperTest is Test {
 
         bytes32 newParams = params.updateVolatilityAccumulator(activeId);
 
-        assertEq(newParams.getVolatilityAccumulator(), volAccumulator, "test_UpdateVolatilityAccumulator::1");
+        assertEq(newParams.getVolatilityAccumulator(), volAccumulator, "testFuzz_UpdateVolatilityAccumulator::1");
         assertEq(
             newParams & bytes32(~Encoded.MASK_UINT20 << PairParameterHelper.OFFSET_VOL_ACC),
             params & bytes32(~Encoded.MASK_UINT20 << PairParameterHelper.OFFSET_VOL_ACC),
-            "test_UpdateVolatilityAccumulator::2"
+            "testFuzz_UpdateVolatilityAccumulator::2"
         );
     }
 
@@ -296,14 +296,14 @@ contract PairParameterHelperTest is Test {
 
         bytes32 newParams = params.updateReferences(block.timestamp);
 
-        assertEq(newParams.getIdReference(), idReference, "test_UpdateReferences::1");
-        assertEq(newParams.getVolatilityReference(), volReference, "test_UpdateReferences::2");
-        assertEq(newParams.getTimeOfLastUpdate(), time, "test_UpdateReferences::3");
+        assertEq(newParams.getIdReference(), idReference, "testFuzz_UpdateReferences::1");
+        assertEq(newParams.getVolatilityReference(), volReference, "testFuzz_UpdateReferences::2");
+        assertEq(newParams.getTimeOfLastUpdate(), time, "testFuzz_UpdateReferences::3");
 
         assertEq(
             newParams & bytes32(~(uint256(1 << 84) - 1) << PairParameterHelper.OFFSET_VOL_REF),
             params & bytes32(~(uint256(1 << 84) - 1) << PairParameterHelper.OFFSET_VOL_REF),
-            "test_UpdateReferences::4"
+            "testFuzz_UpdateReferences::4"
         );
     }
 
@@ -350,23 +350,23 @@ contract PairParameterHelperTest is Test {
         bytes32 trustedParams = params.updateReferences(block.timestamp).updateVolatilityAccumulator(activeId);
         bytes32 newParams = params.updateVolatilityParameters(activeId, block.timestamp);
 
-        assertEq(newParams.getIdReference(), trustedParams.getIdReference(), "test_UpdateVolatilityParameters::1");
+        assertEq(newParams.getIdReference(), trustedParams.getIdReference(), "testFuzz_UpdateVolatilityParameters::1");
         assertEq(
             newParams.getVolatilityReference(),
             trustedParams.getVolatilityReference(),
-            "test_UpdateVolatilityParameters::2"
+            "testFuzz_UpdateVolatilityParameters::2"
         );
         assertEq(
             newParams.getVolatilityAccumulator(),
             trustedParams.getVolatilityAccumulator(),
-            "test_UpdateVolatilityParameters::3"
+            "testFuzz_UpdateVolatilityParameters::3"
         );
-        assertEq(newParams.getTimeOfLastUpdate(), time, "test_UpdateVolatilityParameters::4");
+        assertEq(newParams.getTimeOfLastUpdate(), time, "testFuzz_UpdateVolatilityParameters::4");
 
         assertEq(
             newParams & bytes32(~uint256(type(uint104).max) << PairParameterHelper.OFFSET_VOL_ACC),
             params & bytes32(~uint256(type(uint104).max) << PairParameterHelper.OFFSET_VOL_ACC),
-            "test_UpdateVolatilityParameters::5"
+            "testFuzz_UpdateVolatilityParameters::5"
         );
     }
 }

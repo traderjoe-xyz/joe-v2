@@ -15,14 +15,14 @@ contract PriceHelperTest is Test {
         uint256 base128x128 = PriceHelper.getBase(binStep);
         uint256 expectedBase128x128 = (1 << 128) + (uint256(binStep) << 128) / 10_000;
 
-        assertEq(base128x128, expectedBase128x128, "test_GetBase::1");
+        assertEq(base128x128, expectedBase128x128, "testFuzz_GetBase::1");
     }
 
     function testFuzz_GetExponent(uint24 id) external {
         int256 exponent128x128 = PriceHelper.getExponent(id);
         int256 expectedExponent128x128 = int256(uint256(id)) - (1 << 23);
 
-        assertEq(exponent128x128, expectedExponent128x128, "test_GetExponent::1");
+        assertEq(exponent128x128, expectedExponent128x128, "testFuzz_GetExponent::1");
     }
 
     function testFuzz_ConvertDecimalPriceTo128x128(uint256 price) external {
@@ -31,7 +31,7 @@ contract PriceHelperTest is Test {
         uint256 price128x128 = PriceHelper.convertDecimalPriceTo128x128(price);
         uint256 expectedPrice128x128 = price.shiftDivRoundDown(128, 1e18);
 
-        assertEq(price128x128, expectedPrice128x128, "test_ConvertDecimalPriceTo128x128::1");
+        assertEq(price128x128, expectedPrice128x128, "testFuzz_ConvertDecimalPriceTo128x128::1");
     }
 
     function testFuzz_revert_ConvertDecimalPriceTo128x128(uint256 price) external {
@@ -46,7 +46,7 @@ contract PriceHelperTest is Test {
         uint256 priceDecimal = PriceHelper.convert128x128PriceToDecimal(price128x128);
         uint256 expectedPriceDecimal = price128x128.mulShiftRoundDown(1e18, 128);
 
-        assertEq(priceDecimal, expectedPriceDecimal, "test_Convert128x128PriceToDecimal::1");
+        assertEq(priceDecimal, expectedPriceDecimal, "testFuzz_Convert128x128PriceToDecimal::1");
     }
 
     function testFuzz_Price(uint256 price, uint16 binStep) external {
@@ -65,12 +65,12 @@ contract PriceHelperTest is Test {
             assertLe(
                 price * (Constants.BASIS_POINT_MAX - binStep) / Constants.BASIS_POINT_MAX,
                 calculatedPrice,
-                "test_Price::1"
+                "testFuzz_Price::1"
             );
             assertGe(
                 price * (Constants.BASIS_POINT_MAX + binStep) / Constants.BASIS_POINT_MAX,
                 calculatedPrice,
-                "test_Price::2"
+                "testFuzz_Price::2"
             );
         }
     }

@@ -12,19 +12,19 @@ contract AddressHelperTest is Test {
     RandomContract immutable randomContract = new RandomContract();
 
     function test_IsContract() public {
-        assertTrue(address(randomContract).isContract(), "isContract::1");
-        assertTrue(!address(0).isContract(), "isContract::2");
+        assertTrue(address(randomContract).isContract(), "test_IsContract::1");
+        assertTrue(!address(0).isContract(), "test_IsContract::2");
     }
 
     function test_CallAndCatchSuccessfull() public {
         bytes memory data = abi.encodeWithSignature("return1()");
         bytes memory returnData = address(randomContract).callAndCatch(data);
-        assertEq(returnData.length, 32, "callAndCatch::1");
-        assertEq(uint256(abi.decode(returnData, (uint256))), 1, "callAndCatch::2");
+        assertEq(returnData.length, 32, "test_CallAndCatchSuccessfull::1");
+        assertEq(uint256(abi.decode(returnData, (uint256))), 1, "test_CallAndCatchSuccessfull::2");
 
         data = abi.encodeWithSignature("returnNothing()");
         returnData = address(randomContract).callAndCatch(data);
-        assertEq(returnData.length, 0, "callAndCatch::2");
+        assertEq(returnData.length, 0, "test_CallAndCatchSuccessfull::3");
     }
 
     function test_CallAndCatchFail() public {

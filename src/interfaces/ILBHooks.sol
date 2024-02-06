@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-interface IHooks {
-    function lbPair() external view returns (address);
+import {ILBPair} from "./ILBPair.sol";
+
+interface ILBHooks {
+    function getLbPair() external view returns (ILBPair);
 
     function beforeSwap(address sender, address to, bool swapForY, bytes32 amountsIn) external returns (bytes4);
 
@@ -34,5 +36,21 @@ interface IHooks {
         address to,
         uint256[] calldata ids,
         uint256[] calldata amountsToBurn
+    ) external returns (bytes4);
+
+    function beforeBatchTransferFrom(
+        address sender,
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amounts
+    ) external returns (bytes4);
+
+    function afterBatchTransferFrom(
+        address sender,
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amounts
     ) external returns (bytes4);
 }

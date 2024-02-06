@@ -12,10 +12,11 @@ import {ImmutableClone} from "./libraries/ImmutableClone.sol";
 import {PendingOwnable} from "./libraries/PendingOwnable.sol";
 import {PriceHelper} from "./libraries/PriceHelper.sol";
 import {SafeCast} from "./libraries/math/SafeCast.sol";
-import {Hooks, IHooks} from "./libraries/Hooks.sol";
+import {Hooks} from "./libraries/Hooks.sol";
 
 import {ILBFactory} from "./interfaces/ILBFactory.sol";
 import {ILBPair} from "./interfaces/ILBPair.sol";
+import {ILBHooks} from "./interfaces/ILBHooks.sol";
 
 /**
  * @title Liquidity Book Factory
@@ -45,7 +46,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     bytes32 private _hooksParameters;
 
     ILBPair[] private _allLBPairs;
-    IHooks[] private _allHooks;
+    ILBHooks[] private _allHooks;
 
     /**
      * @dev Mapping from a (tokenA, tokenB, binStep) to a LBPair. The tokens are ordered to save gas, but they can be
@@ -157,7 +158,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param index The index
      * @return hooks The address of the hooks at index `index`
      */
-    function getHooksAtIndex(uint256 index) external view override returns (IHooks hooks) {
+    function getHooksAtIndex(uint256 index) external view override returns (ILBHooks hooks) {
         return _allHooks[index];
     }
 
@@ -586,11 +587,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param binStep The bin step in basis point, used to calculate the price
      * @return hooks The address of the newly created hooks
      */
-    function createHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep)
+    function createHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep, bytes calldata extraImmutableData)
         external
         override
         onlyOwner
-        returns (IHooks hooks)
+        returns (ILBHooks hooks)
     {
         ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;
 
@@ -604,7 +605,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         uint256 hooksId = _allHooks.length;
 
-        hooks = IHooks(ImmutableClone.cloneDeterministic(implementation, abi.encodePacked(lbPair), bytes32(hooksId)));
+        hooks = ILBHooks(
+            ImmutableClone.cloneDeterministic(
+                implementation, abi.encodePacked(lbPair, extraImmutableData), bytes32(hooksId)
+            )
+        );
 
         _allHooks.push(hooks);
 
@@ -619,7 +624,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
 
-        lbPair.setHooksParameters(Hooks.Parameters(address(0), false, false, false, false, false, false, false, false));
+        lbPair.setHooksParameters(Hooks.decode(0));
     }
 
     /**

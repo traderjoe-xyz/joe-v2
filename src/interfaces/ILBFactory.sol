@@ -4,7 +4,8 @@ pragma solidity ^0.8.10;
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-import {Hooks, IHooks} from "../libraries/Hooks.sol";
+import {ILBHooks} from "../interfaces/ILBHooks.sol";
+import {Hooks} from "../libraries/Hooks.sol";
 import {ILBPair} from "./ILBPair.sol";
 import {IPendingOwnable} from "./IPendingOwnable.sol";
 
@@ -62,7 +63,7 @@ interface ILBFactory is IPendingOwnable {
 
     event HooksParametersSet(Hooks.Parameters oldParameters, Hooks.Parameters newParameters);
 
-    event HooksCreated(ILBPair indexed lbPair, IHooks hooks, uint256 pid);
+    event HooksCreated(ILBPair indexed lbPair, ILBHooks hooks, uint256 pid);
 
     event LBPairIgnoredStateChanged(ILBPair indexed LBPair, bool ignored);
 
@@ -103,7 +104,7 @@ interface ILBFactory is IPendingOwnable {
 
     function getNumberOfHooks() external view returns (uint256);
 
-    function getHooksAtIndex(uint256 id) external returns (IHooks);
+    function getHooksAtIndex(uint256 id) external returns (ILBHooks);
 
     function getNumberOfQuoteAssets() external view returns (uint256);
 
@@ -178,7 +179,9 @@ interface ILBFactory is IPendingOwnable {
         uint24 maxVolatilityAccumulator
     ) external;
 
-    function createHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep) external returns (IHooks hooks);
+    function createHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep, bytes calldata extraImmutableData)
+        external
+        returns (ILBHooks hooks);
 
     function removeHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep) external;
 

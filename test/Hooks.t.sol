@@ -8,10 +8,19 @@ import "../src/libraries/Hooks.sol";
 import "../src/interfaces/ILBHooks.sol";
 
 contract HooksTest is Test {
+    error HooksTest__CustomRevert();
+
+    uint256 fallbackType;
+
     MockHooks public hooks;
+    MockHooksCaller public hooksCaller;
 
     function setUp() public {
         hooks = new MockHooks();
+        hooksCaller = new MockHooksCaller();
+
+        vm.label(address(hooks), "hooks");
+        vm.label(address(hooksCaller), "hooksCaller");
     }
 
     function test_EncodeHooks(Hooks.Parameters memory parameters) public {
@@ -29,10 +38,14 @@ contract HooksTest is Test {
         assertEq(parameters.beforeBurn, Hooks.decode(hooksParameters).beforeBurn, "test_EncodeHooks::8");
         assertEq(parameters.afterBurn, Hooks.decode(hooksParameters).afterBurn, "test_EncodeHooks::9");
         assertEq(
-            parameters.beforeBatchTransferFrom, Hooks.decode(hooksParameters).beforeBatchTransferFrom, "test_EncodeHooks::10"
+            parameters.beforeBatchTransferFrom,
+            Hooks.decode(hooksParameters).beforeBatchTransferFrom,
+            "test_EncodeHooks::10"
         );
         assertEq(
-            parameters.afterBatchTransferFrom, Hooks.decode(hooksParameters).afterBatchTransferFrom, "test_EncodeHooks::11"
+            parameters.afterBatchTransferFrom,
+            Hooks.decode(hooksParameters).afterBatchTransferFrom,
+            "test_EncodeHooks::11"
         );
     }
 
@@ -193,6 +206,146 @@ contract HooksTest is Test {
         bytes32 hooksParameters = Hooks.encode(parameters);
 
         assertEq(hooksParameters, bytes32(0), "test_HooksZeroAddress::1");
+    }
+
+    function test_Revert_CallFailed() public {
+        hooksCaller.setHooksParameters(
+            Hooks.encode(
+                Hooks.Parameters({
+                    hooks: address(this),
+                    beforeSwap: true,
+                    afterSwap: true,
+                    beforeFlashLoan: true,
+                    afterFlashLoan: true,
+                    beforeMint: true,
+                    afterMint: true,
+                    beforeBurn: true,
+                    afterBurn: true,
+                    beforeBatchTransferFrom: true,
+                    afterBatchTransferFrom: true
+                })
+            )
+        );
+
+        for (uint256 rev = 0; rev <= 4; rev++) {
+            fallbackType = rev;
+
+            bytes memory expectedRevertData = rev <= 2
+                ? abi.encodeWithSelector(Hooks.Hooks__CallFailed.selector)
+                : rev == 3
+                    ? abi.encodePacked("HooksTest::fallback")
+                    : abi.encodeWithSelector(HooksTest__CustomRevert.selector);
+
+            vm.expectRevert(expectedRevertData);
+            hooksCaller.beforeSwap(address(0), address(0), false, bytes32(0));
+
+            vm.expectRevert(expectedRevertData);
+            hooksCaller.afterSwap(address(0), address(0), false, bytes32(0));
+
+            vm.expectRevert(expectedRevertData);
+            hooksCaller.beforeFlashLoan(address(0), address(0), bytes32(0));
+
+            vm.expectRevert(expectedRevertData);
+            hooksCaller.afterFlashLoan(address(0), address(0), bytes32(0));
+
+            vm.expectRevert(expectedRevertData);
+            hooksCaller.beforeMint(address(0), address(0), new bytes32[](0), bytes32(0));
+
+            vm.expectRevert(expectedRevertData);
+            hooksCaller.afterMint(address(0), address(0), new bytes32[](0), bytes32(0));
+
+            vm.expectRevert(expectedRevertData);
+            hooksCaller.beforeBurn(address(0), address(0), address(0), new uint256[](0), new uint256[](0));
+
+            vm.expectRevert(expectedRevertData);
+            hooksCaller.afterBurn(address(0), address(0), address(0), new uint256[](0), new uint256[](0));
+
+            vm.expectRevert(expectedRevertData);
+            hooksCaller.beforeBatchTransferFrom(address(0), address(0), address(0), new uint256[](0), new uint256[](0));
+
+            vm.expectRevert(expectedRevertData);
+            hooksCaller.afterBatchTransferFrom(address(0), address(0), address(0), new uint256[](0), new uint256[](0));
+        }
+    }
+
+    fallback() external {
+        if (fallbackType == 1) revert();
+        if (fallbackType == 2) {
+            assembly {
+                mstore(0, 0x1234567890abcdef)
+                return(0, 0x20)
+            }
+        }
+        if (fallbackType == 3) revert("HooksTest::fallback");
+        if (fallbackType == 4) revert HooksTest__CustomRevert();
+    }
+}
+
+contract MockHooksCaller {
+    bytes32 public hooksParameters;
+
+    function setHooksParameters(bytes32 _hooksParameters) public {
+        hooksParameters = _hooksParameters;
+    }
+
+    function beforeSwap(address sender, address to, bool swapForY, bytes32 amountsIn) public {
+        Hooks.beforeSwap(hooksParameters, sender, to, swapForY, amountsIn);
+    }
+
+    function afterSwap(address sender, address to, bool swapForY, bytes32 amountsOut) public {
+        Hooks.afterSwap(hooksParameters, sender, to, swapForY, amountsOut);
+    }
+
+    function beforeFlashLoan(address sender, address to, bytes32 amounts) public {
+        Hooks.beforeFlashLoan(hooksParameters, sender, to, amounts);
+    }
+
+    function afterFlashLoan(address sender, address to, bytes32 amounts) public {
+        Hooks.afterFlashLoan(hooksParameters, sender, to, amounts);
+    }
+
+    function beforeMint(address sender, address to, bytes32[] calldata liquidityConfigs, bytes32 amountsReceived)
+        public
+    {
+        Hooks.beforeMint(hooksParameters, sender, to, liquidityConfigs, amountsReceived);
+    }
+
+    function afterMint(address sender, address to, bytes32[] calldata liquidityConfigs, bytes32 amountsReceived)
+        public
+    {
+        Hooks.afterMint(hooksParameters, sender, to, liquidityConfigs, amountsReceived);
+    }
+
+    function beforeBurn(address sender, address from, address to, uint256[] calldata ids, uint256[] calldata amounts)
+        public
+    {
+        Hooks.beforeBurn(hooksParameters, sender, from, to, ids, amounts);
+    }
+
+    function afterBurn(address sender, address from, address to, uint256[] calldata ids, uint256[] calldata amounts)
+        public
+    {
+        Hooks.afterBurn(hooksParameters, sender, from, to, ids, amounts);
+    }
+
+    function beforeBatchTransferFrom(
+        address sender,
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amounts
+    ) public {
+        Hooks.beforeBatchTransferFrom(hooksParameters, sender, from, to, ids, amounts);
+    }
+
+    function afterBatchTransferFrom(
+        address sender,
+        address from,
+        address,
+        uint256[] calldata ids,
+        uint256[] calldata amounts
+    ) public {
+        Hooks.afterBatchTransferFrom(hooksParameters, sender, from, address(0), ids, amounts);
     }
 }
 

@@ -563,6 +563,9 @@ contract LBPairFeesTest is TestHelper {
 
         pairWnative = LBPair(ImmutableClone.cloneDeterministic(address(pairImplementation), data, keccak256(data)));
 
+        vm.prank(address(factory));
+        pairWnative.initialize(1, 1, 1, 1, 1, 1, 1, 1);
+
         vm.expectRevert(ILBPair.LBPair__MaxTotalFeeExceeded.selector);
         vm.prank(address(factory));
         pairWnative.setStaticFeeParameters(baseFactor, 1, 1, 1, variableFeeControl, 1, maxVolatilityAccumulator);

@@ -782,7 +782,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @notice Increase the length of the oracle used by the pool
      * @param newLength The new length of the oracle
      */
-    function increaseOracleLength(uint16 newLength) external override {
+    function increaseOracleLength(uint16 newLength) external override nonReentrant {
         bytes32 parameters = _parameters;
 
         uint16 oracleId = parameters.getOracleId();
@@ -817,7 +817,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         uint24 variableFeeControl,
         uint16 protocolShare,
         uint24 maxVolatilityAccumulator
-    ) external override onlyFactory {
+    ) external override nonReentrant onlyFactory {
         _setStaticFeeParameters(
             _parameters,
             baseFactor,
@@ -835,7 +835,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @dev Can only be called by the factory
      * @param hooksParameters The hooks parameter
      */
-    function setHooksParameters(Hooks.Parameters memory hooksParameters) external override onlyFactory {
+    function setHooksParameters(Hooks.Parameters memory hooksParameters) external override nonReentrant onlyFactory {
         _hooksParameters = Hooks.encode(hooksParameters);
 
         emit HooksParametersSet(msg.sender, hooksParameters);
@@ -845,7 +845,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @notice Forces the decay of the volatility reference variables
      * @dev Can only be called by the factory
      */
-    function forceDecay() external override onlyFactory {
+    function forceDecay() external override nonReentrant onlyFactory {
         bytes32 parameters = _parameters;
 
         _parameters = parameters.updateIdReference().updateVolatilityReference();

@@ -739,8 +739,10 @@ contract LBRouter is ILBRouter {
             bytes32 amountsLeft;
             (amountsReceived, amountsLeft, liquidityMinted) = pair.mint(liq.to, liquidityConfigs, liq.refundTo);
 
-            amountXAdded = amountsReceived.decodeX();
-            amountYAdded = amountsReceived.decodeY();
+            bytes32 amountsAdded = amountsReceived.sub(amountsLeft);
+
+            amountXAdded = amountsAdded.decodeX();
+            amountYAdded = amountsAdded.decodeY();
 
             if (amountXAdded < liq.amountXMin || amountYAdded < liq.amountYMin) {
                 revert LBRouter__AmountSlippageCaught(liq.amountXMin, amountXAdded, liq.amountYMin, amountYAdded);

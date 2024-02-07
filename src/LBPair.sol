@@ -837,11 +837,16 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @param hooksParameters The hooks parameter
      */
     function setHooksParameters(Hooks.Parameters memory hooksParameters) external override nonReentrant onlyFactory {
+        bytes32 parameters = Hooks.encode(hooksParameters);
+
         ILBHooks hooks = ILBHooks(hooksParameters.hooks);
+        if (address(hooks) != address(0)) {
+            if (hooks.getLBPair() != this) revert LBPair__InvalidHooks();
 
-        if (address(hooks) != address(0) && hooks.getLBPair() != this) revert LBPair__InvalidHooks();
+            Hooks.onHooksSet(parameters);
+        }
 
-        _hooksParameters = Hooks.encode(hooksParameters);
+        _hooksParameters = parameters;
 
         emit HooksParametersSet(msg.sender, hooksParameters);
     }

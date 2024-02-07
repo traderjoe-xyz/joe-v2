@@ -59,16 +59,25 @@ contract HooksTest is Test {
         bytes32 hooksParameters = Hooks.encode(parameters);
 
         hooks.reset();
+        Hooks.onHooksSet(hooksParameters);
+
+        assertEq(
+            keccak256(hooks.data()),
+            keccak256(abi.encodeWithSelector(ILBHooks.onHooksSet.selector, hooksParameters)),
+            "test_CallHooks::1"
+        );
+
+        hooks.reset();
         Hooks.beforeSwap(hooksParameters, account, account, false, bytes32(0));
 
         if (parameters.beforeSwap) {
             assertEq(
                 keccak256(hooks.data()),
                 keccak256(abi.encodeWithSelector(ILBHooks.beforeSwap.selector, account, account, false, bytes32(0))),
-                "test_CallHooks::1"
+                "test_CallHooks::2"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::2");
+            assertEq(hooks.data().length, 0, "test_CallHooks::3");
         }
 
         hooks.reset();
@@ -78,10 +87,10 @@ contract HooksTest is Test {
             assertEq(
                 keccak256(hooks.data()),
                 keccak256(abi.encodeWithSelector(ILBHooks.afterSwap.selector, account, account, false, bytes32(0))),
-                "test_CallHooks::3"
+                "test_CallHooks::4"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::4");
+            assertEq(hooks.data().length, 0, "test_CallHooks::5");
         }
 
         hooks.reset();
@@ -91,10 +100,10 @@ contract HooksTest is Test {
             assertEq(
                 keccak256(hooks.data()),
                 keccak256(abi.encodeWithSelector(ILBHooks.beforeFlashLoan.selector, account, account, bytes32(0))),
-                "test_CallHooks::5"
+                "test_CallHooks::6"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::6");
+            assertEq(hooks.data().length, 0, "test_CallHooks::7");
         }
 
         hooks.reset();
@@ -104,10 +113,10 @@ contract HooksTest is Test {
             assertEq(
                 keccak256(hooks.data()),
                 keccak256(abi.encodeWithSelector(ILBHooks.afterFlashLoan.selector, account, account, bytes32(0))),
-                "test_CallHooks::7"
+                "test_CallHooks::8"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::8");
+            assertEq(hooks.data().length, 0, "test_CallHooks::9");
         }
 
         hooks.reset();
@@ -119,10 +128,10 @@ contract HooksTest is Test {
                 keccak256(
                     abi.encodeWithSelector(ILBHooks.beforeMint.selector, account, account, liquidityConfigs, bytes32(0))
                 ),
-                "test_CallHooks::9"
+                "test_CallHooks::10"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::10");
+            assertEq(hooks.data().length, 0, "test_CallHooks::11");
         }
 
         hooks.reset();
@@ -134,10 +143,10 @@ contract HooksTest is Test {
                 keccak256(
                     abi.encodeWithSelector(ILBHooks.afterMint.selector, account, account, liquidityConfigs, bytes32(0))
                 ),
-                "test_CallHooks::11"
+                "test_CallHooks::12"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::12");
+            assertEq(hooks.data().length, 0, "test_CallHooks::13");
         }
 
         hooks.reset();
@@ -147,10 +156,10 @@ contract HooksTest is Test {
             assertEq(
                 keccak256(hooks.data()),
                 keccak256(abi.encodeWithSelector(ILBHooks.beforeBurn.selector, account, account, account, ids, ids)),
-                "test_CallHooks::13"
+                "test_CallHooks::14"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::14");
+            assertEq(hooks.data().length, 0, "test_CallHooks::15");
         }
 
         hooks.reset();
@@ -160,10 +169,10 @@ contract HooksTest is Test {
             assertEq(
                 keccak256(hooks.data()),
                 keccak256(abi.encodeWithSelector(ILBHooks.afterBurn.selector, account, account, account, ids, ids)),
-                "test_CallHooks::15"
+                "test_CallHooks::16"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::16");
+            assertEq(hooks.data().length, 0, "test_CallHooks::17");
         }
 
         hooks.reset();
@@ -177,10 +186,10 @@ contract HooksTest is Test {
                         ILBHooks.beforeBatchTransferFrom.selector, account, account, account, ids, ids
                     )
                 ),
-                "test_CallHooks::17"
+                "test_CallHooks::18"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::18");
+            assertEq(hooks.data().length, 0, "test_CallHooks::19");
         }
 
         hooks.reset();
@@ -194,10 +203,10 @@ contract HooksTest is Test {
                         ILBHooks.afterBatchTransferFrom.selector, account, account, account, ids, ids
                     )
                 ),
-                "test_CallHooks::19"
+                "test_CallHooks::20"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::20");
+            assertEq(hooks.data().length, 0, "test_CallHooks::21");
         }
     }
 
@@ -209,23 +218,23 @@ contract HooksTest is Test {
     }
 
     function test_Revert_CallFailed() public {
-        hooksCaller.setHooksParameters(
-            Hooks.encode(
-                Hooks.Parameters({
-                    hooks: address(this),
-                    beforeSwap: true,
-                    afterSwap: true,
-                    beforeFlashLoan: true,
-                    afterFlashLoan: true,
-                    beforeMint: true,
-                    afterMint: true,
-                    beforeBurn: true,
-                    afterBurn: true,
-                    beforeBatchTransferFrom: true,
-                    afterBatchTransferFrom: true
-                })
-            )
+        bytes32 parameters = Hooks.encode(
+            Hooks.Parameters({
+                hooks: address(this),
+                beforeSwap: true,
+                afterSwap: true,
+                beforeFlashLoan: true,
+                afterFlashLoan: true,
+                beforeMint: true,
+                afterMint: true,
+                beforeBurn: true,
+                afterBurn: true,
+                beforeBatchTransferFrom: true,
+                afterBatchTransferFrom: true
+            })
         );
+
+        hooksCaller.setHooksParameters(parameters);
 
         for (uint256 rev = 0; rev <= 4; rev++) {
             fallbackType = rev;
@@ -235,6 +244,9 @@ contract HooksTest is Test {
                 : rev == 3
                     ? abi.encodePacked("HooksTest::fallback")
                     : abi.encodeWithSelector(HooksTest__CustomRevert.selector);
+
+            vm.expectRevert(expectedRevertData);
+            hooksCaller.onHooksSet(bytes32(0));
 
             vm.expectRevert(expectedRevertData);
             hooksCaller.beforeSwap(address(0), address(0), false, bytes32(0));
@@ -286,6 +298,10 @@ contract MockHooksCaller {
 
     function setHooksParameters(bytes32 _hooksParameters) public {
         hooksParameters = _hooksParameters;
+    }
+
+    function onHooksSet(bytes32) public {
+        Hooks.onHooksSet(hooksParameters);
     }
 
     function beforeSwap(address sender, address to, bool swapForY, bytes32 amountsIn) public {
@@ -351,6 +367,11 @@ contract MockHooksCaller {
 
 contract MockHooks is ILBHooks {
     bytes public data;
+
+    function onHooksSet(bytes32 hooksParameters) external override returns (bytes4) {
+        data = abi.encodeWithSelector(this.onHooksSet.selector, hooksParameters);
+        return this.onHooksSet.selector;
+    }
 
     function getLBPair() external pure override returns (ILBPair) {
         return ILBPair(address(0));

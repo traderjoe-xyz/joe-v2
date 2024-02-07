@@ -3,8 +3,12 @@ pragma solidity ^0.8.10;
 
 import {ILBPair} from "./ILBPair.sol";
 
+import {Hooks} from "../libraries/Hooks.sol";
+
 interface ILBHooks {
     function getLBPair() external view returns (ILBPair);
+
+    function onHooksSet(bytes32 hooksParameters) external returns (bytes4);
 
     function beforeSwap(address sender, address to, bool swapForY, bytes32 amountsIn) external returns (bytes4);
 

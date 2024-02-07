@@ -6,16 +6,16 @@ import {ILBHooks} from "../interfaces/ILBHooks.sol";
 library Hooks {
     error Hooks__CallFailed();
 
-    bytes32 private constant _BEFORE_SWAP_FLAG = bytes32(uint256(1 << 160));
-    bytes32 private constant _AFTER_SWAP_FLAG = bytes32(uint256(1 << 161));
-    bytes32 private constant _BEFORE_FLASH_LOAN_FLAG = bytes32(uint256(1 << 162));
-    bytes32 private constant _AFTER_FLASH_LOAN_FLAG = bytes32(uint256(1 << 163));
-    bytes32 private constant _BEFORE_MINT_FLAG = bytes32(uint256(1 << 164));
-    bytes32 private constant _AFTER_MINT_FLAG = bytes32(uint256(1 << 165));
-    bytes32 private constant _BEFORE_BURN_FLAG = bytes32(uint256(1 << 166));
-    bytes32 private constant _AFTER_BURN_FLAG = bytes32(uint256(1 << 167));
-    bytes32 private constant _BEFORE_TRANSFER_FLAG = bytes32(uint256(1 << 168));
-    bytes32 private constant _AFTER_TRANSFER_FLAG = bytes32(uint256(1 << 169));
+    bytes32 internal constant BEFORE_SWAP_FLAG = bytes32(uint256(1 << 160));
+    bytes32 internal constant AFTER_SWAP_FLAG = bytes32(uint256(1 << 161));
+    bytes32 internal constant BEFORE_FLASH_LOAN_FLAG = bytes32(uint256(1 << 162));
+    bytes32 internal constant AFTER_FLASH_LOAN_FLAG = bytes32(uint256(1 << 163));
+    bytes32 internal constant BEFORE_MINT_FLAG = bytes32(uint256(1 << 164));
+    bytes32 internal constant AFTER_MINT_FLAG = bytes32(uint256(1 << 165));
+    bytes32 internal constant BEFORE_BURN_FLAG = bytes32(uint256(1 << 166));
+    bytes32 internal constant AFTER_BURN_FLAG = bytes32(uint256(1 << 167));
+    bytes32 internal constant BEFORE_TRANSFER_FLAG = bytes32(uint256(1 << 168));
+    bytes32 internal constant AFTER_TRANSFER_FLAG = bytes32(uint256(1 << 169));
 
     struct Parameters {
         address hooks;
@@ -36,31 +36,31 @@ library Hooks {
 
         hooksParameters = bytes32(uint256(uint160(address(parameters.hooks))));
 
-        if (parameters.beforeSwap) hooksParameters |= _BEFORE_SWAP_FLAG;
-        if (parameters.afterSwap) hooksParameters |= _AFTER_SWAP_FLAG;
-        if (parameters.beforeFlashLoan) hooksParameters |= _BEFORE_FLASH_LOAN_FLAG;
-        if (parameters.afterFlashLoan) hooksParameters |= _AFTER_FLASH_LOAN_FLAG;
-        if (parameters.beforeMint) hooksParameters |= _BEFORE_MINT_FLAG;
-        if (parameters.afterMint) hooksParameters |= _AFTER_MINT_FLAG;
-        if (parameters.beforeBurn) hooksParameters |= _BEFORE_BURN_FLAG;
-        if (parameters.afterBurn) hooksParameters |= _AFTER_BURN_FLAG;
-        if (parameters.beforeBatchTransferFrom) hooksParameters |= _BEFORE_TRANSFER_FLAG;
-        if (parameters.afterBatchTransferFrom) hooksParameters |= _AFTER_TRANSFER_FLAG;
+        if (parameters.beforeSwap) hooksParameters |= BEFORE_SWAP_FLAG;
+        if (parameters.afterSwap) hooksParameters |= AFTER_SWAP_FLAG;
+        if (parameters.beforeFlashLoan) hooksParameters |= BEFORE_FLASH_LOAN_FLAG;
+        if (parameters.afterFlashLoan) hooksParameters |= AFTER_FLASH_LOAN_FLAG;
+        if (parameters.beforeMint) hooksParameters |= BEFORE_MINT_FLAG;
+        if (parameters.afterMint) hooksParameters |= AFTER_MINT_FLAG;
+        if (parameters.beforeBurn) hooksParameters |= BEFORE_BURN_FLAG;
+        if (parameters.afterBurn) hooksParameters |= AFTER_BURN_FLAG;
+        if (parameters.beforeBatchTransferFrom) hooksParameters |= BEFORE_TRANSFER_FLAG;
+        if (parameters.afterBatchTransferFrom) hooksParameters |= AFTER_TRANSFER_FLAG;
     }
 
     function decode(bytes32 hooksParameters) internal pure returns (Parameters memory parameters) {
         parameters.hooks = address(uint160(uint256(hooksParameters)));
 
-        parameters.beforeSwap = (hooksParameters & _BEFORE_SWAP_FLAG) != 0;
-        parameters.afterSwap = (hooksParameters & _AFTER_SWAP_FLAG) != 0;
-        parameters.beforeFlashLoan = (hooksParameters & _BEFORE_FLASH_LOAN_FLAG) != 0;
-        parameters.afterFlashLoan = (hooksParameters & _AFTER_FLASH_LOAN_FLAG) != 0;
-        parameters.beforeMint = (hooksParameters & _BEFORE_MINT_FLAG) != 0;
-        parameters.afterMint = (hooksParameters & _AFTER_MINT_FLAG) != 0;
-        parameters.beforeBurn = (hooksParameters & _BEFORE_BURN_FLAG) != 0;
-        parameters.afterBurn = (hooksParameters & _AFTER_BURN_FLAG) != 0;
-        parameters.beforeBatchTransferFrom = (hooksParameters & _BEFORE_TRANSFER_FLAG) != 0;
-        parameters.afterBatchTransferFrom = (hooksParameters & _AFTER_TRANSFER_FLAG) != 0;
+        parameters.beforeSwap = (hooksParameters & BEFORE_SWAP_FLAG) != 0;
+        parameters.afterSwap = (hooksParameters & AFTER_SWAP_FLAG) != 0;
+        parameters.beforeFlashLoan = (hooksParameters & BEFORE_FLASH_LOAN_FLAG) != 0;
+        parameters.afterFlashLoan = (hooksParameters & AFTER_FLASH_LOAN_FLAG) != 0;
+        parameters.beforeMint = (hooksParameters & BEFORE_MINT_FLAG) != 0;
+        parameters.afterMint = (hooksParameters & AFTER_MINT_FLAG) != 0;
+        parameters.beforeBurn = (hooksParameters & BEFORE_BURN_FLAG) != 0;
+        parameters.afterBurn = (hooksParameters & AFTER_BURN_FLAG) != 0;
+        parameters.beforeBatchTransferFrom = (hooksParameters & BEFORE_TRANSFER_FLAG) != 0;
+        parameters.afterBatchTransferFrom = (hooksParameters & AFTER_TRANSFER_FLAG) != 0;
     }
 
     function onHooksSet(bytes32 hooksParameters) internal {
@@ -70,7 +70,7 @@ library Hooks {
     function beforeSwap(bytes32 hooksParameters, address sender, address to, bool swapForY, bytes32 amountsIn)
         internal
     {
-        if ((hooksParameters & _BEFORE_SWAP_FLAG) != 0) {
+        if ((hooksParameters & BEFORE_SWAP_FLAG) != 0) {
             _safeCall(
                 hooksParameters, abi.encodeWithSelector(ILBHooks.beforeSwap.selector, sender, to, swapForY, amountsIn)
             );
@@ -80,7 +80,7 @@ library Hooks {
     function afterSwap(bytes32 hooksParameters, address sender, address to, bool swapForY, bytes32 amountsOut)
         internal
     {
-        if ((hooksParameters & _AFTER_SWAP_FLAG) != 0) {
+        if ((hooksParameters & AFTER_SWAP_FLAG) != 0) {
             _safeCall(
                 hooksParameters, abi.encodeWithSelector(ILBHooks.afterSwap.selector, sender, to, swapForY, amountsOut)
             );
@@ -88,13 +88,13 @@ library Hooks {
     }
 
     function beforeFlashLoan(bytes32 hooksParameters, address sender, address to, bytes32 amounts) internal {
-        if ((hooksParameters & _BEFORE_FLASH_LOAN_FLAG) != 0) {
+        if ((hooksParameters & BEFORE_FLASH_LOAN_FLAG) != 0) {
             _safeCall(hooksParameters, abi.encodeWithSelector(ILBHooks.beforeFlashLoan.selector, sender, to, amounts));
         }
     }
 
     function afterFlashLoan(bytes32 hooksParameters, address sender, address to, bytes32 amounts) internal {
-        if ((hooksParameters & _AFTER_FLASH_LOAN_FLAG) != 0) {
+        if ((hooksParameters & AFTER_FLASH_LOAN_FLAG) != 0) {
             _safeCall(hooksParameters, abi.encodeWithSelector(ILBHooks.afterFlashLoan.selector, sender, to, amounts));
         }
     }
@@ -106,7 +106,7 @@ library Hooks {
         bytes32[] calldata liquidityConfigs,
         bytes32 amountsReceived
     ) internal {
-        if ((hooksParameters & _BEFORE_MINT_FLAG) != 0) {
+        if ((hooksParameters & BEFORE_MINT_FLAG) != 0) {
             _safeCall(
                 hooksParameters,
                 abi.encodeWithSelector(ILBHooks.beforeMint.selector, sender, to, liquidityConfigs, amountsReceived)
@@ -121,7 +121,7 @@ library Hooks {
         bytes32[] calldata liquidityConfigs,
         bytes32 amountsIn
     ) internal {
-        if ((hooksParameters & _AFTER_MINT_FLAG) != 0) {
+        if ((hooksParameters & AFTER_MINT_FLAG) != 0) {
             _safeCall(
                 hooksParameters,
                 abi.encodeWithSelector(ILBHooks.afterMint.selector, sender, to, liquidityConfigs, amountsIn)
@@ -137,7 +137,7 @@ library Hooks {
         uint256[] calldata ids,
         uint256[] calldata amountsToBurn
     ) internal {
-        if ((hooksParameters & _BEFORE_BURN_FLAG) != 0) {
+        if ((hooksParameters & BEFORE_BURN_FLAG) != 0) {
             _safeCall(
                 hooksParameters,
                 abi.encodeWithSelector(ILBHooks.beforeBurn.selector, sender, from, to, ids, amountsToBurn)
@@ -153,7 +153,7 @@ library Hooks {
         uint256[] calldata ids,
         uint256[] calldata amountsToBurn
     ) internal {
-        if ((hooksParameters & _AFTER_BURN_FLAG) != 0) {
+        if ((hooksParameters & AFTER_BURN_FLAG) != 0) {
             _safeCall(
                 hooksParameters,
                 abi.encodeWithSelector(ILBHooks.afterBurn.selector, sender, from, to, ids, amountsToBurn)
@@ -169,7 +169,7 @@ library Hooks {
         uint256[] calldata ids,
         uint256[] calldata amounts
     ) internal {
-        if ((hooksParameters & _BEFORE_TRANSFER_FLAG) != 0) {
+        if ((hooksParameters & BEFORE_TRANSFER_FLAG) != 0) {
             _safeCall(
                 hooksParameters,
                 abi.encodeWithSelector(ILBHooks.beforeBatchTransferFrom.selector, sender, from, to, ids, amounts)
@@ -185,7 +185,7 @@ library Hooks {
         uint256[] calldata ids,
         uint256[] calldata amounts
     ) internal {
-        if ((hooksParameters & _AFTER_TRANSFER_FLAG) != 0) {
+        if ((hooksParameters & AFTER_TRANSFER_FLAG) != 0) {
             _safeCall(
                 hooksParameters,
                 abi.encodeWithSelector(ILBHooks.afterBatchTransferFrom.selector, sender, from, to, ids, amounts)

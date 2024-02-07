@@ -28,6 +28,7 @@ interface ILBPair is ILBToken {
     error LBPair__ZeroAmountsOut(uint24 id);
     error LBPair__ZeroShares(uint24 id);
     error LBPair__MaxTotalFeeExceeded();
+    error LBPair__InvalidHooks();
 
     struct MintArrays {
         uint256[] ids;

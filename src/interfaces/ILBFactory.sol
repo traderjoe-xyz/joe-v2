@@ -183,6 +183,9 @@ interface ILBFactory is IPendingOwnable {
         external
         returns (ILBHooks hooks);
 
+    function setLBHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep, Hooks.Parameters memory hooksParameters)
+        external;
+
     function removeLBHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep) external;
 
     function setFeeRecipient(address feeRecipient) external;

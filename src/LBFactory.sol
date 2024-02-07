@@ -625,6 +625,26 @@ contract LBFactory is PendingOwnable, ILBFactory {
     }
 
     /**
+     * @notice Function to set a custom hooks contract to the pair
+     * @param tokenX The address of the first token
+     * @param tokenY The address of the second token
+     * @param binStep The bin step in basis point, used to calculate the price
+     * @param hooksParameters The hooks parameters
+     */
+    function setLBHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep, Hooks.Parameters memory hooksParameters)
+        external
+        override
+        onlyOwner
+    {
+        ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;
+
+        if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
+        if (hooksParameters.hooks == address(0)) revert LBFactory__AddressZero();
+
+        lbPair.setHooksParameters(hooksParameters);
+    }
+
+    /**
      * @notice Function to remove the hooks contract from the pair
      * @param tokenX The address of the first token
      * @param tokenY The address of the second token

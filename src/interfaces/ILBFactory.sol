@@ -61,9 +61,9 @@ interface ILBFactory is IPendingOwnable {
 
     event LBPairImplementationSet(address oldLBPairImplementation, address LBPairImplementation);
 
-    event HooksParametersSet(Hooks.Parameters oldParameters, Hooks.Parameters newParameters);
+    event DefaultLBHooksParametersSet(Hooks.Parameters oldParameters, Hooks.Parameters newParameters);
 
-    event HooksCreated(ILBPair indexed lbPair, ILBHooks hooks, uint256 pid);
+    event LBHooksCreated(ILBPair indexed lbPair, ILBHooks hooks, uint256 pid);
 
     event LBPairIgnoredStateChanged(ILBPair indexed LBPair, bool ignored);
 
@@ -96,15 +96,15 @@ interface ILBFactory is IPendingOwnable {
 
     function getLBPairImplementation() external view returns (address);
 
-    function getHooksParameters() external view returns (Hooks.Parameters memory);
+    function getDefaultLBHooksParameters() external view returns (Hooks.Parameters memory);
 
     function getNumberOfLBPairs() external view returns (uint256);
 
     function getLBPairAtIndex(uint256 id) external returns (ILBPair);
 
-    function getNumberOfHooks() external view returns (uint256);
+    function getNumberOfLBHooks() external view returns (uint256);
 
-    function getHooksAtIndex(uint256 id) external returns (ILBHooks);
+    function getLBHooksAtIndex(uint256 id) external returns (ILBHooks);
 
     function getNumberOfQuoteAssets() external view returns (uint256);
 
@@ -142,7 +142,7 @@ interface ILBFactory is IPendingOwnable {
 
     function setLBPairImplementation(address lbPairImplementation) external;
 
-    function setHooksParameters(Hooks.Parameters memory hooksParameters) external;
+    function setDefaultLBHooksParameters(Hooks.Parameters memory hooksParameters) external;
 
     function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
         external
@@ -179,11 +179,11 @@ interface ILBFactory is IPendingOwnable {
         uint24 maxVolatilityAccumulator
     ) external;
 
-    function createHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep, bytes calldata extraImmutableData)
+    function createDefaultLBHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep, bytes calldata extraImmutableData)
         external
         returns (ILBHooks hooks);
 
-    function removeHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep) external;
+    function removeLBHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep) external;
 
     function setFeeRecipient(address feeRecipient) external;
 

@@ -352,7 +352,7 @@ contract MockHooksCaller {
 contract MockHooks is ILBHooks {
     bytes public data;
 
-    function getLbPair() external pure override returns (ILBPair) {
+    function getLBPair() external pure override returns (ILBPair) {
         return ILBPair(address(0));
     }
 

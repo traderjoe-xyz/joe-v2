@@ -23,6 +23,7 @@ import {SampleMath} from "./libraries/math/SampleMath.sol";
 import {TreeMath} from "./libraries/math/TreeMath.sol";
 import {Uint256x256Math} from "./libraries/math/Uint256x256Math.sol";
 import {Hooks} from "./libraries/Hooks.sol";
+import {ILBHooks} from "./interfaces/ILBHooks.sol";
 
 /**
  * @title Liquidity Book Pair
@@ -836,6 +837,10 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @param hooksParameters The hooks parameter
      */
     function setHooksParameters(Hooks.Parameters memory hooksParameters) external override nonReentrant onlyFactory {
+        ILBHooks hooks = ILBHooks(hooksParameters.hooks);
+
+        if (address(hooks) != address(0) && hooks.getLBPair() != this) revert LBPair__InvalidHooks();
+
         _hooksParameters = Hooks.encode(hooksParameters);
 
         emit HooksParametersSet(msg.sender, hooksParameters);

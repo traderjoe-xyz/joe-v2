@@ -32,8 +32,6 @@ library Hooks {
     }
 
     function encode(Parameters memory parameters) internal pure returns (bytes32 hooksParameters) {
-        if (parameters.hooks == address(0)) return 0;
-
         hooksParameters = bytes32(uint256(uint160(address(parameters.hooks))));
 
         if (parameters.beforeSwap) hooksParameters |= BEFORE_SWAP_FLAG;

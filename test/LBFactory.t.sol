@@ -5,6 +5,7 @@ pragma solidity 0.8.10;
 import "./helpers/TestHelper.sol";
 
 import "src/libraries/ImmutableClone.sol";
+import "./mocks/MockHooks.sol";
 
 /**
  * Test scenarios:
@@ -22,7 +23,6 @@ import "src/libraries/ImmutableClone.sol";
  * 12. Add quote asset to whitelist
  * 13. Remove quote asset from whitelist
  */
-
 contract LiquidityBinFactoryTest is TestHelper {
     event QuoteAssetRemoved(IERC20 indexed _quoteAsset);
     event QuoteAssetAdded(IERC20 indexed _quoteAsset);
@@ -349,7 +349,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             variableFeeControl,
             protocolShare,
             maxVolatilityAccumulator
-            );
+        );
         vm.expectEmit(true, true, true, true);
         emit PresetOpenStateChanged(binStep, isOpen);
 
@@ -492,7 +492,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_VARIABLE_FEE_CONTROL * 2,
             DEFAULT_PROTOCOL_SHARE * 2,
             DEFAULT_MAX_VOLATILITY_ACCUMULATOR * 2
-            );
+        );
 
         factory.setFeesParametersOnPair(
             wnative,
@@ -778,5 +778,154 @@ contract LiquidityBinFactoryTest is TestHelper {
         ILBFactory.LBPairInformation memory pair2Info = LBPairsAvailable[1];
         assertEq(address(pair2Info.LBPair), address(pair2), "test_GetAllLBPairs::4");
         assertEq(pair2Info.binStep, 20, "test_GetAllLBPairs::5");
+    }
+
+    function testFuzz_SetDefaultLBHooksParameters(Hooks.Parameters memory parameters) public {
+        bytes32 packedParameters = Hooks.encode(parameters);
+
+        vm.assume(parameters.hooks != address(0) && packedParameters >> 160 != 0);
+
+        factory.setDefaultLBHooksParameters(parameters);
+
+        Hooks.Parameters memory defaultParameters = factory.getDefaultLBHooksParameters();
+
+        assertEq(
+            keccak256(abi.encode(defaultParameters)),
+            keccak256(abi.encode(parameters)),
+            "testFuzz_SetDefaultLBHooksParameters::1"
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBFactory.LBFactory__SameHooksImplementation.selector, parameters.hooks)
+        );
+        factory.setDefaultLBHooksParameters(parameters);
+
+        // flip the first bit of the address, if the address is 1, then set it to 2
+        parameters.hooks = parameters.hooks == address(1) ? address(2) : address(uint160(parameters.hooks) ^ 1);
+
+        factory.setDefaultLBHooksParameters(parameters);
+
+        defaultParameters = factory.getDefaultLBHooksParameters();
+
+        assertEq(
+            keccak256(abi.encode(defaultParameters)),
+            keccak256(abi.encode(parameters)),
+            "testFuzz_SetDefaultLBHooksParameters::2"
+        );
+
+        // switch all flags, if all are true, then flip only the first one
+        parameters = Hooks.decode(
+            bytes32(
+                uint256(packedParameters)
+                    ^ (uint256(packedParameters >> 160) == 2 ** 10 - 1 ? 1 << 160 : ((2 ** 10 - 1) << 160))
+            )
+        );
+
+        factory.setDefaultLBHooksParameters(parameters);
+
+        defaultParameters = factory.getDefaultLBHooksParameters();
+
+        assertEq(
+            keccak256(abi.encode(defaultParameters)),
+            keccak256(abi.encode(parameters)),
+            "testFuzz_SetDefaultLBHooksParameters::3"
+        );
+
+        factory.setDefaultLBHooksParameters(Hooks.decode(0));
+
+        defaultParameters = factory.getDefaultLBHooksParameters();
+
+        assertEq(Hooks.encode(defaultParameters), 0, "testFuzz_SetDefaultLBHooksParameters::4");
+    }
+
+    function testFuzz_Revert_SetDefaultLBHooksParameters(bytes32 packedParameters) public {
+        // address(0) and not zero flags
+        packedParameters = bytes32(bound(uint256(packedParameters), 1, 2 ** 10 - 1) << 160);
+
+        vm.toString(packedParameters);
+
+        vm.expectRevert(ILBFactory.LBFactory__InvalidHooksParameters.selector);
+        factory.setDefaultLBHooksParameters(Hooks.decode(packedParameters));
+
+        // not address(0) and zero flags
+        packedParameters = bytes32(bound(uint256(packedParameters), 1, type(uint160).max));
+
+        vm.expectRevert(ILBFactory.LBFactory__InvalidHooksParameters.selector);
+        factory.setDefaultLBHooksParameters(Hooks.decode(packedParameters));
+
+        // Can't set if not the owner
+        vm.prank(ALICE);
+        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        factory.setDefaultLBHooksParameters(Hooks.decode(packedParameters));
+    }
+
+    function test_SetAndCreateDefaultLBHooksOnPair() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, usdt, usdc, DEFAULT_BIN_STEP)
+        );
+        factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, usdt, usdc, DEFAULT_BIN_STEP)
+        );
+        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, Hooks.decode(0));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, usdt, usdc, DEFAULT_BIN_STEP)
+        );
+        factory.removeLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP);
+
+        ILBPair pair = factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
+
+        vm.expectRevert(ILBFactory.LBFactory__HooksNotSet.selector);
+        factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0));
+
+        vm.expectRevert(ILBFactory.LBFactory__InvalidHooksParameters.selector);
+        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, Hooks.decode(0));
+
+        vm.expectRevert(ILBFactory.LBFactory__InvalidHooksParameters.selector);
+        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, Hooks.decode(bytes32(uint256(1))));
+
+        MockHooks hooksImplementation = new MockHooks();
+
+        Hooks.Parameters memory parameters = Hooks.Parameters({
+            hooks: address(hooksImplementation),
+            beforeSwap: true,
+            afterSwap: true,
+            beforeFlashLoan: true,
+            afterFlashLoan: true,
+            beforeMint: true,
+            afterMint: true,
+            beforeBurn: true,
+            afterBurn: true,
+            beforeBatchTransferFrom: true,
+            afterBatchTransferFrom: true
+        });
+
+        factory.setDefaultLBHooksParameters(parameters);
+
+        ILBHooks hooks = factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0));
+
+        Hooks.Parameters memory parametersOnPair = pair.getLBHooksParameters();
+
+        parameters.hooks = address(hooks);
+        assertEq(Hooks.encode(parametersOnPair), Hooks.encode(parameters), "test_SetAndCreateDefaultLBHooksOnPair::1");
+
+        // Can't create if not the owner
+        vm.prank(ALICE);
+        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0));
+
+        factory.removeLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP);
+
+        parametersOnPair = pair.getLBHooksParameters();
+
+        assertEq(Hooks.encode(parametersOnPair), 0, "test_SetAndCreateDefaultLBHooksOnPair::2");
+
+        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, parameters);
+
+        parametersOnPair = pair.getLBHooksParameters();
+
+        assertEq(Hooks.encode(parametersOnPair), Hooks.encode(parameters), "test_SetAndCreateDefaultLBHooksOnPair::3");
     }
 }

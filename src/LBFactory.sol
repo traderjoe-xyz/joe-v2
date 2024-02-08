@@ -351,22 +351,27 @@ contract LBFactory is PendingOwnable, ILBFactory {
     /**
      * @notice Set the default hooks parameters
      * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The hooks address is `address(0)` and any of the flags is true
+     * - The hooks address is not `address(0)` and all the flags are false
+     * - The hooks parameters are the same as the current ones
      * @param defaultHooksParameters The hooks parameters
      */
     function setDefaultLBHooksParameters(Hooks.Parameters memory defaultHooksParameters) external override onlyOwner {
-        if ((defaultHooksParameters.hooks == address(0)) != (Hooks.encode(defaultHooksParameters) == 0)) {
+        if ((defaultHooksParameters.hooks == address(0)) != (Hooks.encode(defaultHooksParameters) >> 160 == 0)) {
             revert LBFactory__InvalidHooksParameters();
         }
 
-        Hooks.Parameters memory oldHooksParameters = Hooks.decode(_defaultHooksParameters);
+        bytes32 newHooksParameters = Hooks.encode(defaultHooksParameters);
+        bytes32 oldHooksParameters = _defaultHooksParameters;
 
-        if (oldHooksParameters.hooks == defaultHooksParameters.hooks) {
+        if (oldHooksParameters == newHooksParameters) {
             revert LBFactory__SameHooksImplementation(defaultHooksParameters.hooks);
         }
 
-        _defaultHooksParameters = Hooks.encode(defaultHooksParameters);
+        _defaultHooksParameters = newHooksParameters;
 
-        emit DefaultLBHooksParametersSet(oldHooksParameters, defaultHooksParameters);
+        emit DefaultLBHooksParametersSet(Hooks.decode(oldHooksParameters), defaultHooksParameters);
     }
 
     /**
@@ -602,9 +607,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
 
-        Hooks.Parameters memory defaultHooksParameters = Hooks.decode(_defaultHooksParameters);
-
-        address implementation = defaultHooksParameters.hooks;
+        Hooks.Parameters memory hooksParameters = Hooks.decode(_defaultHooksParameters);
+        address implementation = hooksParameters.hooks;
 
         if (implementation == address(0)) revert LBFactory__HooksNotSet();
 
@@ -618,8 +622,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         _allLBHooks.push(hooks);
 
-        defaultHooksParameters.hooks = address(hooks);
-        lbPair.setHooksParameters(defaultHooksParameters);
+        hooksParameters.hooks = address(hooks);
+        lbPair.setHooksParameters(hooksParameters);
 
         emit LBHooksCreated(lbPair, hooks, hooksId);
     }
@@ -639,7 +643,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
         ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;
 
         if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
-        if (hooksParameters.hooks == address(0)) revert LBFactory__AddressZero();
+        if (hooksParameters.hooks == address(0) || Hooks.encode(hooksParameters) >> 160 == 0) {
+            revert LBFactory__InvalidHooksParameters();
+        }
 
         lbPair.setHooksParameters(hooksParameters);
     }

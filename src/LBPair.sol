@@ -248,7 +248,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @notice Gets the hooks parameters of the Liquidity Book Pair
      * @return The hooks parameters of the Liquidity Book Pair
      */
-    function getHooksParameters() external view override returns (Hooks.Parameters memory) {
+    function getLBHooksParameters() external view override returns (Hooks.Parameters memory) {
         return Hooks.decode(_hooksParameters);
     }
 

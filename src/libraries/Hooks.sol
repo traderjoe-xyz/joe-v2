@@ -61,8 +61,10 @@ library Hooks {
         parameters.afterBatchTransferFrom = (hooksParameters & AFTER_TRANSFER_FLAG) != 0;
     }
 
-    function onHooksSet(bytes32 hooksParameters) internal {
-        _safeCall(hooksParameters, abi.encodeWithSelector(ILBHooks.onHooksSet.selector, hooksParameters));
+    function onHooksSet(bytes32 hooksParameters, bytes memory onHooksSetData) internal {
+        _safeCall(
+            hooksParameters, abi.encodeWithSelector(ILBHooks.onHooksSet.selector, hooksParameters, onHooksSetData)
+        );
     }
 
     function beforeSwap(bytes32 hooksParameters, address sender, address to, bool swapForY, bytes32 amountsIn)

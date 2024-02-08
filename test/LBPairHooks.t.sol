@@ -60,7 +60,9 @@ contract LBPairHooksTest is TestHelper {
 
         addLiquidity(DEV, DEV, pairWnative, ID_ONE, 1e18, 1e18, 50, 50);
 
-        hooks = MockLBHooks(address(factory.createDefaultLBHooksOnPair(wnative, usdc, DEFAULT_BIN_STEP, "")));
+        hooks = MockLBHooks(
+            address(factory.createDefaultLBHooksOnPair(wnative, usdc, DEFAULT_BIN_STEP, new bytes(0), new bytes(0)))
+        );
 
         pairWnative.increaseOracleLength(1);
     }
@@ -194,7 +196,7 @@ contract LBPairHooksTest is TestHelper {
         vm.startPrank(ALICE);
         wnative.transfer(address(pairWnative), 2 * amount);
         usdc.transfer(address(pairWnative), 2 * amount);
-        pairWnative.flashLoan(ILBFlashLoanCallback(address(this)), amounts, "");
+        pairWnative.flashLoan(ILBFlashLoanCallback(address(this)), amounts, new bytes(0));
         vm.stopPrank();
 
         State memory expectedAfterState = hooks.getState();
@@ -437,8 +439,8 @@ contract MockLBHooks is MockHooks {
         delete _afterState;
     }
 
-    function _onHooksSet(bytes32 hooksParameters) internal override {
-        super._onHooksSet(hooksParameters);
+    function _onHooksSet(bytes32 hooksParameters, bytes memory onHooksSetData) internal override {
+        super._onHooksSet(hooksParameters, onHooksSetData);
 
         _beforeState = getState();
     }

@@ -835,8 +835,14 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @notice Sets the hooks parameter of the pool
      * @dev Can only be called by the factory
      * @param hooksParameters The hooks parameter
+     * @param onHooksSetData The data to be passed to the onHooksSet function of the hooks contract
      */
-    function setHooksParameters(Hooks.Parameters memory hooksParameters) external override nonReentrant onlyFactory {
+    function setHooksParameters(Hooks.Parameters memory hooksParameters, bytes memory onHooksSetData)
+        external
+        override
+        nonReentrant
+        onlyFactory
+    {
         bytes32 parameters = Hooks.encode(hooksParameters);
 
         _hooksParameters = parameters;
@@ -845,7 +851,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         if (address(hooks) != address(0)) {
             if (hooks.getLBPair() != this) revert LBPair__InvalidHooks();
 
-            Hooks.onHooksSet(parameters);
+            Hooks.onHooksSet(parameters, onHooksSetData);
         }
 
         emit HooksParametersSet(msg.sender, hooksParameters);

@@ -179,12 +179,21 @@ interface ILBFactory is IPendingOwnable {
         uint24 maxVolatilityAccumulator
     ) external;
 
-    function createDefaultLBHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep, bytes calldata extraImmutableData)
-        external
-        returns (ILBHooks hooks);
+    function createDefaultLBHooksOnPair(
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint16 binStep,
+        bytes memory extraImmutableData,
+        bytes memory onHooksSetData
+    ) external returns (ILBHooks hooks);
 
-    function setLBHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep, Hooks.Parameters memory hooksParameters)
-        external;
+    function setLBHooksOnPair(
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint16 binStep,
+        Hooks.Parameters memory hooksParameters,
+        bytes memory onHooksSetData
+    ) external;
 
     function removeLBHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep) external;
 

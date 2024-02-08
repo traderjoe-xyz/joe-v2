@@ -91,9 +91,14 @@ library Hooks {
         }
     }
 
-    function afterFlashLoan(bytes32 hooksParameters, address sender, address to, bytes32 amounts) internal {
+    function afterFlashLoan(bytes32 hooksParameters, address sender, address to, bytes32 fees, bytes32 feesReceived)
+        internal
+    {
         if ((hooksParameters & AFTER_FLASH_LOAN_FLAG) != 0) {
-            _safeCall(hooksParameters, abi.encodeWithSelector(ILBHooks.afterFlashLoan.selector, sender, to, amounts));
+            _safeCall(
+                hooksParameters,
+                abi.encodeWithSelector(ILBHooks.afterFlashLoan.selector, sender, to, fees, feesReceived)
+            );
         }
     }
 

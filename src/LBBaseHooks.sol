@@ -109,16 +109,17 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
      * @dev Only callable by the pair
      * @param sender The address that initiated the flash loan
      * @param to The address that received the flash loaned tokens
-     * @param amounts The amounts
+     * @param fees The flashloan fees
+     * @param feesReceived The fees received
      * @return The function selector
      */
-    function afterFlashLoan(address sender, address to, bytes32 amounts)
+    function afterFlashLoan(address sender, address to, bytes32 fees, bytes32 feesReceived)
         external
         override
         onlyLBPair
         returns (bytes4)
     {
-        _afterFlashLoan(sender, to, amounts);
+        _afterFlashLoan(sender, to, fees, feesReceived);
 
         return this.afterFlashLoan.selector;
     }
@@ -301,9 +302,10 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
      * @notice Internal function to be overridden that is called after a flash loan
      * @param sender The address that initiated the flash loan
      * @param to The address that received the flash loaned tokens
-     * @param amounts The amounts
+     * @param fees The flashloan fees
+     * @param feesReceived The fees received
      */
-    function _afterFlashLoan(address sender, address to, bytes32 amounts) internal virtual {}
+    function _afterFlashLoan(address sender, address to, bytes32 fees, bytes32 feesReceived) internal virtual {}
 
     /**
      * @notice Internal function to be overridden that is called before minting

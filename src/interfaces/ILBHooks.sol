@@ -16,7 +16,7 @@ interface ILBHooks {
 
     function beforeFlashLoan(address sender, address to, bytes32 amounts) external returns (bytes4);
 
-    function afterFlashLoan(address sender, address to, bytes32 amounts) external returns (bytes4);
+    function afterFlashLoan(address sender, address to, bytes32 fees, bytes32 feesReceived) external returns (bytes4);
 
     function beforeMint(address sender, address to, bytes32[] calldata liquidityConfigs, bytes32 amountsReceived)
         external

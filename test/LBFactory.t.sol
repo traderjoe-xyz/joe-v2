@@ -863,12 +863,12 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.expectRevert(
             abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, usdt, usdc, DEFAULT_BIN_STEP)
         );
-        factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0));
+        factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0), new bytes(0));
 
         vm.expectRevert(
             abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, usdt, usdc, DEFAULT_BIN_STEP)
         );
-        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, Hooks.decode(0));
+        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, Hooks.decode(0), new bytes(0));
 
         vm.expectRevert(
             abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, usdt, usdc, DEFAULT_BIN_STEP)
@@ -878,13 +878,13 @@ contract LiquidityBinFactoryTest is TestHelper {
         ILBPair pair = factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
         vm.expectRevert(ILBFactory.LBFactory__HooksNotSet.selector);
-        factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0));
+        factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0), new bytes(0));
 
         vm.expectRevert(ILBFactory.LBFactory__InvalidHooksParameters.selector);
-        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, Hooks.decode(0));
+        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, Hooks.decode(0), new bytes(0));
 
         vm.expectRevert(ILBFactory.LBFactory__InvalidHooksParameters.selector);
-        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, Hooks.decode(bytes32(uint256(1))));
+        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, Hooks.decode(bytes32(uint256(1))), new bytes(0));
 
         MockHooks hooksImplementation = new MockHooks();
 
@@ -904,7 +904,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         factory.setDefaultLBHooksParameters(parameters);
 
-        ILBHooks hooks = factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0));
+        ILBHooks hooks = factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0), new bytes(0));
 
         Hooks.Parameters memory parametersOnPair = pair.getLBHooksParameters();
 
@@ -914,7 +914,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         // Can't create if not the owner
         vm.prank(ALICE);
         vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
-        factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0));
+        factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0), new bytes(0));
 
         factory.removeLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP);
 
@@ -922,7 +922,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         assertEq(Hooks.encode(parametersOnPair), 0, "test_SetAndCreateDefaultLBHooksOnPair::2");
 
-        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, parameters);
+        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, parameters, new bytes(0));
 
         parametersOnPair = pair.getLBHooksParameters();
 

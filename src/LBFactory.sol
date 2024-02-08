@@ -616,14 +616,17 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param tokenX The address of the first token
      * @param tokenY The address of the second token
      * @param binStep The bin step in basis point, used to calculate the price
+     * @param extraImmutableData The extra immutable data to pass to the hooks
+     * @param onHooksSetData The data to pass to the onHooksSet function
      * @return hooks The address of the newly created hooks
      */
-    function createDefaultLBHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep, bytes calldata extraImmutableData)
-        external
-        override
-        onlyOwner
-        returns (ILBHooks hooks)
-    {
+    function createDefaultLBHooksOnPair(
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint16 binStep,
+        bytes calldata extraImmutableData,
+        bytes calldata onHooksSetData
+    ) external override onlyOwner returns (ILBHooks hooks) {
         ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;
 
         if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
@@ -644,7 +647,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         _allLBHooks.push(hooks);
 
         hooksParameters.hooks = address(hooks);
-        lbPair.setHooksParameters(hooksParameters);
+        lbPair.setHooksParameters(hooksParameters, onHooksSetData);
 
         emit LBHooksCreated(lbPair, hooks, hooksId);
     }
@@ -659,12 +662,15 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param tokenY The address of the second token
      * @param binStep The bin step in basis point, used to calculate the price
      * @param hooksParameters The hooks parameters
+     * @param onHooksSetData The data to pass to the onHooksSet function
      */
-    function setLBHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep, Hooks.Parameters memory hooksParameters)
-        external
-        override
-        onlyOwner
-    {
+    function setLBHooksOnPair(
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint16 binStep,
+        Hooks.Parameters memory hooksParameters,
+        bytes calldata onHooksSetData
+    ) external override onlyOwner {
         ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;
 
         if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
@@ -672,7 +678,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
             revert LBFactory__InvalidHooksParameters();
         }
 
-        lbPair.setHooksParameters(hooksParameters);
+        lbPair.setHooksParameters(hooksParameters, onHooksSetData);
     }
 
     /**
@@ -689,7 +695,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
 
-        lbPair.setHooksParameters(Hooks.decode(0));
+        lbPair.setHooksParameters(Hooks.decode(0), new bytes(0));
     }
 
     /**

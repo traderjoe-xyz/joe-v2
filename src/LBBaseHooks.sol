@@ -34,13 +34,19 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
      * @notice Hook called by the pair when the hooks parameters are set
      * @dev Only callable by the pair
      * @param hooksParameters The hooks parameters
+     * @param onHooksSetData The onHooksSet data
      * @return The function selector
      */
-    function onHooksSet(bytes32 hooksParameters) external override onlyLBPair returns (bytes4) {
+    function onHooksSet(bytes32 hooksParameters, bytes memory onHooksSetData)
+        external
+        override
+        onlyLBPair
+        returns (bytes4)
+    {
         address hooks = address(uint160(uint256(hooksParameters)));
         if (hooks != address(this)) revert LBBaseHooks__InvalidHooks(hooks);
 
-        _onHooksSet(hooksParameters);
+        _onHooksSet(hooksParameters, onHooksSetData);
 
         return this.onHooksSet.selector;
     }
@@ -269,8 +275,9 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
     /**
      * @notice Internal function to be overridden that is called when the hooks parameters are set
      * @param hooksParameters The hooks parameters
+     * @param onHooksSetData The onHooksSet data
      */
-    function _onHooksSet(bytes32 hooksParameters) internal virtual {}
+    function _onHooksSet(bytes32 hooksParameters, bytes memory onHooksSetData) internal virtual {}
 
     /**
      * @notice Internal function to be overridden that is called before a swap

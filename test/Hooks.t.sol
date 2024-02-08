@@ -61,11 +61,11 @@ contract HooksTest is Test {
         bytes32 hooksParameters = Hooks.encode(parameters);
 
         hooks.reset();
-        Hooks.onHooksSet(hooksParameters);
+        Hooks.onHooksSet(hooksParameters, abi.encode(address(this)));
 
         assertEq(
             keccak256(hooks.beforeData()),
-            keccak256(abi.encodeWithSelector(ILBHooks.onHooksSet.selector, hooksParameters)),
+            keccak256(abi.encodeWithSelector(ILBHooks.onHooksSet.selector, hooksParameters, abi.encode(address(this)))),
             "test_CallHooks::1"
         );
 
@@ -243,7 +243,7 @@ contract HooksTest is Test {
                     : abi.encodeWithSelector(HooksTest__CustomRevert.selector);
 
             vm.expectRevert(expectedRevertData);
-            hooksCaller.onHooksSet(bytes32(0));
+            hooksCaller.onHooksSet(bytes32(0), new bytes(0));
 
             vm.expectRevert(expectedRevertData);
             hooksCaller.beforeSwap(address(0), address(0), false, bytes32(0));
@@ -297,8 +297,8 @@ contract MockHooksCaller {
         hooksParameters = _hooksParameters;
     }
 
-    function onHooksSet(bytes32) public {
-        Hooks.onHooksSet(hooksParameters);
+    function onHooksSet(bytes32, bytes memory) public {
+        Hooks.onHooksSet(hooksParameters, new bytes(0));
     }
 
     function beforeSwap(address sender, address to, bool swapForY, bytes32 amountsIn) public {

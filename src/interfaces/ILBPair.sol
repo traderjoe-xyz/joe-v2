@@ -182,7 +182,7 @@ interface ILBPair is ILBToken {
         uint24 maxVolatilityAccumulator
     ) external;
 
-    function setHooksParameters(Hooks.Parameters memory hooksParameters, bytes memory onHooksSetData) external;
+    function setHooksParameters(Hooks.Parameters calldata hooksParameters, bytes calldata onHooksSetData) external;
 
     function forceDecay() external;
 }

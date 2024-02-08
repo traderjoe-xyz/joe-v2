@@ -61,7 +61,7 @@ library Hooks {
         parameters.afterBatchTransferFrom = (hooksParameters & AFTER_TRANSFER_FLAG) != 0;
     }
 
-    function onHooksSet(bytes32 hooksParameters, bytes memory onHooksSetData) internal {
+    function onHooksSet(bytes32 hooksParameters, bytes calldata onHooksSetData) internal {
         _safeCall(
             hooksParameters, abi.encodeWithSelector(ILBHooks.onHooksSet.selector, hooksParameters, onHooksSetData)
         );

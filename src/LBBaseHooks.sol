@@ -37,7 +37,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
      * @param onHooksSetData The onHooksSet data
      * @return The function selector
      */
-    function onHooksSet(bytes32 hooksParameters, bytes memory onHooksSetData)
+    function onHooksSet(bytes32 hooksParameters, bytes calldata onHooksSetData)
         external
         override
         onlyLBPair
@@ -277,7 +277,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
      * @param hooksParameters The hooks parameters
      * @param onHooksSetData The onHooksSet data
      */
-    function _onHooksSet(bytes32 hooksParameters, bytes memory onHooksSetData) internal virtual {}
+    function _onHooksSet(bytes32 hooksParameters, bytes calldata onHooksSetData) internal virtual {}
 
     /**
      * @notice Internal function to be overridden that is called before a swap

@@ -362,11 +362,12 @@ contract LBFactory is PendingOwnable, ILBFactory {
         override
         onlyOwner
     {
-        if ((defaultHooksParameters.hooks == address(0)) != (Hooks.encode(defaultHooksParameters) >> 160 == 0)) {
+        bytes32 newHooksParameters = Hooks.encode(defaultHooksParameters);
+
+        if ((defaultHooksParameters.hooks == address(0)) != (Hooks.getFlags(newHooksParameters) == 0)) {
             revert LBFactory__InvalidHooksParameters();
         }
 
-        bytes32 newHooksParameters = Hooks.encode(defaultHooksParameters);
         bytes32 oldHooksParameters = _defaultHooksParameters;
 
         if (oldHooksParameters == newHooksParameters) {
@@ -678,7 +679,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;
 
         if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
-        if (hooksParameters.hooks == address(0) || Hooks.encode(hooksParameters) >> 160 == 0) {
+        if (hooksParameters.hooks == address(0) || Hooks.getFlags(Hooks.encode(hooksParameters)) == 0) {
             revert LBFactory__InvalidHooksParameters();
         }
 

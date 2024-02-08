@@ -622,14 +622,14 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         if (balancesAfter.lt(reservesBefore.add(totalFees))) revert LBPair__FlashLoanInsufficientAmount();
 
-        totalFees = balancesAfter.sub(reservesBefore);
+        bytes32 feesReceived = balancesAfter.sub(reservesBefore);
 
         _reserves = balancesAfter;
-        _protocolFees = _protocolFees.add(totalFees);
+        _protocolFees = _protocolFees.add(feesReceived);
 
-        Hooks.afterFlashLoan(hooksParameters, msg.sender, address(receiver), amounts);
+        Hooks.afterFlashLoan(hooksParameters, msg.sender, address(receiver), totalFees, feesReceived);
 
-        emit FlashLoan(msg.sender, receiver, _parameters.getActiveId(), amounts, bytes32(0), totalFees);
+        emit FlashLoan(msg.sender, receiver, _parameters.getActiveId(), amounts, bytes32(0), feesReceived);
     }
 
     /**

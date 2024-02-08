@@ -837,7 +837,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @param hooksParameters The hooks parameter
      * @param onHooksSetData The data to be passed to the onHooksSet function of the hooks contract
      */
-    function setHooksParameters(Hooks.Parameters memory hooksParameters, bytes memory onHooksSetData)
+    function setHooksParameters(Hooks.Parameters calldata hooksParameters, bytes calldata onHooksSetData)
         external
         override
         nonReentrant

@@ -25,7 +25,7 @@ contract MockHooks is LBBaseHooks {
         return super._getLBPair();
     }
 
-    function _onHooksSet(bytes32, bytes memory) internal virtual override {
+    function _onHooksSet(bytes32, bytes calldata) internal virtual override {
         uint256 offset = pair == address(0) ? _getImmutableArgsOffset() : msg.data.length;
         beforeData = msg.data[0:offset];
     }

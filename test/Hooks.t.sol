@@ -53,7 +53,8 @@ contract HooksTest is Test {
         Hooks.Parameters memory parameters,
         address account,
         bytes32[] calldata liquidityConfigs,
-        uint256[] calldata ids
+        uint256[] calldata ids,
+        bytes calldata data
     ) public {
         hooks.setPair(address(this));
 
@@ -61,11 +62,11 @@ contract HooksTest is Test {
         bytes32 hooksParameters = Hooks.encode(parameters);
 
         hooks.reset();
-        Hooks.onHooksSet(hooksParameters, abi.encode(address(this)));
+        Hooks.onHooksSet(hooksParameters, data);
 
         assertEq(
             keccak256(hooks.beforeData()),
-            keccak256(abi.encodeWithSelector(ILBHooks.onHooksSet.selector, hooksParameters, abi.encode(address(this)))),
+            keccak256(abi.encodeWithSelector(ILBHooks.onHooksSet.selector, hooksParameters, data)),
             "test_CallHooks::1"
         );
 
@@ -297,8 +298,8 @@ contract MockHooksCaller {
         hooksParameters = _hooksParameters;
     }
 
-    function onHooksSet(bytes32, bytes memory) public {
-        Hooks.onHooksSet(hooksParameters, new bytes(0));
+    function onHooksSet(bytes32, bytes calldata data) public {
+        Hooks.onHooksSet(hooksParameters, data);
     }
 
     function beforeSwap(address sender, address to, bool swapForY, bytes32 amountsIn) public {

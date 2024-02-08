@@ -232,33 +232,6 @@ contract LBPairHooksTest is TestHelper {
         _verifyStates(hooksAfterState, expectedAfterState);
     }
 
-    function _verifyStates(State memory hooksState, State memory expectedState) internal {
-        assertEq(hooksState.reserveX, expectedState.reserveX, "_verifyStates::1");
-        assertEq(hooksState.reserveY, expectedState.reserveY, "_verifyStates::2");
-        assertEq(hooksState.protocolFeeX, expectedState.protocolFeeX, "_verifyStates::3");
-        assertEq(hooksState.protocolFeeY, expectedState.protocolFeeY, "_verifyStates::4");
-        assertEq(hooksState.activeId, expectedState.activeId, "_verifyStates::5");
-        assertEq(hooksState.activeReserveX, expectedState.activeReserveX, "_verifyStates::6");
-        assertEq(hooksState.activeReserveY, expectedState.activeReserveY, "_verifyStates::7");
-
-        VolatilityParameters memory vp = hooksState.volatilityParameters;
-        VolatilityParameters memory evp = expectedState.volatilityParameters;
-
-        assertEq(vp.volatilityAccumulator, evp.volatilityAccumulator, "_verifyStates::8");
-        assertEq(vp.volatilityReference, evp.volatilityReference, "_verifyStates::9");
-        assertEq(vp.idReference, evp.idReference, "_verifyStates::10");
-        assertEq(vp.timeOfLastUpdate, evp.timeOfLastUpdate, "_verifyStates::11");
-
-        OracleParameters memory op = hooksState.oracleParameters;
-        OracleParameters memory eop = expectedState.oracleParameters;
-
-        assertEq(op.sampleLifetime, eop.sampleLifetime, "_verifyStates::12");
-        assertEq(op.size, eop.size, "_verifyStates::13");
-        assertEq(op.activeSize, eop.activeSize, "_verifyStates::14");
-        assertEq(op.lastUpdated, eop.lastUpdated, "_verifyStates::15");
-        assertEq(op.firstTimestamp, eop.firstTimestamp, "_verifyStates::16");
-    }
-
     function test_BeforeAfterMintHooks() public {
         uint128 amount = 0.1e18;
 
@@ -418,6 +391,33 @@ contract LBPairHooksTest is TestHelper {
             return(0, 32)
         }
     }
+
+    function _verifyStates(State memory hooksState, State memory expectedState) internal {
+        assertEq(hooksState.reserveX, expectedState.reserveX, "_verifyStates::1");
+        assertEq(hooksState.reserveY, expectedState.reserveY, "_verifyStates::2");
+        assertEq(hooksState.protocolFeeX, expectedState.protocolFeeX, "_verifyStates::3");
+        assertEq(hooksState.protocolFeeY, expectedState.protocolFeeY, "_verifyStates::4");
+        assertEq(hooksState.activeId, expectedState.activeId, "_verifyStates::5");
+        assertEq(hooksState.activeReserveX, expectedState.activeReserveX, "_verifyStates::6");
+        assertEq(hooksState.activeReserveY, expectedState.activeReserveY, "_verifyStates::7");
+
+        VolatilityParameters memory vp = hooksState.volatilityParameters;
+        VolatilityParameters memory evp = expectedState.volatilityParameters;
+
+        assertEq(vp.volatilityAccumulator, evp.volatilityAccumulator, "_verifyStates::8");
+        assertEq(vp.volatilityReference, evp.volatilityReference, "_verifyStates::9");
+        assertEq(vp.idReference, evp.idReference, "_verifyStates::10");
+        assertEq(vp.timeOfLastUpdate, evp.timeOfLastUpdate, "_verifyStates::11");
+
+        OracleParameters memory op = hooksState.oracleParameters;
+        OracleParameters memory eop = expectedState.oracleParameters;
+
+        assertEq(op.sampleLifetime, eop.sampleLifetime, "_verifyStates::12");
+        assertEq(op.size, eop.size, "_verifyStates::13");
+        assertEq(op.activeSize, eop.activeSize, "_verifyStates::14");
+        assertEq(op.lastUpdated, eop.lastUpdated, "_verifyStates::15");
+        assertEq(op.firstTimestamp, eop.firstTimestamp, "_verifyStates::16");
+    }
 }
 
 contract MockLBHooks is MockHooks {
@@ -439,7 +439,7 @@ contract MockLBHooks is MockHooks {
         delete _afterState;
     }
 
-    function _onHooksSet(bytes32 hooksParameters, bytes memory onHooksSetData) internal override {
+    function _onHooksSet(bytes32 hooksParameters, bytes calldata onHooksSetData) internal override {
         super._onHooksSet(hooksParameters, onHooksSetData);
 
         _beforeState = getState();

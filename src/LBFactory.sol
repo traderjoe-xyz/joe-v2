@@ -357,7 +357,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * - The hooks parameters are the same as the current ones
      * @param defaultHooksParameters The hooks parameters
      */
-    function setDefaultLBHooksParameters(Hooks.Parameters memory defaultHooksParameters) external override onlyOwner {
+    function setDefaultLBHooksParameters(Hooks.Parameters calldata defaultHooksParameters)
+        external
+        override
+        onlyOwner
+    {
         if ((defaultHooksParameters.hooks == address(0)) != (Hooks.encode(defaultHooksParameters) >> 160 == 0)) {
             revert LBFactory__InvalidHooksParameters();
         }
@@ -668,7 +672,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         IERC20 tokenX,
         IERC20 tokenY,
         uint16 binStep,
-        Hooks.Parameters memory hooksParameters,
+        Hooks.Parameters calldata hooksParameters,
         bytes calldata onHooksSetData
     ) external override onlyOwner {
         ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;

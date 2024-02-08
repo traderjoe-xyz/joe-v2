@@ -447,6 +447,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to set whether the pair is ignored or not for routing, it will make the pair unusable by the router
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The pair doesn't exist
+     * - The ignored state is already in the same state
      * @param tokenX The address of the first token of the pair
      * @param tokenY The address of the second token of the pair
      * @param binStep The bin step in basis point of the pair
@@ -469,6 +473,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Sets the preset parameters of a bin step
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The binStep is lower than the minimum bin step
      * @param binStep The bin step in basis point, used to calculate the price
      * @param baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
      * @param filterPeriod The period where the accumulator value is untouched, prevent spam
@@ -523,6 +530,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Sets if the preset is open or not to be used by users
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The binStep doesn't have a preset
+     * - The preset is already in the same state
      * @param binStep The bin step in basis point, used to calculate the price
      * @param isOpen Whether the preset is open or not
      */
@@ -542,6 +553,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Remove the preset linked to a binStep
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The binStep doesn't have a preset
      * @param binStep The bin step to remove
      */
     function removePreset(uint16 binStep) external override onlyOwner {
@@ -552,6 +566,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to set the fee parameter of a LBPair
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The pair doesn't exist
      * @param tokenX The address of the first token
      * @param tokenY The address of the second token
      * @param binStep The bin step in basis point, used to calculate the price
@@ -592,6 +609,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to create a hooks contract using the default hooks parameters and set it to the pair
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The pair doesn't exist
+     * - The hooks implementation is not set
      * @param tokenX The address of the first token
      * @param tokenY The address of the second token
      * @param binStep The bin step in basis point, used to calculate the price
@@ -630,6 +651,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to set a custom hooks contract to the pair
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The pair doesn't exist
+     * - The hooks is `address(0)` or the hooks flags are all false
      * @param tokenX The address of the first token
      * @param tokenY The address of the second token
      * @param binStep The bin step in basis point, used to calculate the price
@@ -652,6 +677,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to remove the hooks contract from the pair
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The pair doesn't exist
      * @param tokenX The address of the first token
      * @param tokenY The address of the second token
      * @param binStep The bin step in basis point, used to calculate the price
@@ -666,6 +694,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to set the recipient of the fees. This address needs to be able to receive ERC20s
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The feeRecipient is `address(0)`
+     * - The feeRecipient is the same as the current one
      * @param feeRecipient The address of the recipient
      */
     function setFeeRecipient(address feeRecipient) external override onlyOwner {
@@ -674,6 +706,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to set the flash loan fee
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The flashLoanFee is the same as the current one
+     * - The flashLoanFee is above the maximum flash loan fee
      * @param flashLoanFee The value of the fee for flash loan
      */
     function setFlashLoanFee(uint256 flashLoanFee) external override onlyOwner {
@@ -688,6 +724,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to add an asset to the whitelist of quote assets
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The quoteAsset is already whitelisted
      * @param quoteAsset The quote asset (e.g: NATIVE, USDC...)
      */
     function addQuoteAsset(IERC20 quoteAsset) external override onlyOwner {
@@ -700,6 +739,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to remove an asset from the whitelist of quote assets
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The quoteAsset was not whitelisted
      * @param quoteAsset The quote asset (e.g: NATIVE, USDC...)
      */
     function removeQuoteAsset(IERC20 quoteAsset) external override onlyOwner {
@@ -726,6 +768,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
         emit FeeRecipientSet(oldFeeRecipient, feeRecipient);
     }
 
+    /**
+     * @notice Function to force the decay of the volatility accumulator of a pair
+     * @dev Needs to be called by the owner
+     * @param pair The pair to force the decay
+     */
     function forceDecay(ILBPair pair) external override onlyOwner {
         pair.forceDecay();
     }

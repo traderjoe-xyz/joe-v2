@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.10;
 
+import {Hooks} from "./libraries/Hooks.sol";
 import {ILBHooks} from "./interfaces/ILBHooks.sol";
 import {ILBPair} from "./interfaces/ILBPair.sol";
 import {Clone} from "./libraries/Clone.sol";
@@ -43,7 +44,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
         onlyLBPair
         returns (bytes4)
     {
-        address hooks = address(uint160(uint256(hooksParameters)));
+        address hooks = Hooks.getAddress(hooksParameters);
         if (hooks != address(this)) revert LBBaseHooks__InvalidHooks(hooks);
 
         _onHooksSet(hooksParameters, onHooksSetData);

@@ -47,6 +47,26 @@ contract HooksTest is Test {
             Hooks.decode(hooksParameters).afterBatchTransferFrom,
             "test_EncodeHooks::11"
         );
+        assertEq(parameters.hooks, Hooks.getAddress(hooksParameters), "test_EncodeHooks::12");
+        assertEq(
+            hooksParameters & ~bytes32(uint256(type(uint160).max)),
+            Hooks.getFlags(hooksParameters),
+            "test_EncodeHooks::13"
+        );
+
+        bytes32 expectedFlags = 0;
+        if (parameters.beforeSwap) expectedFlags |= Hooks.BEFORE_SWAP_FLAG;
+        if (parameters.afterSwap) expectedFlags |= Hooks.AFTER_SWAP_FLAG;
+        if (parameters.beforeFlashLoan) expectedFlags |= Hooks.BEFORE_FLASH_LOAN_FLAG;
+        if (parameters.afterFlashLoan) expectedFlags |= Hooks.AFTER_FLASH_LOAN_FLAG;
+        if (parameters.beforeMint) expectedFlags |= Hooks.BEFORE_MINT_FLAG;
+        if (parameters.afterMint) expectedFlags |= Hooks.AFTER_MINT_FLAG;
+        if (parameters.beforeBurn) expectedFlags |= Hooks.BEFORE_BURN_FLAG;
+        if (parameters.afterBurn) expectedFlags |= Hooks.AFTER_BURN_FLAG;
+        if (parameters.beforeBatchTransferFrom) expectedFlags |= Hooks.BEFORE_TRANSFER_FLAG;
+        if (parameters.afterBatchTransferFrom) expectedFlags |= Hooks.AFTER_TRANSFER_FLAG;
+
+        assertEq(bytes32(expectedFlags), Hooks.getFlags(hooksParameters), "test_EncodeHooks::14");
     }
 
     function test_CallHooks(

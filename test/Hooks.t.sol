@@ -109,12 +109,14 @@ contract HooksTest is Test {
         }
 
         hooks.reset();
-        Hooks.afterFlashLoan(hooksParameters, account, account, bytes32(0));
+        Hooks.afterFlashLoan(hooksParameters, account, account, bytes32(0), bytes32(0));
 
         if (parameters.afterFlashLoan) {
             assertEq(
                 keccak256(hooks.afterData()),
-                keccak256(abi.encodeWithSelector(ILBHooks.afterFlashLoan.selector, account, account, bytes32(0))),
+                keccak256(
+                    abi.encodeWithSelector(ILBHooks.afterFlashLoan.selector, account, account, bytes32(0), bytes32(0))
+                ),
                 "test_CallHooks::8"
             );
         } else {
@@ -253,7 +255,7 @@ contract HooksTest is Test {
             hooksCaller.beforeFlashLoan(address(0), address(0), bytes32(0));
 
             vm.expectRevert(expectedRevertData);
-            hooksCaller.afterFlashLoan(address(0), address(0), bytes32(0));
+            hooksCaller.afterFlashLoan(address(0), address(0), bytes32(0), bytes32(0));
 
             vm.expectRevert(expectedRevertData);
             hooksCaller.beforeMint(address(0), address(0), new bytes32[](0), bytes32(0));
@@ -311,8 +313,8 @@ contract MockHooksCaller {
         Hooks.beforeFlashLoan(hooksParameters, sender, to, amounts);
     }
 
-    function afterFlashLoan(address sender, address to, bytes32 amounts) public {
-        Hooks.afterFlashLoan(hooksParameters, sender, to, amounts);
+    function afterFlashLoan(address sender, address to, bytes32 fees, bytes32 feesReceived) public {
+        Hooks.afterFlashLoan(hooksParameters, sender, to, fees, feesReceived);
     }
 
     function beforeMint(address sender, address to, bytes32[] calldata liquidityConfigs, bytes32 amountsReceived)

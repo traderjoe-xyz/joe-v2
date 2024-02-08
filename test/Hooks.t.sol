@@ -7,6 +7,8 @@ import "forge-std/Test.sol";
 import "../src/libraries/Hooks.sol";
 import "../src/interfaces/ILBHooks.sol";
 
+import "./mocks/MockHooks.sol";
+
 contract HooksTest is Test {
     error HooksTest__CustomRevert();
 
@@ -24,8 +26,6 @@ contract HooksTest is Test {
     }
 
     function test_EncodeHooks(Hooks.Parameters memory parameters) public {
-        vm.assume(parameters.hooks != address(0));
-
         bytes32 hooksParameters = Hooks.encode(parameters);
 
         assertEq(parameters.hooks, Hooks.decode(hooksParameters).hooks, "test_EncodeHooks::1");
@@ -55,6 +55,8 @@ contract HooksTest is Test {
         bytes32[] calldata liquidityConfigs,
         uint256[] calldata ids
     ) public {
+        hooks.setPair(address(this));
+
         parameters.hooks = address(hooks);
         bytes32 hooksParameters = Hooks.encode(parameters);
 
@@ -62,7 +64,7 @@ contract HooksTest is Test {
         Hooks.onHooksSet(hooksParameters);
 
         assertEq(
-            keccak256(hooks.data()),
+            keccak256(hooks.beforeData()),
             keccak256(abi.encodeWithSelector(ILBHooks.onHooksSet.selector, hooksParameters)),
             "test_CallHooks::1"
         );
@@ -72,12 +74,12 @@ contract HooksTest is Test {
 
         if (parameters.beforeSwap) {
             assertEq(
-                keccak256(hooks.data()),
+                keccak256(hooks.beforeData()),
                 keccak256(abi.encodeWithSelector(ILBHooks.beforeSwap.selector, account, account, false, bytes32(0))),
                 "test_CallHooks::2"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::3");
+            assertEq(hooks.beforeData().length, 0, "test_CallHooks::3");
         }
 
         hooks.reset();
@@ -85,12 +87,12 @@ contract HooksTest is Test {
 
         if (parameters.afterSwap) {
             assertEq(
-                keccak256(hooks.data()),
+                keccak256(hooks.afterData()),
                 keccak256(abi.encodeWithSelector(ILBHooks.afterSwap.selector, account, account, false, bytes32(0))),
                 "test_CallHooks::4"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::5");
+            assertEq(hooks.afterData().length, 0, "test_CallHooks::5");
         }
 
         hooks.reset();
@@ -98,12 +100,12 @@ contract HooksTest is Test {
 
         if (parameters.beforeFlashLoan) {
             assertEq(
-                keccak256(hooks.data()),
+                keccak256(hooks.beforeData()),
                 keccak256(abi.encodeWithSelector(ILBHooks.beforeFlashLoan.selector, account, account, bytes32(0))),
                 "test_CallHooks::6"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::7");
+            assertEq(hooks.beforeData().length, 0, "test_CallHooks::7");
         }
 
         hooks.reset();
@@ -111,12 +113,12 @@ contract HooksTest is Test {
 
         if (parameters.afterFlashLoan) {
             assertEq(
-                keccak256(hooks.data()),
+                keccak256(hooks.afterData()),
                 keccak256(abi.encodeWithSelector(ILBHooks.afterFlashLoan.selector, account, account, bytes32(0))),
                 "test_CallHooks::8"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::9");
+            assertEq(hooks.afterData().length, 0, "test_CallHooks::9");
         }
 
         hooks.reset();
@@ -124,14 +126,14 @@ contract HooksTest is Test {
 
         if (parameters.beforeMint) {
             assertEq(
-                keccak256(hooks.data()),
+                keccak256(hooks.beforeData()),
                 keccak256(
                     abi.encodeWithSelector(ILBHooks.beforeMint.selector, account, account, liquidityConfigs, bytes32(0))
                 ),
                 "test_CallHooks::10"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::11");
+            assertEq(hooks.beforeData().length, 0, "test_CallHooks::11");
         }
 
         hooks.reset();
@@ -139,14 +141,14 @@ contract HooksTest is Test {
 
         if (parameters.afterMint) {
             assertEq(
-                keccak256(hooks.data()),
+                keccak256(hooks.afterData()),
                 keccak256(
                     abi.encodeWithSelector(ILBHooks.afterMint.selector, account, account, liquidityConfigs, bytes32(0))
                 ),
                 "test_CallHooks::12"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::13");
+            assertEq(hooks.afterData().length, 0, "test_CallHooks::13");
         }
 
         hooks.reset();
@@ -154,12 +156,12 @@ contract HooksTest is Test {
 
         if (parameters.beforeBurn) {
             assertEq(
-                keccak256(hooks.data()),
+                keccak256(hooks.beforeData()),
                 keccak256(abi.encodeWithSelector(ILBHooks.beforeBurn.selector, account, account, account, ids, ids)),
                 "test_CallHooks::14"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::15");
+            assertEq(hooks.beforeData().length, 0, "test_CallHooks::15");
         }
 
         hooks.reset();
@@ -167,12 +169,12 @@ contract HooksTest is Test {
 
         if (parameters.afterBurn) {
             assertEq(
-                keccak256(hooks.data()),
+                keccak256(hooks.afterData()),
                 keccak256(abi.encodeWithSelector(ILBHooks.afterBurn.selector, account, account, account, ids, ids)),
                 "test_CallHooks::16"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::17");
+            assertEq(hooks.afterData().length, 0, "test_CallHooks::17");
         }
 
         hooks.reset();
@@ -180,7 +182,7 @@ contract HooksTest is Test {
 
         if (parameters.beforeBatchTransferFrom) {
             assertEq(
-                keccak256(hooks.data()),
+                keccak256(hooks.beforeData()),
                 keccak256(
                     abi.encodeWithSelector(
                         ILBHooks.beforeBatchTransferFrom.selector, account, account, account, ids, ids
@@ -189,7 +191,7 @@ contract HooksTest is Test {
                 "test_CallHooks::18"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::19");
+            assertEq(hooks.beforeData().length, 0, "test_CallHooks::19");
         }
 
         hooks.reset();
@@ -197,7 +199,7 @@ contract HooksTest is Test {
 
         if (parameters.afterBatchTransferFrom) {
             assertEq(
-                keccak256(hooks.data()),
+                keccak256(hooks.afterData()),
                 keccak256(
                     abi.encodeWithSelector(
                         ILBHooks.afterBatchTransferFrom.selector, account, account, account, ids, ids
@@ -206,15 +208,8 @@ contract HooksTest is Test {
                 "test_CallHooks::20"
             );
         } else {
-            assertEq(hooks.data().length, 0, "test_CallHooks::21");
+            assertEq(hooks.afterData().length, 0, "test_CallHooks::21");
         }
-    }
-
-    function test_HooksZeroAddress(Hooks.Parameters memory parameters) public {
-        parameters.hooks = address(0);
-        bytes32 hooksParameters = Hooks.encode(parameters);
-
-        assertEq(hooksParameters, bytes32(0), "test_HooksZeroAddress::1");
     }
 
     function test_Revert_CallFailed() public {
@@ -362,88 +357,5 @@ contract MockHooksCaller {
         uint256[] calldata amounts
     ) public {
         Hooks.afterBatchTransferFrom(hooksParameters, sender, from, address(0), ids, amounts);
-    }
-}
-
-contract MockHooks is ILBHooks {
-    bytes public data;
-
-    function onHooksSet(bytes32 hooksParameters) external override returns (bytes4) {
-        data = abi.encodeWithSelector(this.onHooksSet.selector, hooksParameters);
-        return this.onHooksSet.selector;
-    }
-
-    function getLBPair() external pure override returns (ILBPair) {
-        return ILBPair(address(0));
-    }
-
-    function reset() public {
-        delete data;
-    }
-
-    function beforeSwap(address, address, bool, bytes32) external override returns (bytes4) {
-        data = msg.data;
-        return this.beforeSwap.selector;
-    }
-
-    function afterSwap(address, address, bool, bytes32) external override returns (bytes4) {
-        data = msg.data;
-        return this.afterSwap.selector;
-    }
-
-    function beforeFlashLoan(address, address, bytes32) external override returns (bytes4) {
-        data = msg.data;
-        return this.beforeFlashLoan.selector;
-    }
-
-    function afterFlashLoan(address, address, bytes32) external override returns (bytes4) {
-        data = msg.data;
-        return this.afterFlashLoan.selector;
-    }
-
-    function beforeMint(address, address, bytes32[] calldata, bytes32) external override returns (bytes4) {
-        data = msg.data;
-        return this.beforeMint.selector;
-    }
-
-    function afterMint(address, address, bytes32[] calldata, bytes32) external override returns (bytes4) {
-        data = msg.data;
-        return this.afterMint.selector;
-    }
-
-    function beforeBurn(address, address, address, uint256[] calldata, uint256[] calldata)
-        external
-        override
-        returns (bytes4)
-    {
-        data = msg.data;
-        return this.beforeBurn.selector;
-    }
-
-    function afterBurn(address, address, address, uint256[] calldata, uint256[] calldata)
-        external
-        override
-        returns (bytes4)
-    {
-        data = msg.data;
-        return this.afterBurn.selector;
-    }
-
-    function beforeBatchTransferFrom(address, address, address, uint256[] calldata, uint256[] calldata)
-        external
-        override
-        returns (bytes4)
-    {
-        data = msg.data;
-        return this.beforeBatchTransferFrom.selector;
-    }
-
-    function afterBatchTransferFrom(address, address, address, uint256[] calldata, uint256[] calldata)
-        external
-        override
-        returns (bytes4)
-    {
-        data = msg.data;
-        return this.afterBatchTransferFrom.selector;
     }
 }

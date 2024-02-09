@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
 library AvalancheAddresses {
     address internal constant V2_FACTORY_OWNER = 0x2fbB61a10B96254900C03F1644E9e1d2f5E76DD2;

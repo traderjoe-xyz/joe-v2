@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
 import "../helpers/TestHelper.sol";
 
@@ -20,8 +20,13 @@ contract LiquidityBinQuoterPriorityTest is Test {
     function setUp() public {
         vm.createSelectFork(vm.rpcUrl("avalanche"), 33313442);
 
-        newQuoter =
-        new LBQuoter(AvalancheAddresses.JOE_V1_FACTORY, AvalancheAddresses.JOE_V2_FACTORY, factory, AvalancheAddresses.JOE_V2_ROUTER, router);
+        newQuoter = new LBQuoter(
+            AvalancheAddresses.JOE_V1_FACTORY,
+            AvalancheAddresses.JOE_V2_FACTORY,
+            factory,
+            AvalancheAddresses.JOE_V2_ROUTER,
+            router
+        );
     }
 
     function test_QuoteFromAmountIn() public {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
 import {ILBRouter} from "../../src/interfaces/ILBRouter.sol";
 import {ILBLegacyRouter} from "../../src/interfaces/ILBLegacyRouter.sol";

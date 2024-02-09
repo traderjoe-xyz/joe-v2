@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
 import "../helpers/TestHelper.sol";
 
@@ -15,7 +15,6 @@ import "../helpers/TestHelper.sol";
  * It should be picked with small amounts but not with large amounts.
  * All tokens are considered 18 decimals for simplification purposes.
  */
-
 contract LiquidityBinQuoterTest is TestHelper {
     uint256 private defaultBaseFee = DEFAULT_BIN_STEP * uint256(DEFAULT_BASE_FACTOR) * 1e10;
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
 import {EnumerableSet} from "openzeppelin/utils/structs/EnumerableSet.sol";
 import {EnumerableMap} from "openzeppelin/utils/structs/EnumerableMap.sol";

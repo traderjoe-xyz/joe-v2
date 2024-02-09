@@ -906,10 +906,12 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         ILBHooks hooks = factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0), new bytes(0));
 
-        Hooks.Parameters memory parametersOnPair = pair.getLBHooksParameters();
+        bytes32 parametersOnPair = pair.getLBHooksParameters();
 
         parameters.hooks = address(hooks);
-        assertEq(Hooks.encode(parametersOnPair), Hooks.encode(parameters), "test_SetAndCreateDefaultLBHooksOnPair::1");
+        bytes32 expectedParameters = Hooks.encode(parameters);
+
+        assertEq(parametersOnPair, expectedParameters, "test_SetAndCreateDefaultLBHooksOnPair::1");
 
         // Can't create if not the owner
         vm.prank(ALICE);
@@ -920,12 +922,12 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         parametersOnPair = pair.getLBHooksParameters();
 
-        assertEq(Hooks.encode(parametersOnPair), 0, "test_SetAndCreateDefaultLBHooksOnPair::2");
+        assertEq(parametersOnPair, 0, "test_SetAndCreateDefaultLBHooksOnPair::2");
 
         factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, parameters, new bytes(0));
 
         parametersOnPair = pair.getLBHooksParameters();
 
-        assertEq(Hooks.encode(parametersOnPair), Hooks.encode(parameters), "test_SetAndCreateDefaultLBHooksOnPair::3");
+        assertEq(parametersOnPair, expectedParameters, "test_SetAndCreateDefaultLBHooksOnPair::3");
     }
 }

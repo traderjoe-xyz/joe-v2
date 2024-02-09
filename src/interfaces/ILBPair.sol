@@ -66,7 +66,7 @@ interface ILBPair is ILBToken {
         uint24 maxVolatilityAccumulator
     );
 
-    event HooksParametersSet(address indexed sender, Hooks.Parameters hooksParameters);
+    event HooksParametersSet(address indexed sender, bytes32 hooksParameters);
 
     event FlashLoan(
         address indexed sender,
@@ -125,7 +125,7 @@ interface ILBPair is ILBToken {
             uint24 maxVolatilityAccumulator
         );
 
-    function getLBHooksParameters() external view returns (Hooks.Parameters memory hooksParameters);
+    function getLBHooksParameters() external view returns (bytes32 hooksParameters);
 
     function getVariableFeeParameters()
         external
@@ -182,7 +182,7 @@ interface ILBPair is ILBToken {
         uint24 maxVolatilityAccumulator
     ) external;
 
-    function setHooksParameters(Hooks.Parameters calldata hooksParameters, bytes calldata onHooksSetData) external;
+    function setHooksParameters(bytes32 hooksParameters, bytes calldata onHooksSetData) external;
 
     function forceDecay() external;
 }

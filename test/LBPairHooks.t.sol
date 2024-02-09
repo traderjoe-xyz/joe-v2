@@ -68,19 +68,21 @@ contract LBPairHooksTest is TestHelper {
     }
 
     function test_GetLBHooksParameters() public {
-        Hooks.Parameters memory parameters = pairWnative.getLBHooksParameters();
+        bytes32 parameters = pairWnative.getLBHooksParameters();
 
-        assertEq(parameters.hooks, address(hooks), "test_GetLBHooksParameters::1");
-        assertTrue(parameters.beforeSwap, "test_GetLBHooksParameters::2");
-        assertTrue(parameters.afterSwap, "test_GetLBHooksParameters::3");
-        assertTrue(parameters.beforeFlashLoan, "test_GetLBHooksParameters::4");
-        assertTrue(parameters.afterFlashLoan, "test_GetLBHooksParameters::5");
-        assertTrue(parameters.beforeMint, "test_GetLBHooksParameters::6");
-        assertTrue(parameters.afterMint, "test_GetLBHooksParameters::7");
-        assertTrue(parameters.beforeBurn, "test_GetLBHooksParameters::8");
-        assertTrue(parameters.afterBurn, "test_GetLBHooksParameters::9");
-        assertTrue(parameters.beforeBatchTransferFrom, "test_GetLBHooksParameters::10");
-        assertTrue(parameters.afterBatchTransferFrom, "test_GetLBHooksParameters::11");
+        Hooks.Parameters memory hooksParameters = Hooks.decode(parameters);
+
+        assertEq(hooksParameters.hooks, address(hooks), "test_GetLBHooksParameters::1");
+        assertTrue(hooksParameters.beforeSwap, "test_GetLBHooksParameters::2");
+        assertTrue(hooksParameters.afterSwap, "test_GetLBHooksParameters::3");
+        assertTrue(hooksParameters.beforeFlashLoan, "test_GetLBHooksParameters::4");
+        assertTrue(hooksParameters.afterFlashLoan, "test_GetLBHooksParameters::5");
+        assertTrue(hooksParameters.beforeMint, "test_GetLBHooksParameters::6");
+        assertTrue(hooksParameters.afterMint, "test_GetLBHooksParameters::7");
+        assertTrue(hooksParameters.beforeBurn, "test_GetLBHooksParameters::8");
+        assertTrue(hooksParameters.afterBurn, "test_GetLBHooksParameters::9");
+        assertTrue(hooksParameters.beforeBatchTransferFrom, "test_GetLBHooksParameters::10");
+        assertTrue(hooksParameters.afterBatchTransferFrom, "test_GetLBHooksParameters::11");
     }
 
     function test_BeforeAfterSwapHooksXtoY() public {

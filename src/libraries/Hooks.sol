@@ -47,7 +47,7 @@ library Hooks {
     }
 
     function decode(bytes32 hooksParameters) internal pure returns (Parameters memory parameters) {
-        parameters.hooks = getAddress(hooksParameters);
+        parameters.hooks = getHooks(hooksParameters);
 
         parameters.beforeSwap = (hooksParameters & BEFORE_SWAP_FLAG) != 0;
         parameters.afterSwap = (hooksParameters & AFTER_SWAP_FLAG) != 0;
@@ -61,8 +61,12 @@ library Hooks {
         parameters.afterBatchTransferFrom = (hooksParameters & AFTER_TRANSFER_FLAG) != 0;
     }
 
-    function getAddress(bytes32 hooksParameters) internal pure returns (address hooks) {
+    function getHooks(bytes32 hooksParameters) internal pure returns (address hooks) {
         hooks = address(uint160(uint256(hooksParameters)));
+    }
+
+    function setHooks(bytes32 hooksParameters, address newHooks) internal pure returns (bytes32) {
+        return bytes32(bytes12(hooksParameters)) | bytes32(uint256(uint160(newHooks)));
     }
 
     function getFlags(bytes32 hooksParameters) internal pure returns (bytes12 flags) {

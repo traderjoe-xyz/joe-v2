@@ -248,8 +248,8 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @notice Gets the hooks parameters of the Liquidity Book Pair
      * @return The hooks parameters of the Liquidity Book Pair
      */
-    function getLBHooksParameters() external view override returns (Hooks.Parameters memory) {
-        return Hooks.decode(_hooksParameters);
+    function getLBHooksParameters() external view override returns (bytes32) {
+        return _hooksParameters;
     }
 
     /**
@@ -837,21 +837,19 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @param hooksParameters The hooks parameter
      * @param onHooksSetData The data to be passed to the onHooksSet function of the hooks contract
      */
-    function setHooksParameters(Hooks.Parameters calldata hooksParameters, bytes calldata onHooksSetData)
+    function setHooksParameters(bytes32 hooksParameters, bytes calldata onHooksSetData)
         external
         override
         nonReentrant
         onlyFactory
     {
-        bytes32 parameters = Hooks.encode(hooksParameters);
+        _hooksParameters = hooksParameters;
 
-        _hooksParameters = parameters;
-
-        ILBHooks hooks = ILBHooks(hooksParameters.hooks);
+        ILBHooks hooks = ILBHooks(Hooks.getHooks(hooksParameters));
         if (address(hooks) != address(0)) {
             if (hooks.getLBPair() != this) revert LBPair__InvalidHooks();
 
-            Hooks.onHooksSet(parameters, onHooksSetData);
+            Hooks.onHooksSet(hooksParameters, onHooksSetData);
         }
 
         emit HooksParametersSet(msg.sender, hooksParameters);

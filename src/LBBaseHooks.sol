@@ -14,7 +14,7 @@ import {Clone} from "./libraries/Clone.sol";
  */
 abstract contract LBBaseHooks is Clone, ILBHooks {
     error LBBaseHooks__InvalidCaller(address caller);
-    error LBBaseHooks__InvalidHooks(address hooks);
+    error LBBaseHooks__NotLinkedToPair();
 
     /**
      * @dev Modifier to check that the caller is the LBPair
@@ -44,8 +44,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
         onlyLBPair
         returns (bytes4)
     {
-        address hooks = Hooks.getAddress(hooksParameters);
-        if (hooks != address(this)) revert LBBaseHooks__InvalidHooks(hooks);
+        if (!_isLinkedToPair()) revert LBBaseHooks__NotLinkedToPair();
 
         _onHooksSet(hooksParameters, onHooksSetData);
 
@@ -267,10 +266,19 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
     }
 
     /**
-     * @dev Checks that the caller is the LBPair
+     * @dev Checks that the caller is the LBPair, reverts otherwise
      */
     function _checkCaller() internal view {
         if (msg.sender != address(_getLBPair())) revert LBBaseHooks__InvalidCaller(msg.sender);
+    }
+
+    /**
+     * @dev Checks if the contract is linked to the pair
+     * @return Whether the contract is linked to the pair or not
+     */
+    function _isLinkedToPair() internal view returns (bool) {
+        address hooks = Hooks.getHooks(_getLBPair().getLBHooksParameters());
+        return hooks == address(this);
     }
 
     /**

@@ -61,7 +61,7 @@ interface ILBFactory is IPendingOwnable {
 
     event LBPairImplementationSet(address oldLBPairImplementation, address LBPairImplementation);
 
-    event DefaultLBHooksParametersSet(Hooks.Parameters oldParameters, Hooks.Parameters newParameters);
+    event DefaultLBHooksParametersSet(bytes32 oldParameters, bytes32 newParameters);
 
     event LBHooksCreated(ILBPair indexed lbPair, ILBHooks hooks, uint256 pid);
 

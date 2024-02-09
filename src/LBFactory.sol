@@ -376,7 +376,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         _defaultHooksParameters = newHooksParameters;
 
-        emit DefaultLBHooksParametersSet(Hooks.decode(oldHooksParameters), defaultHooksParameters);
+        emit DefaultLBHooksParametersSet(oldHooksParameters, newHooksParameters);
     }
 
     /**
@@ -636,8 +636,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
 
-        Hooks.Parameters memory hooksParameters = Hooks.decode(_defaultHooksParameters);
-        address implementation = hooksParameters.hooks;
+        bytes32 defaultHooksParameters = _defaultHooksParameters;
+        address implementation = Hooks.getHooks(defaultHooksParameters);
 
         if (implementation == address(0)) revert LBFactory__HooksNotSet();
 
@@ -651,7 +651,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         _allLBHooks.push(hooks);
 
-        hooksParameters.hooks = address(hooks);
+        bytes32 hooksParameters = Hooks.setHooks(defaultHooksParameters, address(hooks));
         lbPair.setHooksParameters(hooksParameters, onHooksSetData);
 
         emit LBHooksCreated(lbPair, hooks, hooksId);
@@ -679,11 +679,13 @@ contract LBFactory is PendingOwnable, ILBFactory {
         ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;
 
         if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
-        if (hooksParameters.hooks == address(0) || Hooks.getFlags(Hooks.encode(hooksParameters)) == 0) {
+
+        bytes32 packedHooksParameters = Hooks.encode(hooksParameters);
+        if (hooksParameters.hooks == address(0) || Hooks.getFlags(packedHooksParameters) == 0) {
             revert LBFactory__InvalidHooksParameters();
         }
 
-        lbPair.setHooksParameters(hooksParameters, onHooksSetData);
+        lbPair.setHooksParameters(packedHooksParameters, onHooksSetData);
     }
 
     /**
@@ -700,7 +702,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
 
-        lbPair.setHooksParameters(Hooks.decode(0), new bytes(0));
+        lbPair.setHooksParameters(0, new bytes(0));
     }
 
     /**

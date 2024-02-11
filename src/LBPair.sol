@@ -627,9 +627,9 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         _reserves = balancesAfter;
         _protocolFees = _protocolFees.add(feesReceived);
 
-        Hooks.afterFlashLoan(hooksParameters, msg.sender, address(receiver), totalFees, feesReceived);
-
         emit FlashLoan(msg.sender, receiver, _parameters.getActiveId(), amounts, bytes32(0), feesReceived);
+
+        Hooks.afterFlashLoan(hooksParameters, msg.sender, address(receiver), totalFees, feesReceived);
     }
 
     /**
@@ -675,14 +675,14 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         _reserves = reserves.add(amountsReceived.sub(amountsLeft));
 
-        if (amountsLeft > 0) amountsLeft.transfer(_tokenX(), _tokenY(), refundTo);
-
-        Hooks.afterMint(hooksParameters, msg.sender, to, liquidityConfigs, amountsReceived.sub(amountsLeft));
-
         liquidityMinted = arrays.liquidityMinted;
 
         emit TransferBatch(msg.sender, address(0), to, arrays.ids, liquidityMinted);
         emit DepositedToBins(msg.sender, to, arrays.ids, arrays.amounts);
+
+        if (amountsLeft > 0) amountsLeft.transfer(_tokenX(), _tokenY(), refundTo);
+
+        Hooks.afterMint(hooksParameters, msg.sender, to, liquidityConfigs, amountsReceived.sub(amountsLeft));
     }
 
     /**
@@ -743,12 +743,12 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         _reserves = _reserves.sub(amountsOut);
 
+        emit TransferBatch(msg.sender, from_, address(0), ids, amountsToBurn);
+        emit WithdrawnFromBins(msg.sender, to, ids, amounts);
+
         amountsOut.transfer(_tokenX(), _tokenY(), to);
 
         Hooks.afterBurn(hooksParameters, msg.sender, from_, to, ids, amountsToBurn);
-
-        emit TransferBatch(msg.sender, from_, address(0), ids, amountsToBurn);
-        emit WithdrawnFromBins(msg.sender, to, ids, amounts);
     }
 
     /**
@@ -773,9 +773,9 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             _protocolFees = ones;
             _reserves = _reserves.sub(collectedProtocolFees);
 
-            collectedProtocolFees.transfer(_tokenX(), _tokenY(), msg.sender);
-
             emit CollectedProtocolFees(msg.sender, collectedProtocolFees);
+
+            collectedProtocolFees.transfer(_tokenX(), _tokenY(), msg.sender);
         }
     }
 
@@ -846,13 +846,14 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         _hooksParameters = hooksParameters;
 
         ILBHooks hooks = ILBHooks(Hooks.getHooks(hooksParameters));
+
+        emit HooksParametersSet(msg.sender, hooksParameters);
+
         if (address(hooks) != address(0)) {
             if (hooks.getLBPair() != this) revert LBPair__InvalidHooks();
 
             Hooks.onHooksSet(hooksParameters, onHooksSetData);
         }
-
-        emit HooksParametersSet(msg.sender, hooksParameters);
     }
 
     /**

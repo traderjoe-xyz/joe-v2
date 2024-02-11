@@ -430,6 +430,14 @@ contract LBFactory is PendingOwnable, ILBFactory {
             );
         }
 
+        _lbPairsInfo[tokenA][tokenB][binStep] =
+            LBPairInformation({binStep: binStep, LBPair: pair, createdByOwner: isOwner, ignoredForRouting: false});
+
+        _allLBPairs.push(pair);
+        _availableLBPairBinSteps[tokenA][tokenB].add(binStep);
+
+        emit LBPairCreated(tokenX, tokenY, binStep, pair, _allLBPairs.length - 1);
+
         pair.initialize(
             preset.getBaseFactor(),
             preset.getFilterPeriod(),
@@ -440,14 +448,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
             preset.getMaxVolatilityAccumulator(),
             activeId
         );
-
-        _lbPairsInfo[tokenA][tokenB][binStep] =
-            LBPairInformation({binStep: binStep, LBPair: pair, createdByOwner: isOwner, ignoredForRouting: false});
-
-        _allLBPairs.push(pair);
-        _availableLBPairBinSteps[tokenA][tokenB].add(binStep);
-
-        emit LBPairCreated(tokenX, tokenY, binStep, pair, _allLBPairs.length - 1);
     }
 
     /**
@@ -651,10 +651,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         _allLBHooks.push(hooks);
 
+        emit LBHooksCreated(lbPair, hooks, hooksId);
+
         bytes32 hooksParameters = Hooks.setHooks(defaultHooksParameters, address(hooks));
         lbPair.setHooksParameters(hooksParameters, onHooksSetData);
-
-        emit LBHooksCreated(lbPair, hooks, hooksId);
     }
 
     /**

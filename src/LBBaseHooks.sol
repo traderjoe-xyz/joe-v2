@@ -268,7 +268,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
     /**
      * @dev Checks that the caller is the trusted caller, otherwise reverts
      */
-    function _checkCaller() internal view {
+    function _checkCaller() internal view virtual {
         if (msg.sender != address(_getLBPair())) revert LBBaseHooks__InvalidCaller(msg.sender);
     }
 
@@ -276,7 +276,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
      * @dev Checks if the contract is linked to the pair
      * @return Whether the contract is linked to the pair or not
      */
-    function _isLinked() internal view returns (bool) {
+    function _isLinked() internal view virtual returns (bool) {
         address hooks = Hooks.getHooks(_getLBPair().getLBHooksParameters());
         return hooks == address(this);
     }

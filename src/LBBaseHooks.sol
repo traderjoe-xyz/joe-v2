@@ -14,12 +14,12 @@ import {Clone} from "./libraries/Clone.sol";
  */
 abstract contract LBBaseHooks is Clone, ILBHooks {
     error LBBaseHooks__InvalidCaller(address caller);
-    error LBBaseHooks__NotLinkedToPair();
+    error LBBaseHooks__NotLinked();
 
     /**
-     * @dev Modifier to check that the caller is the LBPair
+     * @dev Modifier to check that the caller is the trusted caller
      */
-    modifier onlyLBPair() {
+    modifier onlyCaller() {
         _checkCaller();
         _;
     }
@@ -41,10 +41,10 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
     function onHooksSet(bytes32 hooksParameters, bytes calldata onHooksSetData)
         external
         override
-        onlyLBPair
+        onlyCaller
         returns (bytes4)
     {
-        if (!_isLinkedToPair()) revert LBBaseHooks__NotLinkedToPair();
+        if (!_isLinked()) revert LBBaseHooks__NotLinked();
 
         _onHooksSet(hooksParameters, onHooksSetData);
 
@@ -63,7 +63,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
     function beforeSwap(address sender, address to, bool swapForY, bytes32 amountsIn)
         external
         override
-        onlyLBPair
+        onlyCaller
         returns (bytes4)
     {
         _beforeSwap(sender, to, swapForY, amountsIn);
@@ -83,7 +83,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
     function afterSwap(address sender, address to, bool swapForY, bytes32 amountsOut)
         external
         override
-        onlyLBPair
+        onlyCaller
         returns (bytes4)
     {
         _afterSwap(sender, to, swapForY, amountsOut);
@@ -102,7 +102,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
     function beforeFlashLoan(address sender, address to, bytes32 amounts)
         external
         override
-        onlyLBPair
+        onlyCaller
         returns (bytes4)
     {
         _beforeFlashLoan(sender, to, amounts);
@@ -122,7 +122,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
     function afterFlashLoan(address sender, address to, bytes32 fees, bytes32 feesReceived)
         external
         override
-        onlyLBPair
+        onlyCaller
         returns (bytes4)
     {
         _afterFlashLoan(sender, to, fees, feesReceived);
@@ -142,7 +142,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
     function beforeMint(address sender, address to, bytes32[] calldata liquidityConfigs, bytes32 amountsReceived)
         external
         override
-        onlyLBPair
+        onlyCaller
         returns (bytes4)
     {
         _beforeMint(sender, to, liquidityConfigs, amountsReceived);
@@ -162,7 +162,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
     function afterMint(address sender, address to, bytes32[] calldata liquidityConfigs, bytes32 amountsIn)
         external
         override
-        onlyLBPair
+        onlyCaller
         returns (bytes4)
     {
         _afterMint(sender, to, liquidityConfigs, amountsIn);
@@ -186,7 +186,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
         address to,
         uint256[] calldata ids,
         uint256[] calldata amountsToBurn
-    ) external override onlyLBPair returns (bytes4) {
+    ) external override onlyCaller returns (bytes4) {
         _beforeBurn(sender, from, to, ids, amountsToBurn);
 
         return this.beforeBurn.selector;
@@ -208,7 +208,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
         address to,
         uint256[] calldata ids,
         uint256[] calldata amountsToBurn
-    ) external override onlyLBPair returns (bytes4) {
+    ) external override onlyCaller returns (bytes4) {
         _afterBurn(sender, from, to, ids, amountsToBurn);
 
         return this.afterBurn.selector;
@@ -230,7 +230,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
         address to,
         uint256[] calldata ids,
         uint256[] calldata amounts
-    ) external override onlyLBPair returns (bytes4) {
+    ) external override onlyCaller returns (bytes4) {
         _beforeBatchTransferFrom(sender, from, to, ids, amounts);
 
         return this.beforeBatchTransferFrom.selector;
@@ -252,7 +252,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
         address to,
         uint256[] calldata ids,
         uint256[] calldata amounts
-    ) external override onlyLBPair returns (bytes4) {
+    ) external override onlyCaller returns (bytes4) {
         _afterBatchTransferFrom(sender, from, to, ids, amounts);
 
         return this.afterBatchTransferFrom.selector;
@@ -266,7 +266,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
     }
 
     /**
-     * @dev Checks that the caller is the LBPair, reverts otherwise
+     * @dev Checks that the caller is the trusted caller, otherwise reverts
      */
     function _checkCaller() internal view {
         if (msg.sender != address(_getLBPair())) revert LBBaseHooks__InvalidCaller(msg.sender);
@@ -276,7 +276,7 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
      * @dev Checks if the contract is linked to the pair
      * @return Whether the contract is linked to the pair or not
      */
-    function _isLinkedToPair() internal view returns (bool) {
+    function _isLinked() internal view returns (bool) {
         address hooks = Hooks.getHooks(_getLBPair().getLBHooksParameters());
         return hooks == address(this);
     }

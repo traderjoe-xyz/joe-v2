@@ -43,7 +43,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
     uint256 private _flashLoanFee;
 
     address private _lbPairImplementation;
-    bytes32 private _defaultHooksParameters;
+    bytes32 private _defaultLBHooksParameters;
 
     ILBPair[] private _allLBPairs;
     ILBHooks[] private _allLBHooks;
@@ -127,15 +127,15 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Get the default hooks parameters
-     * @return defaultHooksParameters The default hooks parameters
+     * @return defaultLBHooksParameters The default hooks parameters
      */
     function getDefaultLBHooksParameters()
         external
         view
         override
-        returns (Hooks.Parameters memory defaultHooksParameters)
+        returns (Hooks.Parameters memory defaultLBHooksParameters)
     {
-        return Hooks.decode(_defaultHooksParameters);
+        return Hooks.decode(_defaultLBHooksParameters);
     }
 
     /**
@@ -369,26 +369,26 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * - The hooks address is `address(0)` and any of the flags is true
      * - The hooks address is not `address(0)` and all the flags are false
      * - The hooks parameters are the same as the current ones
-     * @param defaultHooksParameters The hooks parameters
+     * @param defaultLBHooksParameters The hooks parameters
      */
-    function setDefaultLBHooksParameters(Hooks.Parameters calldata defaultHooksParameters)
+    function setDefaultLBHooksParameters(Hooks.Parameters calldata defaultLBHooksParameters)
         external
         override
         onlyOwner
     {
-        bytes32 newHooksParameters = Hooks.encode(defaultHooksParameters);
+        bytes32 newHooksParameters = Hooks.encode(defaultLBHooksParameters);
 
-        if ((defaultHooksParameters.hooks == address(0)) != (Hooks.getFlags(newHooksParameters) == 0)) {
+        if ((defaultLBHooksParameters.hooks == address(0)) != (Hooks.getFlags(newHooksParameters) == 0)) {
             revert LBFactory__InvalidHooksParameters();
         }
 
-        bytes32 oldHooksParameters = _defaultHooksParameters;
+        bytes32 oldHooksParameters = _defaultLBHooksParameters;
 
         if (oldHooksParameters == newHooksParameters) {
-            revert LBFactory__SameHooksImplementation(defaultHooksParameters.hooks);
+            revert LBFactory__SameHooksImplementation(defaultLBHooksParameters.hooks);
         }
 
-        _defaultHooksParameters = newHooksParameters;
+        _defaultLBHooksParameters = newHooksParameters;
 
         emit DefaultLBHooksParametersSet(oldHooksParameters, newHooksParameters);
     }
@@ -650,8 +650,8 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
 
-        bytes32 defaultHooksParameters = _defaultHooksParameters;
-        address implementation = Hooks.getHooks(defaultHooksParameters);
+        bytes32 defaultLBHooksParameters = _defaultLBHooksParameters;
+        address implementation = Hooks.getHooks(defaultLBHooksParameters);
 
         if (implementation == address(0)) revert LBFactory__HooksNotSet();
 
@@ -668,7 +668,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
         emit LBHooksCreated(lbPair, hooks, hooksId);
 
-        bytes32 hooksParameters = Hooks.setHooks(defaultHooksParameters, address(hooks));
+        bytes32 hooksParameters = Hooks.setHooks(defaultLBHooksParameters, address(hooks));
         lbPair.setHooksParameters(hooksParameters, onHooksSetData);
     }
 

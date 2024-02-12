@@ -220,7 +220,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param hooks The address of the hooks
      * @return Whether the hooks is a default hooks or not
      */
-    function isDefaultLBHooks(address hooks) external view override returns (bool) {
+    function isDefaultLBHooks(ILBHooks hooks) external view override returns (bool) {
         return _defaultLBHooks[hooks];
     }
 

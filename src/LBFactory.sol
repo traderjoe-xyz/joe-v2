@@ -55,6 +55,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
      */
     mapping(IERC20 => mapping(IERC20 => mapping(uint256 => LBPairInformation))) private _lbPairsInfo;
 
+    /**
+     * @dev Mapping from a hooks address to whether it's a default LB hooks or not
+     */
+    mapping(ILBHooks => bool) private _defaultLBHooks;
+
     EnumerableMap.UintToUintMap private _presets;
     EnumerableSet.AddressSet private _quoteAssetWhitelist;
 
@@ -208,6 +213,15 @@ contract LBFactory is PendingOwnable, ILBFactory {
         returns (LBPairInformation memory lbPairInformation)
     {
         return _getLBPairInformation(tokenA, tokenB, binStep);
+    }
+
+    /**
+     * @notice Returns wether the hooks is a default hooks or not
+     * @param hooks The address of the hooks
+     * @return Whether the hooks is a default hooks or not
+     */
+    function isDefaultLBHooks(address hooks) external view override returns (bool) {
+        return _defaultLBHooks[hooks];
     }
 
     /**
@@ -650,6 +664,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         );
 
         _allLBHooks.push(hooks);
+        _defaultLBHooks[hooks] = true;
 
         emit LBHooksCreated(lbPair, hooks, hooksId);
 

@@ -144,7 +144,7 @@ interface ILBFactory is IPendingOwnable {
 
     function setLBPairImplementation(address lbPairImplementation) external;
 
-    function setDefaultLBHooksParameters(Hooks.Parameters memory hooksParameters) external;
+    function setDefaultLBHooksParameters(Hooks.Parameters memory defaultLBHooksParameters) external;
 
     function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
         external

@@ -117,6 +117,8 @@ interface ILBFactory is IPendingOwnable {
         view
         returns (LBPairInformation memory);
 
+    function isDefaultLBHooks(ILBHooks hooks) external view returns (bool);
+
     function getPreset(uint256 binStep)
         external
         view

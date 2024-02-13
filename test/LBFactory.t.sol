@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.20;
 
+import {Strings} from "openzeppelin/utils/Strings.sol";
+
 import "./helpers/TestHelper.sol";
 
 import "src/libraries/ImmutableClone.sol";
@@ -860,6 +862,8 @@ contract LiquidityBinFactoryTest is TestHelper {
     }
 
     function test_SetAndCreateDefaultLBHooksOnPair() public {
+        factory.grantRole(factory.LB_HOOKS_MANAGER_ROLE(), address(this));
+
         vm.expectRevert(
             abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, usdt, usdc, DEFAULT_BIN_STEP)
         );
@@ -913,11 +917,17 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         assertEq(parametersOnPair, expectedParameters, "test_SetAndCreateDefaultLBHooksOnPair::1");
 
-        // Can't create if not the owner
+        // Can't create if not the right role
+        vm.expectRevert(
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(ALICE),
+                " is missing role ",
+                vm.toString(factory.LB_HOOKS_MANAGER_ROLE())
+            )
+        );
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
         factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0), new bytes(0));
-
         factory.removeLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP);
 
         parametersOnPair = pair.getLBHooksParameters();
@@ -929,5 +939,33 @@ contract LiquidityBinFactoryTest is TestHelper {
         parametersOnPair = pair.getLBHooksParameters();
 
         assertEq(parametersOnPair, expectedParameters, "test_SetAndCreateDefaultLBHooksOnPair::3");
+    }
+
+    function test_AccessControl() public {
+        bytes32 DEFAULT_ADMIN_ROLE = factory.DEFAULT_ADMIN_ROLE();
+        bytes32 LB_HOOKS_MANAGER_ROLE = factory.LB_HOOKS_MANAGER_ROLE();
+
+        assertTrue(factory.hasRole(DEFAULT_ADMIN_ROLE, address(this)), "test_AccessControl::1");
+        assertFalse(factory.hasRole(factory.LB_HOOKS_MANAGER_ROLE(), ALICE), "test_AccessControl::2");
+
+        factory.grantRole(LB_HOOKS_MANAGER_ROLE, ALICE);
+        assertTrue(factory.hasRole(LB_HOOKS_MANAGER_ROLE, ALICE), "test_AccessControl::3");
+
+        factory.revokeRole(LB_HOOKS_MANAGER_ROLE, ALICE);
+        assertFalse(factory.hasRole(LB_HOOKS_MANAGER_ROLE, ALICE), "test_AccessControl::4");
+
+        vm.expectRevert(ILBFactory.LBFactory__CannotGrantDefaultAdminRole.selector);
+        factory.grantRole(bytes32(0), address(this));
+
+        factory.setPendingOwner(BOB);
+
+        assertTrue(factory.hasRole(DEFAULT_ADMIN_ROLE, address(this)), "test_AccessControl::5");
+        assertFalse(factory.hasRole(DEFAULT_ADMIN_ROLE, BOB), "test_AccessControl::6");
+
+        vm.prank(BOB);
+        factory.becomeOwner();
+
+        assertTrue(factory.hasRole(DEFAULT_ADMIN_ROLE, BOB), "test_AccessControl::7");
+        assertFalse(factory.hasRole(DEFAULT_ADMIN_ROLE, address(this)), "test_AccessControl::8");
     }
 }

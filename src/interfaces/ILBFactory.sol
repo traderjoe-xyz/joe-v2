@@ -36,6 +36,7 @@ interface ILBFactory is IPendingOwnable {
     error LBFactory__SameHooksImplementation(address hooksImplementation);
     error LBFactory__InvalidHooksParameters();
     error LBFactory__HooksNotSet();
+    error LBFactory__CannotGrantDefaultAdminRole();
 
     /**
      * @dev Structure to store the LBPair information, such as:
@@ -116,8 +117,6 @@ interface ILBFactory is IPendingOwnable {
         external
         view
         returns (LBPairInformation memory);
-
-    function isDefaultLBHooks(ILBHooks hooks) external view returns (bool);
 
     function getPreset(uint256 binStep)
         external

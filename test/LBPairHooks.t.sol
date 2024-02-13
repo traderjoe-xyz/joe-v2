@@ -40,6 +40,8 @@ contract LBPairHooksTest is TestHelper {
     function setUp() public override {
         super.setUp();
 
+        factory.grantRole(factory.LB_HOOKS_MANAGER_ROLE(), address(this));
+
         Hooks.Parameters memory parameters = Hooks.Parameters({
             hooks: address(new MockLBHooks()),
             beforeSwap: true,

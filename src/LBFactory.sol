@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 
 import {EnumerableSet} from "openzeppelin/utils/structs/EnumerableSet.sol";
 import {EnumerableMap} from "openzeppelin/utils/structs/EnumerableMap.sol";
+import {AccessControl} from "openzeppelin/access/AccessControl.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 import {PairParameterHelper} from "./libraries/PairParameterHelper.sol";
@@ -25,13 +26,15 @@ import {ILBHooks} from "./interfaces/ILBHooks.sol";
  * Enables setting fee parameters, flashloan fees and LBPair implementation.
  * Unless the `isOpen` is `true`, only the owner of the factory can create pairs.
  */
-contract LBFactory is PendingOwnable, ILBFactory {
+contract LBFactory is PendingOwnable, AccessControl, ILBFactory {
     using SafeCast for uint256;
     using Encoded for bytes32;
     using PairParameterHelper for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
     using EnumerableMap for EnumerableMap.UintToUintMap;
+
+    bytes32 public constant LB_HOOKS_MANAGER_ROLE = keccak256("LB_HOOKS_MANAGER_ROLE");
 
     uint256 private constant _OFFSET_IS_PRESET_OPEN = 255;
 
@@ -54,11 +57,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * Always query one of the 2 tokens of the pair to assert the order of the 2 tokens
      */
     mapping(IERC20 => mapping(IERC20 => mapping(uint256 => LBPairInformation))) private _lbPairsInfo;
-
-    /**
-     * @dev Mapping from a hooks address to whether it's a default LB hooks or not
-     */
-    mapping(ILBHooks => bool) private _defaultLBHooks;
 
     EnumerableMap.UintToUintMap private _presets;
     EnumerableSet.AddressSet private _quoteAssetWhitelist;
@@ -213,15 +211,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
         returns (LBPairInformation memory lbPairInformation)
     {
         return _getLBPairInformation(tokenA, tokenB, binStep);
-    }
-
-    /**
-     * @notice Returns wether the hooks is a default hooks or not
-     * @param hooks The address of the hooks
-     * @return Whether the hooks is a default hooks or not
-     */
-    function isDefaultLBHooks(ILBHooks hooks) external view override returns (bool) {
-        return _defaultLBHooks[hooks];
     }
 
     /**
@@ -628,7 +617,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to create a hooks contract using the default hooks parameters and set it to the pair
-     * @dev Needs to be called by the owner
+     * @dev Needs to be called by an address with the LB_HOOKS_MANAGER_ROLE
      * Reverts if:
      * - The pair doesn't exist
      * - The hooks implementation is not set
@@ -645,7 +634,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 binStep,
         bytes calldata extraImmutableData,
         bytes calldata onHooksSetData
-    ) external override onlyOwner returns (ILBHooks hooks) {
+    ) external override onlyRole(LB_HOOKS_MANAGER_ROLE) returns (ILBHooks hooks) {
         ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;
 
         if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
@@ -664,7 +653,6 @@ contract LBFactory is PendingOwnable, ILBFactory {
         );
 
         _allLBHooks.push(hooks);
-        _defaultLBHooks[hooks] = true;
 
         emit LBHooksCreated(lbPair, hooks, hooksId);
 
@@ -674,7 +662,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to set a custom hooks contract to the pair
-     * @dev Needs to be called by the owner
+     * @dev Needs to be called by an address with the LB_HOOKS_MANAGER_ROLE
      * Reverts if:
      * - The pair doesn't exist
      * - The hooks is `address(0)` or the hooks flags are all false
@@ -690,7 +678,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
         uint16 binStep,
         Hooks.Parameters calldata hooksParameters,
         bytes calldata onHooksSetData
-    ) external override onlyOwner {
+    ) external override onlyRole(LB_HOOKS_MANAGER_ROLE) {
         ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;
 
         if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
@@ -705,14 +693,18 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to remove the hooks contract from the pair
-     * @dev Needs to be called by the owner
+     * @dev Needs to be called by an address with the LB_HOOKS_MANAGER_ROLE
      * Reverts if:
      * - The pair doesn't exist
      * @param tokenX The address of the first token
      * @param tokenY The address of the second token
      * @param binStep The bin step in basis point, used to calculate the price
      */
-    function removeLBHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep) external override onlyOwner {
+    function removeLBHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep)
+        external
+        override
+        onlyRole(LB_HOOKS_MANAGER_ROLE)
+    {
         ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;
 
         if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
@@ -832,5 +824,26 @@ contract LBFactory is PendingOwnable, ILBFactory {
     function _sortTokens(IERC20 tokenA, IERC20 tokenB) private pure returns (IERC20, IERC20) {
         if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
         return (tokenA, tokenB);
+    }
+
+    /**
+     * @notice Returns whether the caller has the role or not, only the owner has the DEFAULT_ADMIN_ROLE
+     * @param role The role to check
+     * @param account The address to check
+     * @return Whether the account has the role or not
+     */
+    function hasRole(bytes32 role, address account) public view override returns (bool) {
+        if (role == DEFAULT_ADMIN_ROLE) return account == owner();
+        return super.hasRole(role, account);
+    }
+
+    /**
+     * @notice Grants a role to an address, the DEFAULT_ADMIN_ROLE can not be granted
+     * @param role The role to grant
+     * @param account The address to grant the role to
+     */
+    function _grantRole(bytes32 role, address account) internal override {
+        if (role == DEFAULT_ADMIN_ROLE) revert LBFactory__CannotGrantDefaultAdminRole();
+        super._grantRole(role, account);
     }
 }

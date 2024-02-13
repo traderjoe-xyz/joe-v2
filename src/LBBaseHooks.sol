@@ -5,14 +5,13 @@ pragma solidity ^0.8.20;
 import {Hooks} from "./libraries/Hooks.sol";
 import {ILBHooks} from "./interfaces/ILBHooks.sol";
 import {ILBPair} from "./interfaces/ILBPair.sol";
-import {Clone} from "./libraries/Clone.sol";
 
 /**
  * @title Liquidity Book Base Hooks Contract
  * @notice Base contract for LBPair hooks
  * This contract is meant to be inherited by any contract that wants to implement LBPair hooks
  */
-abstract contract LBBaseHooks is Clone, ILBHooks {
+abstract contract LBBaseHooks is ILBHooks {
     error LBBaseHooks__InvalidCaller(address caller);
     error LBBaseHooks__NotLinked();
 
@@ -26,9 +25,18 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
 
     /**
      * @dev Returns the LBPair contract
+     * @return The LBPair contract
      */
     function getLBPair() external view override returns (ILBPair) {
         return _getLBPair();
+    }
+
+    /**
+     * @dev Returns whether the contract is linked to the pair or not
+     * @return Whether the contract is linked to the pair or not
+     */
+    function isLinked() external view override returns (bool) {
+        return _isLinked();
     }
 
     /**
@@ -259,13 +267,6 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
     }
 
     /**
-     * @dev Returns the LBPair contract
-     */
-    function _getLBPair() internal view virtual returns (ILBPair) {
-        return ILBPair(_getArgAddress(0));
-    }
-
-    /**
      * @dev Checks that the caller is the trusted caller, otherwise reverts
      */
     function _checkCaller() internal view virtual {
@@ -280,6 +281,11 @@ abstract contract LBBaseHooks is Clone, ILBHooks {
         address hooks = Hooks.getHooks(_getLBPair().getLBHooksParameters());
         return hooks == address(this);
     }
+
+    /**
+     * @dev Returns the LBPair contract
+     */
+    function _getLBPair() internal view virtual returns (ILBPair);
 
     /**
      * @notice Internal function to be overridden that is called when the hooks parameters are set

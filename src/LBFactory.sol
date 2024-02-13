@@ -46,10 +46,8 @@ contract LBFactory is PendingOwnable, AccessControl, ILBFactory {
     uint256 private _flashLoanFee;
 
     address private _lbPairImplementation;
-    bytes32 private _defaultLBHooksParameters;
 
     ILBPair[] private _allLBPairs;
-    ILBHooks[] private _allLBHooks;
 
     /**
      * @dev Mapping from a (tokenA, tokenB, binStep) to a LBPair. The tokens are ordered to save gas, but they can be
@@ -124,19 +122,6 @@ contract LBFactory is PendingOwnable, AccessControl, ILBFactory {
     }
 
     /**
-     * @notice Get the default hooks parameters
-     * @return defaultLBHooksParameters The default hooks parameters
-     */
-    function getDefaultLBHooksParameters()
-        external
-        view
-        override
-        returns (Hooks.Parameters memory defaultLBHooksParameters)
-    {
-        return Hooks.decode(_defaultLBHooksParameters);
-    }
-
-    /**
      * @notice View function to return the number of LBPairs created
      * @return lbPairNumber
      */
@@ -151,23 +136,6 @@ contract LBFactory is PendingOwnable, AccessControl, ILBFactory {
      */
     function getLBPairAtIndex(uint256 index) external view override returns (ILBPair lbPair) {
         return _allLBPairs[index];
-    }
-
-    /**
-     * @notice View function to return the number of LB hooks created
-     * @return The number of LB hooks
-     */
-    function getNumberOfLBHooks() external view override returns (uint256) {
-        return _allLBHooks.length;
-    }
-
-    /**
-     * @notice View function to return the LB hooks created at index `index`
-     * @param index The index
-     * @return hooks The address of the LBHooks at index `index`
-     */
-    function getLBHooksAtIndex(uint256 index) external view override returns (ILBHooks hooks) {
-        return _allLBHooks[index];
     }
 
     /**
@@ -349,37 +317,6 @@ contract LBFactory is PendingOwnable, AccessControl, ILBFactory {
         _lbPairImplementation = newLBPairImplementation;
 
         emit LBPairImplementationSet(oldLBPairImplementation, newLBPairImplementation);
-    }
-
-    /**
-     * @notice Set the default hooks parameters
-     * @dev Needs to be called by the owner
-     * Reverts if:
-     * - The hooks address is `address(0)` and any of the flags is true
-     * - The hooks address is not `address(0)` and all the flags are false
-     * - The hooks parameters are the same as the current ones
-     * @param defaultLBHooksParameters The hooks parameters
-     */
-    function setDefaultLBHooksParameters(Hooks.Parameters calldata defaultLBHooksParameters)
-        external
-        override
-        onlyOwner
-    {
-        bytes32 newHooksParameters = Hooks.encode(defaultLBHooksParameters);
-
-        if ((defaultLBHooksParameters.hooks == address(0)) != (Hooks.getFlags(newHooksParameters) == 0)) {
-            revert LBFactory__InvalidHooksParameters();
-        }
-
-        bytes32 oldHooksParameters = _defaultLBHooksParameters;
-
-        if (oldHooksParameters == newHooksParameters) {
-            revert LBFactory__SameHooksImplementation(defaultLBHooksParameters.hooks);
-        }
-
-        _defaultLBHooksParameters = newHooksParameters;
-
-        emit DefaultLBHooksParametersSet(oldHooksParameters, newHooksParameters);
     }
 
     /**
@@ -616,52 +553,7 @@ contract LBFactory is PendingOwnable, AccessControl, ILBFactory {
     }
 
     /**
-     * @notice Function to create a hooks contract using the default hooks parameters and set it to the pair
-     * @dev Needs to be called by an address with the LB_HOOKS_MANAGER_ROLE
-     * Reverts if:
-     * - The pair doesn't exist
-     * - The hooks implementation is not set
-     * @param tokenX The address of the first token
-     * @param tokenY The address of the second token
-     * @param binStep The bin step in basis point, used to calculate the price
-     * @param extraImmutableData The extra immutable data to pass to the hooks
-     * @param onHooksSetData The data to pass to the onHooksSet function
-     * @return hooks The address of the newly created hooks
-     */
-    function createDefaultLBHooksOnPair(
-        IERC20 tokenX,
-        IERC20 tokenY,
-        uint16 binStep,
-        bytes calldata extraImmutableData,
-        bytes calldata onHooksSetData
-    ) external override onlyRole(LB_HOOKS_MANAGER_ROLE) returns (ILBHooks hooks) {
-        ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;
-
-        if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
-
-        bytes32 defaultLBHooksParameters = _defaultLBHooksParameters;
-        address implementation = Hooks.getHooks(defaultLBHooksParameters);
-
-        if (implementation == address(0)) revert LBFactory__HooksNotSet();
-
-        uint256 hooksId = _allLBHooks.length;
-
-        hooks = ILBHooks(
-            ImmutableClone.cloneDeterministic(
-                implementation, abi.encodePacked(lbPair, extraImmutableData), bytes32(hooksId)
-            )
-        );
-
-        _allLBHooks.push(hooks);
-
-        emit LBHooksCreated(lbPair, hooks, hooksId);
-
-        bytes32 hooksParameters = Hooks.setHooks(defaultLBHooksParameters, address(hooks));
-        lbPair.setHooksParameters(hooksParameters, onHooksSetData);
-    }
-
-    /**
-     * @notice Function to set a custom hooks contract to the pair
+     * @notice Function to set the hooks parameters of a pair
      * @dev Needs to be called by an address with the LB_HOOKS_MANAGER_ROLE
      * Reverts if:
      * - The pair doesn't exist
@@ -672,23 +564,18 @@ contract LBFactory is PendingOwnable, AccessControl, ILBFactory {
      * @param hooksParameters The hooks parameters
      * @param onHooksSetData The data to pass to the onHooksSet function
      */
-    function setLBHooksOnPair(
+    function setLBHooksParametersOnPair(
         IERC20 tokenX,
         IERC20 tokenY,
         uint16 binStep,
-        Hooks.Parameters calldata hooksParameters,
+        bytes32 hooksParameters,
         bytes calldata onHooksSetData
     ) external override onlyRole(LB_HOOKS_MANAGER_ROLE) {
-        ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;
-
-        if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
-
-        bytes32 packedHooksParameters = Hooks.encode(hooksParameters);
-        if (hooksParameters.hooks == address(0) || Hooks.getFlags(packedHooksParameters) == 0) {
+        if (Hooks.getHooks(hooksParameters) == address(0) || Hooks.getFlags(hooksParameters) == 0) {
             revert LBFactory__InvalidHooksParameters();
         }
 
-        lbPair.setHooksParameters(packedHooksParameters, onHooksSetData);
+        _setLBHooksParametersOnPair(tokenX, tokenY, binStep, hooksParameters, onHooksSetData);
     }
 
     /**
@@ -705,11 +592,7 @@ contract LBFactory is PendingOwnable, AccessControl, ILBFactory {
         override
         onlyRole(LB_HOOKS_MANAGER_ROLE)
     {
-        ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;
-
-        if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
-
-        lbPair.setHooksParameters(0, new bytes(0));
+        _setLBHooksParametersOnPair(tokenX, tokenY, binStep, 0, "");
     }
 
     /**
@@ -824,6 +707,29 @@ contract LBFactory is PendingOwnable, AccessControl, ILBFactory {
     function _sortTokens(IERC20 tokenA, IERC20 tokenB) private pure returns (IERC20, IERC20) {
         if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
         return (tokenA, tokenB);
+    }
+
+    /**
+     * @notice Internal function to set a hooks contract to the pair
+     * @param tokenX The address of the first token
+     * @param tokenY The address of the second token
+     * @param binStep The bin step in basis point, used to calculate the price
+     * @param hooksParameters The hooks parameters
+     * @param onHooksSetData The data to pass to the onHooksSet function
+     */
+    function _setLBHooksParametersOnPair(
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint16 binStep,
+        bytes32 hooksParameters,
+        bytes memory onHooksSetData
+    ) internal {
+        ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;
+
+        if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
+        if (lbPair.getLBHooksParameters() == hooksParameters) revert LBFactory__SameHooksParameters(hooksParameters);
+
+        lbPair.setHooksParameters(hooksParameters, onHooksSetData);
     }
 
     /**

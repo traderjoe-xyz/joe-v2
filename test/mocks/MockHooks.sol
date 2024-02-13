@@ -20,54 +20,43 @@ contract MockHooks is LBBaseHooks {
     }
 
     function _getLBPair() internal view virtual override returns (ILBPair) {
-        if (pair != address(0)) return ILBPair(pair);
-
-        return super._getLBPair();
+        return ILBPair(pair);
     }
 
     function _onHooksSet(bytes32, bytes calldata) internal virtual override {
-        uint256 offset = pair == address(0) ? _getImmutableArgsOffset() : msg.data.length;
-        beforeData = msg.data[0:offset];
+        beforeData = msg.data;
     }
 
     function _beforeSwap(address, address, bool, bytes32) internal virtual override {
-        uint256 offset = pair == address(0) ? _getImmutableArgsOffset() : msg.data.length;
-        beforeData = msg.data[0:offset];
+        beforeData = msg.data;
     }
 
     function _afterSwap(address, address, bool, bytes32) internal virtual override {
-        uint256 offset = pair == address(0) ? _getImmutableArgsOffset() : msg.data.length;
-        afterData = msg.data[0:offset];
+        afterData = msg.data;
     }
 
     function _beforeFlashLoan(address, address, bytes32) internal virtual override {
-        uint256 offset = pair == address(0) ? _getImmutableArgsOffset() : msg.data.length;
-        beforeData = msg.data[0:offset];
+        beforeData = msg.data;
     }
 
     function _afterFlashLoan(address, address, bytes32, bytes32) internal virtual override {
-        uint256 offset = pair == address(0) ? _getImmutableArgsOffset() : msg.data.length;
-        afterData = msg.data[0:offset];
+        afterData = msg.data;
     }
 
     function _beforeMint(address, address, bytes32[] calldata, bytes32) internal virtual override {
-        uint256 offset = pair == address(0) ? _getImmutableArgsOffset() : msg.data.length;
-        beforeData = msg.data[0:offset];
+        beforeData = msg.data;
     }
 
     function _afterMint(address, address, bytes32[] calldata, bytes32) internal virtual override {
-        uint256 offset = pair == address(0) ? _getImmutableArgsOffset() : msg.data.length;
-        afterData = msg.data[0:offset];
+        afterData = msg.data;
     }
 
     function _beforeBurn(address, address, address, uint256[] calldata, uint256[] calldata) internal virtual override {
-        uint256 offset = pair == address(0) ? _getImmutableArgsOffset() : msg.data.length;
-        beforeData = msg.data[0:offset];
+        beforeData = msg.data;
     }
 
     function _afterBurn(address, address, address, uint256[] calldata, uint256[] calldata) internal virtual override {
-        uint256 offset = pair == address(0) ? _getImmutableArgsOffset() : msg.data.length;
-        afterData = msg.data[0:offset];
+        afterData = msg.data;
     }
 
     function _beforeBatchTransferFrom(address, address, address, uint256[] calldata, uint256[] calldata)
@@ -75,8 +64,7 @@ contract MockHooks is LBBaseHooks {
         virtual
         override
     {
-        uint256 offset = pair == address(0) ? _getImmutableArgsOffset() : msg.data.length;
-        beforeData = msg.data[0:offset];
+        beforeData = msg.data;
     }
 
     function _afterBatchTransferFrom(address, address, address, uint256[] calldata, uint256[] calldata)
@@ -84,7 +72,6 @@ contract MockHooks is LBBaseHooks {
         virtual
         override
     {
-        uint256 offset = pair == address(0) ? _getImmutableArgsOffset() : msg.data.length;
-        afterData = msg.data[0:offset];
+        afterData = msg.data;
     }
 }

@@ -40,10 +40,17 @@ contract LBPairHooksTest is TestHelper {
     function setUp() public override {
         super.setUp();
 
+        pairWnative = createLBPair(wnative, usdc);
+
+        addLiquidity(DEV, DEV, pairWnative, ID_ONE, 1e18, 1e18, 50, 50);
+
+        hooks = new MockLBHooks();
+        hooks.setPair(address(pairWnative));
+
         factory.grantRole(factory.LB_HOOKS_MANAGER_ROLE(), address(this));
 
         Hooks.Parameters memory parameters = Hooks.Parameters({
-            hooks: address(new MockLBHooks()),
+            hooks: address(hooks),
             beforeSwap: true,
             afterSwap: true,
             beforeFlashLoan: true,
@@ -56,15 +63,7 @@ contract LBPairHooksTest is TestHelper {
             afterBatchTransferFrom: true
         });
 
-        factory.setDefaultLBHooksParameters(parameters);
-
-        pairWnative = createLBPair(wnative, usdc);
-
-        addLiquidity(DEV, DEV, pairWnative, ID_ONE, 1e18, 1e18, 50, 50);
-
-        hooks = MockLBHooks(
-            address(factory.createDefaultLBHooksOnPair(wnative, usdc, DEFAULT_BIN_STEP, new bytes(0), new bytes(0)))
-        );
+        factory.setLBHooksParametersOnPair(wnative, usdc, DEFAULT_BIN_STEP, Hooks.encode(parameters), new bytes(0));
 
         pairWnative.increaseOracleLength(1);
     }

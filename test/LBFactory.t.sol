@@ -782,118 +782,33 @@ contract LiquidityBinFactoryTest is TestHelper {
         assertEq(pair2Info.binStep, 20, "test_GetAllLBPairs::5");
     }
 
-    function testFuzz_SetDefaultLBHooksParameters(Hooks.Parameters memory parameters) public {
-        bytes32 packedParameters = Hooks.encode(parameters);
-
-        vm.assume(parameters.hooks != address(0) && packedParameters >> 160 != 0);
-
-        factory.setDefaultLBHooksParameters(parameters);
-
-        Hooks.Parameters memory defaultParameters = factory.getDefaultLBHooksParameters();
-
-        assertEq(
-            keccak256(abi.encode(defaultParameters)),
-            keccak256(abi.encode(parameters)),
-            "testFuzz_SetDefaultLBHooksParameters::1"
-        );
-
+    function test_setLBHooksParametersOnPair() public {
+        // Can't create if not the right role
         vm.expectRevert(
-            abi.encodeWithSelector(ILBFactory.LBFactory__SameHooksImplementation.selector, parameters.hooks)
-        );
-        factory.setDefaultLBHooksParameters(parameters);
-
-        // flip the first bit of the address, if the address is 1, then set it to 2
-        parameters.hooks = parameters.hooks == address(1) ? address(2) : address(uint160(parameters.hooks) ^ 1);
-
-        factory.setDefaultLBHooksParameters(parameters);
-
-        defaultParameters = factory.getDefaultLBHooksParameters();
-
-        assertEq(
-            keccak256(abi.encode(defaultParameters)),
-            keccak256(abi.encode(parameters)),
-            "testFuzz_SetDefaultLBHooksParameters::2"
-        );
-
-        // switch all flags, if all are true, then flip only the first one
-        parameters = Hooks.decode(
-            bytes32(
-                uint256(packedParameters)
-                    ^ (uint256(packedParameters >> 160) == 2 ** 10 - 1 ? 1 << 160 : ((2 ** 10 - 1) << 160))
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(address(this)),
+                " is missing role ",
+                vm.toString(factory.LB_HOOKS_MANAGER_ROLE())
             )
         );
+        factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, bytes32(0), new bytes(0));
 
-        factory.setDefaultLBHooksParameters(parameters);
-
-        defaultParameters = factory.getDefaultLBHooksParameters();
-
-        assertEq(
-            keccak256(abi.encode(defaultParameters)),
-            keccak256(abi.encode(parameters)),
-            "testFuzz_SetDefaultLBHooksParameters::3"
-        );
-
-        factory.setDefaultLBHooksParameters(Hooks.decode(0));
-
-        defaultParameters = factory.getDefaultLBHooksParameters();
-
-        assertEq(Hooks.encode(defaultParameters), 0, "testFuzz_SetDefaultLBHooksParameters::4");
-    }
-
-    function testFuzz_Revert_SetDefaultLBHooksParameters(bytes32 packedParameters) public {
-        // address(0) and not zero flags
-        packedParameters = bytes32(bound(uint256(packedParameters), 1, 2 ** 10 - 1) << 160);
-
-        vm.toString(packedParameters);
-
-        vm.expectRevert(ILBFactory.LBFactory__InvalidHooksParameters.selector);
-        factory.setDefaultLBHooksParameters(Hooks.decode(packedParameters));
-
-        // not address(0) and zero flags
-        packedParameters = bytes32(bound(uint256(packedParameters), 1, type(uint160).max));
-
-        vm.expectRevert(ILBFactory.LBFactory__InvalidHooksParameters.selector);
-        factory.setDefaultLBHooksParameters(Hooks.decode(packedParameters));
-
-        // Can't set if not the owner
-        vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
-        factory.setDefaultLBHooksParameters(Hooks.decode(packedParameters));
-    }
-
-    function test_SetAndCreateDefaultLBHooksOnPair() public {
         factory.grantRole(factory.LB_HOOKS_MANAGER_ROLE(), address(this));
 
-        vm.expectRevert(
-            abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, usdt, usdc, DEFAULT_BIN_STEP)
-        );
-        factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0), new bytes(0));
-
-        vm.expectRevert(
-            abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, usdt, usdc, DEFAULT_BIN_STEP)
-        );
-        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, Hooks.decode(0), new bytes(0));
-
-        vm.expectRevert(
-            abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, usdt, usdc, DEFAULT_BIN_STEP)
-        );
-        factory.removeLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP);
-
-        ILBPair pair = factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
-
-        vm.expectRevert(ILBFactory.LBFactory__HooksNotSet.selector);
-        factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0), new bytes(0));
+        vm.expectRevert(ILBFactory.LBFactory__InvalidHooksParameters.selector);
+        factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, bytes32(0), new bytes(0));
 
         vm.expectRevert(ILBFactory.LBFactory__InvalidHooksParameters.selector);
-        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, Hooks.decode(0), new bytes(0));
+        factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, bytes32(uint256(1)), new bytes(0));
 
         vm.expectRevert(ILBFactory.LBFactory__InvalidHooksParameters.selector);
-        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, Hooks.decode(bytes32(uint256(1))), new bytes(0));
+        factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, bytes32(uint256(1 << 160)), new bytes(0));
 
-        MockHooks hooksImplementation = new MockHooks();
+        MockHooks hooks = new MockHooks();
 
         Hooks.Parameters memory parameters = Hooks.Parameters({
-            hooks: address(hooksImplementation),
+            hooks: address(hooks),
             beforeSwap: true,
             afterSwap: true,
             beforeFlashLoan: true,
@@ -905,40 +820,35 @@ contract LiquidityBinFactoryTest is TestHelper {
             beforeBatchTransferFrom: true,
             afterBatchTransferFrom: true
         });
+        bytes32 packedParameters = Hooks.encode(parameters);
 
-        factory.setDefaultLBHooksParameters(parameters);
-
-        ILBHooks hooks = factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0), new bytes(0));
-
-        bytes32 parametersOnPair = pair.getLBHooksParameters();
-
-        parameters.hooks = address(hooks);
-        bytes32 expectedParameters = Hooks.encode(parameters);
-
-        assertEq(parametersOnPair, expectedParameters, "test_SetAndCreateDefaultLBHooksOnPair::1");
-
-        // Can't create if not the right role
         vm.expectRevert(
-            abi.encodePacked(
-                "AccessControl: account ",
-                Strings.toHexString(ALICE),
-                " is missing role ",
-                vm.toString(factory.LB_HOOKS_MANAGER_ROLE())
-            )
+            abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, usdt, usdc, DEFAULT_BIN_STEP)
         );
-        vm.prank(ALICE);
-        factory.createDefaultLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, new bytes(0), new bytes(0));
+        factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, packedParameters, new bytes(0));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, usdt, usdc, DEFAULT_BIN_STEP)
+        );
         factory.removeLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP);
 
-        parametersOnPair = pair.getLBHooksParameters();
+        ILBPair pair = factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
-        assertEq(parametersOnPair, 0, "test_SetAndCreateDefaultLBHooksOnPair::2");
+        hooks.setPair(address(pair));
 
-        factory.setLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP, parameters, new bytes(0));
+        factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, packedParameters, new bytes(0));
 
-        parametersOnPair = pair.getLBHooksParameters();
+        assertEq(pair.getLBHooksParameters(), packedParameters, "test_SetAndCreateDefaultLBHooksOnPair::1");
 
-        assertEq(parametersOnPair, expectedParameters, "test_SetAndCreateDefaultLBHooksOnPair::3");
+        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SameHooksParameters.selector, packedParameters));
+        factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, packedParameters, new bytes(0));
+
+        factory.removeLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP);
+
+        assertEq(pair.getLBHooksParameters(), bytes32(0), "test_SetAndCreateDefaultLBHooksOnPair::2");
+
+        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SameHooksParameters.selector, bytes32(0)));
+        factory.removeLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP);
     }
 
     function test_AccessControl() public {

@@ -5,7 +5,6 @@ pragma solidity ^0.8.10;
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 import {ILBHooks} from "../interfaces/ILBHooks.sol";
-import {Hooks} from "../libraries/Hooks.sol";
 import {ILBPair} from "./ILBPair.sol";
 import {IPendingOwnable} from "./IPendingOwnable.sol";
 
@@ -34,8 +33,8 @@ interface ILBFactory is IPendingOwnable {
     error LBFactory__SameImplementation(address LBPairImplementation);
     error LBFactory__ImplementationNotSet();
     error LBFactory__SameHooksImplementation(address hooksImplementation);
+    error LBFactory__SameHooksParameters(bytes32 hooksParameters);
     error LBFactory__InvalidHooksParameters();
-    error LBFactory__HooksNotSet();
     error LBFactory__CannotGrantDefaultAdminRole();
 
     /**
@@ -61,10 +60,6 @@ interface ILBFactory is IPendingOwnable {
     event FlashLoanFeeSet(uint256 oldFlashLoanFee, uint256 newFlashLoanFee);
 
     event LBPairImplementationSet(address oldLBPairImplementation, address LBPairImplementation);
-
-    event DefaultLBHooksParametersSet(bytes32 oldParameters, bytes32 newParameters);
-
-    event LBHooksCreated(ILBPair indexed lbPair, ILBHooks hooks, uint256 pid);
 
     event LBPairIgnoredStateChanged(ILBPair indexed LBPair, bool ignored);
 
@@ -97,15 +92,9 @@ interface ILBFactory is IPendingOwnable {
 
     function getLBPairImplementation() external view returns (address);
 
-    function getDefaultLBHooksParameters() external view returns (Hooks.Parameters memory);
-
     function getNumberOfLBPairs() external view returns (uint256);
 
     function getLBPairAtIndex(uint256 id) external returns (ILBPair);
-
-    function getNumberOfLBHooks() external view returns (uint256);
-
-    function getLBHooksAtIndex(uint256 id) external returns (ILBHooks);
 
     function getNumberOfQuoteAssets() external view returns (uint256);
 
@@ -143,8 +132,6 @@ interface ILBFactory is IPendingOwnable {
 
     function setLBPairImplementation(address lbPairImplementation) external;
 
-    function setDefaultLBHooksParameters(Hooks.Parameters memory defaultLBHooksParameters) external;
-
     function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
         external
         returns (ILBPair pair);
@@ -180,19 +167,11 @@ interface ILBFactory is IPendingOwnable {
         uint24 maxVolatilityAccumulator
     ) external;
 
-    function createDefaultLBHooksOnPair(
+    function setLBHooksParametersOnPair(
         IERC20 tokenX,
         IERC20 tokenY,
         uint16 binStep,
-        bytes memory extraImmutableData,
-        bytes memory onHooksSetData
-    ) external returns (ILBHooks hooks);
-
-    function setLBHooksOnPair(
-        IERC20 tokenX,
-        IERC20 tokenY,
-        uint16 binStep,
-        Hooks.Parameters memory hooksParameters,
+        bytes32 hooksParameters,
         bytes memory onHooksSetData
     ) external;
 

@@ -74,9 +74,11 @@ library Hooks {
     }
 
     function onHooksSet(bytes32 hooksParameters, bytes calldata onHooksSetData) internal {
-        _safeCall(
-            hooksParameters, abi.encodeWithSelector(ILBHooks.onHooksSet.selector, hooksParameters, onHooksSetData)
-        );
+        if (hooksParameters != 0) {
+            _safeCall(
+                hooksParameters, abi.encodeWithSelector(ILBHooks.onHooksSet.selector, hooksParameters, onHooksSetData)
+            );
+        }
     }
 
     function beforeSwap(bytes32 hooksParameters, address sender, address to, bool swapForY, bytes32 amountsIn)

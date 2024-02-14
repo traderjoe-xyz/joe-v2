@@ -849,11 +849,9 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         emit HooksParametersSet(msg.sender, hooksParameters);
 
-        if (address(hooks) != address(0)) {
-            if (hooks.getLBPair() != this) revert LBPair__InvalidHooks();
+        if (address(hooks) != address(0) && hooks.getLBPair() != this) revert LBPair__InvalidHooks();
 
-            Hooks.onHooksSet(hooksParameters, onHooksSetData);
-        }
+        Hooks.onHooksSet(hooksParameters, onHooksSetData);
     }
 
     /**

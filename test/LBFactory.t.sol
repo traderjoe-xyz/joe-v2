@@ -838,14 +838,14 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, packedParameters, new bytes(0));
 
-        assertEq(pair.getLBHooksParameters(), packedParameters, "test_SetAndCreateDefaultLBHooksOnPair::1");
+        assertEq(pair.getLBHooksParameters(), packedParameters, "test_setLBHooksParametersOnPair::1");
 
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SameHooksParameters.selector, packedParameters));
         factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, packedParameters, new bytes(0));
 
         factory.removeLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP);
 
-        assertEq(pair.getLBHooksParameters(), bytes32(0), "test_SetAndCreateDefaultLBHooksOnPair::2");
+        assertEq(pair.getLBHooksParameters(), bytes32(0), "test_setLBHooksParametersOnPair::2");
 
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SameHooksParameters.selector, bytes32(0)));
         factory.removeLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP);

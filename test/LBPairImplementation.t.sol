@@ -4,6 +4,8 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
+import "openzeppelin/proxy/utils/Initializable.sol";
+
 import "../src/LBPair.sol";
 import "../src/libraries/ImmutableClone.sol";
 
@@ -31,7 +33,7 @@ contract LBPairImplementationTest is Test {
         vm.expectRevert(ILBPair.LBPair__OnlyFactory.selector);
         LBPair(implementation).initialize(1, 1, 1, 1, 1, 1, 1, 1);
 
-        vm.expectRevert(ILBPair.LBPair__AlreadyInitialized.selector);
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
         vm.prank(address(factory));
         LBPair(implementation).initialize(1, 1, 1, 1, 1, 1, 1, 1);
     }

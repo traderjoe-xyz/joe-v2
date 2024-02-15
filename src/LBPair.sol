@@ -3,6 +3,7 @@
 pragma solidity ^0.8.20;
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+import {ReentrancyGuardUpgradeable} from "openzeppelin-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 import {BinHelper} from "./libraries/BinHelper.sol";
 import {Clone} from "./libraries/Clone.sol";
@@ -17,7 +18,6 @@ import {OracleHelper} from "./libraries/OracleHelper.sol";
 import {PackedUint128Math} from "./libraries/math/PackedUint128Math.sol";
 import {PairParameterHelper} from "./libraries/PairParameterHelper.sol";
 import {PriceHelper} from "./libraries/PriceHelper.sol";
-import {ReentrancyGuard} from "./libraries/ReentrancyGuard.sol";
 import {SafeCast} from "./libraries/math/SafeCast.sol";
 import {SampleMath} from "./libraries/math/SampleMath.sol";
 import {TreeMath} from "./libraries/math/TreeMath.sol";
@@ -30,7 +30,7 @@ import {ILBHooks} from "./interfaces/ILBHooks.sol";
  * @author Trader Joe
  * @notice The Liquidity Book Pair contract is the core contract of the Liquidity Book protocol
  */
-contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
+contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
     using BinHelper for bytes32;
     using FeeHelper for uint128;
     using LiquidityConfigurations for bytes32;
@@ -80,8 +80,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         _factory = factory_;
         implementation = address(this);
 
-        // Disable the initialize function
-        _parameters = bytes32(uint256(1));
+        _disableInitializers();
     }
 
     /**
@@ -105,14 +104,11 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         uint16 protocolShare,
         uint24 maxVolatilityAccumulator,
         uint24 activeId
-    ) external override onlyFactory {
-        bytes32 parameters = _parameters;
-        if (parameters != 0) revert LBPair__AlreadyInitialized();
-
+    ) external override onlyFactory initializer {
         __ReentrancyGuard_init();
 
         _setStaticFeeParameters(
-            parameters.setActiveId(activeId).updateIdReference(),
+            _parameters.setActiveId(activeId).updateIdReference(),
             baseFactor,
             filterPeriod,
             decayPeriod,

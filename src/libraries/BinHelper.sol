@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.10;
 
-import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+import {SafeERC20, IERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 
 import {PackedUint128Math} from "./math/PackedUint128Math.sol";
 import {Uint256x256Math} from "./math/Uint256x256Math.sol";
@@ -11,7 +11,6 @@ import {Constants} from "./Constants.sol";
 import {PairParameterHelper} from "./PairParameterHelper.sol";
 import {FeeHelper} from "./FeeHelper.sol";
 import {PriceHelper} from "./PriceHelper.sol";
-import {TokenHelper} from "./TokenHelper.sol";
 
 /**
  * @title Liquidity Book Bin Helper Library
@@ -26,7 +25,7 @@ library BinHelper {
     using SafeCast for uint256;
     using PairParameterHelper for bytes32;
     using FeeHelper for uint128;
-    using TokenHelper for IERC20;
+    using SafeERC20 for IERC20;
 
     error BinHelper__CompositionFactorFlawed(uint24 id);
     error BinHelper__LiquidityOverflow();

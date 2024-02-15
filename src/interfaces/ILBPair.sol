@@ -12,7 +12,6 @@ import {ILBToken} from "./ILBToken.sol";
 interface ILBPair is ILBToken {
     error LBPair__ZeroBorrowAmount();
     error LBPair__AddressZero();
-    error LBPair__AlreadyInitialized();
     error LBPair__EmptyMarketConfigs();
     error LBPair__FlashLoanCallbackFailed();
     error LBPair__FlashLoanInsufficientAmount();

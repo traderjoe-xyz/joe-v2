@@ -6,11 +6,11 @@ import {EnumerableSet} from "openzeppelin/utils/structs/EnumerableSet.sol";
 import {EnumerableMap} from "openzeppelin/utils/structs/EnumerableMap.sol";
 import {AccessControl} from "openzeppelin/access/AccessControl.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+import {Ownable2Step, Ownable} from "openzeppelin/access/Ownable2Step.sol";
 
 import {PairParameterHelper} from "./libraries/PairParameterHelper.sol";
 import {Encoded} from "./libraries/math/Encoded.sol";
 import {ImmutableClone} from "./libraries/ImmutableClone.sol";
-import {PendingOwnable} from "./libraries/PendingOwnable.sol";
 import {PriceHelper} from "./libraries/PriceHelper.sol";
 import {SafeCast} from "./libraries/math/SafeCast.sol";
 import {Hooks} from "./libraries/Hooks.sol";
@@ -26,7 +26,7 @@ import {ILBHooks} from "./interfaces/ILBHooks.sol";
  * Enables setting fee parameters, flashloan fees and LBPair implementation.
  * Unless the `isOpen` is `true`, only the owner of the factory can create pairs.
  */
-contract LBFactory is PendingOwnable, AccessControl, ILBFactory {
+contract LBFactory is Ownable2Step, AccessControl, ILBFactory {
     using SafeCast for uint256;
     using Encoded for bytes32;
     using PairParameterHelper for bytes32;
@@ -72,7 +72,7 @@ contract LBFactory is PendingOwnable, AccessControl, ILBFactory {
      * @param feeRecipient The address of the fee recipient
      * @param flashLoanFee The value of the fee for flash loan
      */
-    constructor(address feeRecipient, uint256 flashLoanFee) {
+    constructor(address feeRecipient, address initialOwner, uint256 flashLoanFee) Ownable(initialOwner) {
         if (flashLoanFee > _MAX_FLASHLOAN_FEE) revert LBFactory__FlashLoanFeeAboveMax(flashLoanFee, _MAX_FLASHLOAN_FEE);
 
         _setFeeRecipient(feeRecipient);
@@ -747,9 +747,10 @@ contract LBFactory is PendingOwnable, AccessControl, ILBFactory {
      * @notice Grants a role to an address, the DEFAULT_ADMIN_ROLE can not be granted
      * @param role The role to grant
      * @param account The address to grant the role to
+     * @return Whether the role has been granted or not
      */
-    function _grantRole(bytes32 role, address account) internal override {
+    function _grantRole(bytes32 role, address account) internal override returns (bool) {
         if (role == DEFAULT_ADMIN_ROLE) revert LBFactory__CannotGrantDefaultAdminRole();
-        super._grantRole(role, account);
+        return super._grantRole(role, account);
     }
 }

@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 import "test/mocks/ERC20.sol";
 import "test/mocks/Faucet.sol";
 
-import "../src/interfaces/IPendingOwnable.sol";
+import {Ownable} from "openzeppelin/access/Ownable.sol";
 
 contract FaucetTest is Test {
     Faucet private faucet;
@@ -30,7 +30,7 @@ contract FaucetTest is Test {
         token6 = new ERC20Mock(6);
         token12 = new ERC20Mock(12);
 
-        faucet = new Faucet{value: 10 * NATIVE_PER_REQUEST}(NATIVE_PER_REQUEST, REQUEST_COOLDOWN);
+        faucet = new Faucet{value: 10 * NATIVE_PER_REQUEST}(address(this), NATIVE_PER_REQUEST, REQUEST_COOLDOWN);
 
         token6.mint(address(faucet), 10 * TOKEN6_PER_REQUEST);
         token12.mint(address(faucet), 10 * TOKEN12_PER_REQUEST);
@@ -53,7 +53,7 @@ contract FaucetTest is Test {
 
     function testLockRequest() external {
         vm.startPrank(ALICE, ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         faucet.setUnlockedRequest(false);
         vm.stopPrank();
 
@@ -76,7 +76,7 @@ contract FaucetTest is Test {
         newToken.mint(address(faucet), 1_000e18);
 
         vm.startPrank(ALICE, ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         faucet.addFaucetToken(IERC20(newToken), 1e18);
         vm.stopPrank();
 
@@ -88,7 +88,7 @@ contract FaucetTest is Test {
 
     function testRemoveToken() external {
         vm.startPrank(ALICE, ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         faucet.removeFaucetToken(IERC20(address(1)));
         vm.stopPrank();
 
@@ -166,7 +166,7 @@ contract FaucetTest is Test {
         uint96 newRequestNativeAmount = 2e18;
 
         vm.startPrank(ALICE, ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         faucet.setAmountPerRequest(NATIVE, newRequestToken6Amount);
         vm.stopPrank();
 
@@ -189,7 +189,7 @@ contract FaucetTest is Test {
         assertEq(ALICE.balance, 1e18, "testWithdrawNative::2");
 
         vm.startPrank(ALICE, ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         faucet.withdrawToken(NATIVE, ALICE, 1e18);
         vm.stopPrank();
 
@@ -213,7 +213,7 @@ contract FaucetTest is Test {
         assertEq(token12.balanceOf(ALICE), 2 * TOKEN6_PER_REQUEST, "testWithdrawToken::2");
 
         vm.startPrank(ALICE, ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         faucet.withdrawToken(IERC20(token6), ALICE, 1e18);
         vm.stopPrank();
 
@@ -246,7 +246,7 @@ contract FaucetTest is Test {
         faucet.setRequestCooldown(1 hours);
 
         vm.startPrank(ALICE, ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         faucet.setRequestCooldown(10 hours);
         vm.stopPrank();
 

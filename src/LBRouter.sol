@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.20;
 
-import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+import {SafeERC20, IERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "openzeppelin/access/Ownable.sol";
 
 import {BinHelper} from "./libraries/BinHelper.sol";
 import {Constants} from "./libraries/Constants.sol";
@@ -11,7 +12,6 @@ import {FeeHelper} from "./libraries/FeeHelper.sol";
 import {JoeLibrary} from "./libraries/JoeLibrary.sol";
 import {LiquidityConfigurations} from "./libraries/math/LiquidityConfigurations.sol";
 import {PackedUint128Math} from "./libraries/math/PackedUint128Math.sol";
-import {TokenHelper} from "./libraries/TokenHelper.sol";
 import {Uint256x256Math} from "./libraries/math/Uint256x256Math.sol";
 
 import {IJoePair} from "./interfaces/IJoePair.sol";
@@ -31,8 +31,7 @@ import {IWNATIVE} from "./interfaces/IWNATIVE.sol";
  * @notice Main contract to interact with to swap and manage liquidity on Joe V2 exchange.
  */
 contract LBRouter is ILBRouter {
-    using TokenHelper for IERC20;
-    using TokenHelper for IWNATIVE;
+    using SafeERC20 for IERC20;
     using JoeLibrary for uint256;
     using PackedUint128Math for bytes32;
 
@@ -43,7 +42,7 @@ contract LBRouter is ILBRouter {
     IWNATIVE private immutable _wnative;
 
     modifier onlyFactoryOwner() {
-        if (msg.sender != _factory.owner()) revert LBRouter__NotFactoryOwner();
+        if (msg.sender != Ownable(address(_factory)).owner()) revert LBRouter__NotFactoryOwner();
         _;
     }
 
@@ -1119,7 +1118,7 @@ contract LBRouter is ILBRouter {
         if (amount == 0) return;
 
         _wnative.deposit{value: amount}();
-        _wnative.safeTransfer(to, amount);
+        IERC20(_wnative).safeTransfer(to, amount);
     }
 
     /**

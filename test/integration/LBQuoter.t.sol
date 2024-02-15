@@ -96,7 +96,7 @@ contract LiquidityBinQuoterTest is TestHelper {
         router.addLiquidity(liquidityParameters);
     }
 
-    function test_Constructor() public {
+    function test_Constructor() public  view {
         assertEq(address(quoter.getRouterV2()), address(router), "test_Constructor::1");
         assertEq(address(quoter.getFactoryV1()), AvalancheAddresses.JOE_V1_FACTORY, "test_Constructor::2");
         assertEq(address(quoter.getLegacyFactoryV2()), AvalancheAddresses.JOE_V2_FACTORY, "test_Constructor::3");
@@ -113,7 +113,7 @@ contract LiquidityBinQuoterTest is TestHelper {
         quoter.findBestPathFromAmountOut(route, 20e6);
     }
 
-    function test_Scenario1() public {
+    function test_Scenario1() public view  {
         // USDT/USDC, V1 with low liquidity, V2 with high liquidity
         address[] memory route = new address[](2);
         route[0] = address(usdt);
@@ -156,7 +156,7 @@ contract LiquidityBinQuoterTest is TestHelper {
         assertEq(uint256(quote.versions[0]), 1, "test_Scenario1::16");
     }
 
-    function test_Scenario2() public {
+    function test_Scenario2() public view  {
         // WNATIVE/USDC, V1 with high liquidity, V2 with low liquidity
         address[] memory route = new address[](2);
         route[0] = address(wnative);
@@ -199,7 +199,7 @@ contract LiquidityBinQuoterTest is TestHelper {
         assertEq(uint256(quote.versions[0]), 0, "test_Scenario2::16");
     }
 
-    function test_Scenario3() public {
+    function test_Scenario3() public view  {
         // WETH/USDC, V1 with low liquidity, V2.1 with high liquidity
         address[] memory route = new address[](2);
         route[0] = address(weth);
@@ -242,7 +242,7 @@ contract LiquidityBinQuoterTest is TestHelper {
         assertEq(uint256(quote.versions[0]), 2, "test_Scenario3::16");
     }
 
-    function test_Scenario4() public {
+    function test_Scenario4() public view  {
         // BNB/USDC, V2 with high liquidity, V2.1 with low liquidity
         address[] memory route = new address[](2);
         route[0] = address(bnb);

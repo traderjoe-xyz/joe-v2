@@ -23,7 +23,7 @@ contract BinHelperTest is TestHelper {
         uint128 binReserveY,
         uint256 amountToBurn,
         uint256 totalSupply
-    ) external {
+    ) external pure {
         vm.assume(totalSupply > 0 && totalSupply >= amountToBurn);
 
         bytes32 binReserves = binReserveX.encode(binReserveY);
@@ -61,7 +61,7 @@ contract BinHelperTest is TestHelper {
         uint128 amountInY,
         uint256 price,
         uint256 totalSupply
-    ) external {
+    ) external pure {
         vm.assume(
             price > 0
                 && (
@@ -103,7 +103,7 @@ contract BinHelperTest is TestHelper {
         uint128 amountX2,
         uint128 amountY2,
         uint256 price
-    ) external {
+    ) external pure {
         vm.assume(
             price > 0 && amountX1 > 0 && amountY1 > 0 && amountX2 > 0 && amountY2 > 0
                 && uint256(amountX1) + amountX2 <= type(uint128).max && uint256(amountY1) + amountY2 <= type(uint128).max
@@ -158,7 +158,7 @@ contract BinHelperTest is TestHelper {
         uint128 amountYIn,
         uint256 price,
         uint256 totalSupply
-    ) external {
+    ) external pure {
         // make sure p*x+y doesn't overflow
         vm.assume(
             price > 0 && amountXIn > 0 && amountYIn > 0 && price <= type(uint256).max / amountXIn
@@ -206,7 +206,7 @@ contract BinHelperTest is TestHelper {
         }
     }
 
-    function testFuzz_BinIsEmpty(uint128 binReserveX, uint128 binReserveY) external {
+    function testFuzz_BinIsEmpty(uint128 binReserveX, uint128 binReserveY) external pure {
         bytes32 binReserves = binReserveX.encode(binReserveY);
 
         assertEq(binReserves.isEmpty(true), binReserveX == 0, "testFuzz_BinIsEmpty::1");
@@ -219,7 +219,7 @@ contract BinHelperTest is TestHelper {
         bool swapForY,
         int16 deltaId,
         uint128 amountIn
-    ) external {
+    ) external pure {
         bytes32 parameters = bytes32(0).setStaticFeeParameters(
             DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,
@@ -274,7 +274,7 @@ contract BinHelperTest is TestHelper {
         bool swapForY,
         int16 deltaId,
         uint128 amountIn
-    ) external {
+    ) external pure {
         bytes32 parameters = bytes32(0).setStaticFeeParameters(
             DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,

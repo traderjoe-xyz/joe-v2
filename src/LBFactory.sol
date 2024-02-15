@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.20;
 
-import {EnumerableSet} from "openzeppelin/utils/structs/EnumerableSet.sol";
-import {EnumerableMap} from "openzeppelin/utils/structs/EnumerableMap.sol";
-import {AccessControl} from "openzeppelin/access/AccessControl.sol";
-import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
-import {Ownable2Step, Ownable} from "openzeppelin/access/Ownable2Step.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Ownable2Step, Ownable} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import {PairParameterHelper} from "./libraries/PairParameterHelper.sol";
 import {Encoded} from "./libraries/math/Encoded.sol";

@@ -9,37 +9,37 @@ import "../../../src/libraries/math/SampleMath.sol";
 contract SampleMathTest is Test {
     using SampleMath for bytes32;
 
-    function testFuzz_GetOracleLength(bytes32 sample) external {
+    function testFuzz_GetOracleLength(bytes32 sample) external pure {
         uint256 oracleLength = sample.getOracleLength();
         assertLe(oracleLength, type(uint16).max, "testFuzz_GetOracleLength::1");
         assertEq(uint16(uint256(sample)), oracleLength, "testFuzz_GetOracleLength::2");
     }
 
-    function testFuzz_GetCumulativeId(bytes32 sample) external {
+    function testFuzz_GetCumulativeId(bytes32 sample) external pure {
         uint256 cumulativeId = sample.getCumulativeId();
         assertLe(cumulativeId, type(uint64).max, "testFuzz_GetCumulativeId::1");
         assertEq(uint64(uint256(sample) >> 16), cumulativeId, "testFuzz_GetCumulativeId::2");
     }
 
-    function testFuzz_GetCumulativeVolatility(bytes32 sample) external {
+    function testFuzz_GetCumulativeVolatility(bytes32 sample) external pure {
         uint256 cumulativeVolatility = sample.getCumulativeVolatility();
         assertLe(cumulativeVolatility, type(uint64).max, "testFuzz_GetCumulativeVolatility::1");
         assertEq(uint64(uint256(sample) >> 80), cumulativeVolatility, "testFuzz_GetCumulativeVolatility::2");
     }
 
-    function testFuzz_GetCumulativeBinCrossed(bytes32 sample) external {
+    function testFuzz_GetCumulativeBinCrossed(bytes32 sample) external pure {
         uint256 cumulativeBinCrossed = sample.getCumulativeBinCrossed();
         assertLe(cumulativeBinCrossed, type(uint64).max, "testFuzz_GetCumulativeBinCrossed::1");
         assertEq(uint64(uint256(sample) >> 144), cumulativeBinCrossed, "testFuzz_GetCumulativeBinCrossed::2");
     }
 
-    function testFuzz_GetSampleLifetime(bytes32 sample) external {
+    function testFuzz_GetSampleLifetime(bytes32 sample) external pure {
         uint256 sampleLifetime = sample.getSampleLifetime();
         assertLe(sampleLifetime, type(uint8).max, "testFuzz_GetSampleLifetime::1");
         assertEq(uint8(uint256(sample) >> 208), sampleLifetime, "testFuzz_GetSampleLifetime::2");
     }
 
-    function testFuzz_GetSampleCreation(bytes32 sample) external {
+    function testFuzz_GetSampleCreation(bytes32 sample) external pure {
         uint256 sampleCreation = sample.getSampleCreation();
         assertLe(sampleCreation, type(uint40).max, "testFuzz_GetSampleCreation::1");
         assertEq(uint40(uint256(sample) >> 216), sampleCreation, "testFuzz_GetSampleCreation::2");
@@ -65,7 +65,7 @@ contract SampleMathTest is Test {
         uint64 cumulativeBinCrossed,
         uint8 sampleLifetime,
         uint40 createdAt
-    ) external {
+    ) external pure {
         bytes32 sample = SampleMath.encode(
             oracleLength, cumulativeId, cumulativeVolatility, cumulativeBinCrossed, sampleLifetime, createdAt
         );
@@ -120,6 +120,7 @@ contract SampleMathTest is Test {
 
     function testFuzz_update(uint40 deltaTime, uint24 activeId, uint24 volatilityAccumulator, uint24 binCrossed)
         external
+        pure
     {
         (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed) =
             bytes32(0).update(deltaTime, activeId, volatilityAccumulator, binCrossed);

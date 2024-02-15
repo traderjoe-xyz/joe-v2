@@ -68,7 +68,7 @@ contract LBPairHooksTest is TestHelper {
         pairWnative.increaseOracleLength(1);
     }
 
-    function test_GetLBHooksParameters() public {
+    function test_GetLBHooksParameters() public view {
         bytes32 parameters = pairWnative.getLBHooksParameters();
 
         Hooks.Parameters memory hooksParameters = Hooks.decode(parameters);
@@ -395,7 +395,7 @@ contract LBPairHooksTest is TestHelper {
         }
     }
 
-    function _verifyStates(State memory hooksState, State memory expectedState) internal {
+    function _verifyStates(State memory hooksState, State memory expectedState) internal pure {
         assertEq(hooksState.reserveX, expectedState.reserveX, "_verifyStates::1");
         assertEq(hooksState.reserveY, expectedState.reserveY, "_verifyStates::2");
         assertEq(hooksState.protocolFeeX, expectedState.protocolFeeX, "_verifyStates::3");

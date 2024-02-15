@@ -392,6 +392,7 @@ contract OracleHelperTest is Test {
 
     function _verifyTimestampsIdsAndSize(bytes32 parameters, uint16 oracleId, bytes memory times, uint16 activeSize)
         internal
+        view
     {
         assertEq(parameters.getOracleId(), oracleId, "_verifyTimestampsIdsAndSize::1");
 

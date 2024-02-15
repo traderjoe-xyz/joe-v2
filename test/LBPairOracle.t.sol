@@ -268,7 +268,7 @@ contract LBPairOracleTest is TestHelper {
         assertEq(cumulativeBinCrossedNow, (newActiveId - activeId) * 1000, "test_MaxLengthOracle::20");
     }
 
-    function test_GetOracleParametersEmptyOracle() external {
+    function test_GetOracleParametersEmptyOracle() external view {
         (, uint256 size, uint256 activeSize, uint256 lastUpdated, uint256 firstTimestamp) =
             pairWnative.getOracleParameters();
 

@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 
 import "./helpers/TestHelper.sol";
 
-import "openzeppelin/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
 import "src/libraries/ImmutableClone.sol";
 import "./mocks/MockHooks.sol";

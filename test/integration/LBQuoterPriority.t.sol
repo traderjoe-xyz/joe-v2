@@ -29,7 +29,7 @@ contract LiquidityBinQuoterPriorityTest is Test {
         );
     }
 
-    function test_QuoteFromAmountIn() public {
+    function test_QuoteFromAmountIn() public view  {
         address[] memory route = new address[](2);
         route[0] = address(AvalancheAddresses.USDT);
         route[1] = address(AvalancheAddresses.USDC);
@@ -100,7 +100,7 @@ contract LiquidityBinQuoterPriorityTest is Test {
         assertEq(newQuote.fees[0], oldQuote.fees[0], "test_QuoteFromAmountIn::24");
     }
 
-    function test_QuoteFromAmounOut() public {
+    function test_QuoteFromAmounOut() public  view {
         address[] memory route = new address[](2);
         route[0] = address(AvalancheAddresses.USDC);
         route[1] = address(AvalancheAddresses.USDT);

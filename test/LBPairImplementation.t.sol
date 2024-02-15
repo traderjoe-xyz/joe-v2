@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
-import "openzeppelin/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 import "../src/LBPair.sol";
 import "../src/libraries/ImmutableClone.sol";

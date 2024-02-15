@@ -10,42 +10,42 @@ contract PackedUint128MathTest is Test {
     using PackedUint128Math for bytes32;
     using PackedUint128Math for uint128;
 
-    function testFuzz_Encode(uint128 x1, uint128 x2) external {
+    function testFuzz_Encode(uint128 x1, uint128 x2) external pure {
         assertEq(bytes32(x1 | uint256(x2) << 128), x1.encode(x2), "testFuzz_Encode::1");
     }
 
-    function testFuzz_EncodeFirst(uint128 x1) external {
+    function testFuzz_EncodeFirst(uint128 x1) external pure {
         assertEq(bytes32(uint256(x1)), x1.encodeFirst(), "testFuzz_EncodeFirst::1");
     }
 
-    function testFuzz_EncodeSecond(uint128 x2) external {
+    function testFuzz_EncodeSecond(uint128 x2) external pure {
         assertEq(bytes32(uint256(x2) << 128), x2.encodeSecond(), "testFuzz_EncodeSecond::1");
     }
 
-    function testFuzz_EncodeBool(uint128 x, bool first) external {
+    function testFuzz_EncodeBool(uint128 x, bool first) external pure {
         assertEq(bytes32(uint256(x) << (first ? 0 : 128)), x.encode(first), "testFuzz_EncodeBool::1");
     }
 
-    function testFuzz_Decode(bytes32 x) external {
+    function testFuzz_Decode(bytes32 x) external pure {
         (uint128 x1, uint128 x2) = x.decode();
 
         assertEq(x1, uint128(uint256(x)), "testFuzz_Decode::1");
         assertEq(x2, uint128(uint256(x) >> 128), "testFuzz_Decode::2");
     }
 
-    function testFuzz_decodeX(bytes32 x) external {
+    function testFuzz_decodeX(bytes32 x) external pure {
         assertEq(uint128(uint256(x)), x.decodeX(), "testFuzz_decodeX::1");
     }
 
-    function testFuzz_decodeY(bytes32 x) external {
+    function testFuzz_decodeY(bytes32 x) external pure {
         assertEq(uint128(uint256(x) >> 128), x.decodeY(), "testFuzz_decodeY::1");
     }
 
-    function testFuzz_DecodeBool(bytes32 x, bool first) external {
+    function testFuzz_DecodeBool(bytes32 x, bool first) external pure {
         assertEq(uint128(uint256(x) >> (first ? 0 : 128)), x.decode(first), "testFuzz_DecodeBool::1");
     }
 
-    function test_AddSelf() external {
+    function test_AddSelf() external pure {
         bytes32 x = bytes32(uint256(1 << 128 | 1));
 
         assertEq(x.add(x), bytes32(uint256(2 << 128 | 2)), "test_AddSelf::1");
@@ -92,7 +92,7 @@ contract PackedUint128MathTest is Test {
         }
     }
 
-    function test_SubSelf() external {
+    function test_SubSelf() external pure {
         bytes32 x = bytes32(uint256(1 << 128 | 1));
 
         assertEq(x.sub(x), bytes32(0), "test_SubSelf::1");
@@ -134,14 +134,14 @@ contract PackedUint128MathTest is Test {
         }
     }
 
-    function testFuzz_LessThan(bytes32 x, bytes32 y) external {
+    function testFuzz_LessThan(bytes32 x, bytes32 y) external pure {
         (uint128 x1, uint128 x2) = x.decode();
         (uint128 y1, uint128 y2) = y.decode();
 
         assertEq(x.lt(y), x1 < y1 || x2 < y2, "testFuzz_LessThan::1");
     }
 
-    function testFuzz_GreaterThan(bytes32 x, bytes32 y) external {
+    function testFuzz_GreaterThan(bytes32 x, bytes32 y) external pure {
         (uint128 x1, uint128 x2) = x.decode();
         (uint128 y1, uint128 y2) = y.decode();
 

@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 import "test/mocks/ERC20.sol";
 import "test/mocks/Faucet.sol";
 
-import {Ownable} from "openzeppelin/access/Ownable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract FaucetTest is Test {
     Faucet private faucet;

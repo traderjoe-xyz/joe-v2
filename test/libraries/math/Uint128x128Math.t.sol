@@ -9,13 +9,13 @@ import "../../../src/libraries/math/Uint128x128Math.sol";
 contract Uint128x128MathTest is Test {
     using Uint128x128Math for uint256;
 
-    function test_Pow() external {
+    function test_Pow() external pure {
         uint256 res = _toUint128x128(1.0001e18).pow(100_000);
 
         assertApproxEqRel(_toUint256(res), 22015.456048527954e18, 1e12, "test_Pow::1");
     }
 
-    function test_PowAndLog() external {
+    function test_PowAndLog() external pure {
         uint256 base = _toUint128x128(1.0001e18);
         uint256 res = base.pow(100_000);
 

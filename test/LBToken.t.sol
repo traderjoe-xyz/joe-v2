@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
-import "openzeppelin/utils/structs/EnumerableMap.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
 import "../src/LBToken.sol";
 
@@ -39,11 +39,11 @@ contract LBTokenTest is Test {
         lbToken = new LBTokenCoverage();
     }
 
-    function test_Name() external {
+    function test_Name() external view {
         assertEq(lbToken.name(), "Liquidity Book Token", "test_Name::1");
     }
 
-    function test_Symbol() external {
+    function test_Symbol() external view {
         assertEq(lbToken.symbol(), "LBT", "test_Symbol::1");
     }
 

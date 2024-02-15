@@ -11,41 +11,41 @@ contract LBPairInitialStateTest is TestHelper {
         pairWnative = createLBPair(wnative, usdc);
     }
 
-    function test_GetFactory() external {
+    function test_GetFactory() external view {
         assertEq(address(pairWnative.getFactory()), address(factory), "test_GetFactory::1");
     }
 
-    function test_GetTokenX() external {
+    function test_GetTokenX() external view {
         assertEq(address(pairWnative.getTokenX()), address(wnative), "test_GetTokenX::1");
     }
 
-    function test_GetTokenY() external {
+    function test_GetTokenY() external view {
         assertEq(address(pairWnative.getTokenY()), address(usdc), "test_GetTokenY::1");
     }
 
-    function test_GetBinStep() external {
+    function test_GetBinStep() external view {
         assertEq(pairWnative.getBinStep(), DEFAULT_BIN_STEP, "test_GetBinStep::1");
     }
 
-    function test_GetReserves() external {
+    function test_GetReserves() external view {
         (uint128 reserveX, uint128 reserveY) = pairWnative.getReserves();
 
         assertEq(reserveX, 0, "test_GetReserves::1");
         assertEq(reserveY, 0, "test_GetReserves::2");
     }
 
-    function test_GetActiveId() external {
+    function test_GetActiveId() external view {
         assertEq(pairWnative.getActiveId(), ID_ONE, "test_GetActiveId::1");
     }
 
-    function testFuzz_GetBin(uint24 id) external {
+    function testFuzz_GetBin(uint24 id) external view {
         (uint128 reserveX, uint128 reserveY) = pairWnative.getBin(id);
 
         assertEq(reserveX, 0, "testFuzz_GetBin::1");
         assertEq(reserveY, 0, "testFuzz_GetBin::2");
     }
 
-    function test_GetNextNonEmptyBin() external {
+    function test_GetNextNonEmptyBin() external view {
         assertEq(pairWnative.getNextNonEmptyBin(false, 0), 0, "test_GetNextNonEmptyBin::1");
         assertEq(pairWnative.getNextNonEmptyBin(true, 0), type(uint24).max, "test_GetNextNonEmptyBin::2");
 
@@ -53,14 +53,14 @@ contract LBPairInitialStateTest is TestHelper {
         assertEq(pairWnative.getNextNonEmptyBin(true, type(uint24).max), type(uint24).max, "test_GetNextNonEmptyBin::4");
     }
 
-    function test_GetProtocolFees() external {
+    function test_GetProtocolFees() external view {
         (uint128 protocolFeesX, uint128 protocolFeesY) = pairWnative.getProtocolFees();
 
         assertEq(protocolFeesX, 0, "test_GetProtocolFees::1");
         assertEq(protocolFeesY, 0, "test_GetProtocolFees::2");
     }
 
-    function test_GetStaticFeeParameters() external {
+    function test_GetStaticFeeParameters() external view {
         (
             uint16 baseFactor,
             uint16 filterPeriod,
@@ -80,7 +80,7 @@ contract LBPairInitialStateTest is TestHelper {
         assertEq(maxVolatilityAccumulator, DEFAULT_MAX_VOLATILITY_ACCUMULATOR, "test_GetStaticFeeParameters::7");
     }
 
-    function test_GetVariableFeeParameters() external {
+    function test_GetVariableFeeParameters() external view {
         (uint24 volatilityAccumulator, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate) =
             pairWnative.getVariableFeeParameters();
 
@@ -90,7 +90,7 @@ contract LBPairInitialStateTest is TestHelper {
         assertEq(timeOfLastUpdate, 0, "test_GetVariableFeeParameters::4");
     }
 
-    function test_GetOracleParameters() external {
+    function test_GetOracleParameters() external view {
         (uint8 sampleLifetime, uint16 size, uint16 activeSize, uint40 lastUpdated, uint40 firstTimestamp) =
             pairWnative.getOracleParameters();
 
@@ -101,7 +101,7 @@ contract LBPairInitialStateTest is TestHelper {
         assertEq(firstTimestamp, 0, "test_GetOracleParameters::5");
     }
 
-    function test_GetOracleSampleAt() external {
+    function test_GetOracleSampleAt() external view {
         (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed) =
             pairWnative.getOracleSampleAt(1);
 
@@ -110,7 +110,7 @@ contract LBPairInitialStateTest is TestHelper {
         assertEq(cumulativeBinCrossed, 0, "test_GetOracleSampleAt::3");
     }
 
-    function test_GetPriceFromId() external {
+    function test_GetPriceFromId() external view {
         uint256 delta = uint256(DEFAULT_BIN_STEP) * 5e13;
 
         assertApproxEqRel(
@@ -163,7 +163,7 @@ contract LBPairInitialStateTest is TestHelper {
         );
     }
 
-    function test_GetIdFromPrice() external {
+    function test_GetIdFromPrice() external view {
         assertApproxEqAbs(
             pairWnative.getIdFromPrice(924521306405372907020063908180274956666),
             1_000 + 2 ** 23,
@@ -209,7 +209,7 @@ contract LBPairInitialStateTest is TestHelper {
         );
     }
 
-    function testFuzz_GetSwapOut(uint128 amountOut, bool swapForY) external {
+    function testFuzz_GetSwapOut(uint128 amountOut, bool swapForY) external view {
         (uint128 amountIn, uint128 amountOutLeft, uint128 fee) = pairWnative.getSwapIn(amountOut, swapForY);
 
         assertEq(amountIn, 0, "testFuzz_GetSwapOut::1");
@@ -217,7 +217,7 @@ contract LBPairInitialStateTest is TestHelper {
         assertEq(fee, 0, "testFuzz_GetSwapOut::3");
     }
 
-    function testFuzz_GetSwapIn(uint128 amountIn, bool swapForY) external {
+    function testFuzz_GetSwapIn(uint128 amountIn, bool swapForY) external view {
         (uint128 amountInLeft, uint128 amountOut, uint128 fee) = pairWnative.getSwapOut(amountIn, swapForY);
 
         assertEq(amountInLeft, amountIn, "testFuzz_GetSwapIn::1");

@@ -35,7 +35,7 @@ contract LiquidityBinRouterTest is TestHelper {
         deal(address(weth), address(this), startingBalance);
     }
 
-    function test_Constructor() public {
+    function test_Constructor() public  view {
         assertEq(address(router.getFactory()), address(factory), "test_Constructor::1");
         assertEq(address(router.getLegacyFactory()), address(legacyFactoryV2), "test_Constructor::2");
         assertEq(address(router.getV1Factory()), address(factoryV1), "test_Constructor::3");

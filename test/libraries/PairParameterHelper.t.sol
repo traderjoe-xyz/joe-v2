@@ -19,7 +19,7 @@ contract PairParameterHelperTest is Test {
         uint24 maxVolatilityAccumulator;
     }
 
-    function testFuzz_StaticFeeParametersDirtyBits(bytes32 params, StaticFeeParameters memory sfp) external {
+    function testFuzz_StaticFeeParametersDirtyBits(bytes32 params, StaticFeeParameters memory sfp) external pure {
         vm.assume(
             sfp.filterPeriod <= sfp.decayPeriod && sfp.decayPeriod <= Encoded.MASK_UINT12
                 && sfp.reductionFactor <= Constants.BASIS_POINT_MAX && sfp.protocolShare <= Constants.MAX_PROTOCOL_SHARE
@@ -57,7 +57,7 @@ contract PairParameterHelperTest is Test {
         );
     }
 
-    function testFuzz_StaticFeeParameters(bytes32 params, StaticFeeParameters memory sfp) external {
+    function testFuzz_StaticFeeParameters(bytes32 params, StaticFeeParameters memory sfp) external pure {
         vm.assume(
             sfp.filterPeriod <= sfp.decayPeriod && sfp.decayPeriod <= Encoded.MASK_UINT12
                 && sfp.reductionFactor <= Constants.BASIS_POINT_MAX && sfp.protocolShare <= Constants.MAX_PROTOCOL_SHARE
@@ -110,7 +110,7 @@ contract PairParameterHelperTest is Test {
         );
     }
 
-    function testFuzz_SetOracleId(bytes32 params, uint16 oracleId) external {
+    function testFuzz_SetOracleId(bytes32 params, uint16 oracleId) external pure {
         bytes32 newParams = params.setOracleId(oracleId);
 
         assertEq(newParams.getOracleId(), oracleId, "testFuzz_SetOracleId::1");
@@ -121,7 +121,7 @@ contract PairParameterHelperTest is Test {
         );
     }
 
-    function testFuzz_SetVolatilityReference(bytes32 params, uint24 volatilityReference) external {
+    function testFuzz_SetVolatilityReference(bytes32 params, uint24 volatilityReference) external pure {
         vm.assume(volatilityReference <= Encoded.MASK_UINT20);
 
         bytes32 newParams = params.setVolatilityReference(volatilityReference);
@@ -141,7 +141,7 @@ contract PairParameterHelperTest is Test {
         params.setVolatilityReference(volatilityReference);
     }
 
-    function testFuzz_SetVolatilityAccumulator(bytes32 params, uint24 volatilityAccumulator) external {
+    function testFuzz_SetVolatilityAccumulator(bytes32 params, uint24 volatilityAccumulator) external pure {
         vm.assume(volatilityAccumulator <= Encoded.MASK_UINT20);
 
         bytes32 newParams = params.setVolatilityAccumulator(volatilityAccumulator);
@@ -161,7 +161,7 @@ contract PairParameterHelperTest is Test {
         params.setVolatilityAccumulator(volatilityAccumulator);
     }
 
-    function testFuzz_SetActiveId(bytes32 params, uint24 activeId) external {
+    function testFuzz_SetActiveId(bytes32 params, uint24 activeId) external pure {
         uint24 previousActiveId = params.getActiveId();
         uint24 deltaId = previousActiveId > activeId ? previousActiveId - activeId : activeId - previousActiveId;
         assertEq(params.getDeltaId(activeId), deltaId, "testFuzz_SetActiveId::1");
@@ -197,7 +197,7 @@ contract PairParameterHelperTest is Test {
         }
     }
 
-    function testFuzz_UpdateIdReference(bytes32 params) external {
+    function testFuzz_UpdateIdReference(bytes32 params) external pure {
         uint24 activeId = params.getActiveId();
 
         bytes32 newParams = params.updateIdReference();
@@ -210,7 +210,7 @@ contract PairParameterHelperTest is Test {
         );
     }
 
-    function testFuzz_UpdateTimeOfLastUpdate(bytes32 params) external {
+    function testFuzz_UpdateTimeOfLastUpdate(bytes32 params) external view {
         bytes32 newParams = params.updateTimeOfLastUpdate(block.timestamp);
 
         assertEq(newParams.getTimeOfLastUpdate(), block.timestamp, "testFuzz_UpdateTimeOfLastUpdate::1");
@@ -242,7 +242,7 @@ contract PairParameterHelperTest is Test {
         }
     }
 
-    function testFuzz_UpdateVolatilityAccumulator(bytes32 params, uint24 activeId) external {
+    function testFuzz_UpdateVolatilityAccumulator(bytes32 params, uint24 activeId) external pure  {
         uint256 idReference = params.getIdReference();
         uint256 deltaId = activeId > idReference ? activeId - idReference : idReference - activeId;
 

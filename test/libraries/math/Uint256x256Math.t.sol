@@ -127,7 +127,7 @@ contract Uint256x256MathTest is Test {
         }
     }
 
-    function testFuzz_Sqrt(uint256 x) external {
+    function testFuzz_Sqrt(uint256 x) external pure {
         uint256 sqrtX = x.sqrt();
 
         assertLe(sqrtX * sqrtX, x, "testFuzz_Sqrt::1");

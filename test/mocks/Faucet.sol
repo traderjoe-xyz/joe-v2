@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.20;
 
-import {PendingOwnable} from "src/libraries/PendingOwnable.sol";
-import {TokenHelper, IERC20} from "src/libraries/TokenHelper.sol";
+import {SafeERC20, IERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
+import {Ownable2Step, Ownable} from "openzeppelin/access/Ownable2Step.sol";
 
 /// @title Faucet contract
 /// @author Trader Joe
@@ -11,8 +11,8 @@ import {TokenHelper, IERC20} from "src/libraries/TokenHelper.sol";
 /// @notice Create a faucet contract that create test tokens and allow user to request for tokens.
 /// This faucet will also provide NATIVE if native were sent to the contract (either during the construction or after).
 /// This contract will not fail if its native balance becomes too low, it will just not send NATIVE but will mint the different tokens.
-contract Faucet is PendingOwnable {
-    using TokenHelper for IERC20;
+contract Faucet is Ownable2Step {
+    using SafeERC20 for IERC20;
 
     /// @dev Structure for faucet token, use only 1 storage slot
     struct FaucetToken {
@@ -58,7 +58,10 @@ contract Faucet is PendingOwnable {
     /// @notice Constructor of the faucet, set the request cooldown and add native to the faucet
     /// @param _nativePerRequest The native received per request
     /// @param _requestCooldown The request cooldown
-    constructor(uint96 _nativePerRequest, uint256 _requestCooldown) payable {
+    constructor(address initialOwner, uint96 _nativePerRequest, uint256 _requestCooldown)
+        payable
+        Ownable(initialOwner)
+    {
         _setRequestCooldown(_requestCooldown);
         _addFaucetToken(FaucetToken({ERC20: IERC20(address(0)), amountPerRequest: _nativePerRequest}));
     }

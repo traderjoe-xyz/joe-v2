@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.20;
 
-import {Strings} from "openzeppelin/utils/Strings.sol";
-
 import "./helpers/TestHelper.sol";
+
+import "openzeppelin/access/AccessControl.sol";
 
 import "src/libraries/ImmutableClone.sol";
 import "./mocks/MockHooks.sol";
@@ -73,12 +73,12 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         vm.expectEmit(true, true, true, true);
         emit FlashLoanFeeSet(0, DEFAULT_FLASHLOAN_FEE);
-        new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
+        new LBFactory(DEV, DEV, DEFAULT_FLASHLOAN_FEE);
 
         // Reverts if the flash loan fee is above the max fee
         uint256 maxFee = factory.getMaxFlashLoanFee();
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__FlashLoanFeeAboveMax.selector, maxFee + 1, maxFee));
-        new LBFactory(DEV, maxFee + 1);
+        new LBFactory(DEV, DEV, maxFee + 1);
     }
 
     function test_SetLBPairImplementation() public {
@@ -99,7 +99,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SameImplementation.selector, newImplementation));
         factory.setLBPairImplementation(address(newImplementation));
 
-        LBFactory anotherFactory = new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
+        LBFactory anotherFactory = new LBFactory(DEV, DEV, DEFAULT_FLASHLOAN_FEE);
 
         anotherFactory.setPreset(1, 1, 1, 1, 1, 1, 1, 1, false);
         anotherFactory.addQuoteAsset(usdc);
@@ -230,7 +230,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
         // Can't create pair if the implementation is not set
-        LBFactory newFactory = new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
+        LBFactory newFactory = new LBFactory(DEV, DEV, DEFAULT_FLASHLOAN_FEE);
 
         // Can't create a pair if the preset is not set
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__BinStepHasNoPreset.selector, DEFAULT_BIN_STEP));
@@ -301,7 +301,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     function test_revert_SetLBPairIgnoredForRouting() public {
         // Can't ignore for routing if not the owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, true);
 
         // Can't update a non existing pair
@@ -447,7 +447,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Revert if not owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.removePreset(DEFAULT_BIN_STEP);
 
         // Revert if bin step does not exist
@@ -543,7 +543,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't update if not the owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.setFeesParametersOnPair(
             wnative,
             usdc,
@@ -584,7 +584,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't set if not the owner
         vm.prank(BOB);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, BOB));
         factory.setFeeRecipient(BOB);
 
         // Can't set to the zero address
@@ -606,7 +606,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't set if not the owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.setFlashLoanFee(DEFAULT_FLASHLOAN_FEE);
 
         // Can't set to the same fee
@@ -666,7 +666,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't open if not the owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.setPresetOpenState(binStep, true);
 
         // Can't set to the same state
@@ -693,7 +693,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't add if not the owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.addQuoteAsset(newToken);
 
         // Can't add if the asset is already a quote asset
@@ -715,7 +715,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't remove if not the owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.removeQuoteAsset(usdc);
 
         // Can't remove if the asset is not a quote asset
@@ -730,7 +730,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't force decay if not the owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.forceDecay(pair);
     }
 
@@ -785,11 +785,8 @@ contract LiquidityBinFactoryTest is TestHelper {
     function test_setLBHooksParametersOnPair() public {
         // Can't create if not the right role
         vm.expectRevert(
-            abi.encodePacked(
-                "AccessControl: account ",
-                Strings.toHexString(address(this)),
-                " is missing role ",
-                vm.toString(factory.LB_HOOKS_MANAGER_ROLE())
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), factory.LB_HOOKS_MANAGER_ROLE()
             )
         );
         factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, bytes32(0), new bytes(0));
@@ -867,13 +864,13 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.expectRevert(ILBFactory.LBFactory__CannotGrantDefaultAdminRole.selector);
         factory.grantRole(bytes32(0), address(this));
 
-        factory.setPendingOwner(BOB);
+        factory.transferOwnership(BOB);
 
         assertTrue(factory.hasRole(DEFAULT_ADMIN_ROLE, address(this)), "test_AccessControl::5");
         assertFalse(factory.hasRole(DEFAULT_ADMIN_ROLE, BOB), "test_AccessControl::6");
 
         vm.prank(BOB);
-        factory.becomeOwner();
+        factory.acceptOwnership();
 
         assertTrue(factory.hasRole(DEFAULT_ADMIN_ROLE, BOB), "test_AccessControl::7");
         assertFalse(factory.hasRole(DEFAULT_ADMIN_ROLE, address(this)), "test_AccessControl::8");

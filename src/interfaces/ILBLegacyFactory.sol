@@ -5,12 +5,11 @@ pragma solidity ^0.8.10;
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 import {ILBLegacyPair} from "./ILBLegacyPair.sol";
-import {IPendingOwnable} from "./IPendingOwnable.sol";
 
 /// @title Liquidity Book Factory Interface
 /// @author Trader Joe
 /// @notice Required interface of LBFactory contract
-interface ILBLegacyFactory is IPendingOwnable {
+interface ILBLegacyFactory {
     /// @dev Structure to store the LBPair information, such as:
     /// - binStep: The bin step of the LBPair
     /// - LBPair: The address of the LBPair

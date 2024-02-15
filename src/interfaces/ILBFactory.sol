@@ -6,14 +6,13 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 import {ILBHooks} from "../interfaces/ILBHooks.sol";
 import {ILBPair} from "./ILBPair.sol";
-import {IPendingOwnable} from "./IPendingOwnable.sol";
 
 /**
  * @title Liquidity Book Factory Interface
  * @author Trader Joe
  * @notice Required interface of LBFactory contract
  */
-interface ILBFactory is IPendingOwnable {
+interface ILBFactory {
     error LBFactory__IdenticalAddresses(IERC20 token);
     error LBFactory__QuoteAssetNotWhitelisted(IERC20 quoteAsset);
     error LBFactory__QuoteAssetAlreadyWhitelisted(IERC20 quoteAsset);

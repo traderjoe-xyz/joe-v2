@@ -46,7 +46,7 @@ contract CoreDeployer is Script {
             vm.createSelectFork(StdChains.getChain(chains[i]).rpcUrl);
 
             vm.broadcast(deployer);
-            LBFactory factory = new LBFactory(deployer, FLASHLOAN_FEE);
+            LBFactory factory = new LBFactory(deployer, deployer, FLASHLOAN_FEE);
             console.log("LBFactory deployed -->", address(factory));
 
             vm.broadcast(deployer);
@@ -95,7 +95,7 @@ contract CoreDeployer is Script {
                 );
             }
 
-            factory.setPendingOwner(deployment.multisig);
+            factory.transferOwnership(deployment.multisig);
             vm.stopBroadcast();
         }
     }

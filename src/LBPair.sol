@@ -3,13 +3,13 @@
 pragma solidity ^0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 import {BinHelper} from "./libraries/BinHelper.sol";
 import {Clone} from "./libraries/Clone.sol";
 import {Constants} from "./libraries/Constants.sol";
 import {FeeHelper} from "./libraries/FeeHelper.sol";
 import {LiquidityConfigurations} from "./libraries/math/LiquidityConfigurations.sol";
+import {ReentrancyGuardUpgradeable} from "./libraries/ReentrancyGuardUpgradeable.sol";
 import {ILBFactory} from "./interfaces/ILBFactory.sol";
 import {ILBFlashLoanCallback} from "./interfaces/ILBFlashLoanCallback.sol";
 import {ILBPair} from "./interfaces/ILBPair.sol";
@@ -490,7 +490,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
      * @param to The address to send the tokens to
      * @return amountsOut The encoded amounts of token X and token Y sent to `to`
      */
-    function swap(bool swapForY, address to) external override nonReentrant returns (bytes32 amountsOut) {
+    function swap(bool swapForY, address to) external override returns (bytes32 amountsOut) {
+        _nonReentrantBefore();
+
         bytes32 hooksParameters = _hooksParameters;
 
         bytes32 reserves = _reserves;
@@ -571,6 +573,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
             amountsOut.transferX(_tokenX(), to);
         }
 
+        _nonReentrantAfter();
+
         Hooks.afterSwap(hooksParameters, msg.sender, to, swapForY_, amountsOut);
     }
 
@@ -582,11 +586,9 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
      * @param amounts The encoded amounts of token X and token Y to flash loan
      * @param data Any data that will be passed to the callback function
      */
-    function flashLoan(ILBFlashLoanCallback receiver, bytes32 amounts, bytes calldata data)
-        external
-        override
-        nonReentrant
-    {
+    function flashLoan(ILBFlashLoanCallback receiver, bytes32 amounts, bytes calldata data) external override {
+        _nonReentrantBefore();
+
         if (amounts == 0) revert LBPair__ZeroBorrowAmount();
 
         bytes32 hooksParameters = _hooksParameters;
@@ -625,6 +627,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
 
         emit FlashLoan(msg.sender, receiver, _parameters.getActiveId(), amounts, bytes32(0), feesReceived);
 
+        _nonReentrantAfter();
+
         Hooks.afterFlashLoan(hooksParameters, msg.sender, address(receiver), totalFees, feesReceived);
     }
 
@@ -647,10 +651,11 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
     function mint(address to, bytes32[] calldata liquidityConfigs, address refundTo)
         external
         override
-        nonReentrant
         notAddressZeroOrThis(to)
         returns (bytes32 amountsReceived, bytes32 amountsLeft, uint256[] memory liquidityMinted)
     {
+        _nonReentrantBefore();
+
         if (liquidityConfigs.length == 0) revert LBPair__EmptyMarketConfigs();
 
         bytes32 hooksParameters = _hooksParameters;
@@ -678,6 +683,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
 
         if (amountsLeft > 0) amountsLeft.transfer(_tokenX(), _tokenY(), refundTo);
 
+        _nonReentrantAfter();
+
         Hooks.afterMint(hooksParameters, msg.sender, to, liquidityConfigs, amountsReceived.sub(amountsLeft));
     }
 
@@ -693,10 +700,11 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
     function burn(address from, address to, uint256[] calldata ids, uint256[] calldata amountsToBurn)
         external
         override
-        nonReentrant
         checkApproval(from, msg.sender)
         returns (bytes32[] memory amounts)
     {
+        _nonReentrantBefore();
+
         if (ids.length == 0 || ids.length != amountsToBurn.length) revert LBPair__InvalidInput();
 
         bytes32 hooksParameters = _hooksParameters;
@@ -743,6 +751,8 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
         emit WithdrawnFromBins(msg.sender, to, ids, amounts);
 
         amountsOut.transfer(_tokenX(), _tokenY(), to);
+
+        _nonReentrantAfter();
 
         Hooks.afterBurn(hooksParameters, msg.sender, from_, to, ids, amountsToBurn);
     }
@@ -872,13 +882,16 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
     function batchTransferFrom(address from, address to, uint256[] calldata ids, uint256[] calldata amounts)
         public
         override(LBToken, ILBToken)
-        nonReentrant
     {
+        _nonReentrantBefore();
+
         bytes32 hooksParameters = _hooksParameters;
 
         Hooks.beforeBatchTransferFrom(hooksParameters, msg.sender, from, to, ids, amounts);
 
         LBToken.batchTransferFrom(from, to, ids, amounts);
+
+        _nonReentrantAfter();
 
         Hooks.afterBatchTransferFrom(hooksParameters, msg.sender, from, to, ids, amounts);
     }

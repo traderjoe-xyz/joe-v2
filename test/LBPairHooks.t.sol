@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/utils/Address.sol";
+
 import "./helpers/TestHelper.sol";
 import "./mocks/MockHooks.sol";
 
@@ -36,6 +38,8 @@ contract LBPairHooksTest is TestHelper {
     using SafeCast for uint256;
 
     MockLBHooks hooks;
+
+    uint128 constant amount = 0.1e18;
 
     function setUp() public override {
         super.setUp();
@@ -87,20 +91,18 @@ contract LBPairHooksTest is TestHelper {
     }
 
     function test_BeforeAfterSwapHooksXtoY() public {
-        uint128 amountIn = 0.1e18;
-
-        (uint128 amountInLeft, uint128 amountOut,) = pairWnative.getSwapOut(amountIn, true);
+        (uint128 amountLeft, uint128 amountOut,) = pairWnative.getSwapOut(amount, true);
 
         vm.assume(amountOut > 0);
 
-        assertEq(amountInLeft, 0, "test_BeforeAfterSwapHooksXtoY::1");
+        assertEq(amountLeft, 0, "test_BeforeAfterSwapHooksXtoY::1");
 
-        deal(address(wnative), ALICE, amountIn);
+        deal(address(wnative), ALICE, amount);
 
         State memory expectedBeforeState = hooks.getState();
 
         vm.startPrank(ALICE);
-        wnative.transfer(address(pairWnative), amountIn);
+        wnative.transfer(address(pairWnative), amount);
         pairWnative.swap(true, ALICE);
         vm.stopPrank();
 
@@ -113,7 +115,7 @@ contract LBPairHooksTest is TestHelper {
             keccak256(hooks.beforeData()),
             keccak256(
                 abi.encodeWithSelector(
-                    ILBHooks.beforeSwap.selector, ALICE, ALICE, true, PackedUint128Math.encodeFirst(amountIn)
+                    ILBHooks.beforeSwap.selector, ALICE, ALICE, true, PackedUint128Math.encodeFirst(amount)
                 )
             ),
             "test_BeforeAfterSwapHooksXtoY::4"
@@ -137,20 +139,18 @@ contract LBPairHooksTest is TestHelper {
     }
 
     function test_BeforeAfterSwapHooksYtoX() public {
-        uint128 amountIn = 0.1e18;
-
-        (uint128 amountInLeft, uint128 amountOut,) = pairWnative.getSwapOut(amountIn, false);
+        (uint128 amountLeft, uint128 amountOut,) = pairWnative.getSwapOut(amount, false);
 
         vm.assume(amountOut > 0);
 
-        assertEq(amountInLeft, 0, "test_BeforeAfterSwapHooksYtoX::1");
+        assertEq(amountLeft, 0, "test_BeforeAfterSwapHooksYtoX::1");
 
-        deal(address(usdc), ALICE, amountIn);
+        deal(address(usdc), ALICE, amount);
 
         State memory expectedBeforeState = hooks.getState();
 
         vm.startPrank(ALICE);
-        usdc.transfer(address(pairWnative), amountIn);
+        usdc.transfer(address(pairWnative), amount);
         pairWnative.swap(false, ALICE);
         vm.stopPrank();
 
@@ -163,7 +163,7 @@ contract LBPairHooksTest is TestHelper {
             keccak256(hooks.beforeData()),
             keccak256(
                 abi.encodeWithSelector(
-                    ILBHooks.beforeSwap.selector, ALICE, ALICE, false, PackedUint128Math.encodeSecond(amountIn)
+                    ILBHooks.beforeSwap.selector, ALICE, ALICE, false, PackedUint128Math.encodeSecond(amount)
                 )
             ),
             "test_BeforeAfterSwapHooksYtoX::4"
@@ -187,20 +187,12 @@ contract LBPairHooksTest is TestHelper {
     }
 
     function test_BeforeAfterFlashLoanHooks() public {
-        uint128 amount = 0.1e18;
-
         State memory expectedBeforeState = hooks.getState();
-
-        deal(address(wnative), ALICE, 2 * amount);
-        deal(address(usdc), address(ALICE), 2 * amount);
 
         bytes32 amounts = PackedUint128Math.encode(amount, amount);
 
-        vm.startPrank(ALICE);
-        wnative.transfer(address(pairWnative), 2 * amount);
-        usdc.transfer(address(pairWnative), 2 * amount);
+        vm.prank(ALICE);
         pairWnative.flashLoan(ILBFlashLoanCallback(address(this)), amounts, new bytes(0));
-        vm.stopPrank();
 
         State memory expectedAfterState = hooks.getState();
 
@@ -236,8 +228,6 @@ contract LBPairHooksTest is TestHelper {
     }
 
     function test_BeforeAfterMintHooks() public {
-        uint128 amount = 0.1e18;
-
         State memory expectedBeforeState = hooks.getState();
 
         bytes32[] memory liquidityConfigs = new bytes32[](1);
@@ -290,8 +280,6 @@ contract LBPairHooksTest is TestHelper {
     }
 
     function test_BeforeAfterBurnHooks() public {
-        uint128 amount = 0.1e18;
-
         uint24 activeId = pairWnative.getActiveId();
 
         bytes32[] memory liquidityConfigs = new bytes32[](1);
@@ -338,8 +326,6 @@ contract LBPairHooksTest is TestHelper {
     }
 
     function test_BeforeAfterBatchTransferFromHooks() public {
-        uint128 amount = 0.1e18;
-
         uint24 activeId = pairWnative.getActiveId();
 
         bytes32[] memory liquidityConfigs = new bytes32[](1);
@@ -388,6 +374,9 @@ contract LBPairHooksTest is TestHelper {
     }
 
     fallback() external {
+        deal(address(wnative), address(pairWnative), wnative.balanceOf(address(pairWnative)) + 2 * amount);
+        deal(address(usdc), address(pairWnative), usdc.balanceOf(address(pairWnative)) + 2 * amount);
+
         bytes32 callback_success = Constants.CALLBACK_SUCCESS;
         assembly {
             mstore(0, callback_success)
@@ -421,11 +410,189 @@ contract LBPairHooksTest is TestHelper {
         assertEq(op.lastUpdated, eop.lastUpdated, "_verifyStates::15");
         assertEq(op.firstTimestamp, eop.firstTimestamp, "_verifyStates::16");
     }
+
+    function test_SwapReentrancy() public {
+        deal(address(wnative), address(pairWnative), wnative.balanceOf(address(pairWnative)) + amount);
+
+        hooks.setBefore(address(pairWnative), abi.encodeWithSelector(ILBPair.swap.selector, true, ALICE));
+
+        vm.expectRevert(ReentrancyGuardUpgradeable.ReentrancyGuardReentrantCall.selector);
+        vm.prank(ALICE);
+        pairWnative.swap(true, ALICE);
+
+        hooks.setBefore(address(0), new bytes(0));
+
+        hooks.setAfter(address(pairWnative), abi.encodeWithSelector(ILBPair.swap.selector, false, ALICE));
+
+        assertEq(wnative.balanceOf(ALICE), 0, "test_SwapReentrancy::1");
+
+        vm.prank(ALICE);
+        pairWnative.swap(true, address(pairWnative));
+
+        assertGt(wnative.balanceOf(ALICE), 0, "test_SwapReentrancy::2");
+    }
+
+    function test_FlashLoanReentrancy() public {
+        hooks.setBefore(
+            address(pairWnative),
+            abi.encodeWithSelector(
+                ILBPair.flashLoan.selector, address(this), PackedUint128Math.encode(amount, amount), new bytes(0)
+            )
+        );
+
+        vm.expectRevert(ReentrancyGuardUpgradeable.ReentrancyGuardReentrantCall.selector);
+        vm.prank(ALICE);
+        pairWnative.flashLoan(
+            ILBFlashLoanCallback(address(this)), PackedUint128Math.encode(amount, amount), new bytes(0)
+        );
+
+        hooks.setBefore(address(0), new bytes(0));
+
+        hooks.setAfter(
+            address(pairWnative),
+            abi.encodeWithSelector(
+                ILBPair.flashLoan.selector, address(this), PackedUint128Math.encode(amount, amount), new bytes(0)
+            )
+        );
+
+        uint256 beforeBalanceWnative = wnative.balanceOf(address(pairWnative));
+        uint256 beforeBalanceUsdc = usdc.balanceOf(address(pairWnative));
+
+        vm.prank(ALICE);
+        pairWnative.flashLoan(
+            ILBFlashLoanCallback(address(this)), PackedUint128Math.encode(amount, amount), new bytes(0)
+        );
+
+        // Should have triggered the fallback twice
+        assertEq(
+            wnative.balanceOf(address(pairWnative)), beforeBalanceWnative + 2 * amount, "test_FlashLoanReentrancy::1"
+        );
+        assertEq(usdc.balanceOf(address(pairWnative)), beforeBalanceUsdc + 2 * amount, "test_FlashLoanReentrancy::2");
+
+        assertEq(wnative.balanceOf(address(this)), 2 * amount, "test_FlashLoanReentrancy::3");
+        assertEq(usdc.balanceOf(address(this)), 2 * amount, "test_FlashLoanReentrancy::4");
+    }
+
+    function test_MintReentrancy() public {
+        bytes32[] memory liquidityConfigs = new bytes32[](1);
+        liquidityConfigs[0] = LiquidityConfigurations.encodeParams(0.5e18, 0.5e18, 2 ** 23);
+
+        hooks.setBefore(
+            address(pairWnative), abi.encodeWithSelector(ILBPair.mint.selector, ALICE, liquidityConfigs, ALICE)
+        );
+
+        vm.expectRevert(ReentrancyGuardUpgradeable.ReentrancyGuardReentrantCall.selector);
+        vm.prank(ALICE);
+        pairWnative.mint(ALICE, liquidityConfigs, ALICE);
+
+        hooks.setBefore(address(0), new bytes(0));
+
+        hooks.setAfter(
+            address(pairWnative), abi.encodeWithSelector(ILBPair.mint.selector, ALICE, liquidityConfigs, ALICE)
+        );
+
+        uint256 beforeBalanceWnative = wnative.balanceOf(address(pairWnative));
+        uint256 beforeBalanceUsdc = usdc.balanceOf(address(pairWnative));
+
+        deal(address(wnative), address(pairWnative), wnative.balanceOf(address(pairWnative)) + amount);
+        deal(address(usdc), address(pairWnative), usdc.balanceOf(address(pairWnative)) + amount);
+
+        vm.prank(ALICE);
+        pairWnative.mint(ALICE, liquidityConfigs, address(pairWnative));
+
+        // Should have added twice 50% of the amount, so 75% of the amount
+        assertEq(
+            wnative.balanceOf(address(pairWnative)), beforeBalanceWnative + 75 * amount / 100, "test_MintReentrancy::1"
+        );
+        assertEq(usdc.balanceOf(address(pairWnative)), beforeBalanceUsdc + 75 * amount / 100, "test_MintReentrancy::2");
+
+        assertEq(wnative.balanceOf(ALICE), 25 * amount / 100, "test_MintReentrancy::3");
+        assertEq(usdc.balanceOf(ALICE), 25 * amount / 100, "test_MintReentrancy::4");
+    }
+
+    function test_BurnReentrancy() public {
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = pairWnative.getActiveId();
+
+        uint256[] memory amountsToBurn = new uint256[](1);
+        amountsToBurn[0] = pairWnative.balanceOf(DEV, ids[0]) / 2;
+
+        vm.prank(DEV);
+        pairWnative.approveForAll(address(hooks), true);
+
+        hooks.setBefore(
+            address(pairWnative), abi.encodeWithSelector(ILBPair.burn.selector, DEV, ALICE, ids, amountsToBurn)
+        );
+
+        vm.expectRevert(ReentrancyGuardUpgradeable.ReentrancyGuardReentrantCall.selector);
+        vm.prank(DEV);
+        pairWnative.burn(DEV, ALICE, ids, amountsToBurn);
+
+        hooks.setBefore(address(0), new bytes(0));
+
+        hooks.setAfter(
+            address(pairWnative), abi.encodeWithSelector(ILBPair.burn.selector, DEV, ALICE, ids, amountsToBurn)
+        );
+
+        assertEq(wnative.balanceOf(ALICE), 0, "test_BurnReentrancy::1");
+        assertEq(usdc.balanceOf(ALICE), 0, "test_BurnReentrancy::2");
+
+        vm.prank(DEV);
+        pairWnative.burn(DEV, ALICE, ids, amountsToBurn);
+
+        assertGt(wnative.balanceOf(ALICE), 0, "test_BurnReentrancy::3");
+        assertGt(usdc.balanceOf(ALICE), 0, "test_BurnReentrancy::4");
+
+        (uint256 binReserveX, uint256 binReserveY) = pairWnative.getBin(uint24(ids[0]));
+
+        assertEq(binReserveX, 0, "test_BurnReentrancy::5");
+        assertEq(binReserveY, 0, "test_BurnReentrancy::6");
+    }
+
+    function test_BatchTransferFromReentrancy() public {
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = pairWnative.getActiveId();
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = pairWnative.balanceOf(DEV, ids[0]) / 2;
+
+        vm.prank(DEV);
+        pairWnative.approveForAll(address(hooks), true);
+
+        hooks.setBefore(
+            address(pairWnative), abi.encodeWithSelector(ILBToken.batchTransferFrom.selector, DEV, ALICE, ids, amounts)
+        );
+
+        vm.expectRevert(ReentrancyGuardUpgradeable.ReentrancyGuardReentrantCall.selector);
+        vm.prank(DEV);
+        pairWnative.batchTransferFrom(DEV, ALICE, ids, amounts);
+
+        hooks.setBefore(address(0), new bytes(0));
+
+        hooks.setAfter(
+            address(pairWnative), abi.encodeWithSelector(ILBToken.batchTransferFrom.selector, DEV, ALICE, ids, amounts)
+        );
+
+        assertEq(pairWnative.balanceOf(ALICE, ids[0]), 0, "test_BatchTransferFromReentrancy::1");
+        assertGt(pairWnative.balanceOf(DEV, ids[0]), 0, "test_BatchTransferFromReentrancy::2");
+
+        vm.prank(DEV);
+        pairWnative.batchTransferFrom(DEV, ALICE, ids, amounts);
+
+        assertGt(pairWnative.balanceOf(ALICE, ids[0]), 0, "test_BatchTransferFromReentrancy::3");
+        assertEq(pairWnative.balanceOf(DEV, ids[0]), 0, "test_BatchTransferFromReentrancy::4");
+    }
 }
 
 contract MockLBHooks is MockHooks {
     State private _beforeState;
     State private _afterState;
+
+    address public beforeTarget;
+    bytes public beforeTargetData;
+
+    address public afterTarget;
+    bytes public afterTargetData;
 
     function getBeforeState() public view returns (State memory) {
         return _beforeState;
@@ -442,6 +609,16 @@ contract MockLBHooks is MockHooks {
         delete _afterState;
     }
 
+    function setBefore(address target, bytes calldata data) public {
+        beforeTarget = target;
+        beforeTargetData = data;
+    }
+
+    function setAfter(address target, bytes calldata data) public {
+        afterTarget = target;
+        afterTargetData = data;
+    }
+
     function _onHooksSet(bytes32 hooksParameters, bytes calldata onHooksSetData) internal override {
         super._onHooksSet(hooksParameters, onHooksSetData);
 
@@ -449,45 +626,69 @@ contract MockLBHooks is MockHooks {
     }
 
     function _beforeSwap(address sender, address to, bool swapForY, bytes32 amountsIn) internal override {
+        if (sender == address(this)) return;
+
         super._beforeSwap(sender, to, swapForY, amountsIn);
 
         _beforeState = getState();
+
+        _beforeCall();
     }
 
     function _afterSwap(address sender, address to, bool swapForY, bytes32 amountsOut) internal override {
+        if (sender == address(this)) return;
+
         super._afterSwap(sender, to, swapForY, amountsOut);
 
         _afterState = getState();
+
+        _afterCall();
     }
 
     function _beforeFlashLoan(address sender, address to, bytes32 amounts) internal override {
+        if (sender == address(this)) return;
+
         super._beforeFlashLoan(sender, to, amounts);
 
         _beforeState = getState();
+
+        _beforeCall();
     }
 
     function _afterFlashLoan(address sender, address to, bytes32 fees, bytes32 feesReceived) internal override {
+        if (sender == address(this)) return;
+
         super._afterFlashLoan(sender, to, fees, feesReceived);
 
         _afterState = getState();
+
+        _afterCall();
     }
 
     function _beforeMint(address sender, address to, bytes32[] calldata liquidityConfigs, bytes32 amountsReceived)
         internal
         override
     {
+        if (sender == address(this)) return;
+
         super._beforeMint(sender, to, liquidityConfigs, amountsReceived);
 
         _beforeState = getState();
+
+        _beforeCall();
     }
 
     function _afterMint(address sender, address to, bytes32[] calldata liquidityConfigs, bytes32 amountsIn)
         internal
         override
     {
+        if (sender == address(this)) return;
+
         super._afterMint(sender, to, liquidityConfigs, amountsIn);
 
         _afterState = getState();
+
+        _afterCall();
     }
 
     function _beforeBurn(
@@ -497,9 +698,13 @@ contract MockLBHooks is MockHooks {
         uint256[] calldata ids,
         uint256[] calldata amountsToBurn
     ) internal override {
+        if (sender == address(this)) return;
+
         super._beforeBurn(sender, from, to, ids, amountsToBurn);
 
         _beforeState = getState();
+
+        _beforeCall();
     }
 
     function _afterBurn(
@@ -509,9 +714,13 @@ contract MockLBHooks is MockHooks {
         uint256[] calldata ids,
         uint256[] calldata amountsToBurn
     ) internal override {
+        if (sender == address(this)) return;
+
         super._afterBurn(sender, from, to, ids, amountsToBurn);
 
         _afterState = getState();
+
+        _afterCall();
     }
 
     function _beforeBatchTransferFrom(
@@ -521,9 +730,13 @@ contract MockLBHooks is MockHooks {
         uint256[] calldata ids,
         uint256[] calldata amounts
     ) internal override {
+        if (sender == address(this)) return;
+
         super._beforeBatchTransferFrom(sender, from, to, ids, amounts);
 
         _beforeState = getState();
+
+        _beforeCall();
     }
 
     function _afterBatchTransferFrom(
@@ -533,9 +746,13 @@ contract MockLBHooks is MockHooks {
         uint256[] calldata ids,
         uint256[] calldata amounts
     ) internal override {
+        if (sender == address(this)) return;
+
         super._afterBatchTransferFrom(sender, from, to, ids, amounts);
 
         _afterState = getState();
+
+        _afterCall();
     }
 
     function getState() public view returns (State memory state) {
@@ -552,5 +769,23 @@ contract MockLBHooks is MockHooks {
 
         OracleParameters memory op = state.oracleParameters;
         (op.sampleLifetime, op.size, op.activeSize, op.lastUpdated, op.firstTimestamp) = lbPair.getOracleParameters();
+    }
+
+    function _beforeCall() internal {
+        if (beforeTarget == address(0)) return;
+
+        Address.functionCall(beforeTarget, beforeTargetData);
+
+        delete beforeTarget;
+        delete beforeTargetData;
+    }
+
+    function _afterCall() internal {
+        if (afterTarget == address(0)) return;
+
+        Address.functionCall(afterTarget, afterTargetData);
+
+        delete afterTarget;
+        delete afterTargetData;
     }
 }

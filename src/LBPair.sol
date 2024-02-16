@@ -625,7 +625,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
         _reserves = balancesAfter;
         _protocolFees = _protocolFees.add(feesReceived);
 
-        emit FlashLoan(msg.sender, receiver, _parameters.getActiveId(), amounts, bytes32(0), feesReceived);
+        emit FlashLoan(msg.sender, receiver, _parameters.getActiveId(), amounts, feesReceived, feesReceived);
 
         _nonReentrantAfter();
 

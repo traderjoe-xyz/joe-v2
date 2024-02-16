@@ -121,6 +121,8 @@ contract LBPairOracleTest is TestHelper {
     function test_CircularOracleGetSampleAt() external {
         pairWnative.increaseOracleLength(2);
 
+        uint24 activeIdAtT0 = pairWnative.getActiveId();
+
         deal(address(wnative), BOB, 1e18);
         vm.prank(BOB);
         wnative.transfer(address(pairWnative), 1e16);
@@ -131,9 +133,9 @@ contract LBPairOracleTest is TestHelper {
         (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed) =
             pairWnative.getOracleSampleAt(uint40(block.timestamp));
 
-        uint24 activeId = pairWnative.getActiveId();
+        uint24 activeIdAtT1 = pairWnative.getActiveId();
 
-        assertEq(cumulativeId, activeId * dt, "test_CircularOracleGetSampleAt::1");
+        assertEq(cumulativeId, activeIdAtT0 * dt, "test_CircularOracleGetSampleAt::1");
         assertEq(cumulativeVolatility, 0, "test_CircularOracleGetSampleAt::2");
         assertEq(cumulativeBinCrossed, 0, "test_CircularOracleGetSampleAt::3");
 
@@ -151,9 +153,9 @@ contract LBPairOracleTest is TestHelper {
         (cumulativeId, cumulativeVolatility, cumulativeBinCrossed) =
             pairWnative.getOracleSampleAt(uint40(block.timestamp));
 
-        activeId = pairWnative.getActiveId();
+        uint24 activeIdAtT121 = pairWnative.getActiveId();
 
-        assertEq(cumulativeId, previousCumulativeId + activeId * dt, "test_CircularOracleGetSampleAt::4");
+        assertEq(cumulativeId, previousCumulativeId + activeIdAtT1 * dt, "test_CircularOracleGetSampleAt::4");
         assertEq(cumulativeVolatility, 0, "test_CircularOracleGetSampleAt::5");
         assertEq(cumulativeBinCrossed, 0, "test_CircularOracleGetSampleAt::6");
 
@@ -175,11 +177,11 @@ contract LBPairOracleTest is TestHelper {
 
         (uint24 volatilityAccumulator,,,) = pairWnative.getVariableFeeParameters();
 
-        assertEq(
-            cumulativeId, previousCumulativeId + pairWnative.getActiveId() * dt, "test_CircularOracleGetSampleAt::7"
-        );
+        assertEq(cumulativeId, previousCumulativeId + activeIdAtT121 * dt, "test_CircularOracleGetSampleAt::7");
         assertEq(cumulativeVolatility, volatilityAccumulator * dt, "test_CircularOracleGetSampleAt::8");
-        assertEq(cumulativeBinCrossed, (pairWnative.getActiveId() - activeId) * dt, "test_CircularOracleGetSampleAt::9");
+        assertEq(
+            cumulativeBinCrossed, (pairWnative.getActiveId() - activeIdAtT121) * dt, "test_CircularOracleGetSampleAt::9"
+        );
     }
 
     function test_MaxLengthOracle() external {
@@ -260,7 +262,7 @@ contract LBPairOracleTest is TestHelper {
         assertEq(cumulativeIdPastDay + uint64(activeId) * 3600 * 23, cumulativeIdPastHour, "test_MaxLengthOracle::17");
 
         assertEq(
-            cumulativeIdPastHour + uint64(activeId) * 2600 + uint64(newActiveId) * 1000,
+            cumulativeIdPastHour + uint64(activeId) * 2600 + uint64(activeId) * 1000,
             cumulativeIdNow,
             "test_MaxLengthOracle::18"
         );

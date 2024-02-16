@@ -231,7 +231,7 @@ contract OracleHelperTest is Test {
             ? inputs.activeId - inputs.previousActiveId
             : inputs.previousActiveId - inputs.activeId;
 
-        uint64 cumulativeId = uint64(inputs.previousActiveId) * inputs.createdAt + uint64(inputs.activeId) * dt;
+        uint64 cumulativeId = uint64(inputs.previousActiveId) * inputs.createdAt + uint64(inputs.previousActiveId) * dt;
         uint64 cumulativeVolatility =
             uint64(inputs.previousVolatility) * inputs.createdAt + uint64(inputs.volatility) * dt;
         uint64 cumulativeBinCrossed = uint64(inputs.previousBinCrossed) * inputs.createdAt + uint64(dId) * dt;
@@ -283,7 +283,7 @@ contract OracleHelperTest is Test {
             ? inputs.activeId - inputs.previousActiveId
             : inputs.previousActiveId - inputs.activeId;
 
-        uint64 cumulativeId = uint64(inputs.previousActiveId) * inputs.createdAt + uint64(inputs.activeId) * dt;
+        uint64 cumulativeId = uint64(inputs.previousActiveId) * inputs.createdAt + uint64(inputs.previousActiveId) * dt;
         uint64 cumulativeVolatility =
             uint64(inputs.previousVolatility) * inputs.createdAt + uint64(inputs.volatility) * dt;
         uint64 cumulativeBinCrossed = uint64(inputs.previousBinCrossed) * inputs.createdAt + uint64(dId) * dt;

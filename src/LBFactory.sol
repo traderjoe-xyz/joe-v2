@@ -592,7 +592,7 @@ contract LBFactory is Ownable2Step, AccessControl, ILBFactory {
         override
         onlyRole(LB_HOOKS_MANAGER_ROLE)
     {
-        _setLBHooksParametersOnPair(tokenX, tokenY, binStep, 0, "");
+        _setLBHooksParametersOnPair(tokenX, tokenY, binStep, 0, new bytes(0));
     }
 
     /**

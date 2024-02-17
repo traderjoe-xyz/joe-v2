@@ -3,6 +3,10 @@ pragma solidity ^0.8.10;
 
 import {ILBHooks} from "../interfaces/ILBHooks.sol";
 
+/**
+ * @title Hooks library
+ * @notice This library contains functions that should be used to interact with hooks
+ */
 library Hooks {
     error Hooks__CallFailed();
 
@@ -31,6 +35,11 @@ library Hooks {
         bool afterBatchTransferFrom;
     }
 
+    /**
+     * @dev Helper function to encode the hooks parameters to a single bytes32 value
+     * @param parameters The hooks parameters
+     * @return hooksParameters The encoded hooks parameters
+     */
     function encode(Parameters memory parameters) internal pure returns (bytes32 hooksParameters) {
         hooksParameters = bytes32(uint256(uint160(address(parameters.hooks))));
 
@@ -46,6 +55,11 @@ library Hooks {
         if (parameters.afterBatchTransferFrom) hooksParameters |= AFTER_TRANSFER_FLAG;
     }
 
+    /**
+     * @dev Helper function to decode the hooks parameters from a single bytes32 value
+     * @param hooksParameters The encoded hooks parameters
+     * @return parameters The hooks parameters
+     */
     function decode(bytes32 hooksParameters) internal pure returns (Parameters memory parameters) {
         parameters.hooks = getHooks(hooksParameters);
 
@@ -61,18 +75,40 @@ library Hooks {
         parameters.afterBatchTransferFrom = (hooksParameters & AFTER_TRANSFER_FLAG) != 0;
     }
 
+    /**
+     * @dev Helper function to get the hooks address from the encoded hooks parameters
+     * @param hooksParameters The encoded hooks parameters
+     * @return hooks The hooks address
+     */
     function getHooks(bytes32 hooksParameters) internal pure returns (address hooks) {
         hooks = address(uint160(uint256(hooksParameters)));
     }
 
+    /**
+     * @dev Helper function to set the hooks address in the encoded hooks parameters
+     * @param hooksParameters The encoded hooks parameters
+     * @param newHooks The new hooks address
+     * @return hooksParameters The updated hooks parameters
+     */
     function setHooks(bytes32 hooksParameters, address newHooks) internal pure returns (bytes32) {
         return bytes32(bytes12(hooksParameters)) | bytes32(uint256(uint160(newHooks)));
     }
 
+    /**
+     * @dev Helper function to get the flags from the encoded hooks parameters
+     * @param hooksParameters The encoded hooks parameters
+     * @return flags The flags
+     */
     function getFlags(bytes32 hooksParameters) internal pure returns (bytes12 flags) {
         flags = bytes12(hooksParameters);
     }
 
+    /**
+     * @dev Helper function call the onHooksSet function on the hooks contract, only if the
+     * hooksParameters is not 0
+     * @param hooksParameters The encoded hooks parameters
+     * @param onHooksSetData The data to pass to the onHooksSet function
+     */
     function onHooksSet(bytes32 hooksParameters, bytes calldata onHooksSetData) internal {
         if (hooksParameters != 0) {
             _safeCall(
@@ -81,6 +117,15 @@ library Hooks {
         }
     }
 
+    /**
+     * @dev Helper function to call the beforeSwap function on the hooks contract, only if the
+     * BEFORE_SWAP_FLAG is set in the hooksParameters
+     * @param hooksParameters The encoded hooks parameters
+     * @param sender The sender
+     * @param to The recipient
+     * @param swapForY Whether the swap is for Y
+     * @param amountsIn The amounts in
+     */
     function beforeSwap(bytes32 hooksParameters, address sender, address to, bool swapForY, bytes32 amountsIn)
         internal
     {
@@ -91,6 +136,15 @@ library Hooks {
         }
     }
 
+    /**
+     * @dev Helper function to call the afterSwap function on the hooks contract, only if the
+     * AFTER_SWAP_FLAG is set in the hooksParameters
+     * @param hooksParameters The encoded hooks parameters
+     * @param sender The sender
+     * @param to The recipient
+     * @param swapForY Whether the swap is for Y
+     * @param amountsOut The amounts out
+     */
     function afterSwap(bytes32 hooksParameters, address sender, address to, bool swapForY, bytes32 amountsOut)
         internal
     {
@@ -101,12 +155,29 @@ library Hooks {
         }
     }
 
+    /**
+     * @dev Helper function to call the beforeFlashLoan function on the hooks contract, only if the
+     * BEFORE_FLASH_LOAN_FLAG is set in the hooksParameters
+     * @param hooksParameters The encoded hooks parameters
+     * @param sender The sender
+     * @param to The recipient
+     * @param amounts The amounts
+     */
     function beforeFlashLoan(bytes32 hooksParameters, address sender, address to, bytes32 amounts) internal {
         if ((hooksParameters & BEFORE_FLASH_LOAN_FLAG) != 0) {
             _safeCall(hooksParameters, abi.encodeWithSelector(ILBHooks.beforeFlashLoan.selector, sender, to, amounts));
         }
     }
 
+    /**
+     * @dev Helper function to call the afterFlashLoan function on the hooks contract, only if the
+     * AFTER_FLASH_LOAN_FLAG is set in the hooksParameters
+     * @param hooksParameters The encoded hooks parameters
+     * @param sender The sender
+     * @param to The recipient
+     * @param fees The fees
+     * @param feesReceived The fees received
+     */
     function afterFlashLoan(bytes32 hooksParameters, address sender, address to, bytes32 fees, bytes32 feesReceived)
         internal
     {
@@ -118,6 +189,15 @@ library Hooks {
         }
     }
 
+    /**
+     * @dev Helper function to call the beforeMint function on the hooks contract, only if the
+     * BEFORE_MINT_FLAG is set in the hooksParameters
+     * @param hooksParameters The encoded hooks parameters
+     * @param sender The sender
+     * @param to The recipient
+     * @param liquidityConfigs The liquidity configs
+     * @param amountsReceived The amounts received
+     */
     function beforeMint(
         bytes32 hooksParameters,
         address sender,
@@ -133,6 +213,15 @@ library Hooks {
         }
     }
 
+    /**
+     * @dev Helper function to call the afterMint function on the hooks contract, only if the
+     * AFTER_MINT_FLAG is set in the hooksParameters
+     * @param hooksParameters The encoded hooks parameters
+     * @param sender The sender
+     * @param to The recipient
+     * @param liquidityConfigs The liquidity configs
+     * @param amountsIn The amounts in
+     */
     function afterMint(
         bytes32 hooksParameters,
         address sender,
@@ -148,6 +237,16 @@ library Hooks {
         }
     }
 
+    /**
+     * @dev Helper function to call the beforeBurn function on the hooks contract, only if the
+     * BEFORE_BURN_FLAG is set in the hooksParameters
+     * @param hooksParameters The encoded hooks parameters
+     * @param sender The sender
+     * @param from The sender
+     * @param to The recipient
+     * @param ids The ids
+     * @param amountsToBurn The amounts to burn
+     */
     function beforeBurn(
         bytes32 hooksParameters,
         address sender,
@@ -164,6 +263,16 @@ library Hooks {
         }
     }
 
+    /**
+     * @dev Helper function to call the afterBurn function on the hooks contract, only if the
+     * AFTER_BURN_FLAG is set in the hooksParameters
+     * @param hooksParameters The encoded hooks parameters
+     * @param sender The sender
+     * @param from The sender
+     * @param to The recipient
+     * @param ids The ids
+     * @param amountsToBurn The amounts to burn
+     */
     function afterBurn(
         bytes32 hooksParameters,
         address sender,
@@ -180,6 +289,16 @@ library Hooks {
         }
     }
 
+    /**
+     * @dev Helper function to call the beforeTransferFrom function on the hooks contract, only if the
+     * BEFORE_TRANSFER_FLAG is set in the hooksParameters
+     * @param hooksParameters The encoded hooks parameters
+     * @param sender The sender
+     * @param from The sender
+     * @param to The recipient
+     * @param ids The list of ids
+     * @param amounts The list of amounts
+     */
     function beforeBatchTransferFrom(
         bytes32 hooksParameters,
         address sender,
@@ -196,6 +315,16 @@ library Hooks {
         }
     }
 
+    /**
+     * @dev Helper function to call the afterTransferFrom function on the hooks contract, only if the
+     * AFTER_TRANSFER_FLAG is set in the hooksParameters
+     * @param hooksParameters The encoded hooks parameters
+     * @param sender The sender
+     * @param from The sender
+     * @param to The recipient
+     * @param ids The list of ids
+     * @param amounts The list of amounts
+     */
     function afterBatchTransferFrom(
         bytes32 hooksParameters,
         address sender,
@@ -212,6 +341,12 @@ library Hooks {
         }
     }
 
+    /**
+     * @dev Helper function to call the hooks contract and verify the call was successful
+     * by matching the expected selector with the returned data
+     * @param hooksParameters The encoded hooks parameters
+     * @param data The data to pass to the hooks contract
+     */
     function _safeCall(bytes32 hooksParameters, bytes memory data) private {
         bool success;
 

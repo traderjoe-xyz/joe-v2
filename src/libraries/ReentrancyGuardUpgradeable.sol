@@ -6,7 +6,11 @@ pragma solidity ^0.8.20;
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
- * @dev Contract module that helps prevent reentrant calls to a function.
+ * @dev This contract is a fork of the `ReentrancyGuardUpgradeable` contract from OpenZeppelin
+ * that has been modified to update the `_nonReentrantBefore` and `_nonReentrantAfter`
+ * functions to `internal` visibility.
+ *
+ * Contract module that helps prevent reentrant calls to a function.
  *
  * Inheriting from `ReentrancyGuard` will make the {nonReentrant} modifier
  * available, which can be applied to functions to make sure there are no nested
@@ -20,8 +24,6 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
  * TIP: If you would like to learn more about reentrancy and alternative ways
  * to protect against it, check out our blog post
  * https://blog.openzeppelin.com/reentrancy-after-istanbul/[Reentrancy After Istanbul].
- *
- * The `_nonReentrantBefore` and `_nonReentrantAfter` functions were updated to `internal` visibility.
  */
 abstract contract ReentrancyGuardUpgradeable is Initializable {
     // Booleans are more expensive than uint256 or any type that takes up a full

@@ -350,10 +350,11 @@ library Hooks {
     function _safeCall(bytes32 hooksParameters, bytes memory data) private {
         bool success;
 
+        address hooks = getHooks(hooksParameters);
+
         assembly {
             let expectedSelector := shr(224, mload(add(data, 0x20)))
 
-            let hooks := and(hooksParameters, 0xffffffffffffffffffffffffffffffffffffffff)
             success := call(gas(), hooks, 0, add(data, 0x20), mload(data), 0, 0x20)
 
             if and(iszero(success), iszero(iszero(returndatasize()))) {

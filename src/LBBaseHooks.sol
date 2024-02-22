@@ -18,8 +18,8 @@ abstract contract LBBaseHooks is ILBHooks {
     /**
      * @dev Modifier to check that the caller is the trusted caller
      */
-    modifier onlyCaller() {
-        _checkCaller();
+    modifier onlyTrustedCaller() {
+        _checkTrustedCaller();
         _;
     }
 
@@ -49,7 +49,7 @@ abstract contract LBBaseHooks is ILBHooks {
     function onHooksSet(bytes32 hooksParameters, bytes calldata onHooksSetData)
         external
         override
-        onlyCaller
+        onlyTrustedCaller
         returns (bytes4)
     {
         if (!_isLinked()) revert LBBaseHooks__NotLinked();
@@ -71,7 +71,7 @@ abstract contract LBBaseHooks is ILBHooks {
     function beforeSwap(address sender, address to, bool swapForY, bytes32 amountsIn)
         external
         override
-        onlyCaller
+        onlyTrustedCaller
         returns (bytes4)
     {
         _beforeSwap(sender, to, swapForY, amountsIn);
@@ -91,7 +91,7 @@ abstract contract LBBaseHooks is ILBHooks {
     function afterSwap(address sender, address to, bool swapForY, bytes32 amountsOut)
         external
         override
-        onlyCaller
+        onlyTrustedCaller
         returns (bytes4)
     {
         _afterSwap(sender, to, swapForY, amountsOut);
@@ -110,7 +110,7 @@ abstract contract LBBaseHooks is ILBHooks {
     function beforeFlashLoan(address sender, address to, bytes32 amounts)
         external
         override
-        onlyCaller
+        onlyTrustedCaller
         returns (bytes4)
     {
         _beforeFlashLoan(sender, to, amounts);
@@ -130,7 +130,7 @@ abstract contract LBBaseHooks is ILBHooks {
     function afterFlashLoan(address sender, address to, bytes32 fees, bytes32 feesReceived)
         external
         override
-        onlyCaller
+        onlyTrustedCaller
         returns (bytes4)
     {
         _afterFlashLoan(sender, to, fees, feesReceived);
@@ -150,7 +150,7 @@ abstract contract LBBaseHooks is ILBHooks {
     function beforeMint(address sender, address to, bytes32[] calldata liquidityConfigs, bytes32 amountsReceived)
         external
         override
-        onlyCaller
+        onlyTrustedCaller
         returns (bytes4)
     {
         _beforeMint(sender, to, liquidityConfigs, amountsReceived);
@@ -170,7 +170,7 @@ abstract contract LBBaseHooks is ILBHooks {
     function afterMint(address sender, address to, bytes32[] calldata liquidityConfigs, bytes32 amountsIn)
         external
         override
-        onlyCaller
+        onlyTrustedCaller
         returns (bytes4)
     {
         _afterMint(sender, to, liquidityConfigs, amountsIn);
@@ -194,7 +194,7 @@ abstract contract LBBaseHooks is ILBHooks {
         address to,
         uint256[] calldata ids,
         uint256[] calldata amountsToBurn
-    ) external override onlyCaller returns (bytes4) {
+    ) external override onlyTrustedCaller returns (bytes4) {
         _beforeBurn(sender, from, to, ids, amountsToBurn);
 
         return this.beforeBurn.selector;
@@ -216,7 +216,7 @@ abstract contract LBBaseHooks is ILBHooks {
         address to,
         uint256[] calldata ids,
         uint256[] calldata amountsToBurn
-    ) external override onlyCaller returns (bytes4) {
+    ) external override onlyTrustedCaller returns (bytes4) {
         _afterBurn(sender, from, to, ids, amountsToBurn);
 
         return this.afterBurn.selector;
@@ -238,7 +238,7 @@ abstract contract LBBaseHooks is ILBHooks {
         address to,
         uint256[] calldata ids,
         uint256[] calldata amounts
-    ) external override onlyCaller returns (bytes4) {
+    ) external override onlyTrustedCaller returns (bytes4) {
         _beforeBatchTransferFrom(sender, from, to, ids, amounts);
 
         return this.beforeBatchTransferFrom.selector;
@@ -260,7 +260,7 @@ abstract contract LBBaseHooks is ILBHooks {
         address to,
         uint256[] calldata ids,
         uint256[] calldata amounts
-    ) external override onlyCaller returns (bytes4) {
+    ) external override onlyTrustedCaller returns (bytes4) {
         _afterBatchTransferFrom(sender, from, to, ids, amounts);
 
         return this.afterBatchTransferFrom.selector;
@@ -269,7 +269,7 @@ abstract contract LBBaseHooks is ILBHooks {
     /**
      * @dev Checks that the caller is the trusted caller, otherwise reverts
      */
-    function _checkCaller() internal view virtual {
+    function _checkTrustedCaller() internal view virtual {
         if (msg.sender != address(_getLBPair())) revert LBBaseHooks__InvalidCaller(msg.sender);
     }
 

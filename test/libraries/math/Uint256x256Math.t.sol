@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
@@ -66,7 +66,7 @@ contract Uint256x256MathTest is Test {
             vm.expectRevert(Uint256x256Math.Uint256x256Math__MulShiftOverflow.selector);
             x.mulShiftRoundDown(y, shift);
         } else {
-            assertEq(x.mulShiftRoundDown(y, shift), x.mulDivRoundDown(y, 1 << shift), "testFuzz_MulShiftRoundDown::1");
+            assertEq(x.mulShiftRoundDown(y, shift), x.mulDivRoundDown(y, 1 << shift), "testFuzz_mulShiftRoundDown::1");
         }
     }
 
@@ -76,7 +76,7 @@ contract Uint256x256MathTest is Test {
             vm.expectRevert(Uint256x256Math.Uint256x256Math__MulShiftOverflow.selector);
             x.mulShiftRoundUp(y, shift);
         } else {
-            assertEq(x.mulShiftRoundUp(y, shift), x.mulDivRoundUp(y, 1 << shift), "testFuzz_MulShiftRoundUp::1");
+            assertEq(x.mulShiftRoundUp(y, shift), x.mulDivRoundUp(y, 1 << shift), "testFuzz_mulShiftRoundUp::1");
         }
     }
 
@@ -123,6 +123,22 @@ contract Uint256x256MathTest is Test {
                 }
 
                 assertEq(x.shiftDivRoundUp(shift, denominator), result, "testFuzz_ShiftDivRoundUp::1");
+            }
+        }
+    }
+
+    function testFuzz_Sqrt(uint256 x) external pure {
+        uint256 sqrtX = x.sqrt();
+
+        assertLe(sqrtX * sqrtX, x, "testFuzz_Sqrt::1");
+
+        uint256 sqrtXPlus1 = sqrtX + 1;
+
+        unchecked {
+            uint256 sqrtXPlus1Squared = sqrtXPlus1 * sqrtXPlus1;
+
+            if (sqrtXPlus1Squared / sqrtXPlus1 == sqrtXPlus1) {
+                assertGt(sqrtXPlus1Squared, x, "testFuzz_Sqrt::2");
             }
         }
     }

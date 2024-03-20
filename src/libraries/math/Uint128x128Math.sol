@@ -90,7 +90,7 @@ library Uint128x128Math {
      * @notice Returns the value of x^y. It calculates `1 / x^abs(y)` if x is bigger than 2^128.
      * At the end of the operations, we invert the result if needed.
      * @param x The unsigned 128.128-binary fixed-point number for which to calculate the power
-     * @param y A relative number without any decimals, needs to be between ]2^21; 2^21[
+     * @param y A relative number without any decimals, needs to be between ]-2^21; 2^21[
      */
     function pow(uint256 x, int256 y) internal pure returns (uint256 result) {
         bool invert;

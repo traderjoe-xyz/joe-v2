@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
 import "./helpers/TestHelper.sol";
 
+import "@openzeppelin/contracts/access/AccessControl.sol";
+
 import "src/libraries/ImmutableClone.sol";
+import "./mocks/MockHooks.sol";
 
 /**
  * Test scenarios:
@@ -22,7 +25,6 @@ import "src/libraries/ImmutableClone.sol";
  * 12. Add quote asset to whitelist
  * 13. Remove quote asset from whitelist
  */
-
 contract LiquidityBinFactoryTest is TestHelper {
     event QuoteAssetRemoved(IERC20 indexed _quoteAsset);
     event QuoteAssetAdded(IERC20 indexed _quoteAsset);
@@ -71,12 +73,12 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         vm.expectEmit(true, true, true, true);
         emit FlashLoanFeeSet(0, DEFAULT_FLASHLOAN_FEE);
-        new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
+        new LBFactory(DEV, DEV, DEFAULT_FLASHLOAN_FEE);
 
         // Reverts if the flash loan fee is above the max fee
         uint256 maxFee = factory.getMaxFlashLoanFee();
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__FlashLoanFeeAboveMax.selector, maxFee + 1, maxFee));
-        new LBFactory(DEV, maxFee + 1);
+        new LBFactory(DEV, DEV, maxFee + 1);
     }
 
     function test_SetLBPairImplementation() public {
@@ -86,7 +88,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.expectEmit(true, true, true, true);
         emit LBPairImplementationSet(pairImplementation, newImplementation);
         factory.setLBPairImplementation(address(newImplementation));
-        assertEq(factory.getLBPairImplementation(), address(newImplementation), "test_setLBPairImplementation:1");
+        assertEq(factory.getLBPairImplementation(), address(newImplementation), "test_SetLBPairImplementation::1");
     }
 
     function test_revert_SetLBPairImplementation() public {
@@ -97,7 +99,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SameImplementation.selector, newImplementation));
         factory.setLBPairImplementation(address(newImplementation));
 
-        LBFactory anotherFactory = new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
+        LBFactory anotherFactory = new LBFactory(DEV, DEV, DEFAULT_FLASHLOAN_FEE);
 
         anotherFactory.setPreset(1, 1, 1, 1, 1, 1, 1, 1, false);
         anotherFactory.addQuoteAsset(usdc);
@@ -156,21 +158,21 @@ contract LiquidityBinFactoryTest is TestHelper {
             uint24 maxVolatilityAccumulator
         ) = pair.getStaticFeeParameters();
 
-        assertEq(baseFactor, DEFAULT_BASE_FACTOR, "test_createLBPair::11");
-        assertEq(filterPeriod, DEFAULT_FILTER_PERIOD, "test_createLBPair::12");
-        assertEq(decayPeriod, DEFAULT_DECAY_PERIOD, "test_createLBPair::13");
-        assertEq(reductionFactor, DEFAULT_REDUCTION_FACTOR, "test_createLBPair::14");
-        assertEq(variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL, "test_createLBPair::15");
-        assertEq(protocolShare, DEFAULT_PROTOCOL_SHARE, "test_createLBPair::16");
-        assertEq(maxVolatilityAccumulator, DEFAULT_MAX_VOLATILITY_ACCUMULATOR, "test_createLBPair::17");
+        assertEq(baseFactor, DEFAULT_BASE_FACTOR, "test_CreateLBPair::11");
+        assertEq(filterPeriod, DEFAULT_FILTER_PERIOD, "test_CreateLBPair::12");
+        assertEq(decayPeriod, DEFAULT_DECAY_PERIOD, "test_CreateLBPair::13");
+        assertEq(reductionFactor, DEFAULT_REDUCTION_FACTOR, "test_CreateLBPair::14");
+        assertEq(variableFeeControl, DEFAULT_VARIABLE_FEE_CONTROL, "test_CreateLBPair::15");
+        assertEq(protocolShare, DEFAULT_PROTOCOL_SHARE, "test_CreateLBPair::16");
+        assertEq(maxVolatilityAccumulator, DEFAULT_MAX_VOLATILITY_ACCUMULATOR, "test_CreateLBPair::17");
 
         (uint24 volatilityAccumulator, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate) =
             pair.getVariableFeeParameters();
 
-        assertEq(volatilityAccumulator, 0, "test_createLBPair::18");
-        assertEq(volatilityReference, 0, "test_createLBPair::19");
-        assertEq(idReference, ID_ONE, "test_createLBPair::20");
-        assertEq(timeOfLastUpdate, 0, "test_createLBPair::21");
+        assertEq(volatilityAccumulator, 0, "test_CreateLBPair::18");
+        assertEq(volatilityReference, 0, "test_CreateLBPair::19");
+        assertEq(idReference, ID_ONE, "test_CreateLBPair::20");
+        assertEq(timeOfLastUpdate, 0, "test_CreateLBPair::21");
     }
 
     function test_CreateLBPairFactoryUnlocked() public {
@@ -228,7 +230,7 @@ contract LiquidityBinFactoryTest is TestHelper {
         factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
 
         // Can't create pair if the implementation is not set
-        LBFactory newFactory = new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
+        LBFactory newFactory = new LBFactory(DEV, DEV, DEFAULT_FLASHLOAN_FEE);
 
         // Can't create a pair if the preset is not set
         vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__BinStepHasNoPreset.selector, DEFAULT_BIN_STEP));
@@ -299,7 +301,7 @@ contract LiquidityBinFactoryTest is TestHelper {
     function test_revert_SetLBPairIgnoredForRouting() public {
         // Can't ignore for routing if not the owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.setLBPairIgnored(usdt, usdc, DEFAULT_BIN_STEP, true);
 
         // Can't update a non existing pair
@@ -349,7 +351,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             variableFeeControl,
             protocolShare,
             maxVolatilityAccumulator
-            );
+        );
         vm.expectEmit(true, true, true, true);
         emit PresetOpenStateChanged(binStep, isOpen);
 
@@ -367,13 +369,13 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Bin step DEFAULT_BIN_STEP is already there
         if (binStep != DEFAULT_BIN_STEP) {
-            assertEq(factory.getAllBinSteps().length, 2, "1");
+            assertEq(factory.getAllBinSteps().length, 2, "testFuzz_SetPreset::1");
 
-            assertEq(factory.getAllBinSteps()[0], DEFAULT_BIN_STEP, "2");
-            assertEq(factory.getAllBinSteps()[1], binStep, "3");
+            assertEq(factory.getAllBinSteps()[0], DEFAULT_BIN_STEP, "testFuzz_SetPreset::2");
+            assertEq(factory.getAllBinSteps()[1], binStep, "testFuzz_SetPreset::3");
         } else {
-            assertEq(factory.getAllBinSteps().length, 1, "4");
-            assertEq(factory.getAllBinSteps()[0], binStep, "5");
+            assertEq(factory.getAllBinSteps().length, 1, "testFuzz_SetPreset::4");
+            assertEq(factory.getAllBinSteps()[0], binStep, "testFuzz_SetPreset::5");
         }
 
         // Check splitted in two to avoid stack too deep errors
@@ -381,10 +383,10 @@ contract LiquidityBinFactoryTest is TestHelper {
             (uint256 baseFactorView, uint256 filterPeriodView, uint256 decayPeriodView, uint256 reductionFactorView,,,,)
             = factory.getPreset(binStep);
 
-            assertEq(baseFactorView, baseFactor);
-            assertEq(filterPeriodView, filterPeriod);
-            assertEq(decayPeriodView, decayPeriod);
-            assertEq(reductionFactorView, reductionFactor);
+            assertEq(baseFactorView, baseFactor, "testFuzz_SetPreset::6");
+            assertEq(filterPeriodView, filterPeriod, "testFuzz_SetPreset::7");
+            assertEq(decayPeriodView, decayPeriod, "testFuzz_SetPreset::8");
+            assertEq(reductionFactorView, reductionFactor, "testFuzz_SetPreset::9");
         }
 
         {
@@ -399,10 +401,10 @@ contract LiquidityBinFactoryTest is TestHelper {
                 bool isOpenView
             ) = factory.getPreset(binStep);
 
-            assertEq(variableFeeControlView, variableFeeControl);
-            assertEq(protocolShareView, protocolShare);
-            assertEq(maxVolatilityAccumulatorView, maxVolatilityAccumulator);
-            assertEq(isOpenView, isOpen);
+            assertEq(variableFeeControlView, variableFeeControl, "testFuzz_SetPreset::10");
+            assertEq(protocolShareView, protocolShare, "testFuzz_SetPreset::11");
+            assertEq(maxVolatilityAccumulatorView, maxVolatilityAccumulator, "testFuzz_SetPreset::12");
+            assertEq(isOpenView, isOpen, "testFuzz_SetPreset::13");
         }
     }
 
@@ -445,7 +447,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Revert if not owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.removePreset(DEFAULT_BIN_STEP);
 
         // Revert if bin step does not exist
@@ -492,7 +494,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             DEFAULT_VARIABLE_FEE_CONTROL * 2,
             DEFAULT_PROTOCOL_SHARE * 2,
             DEFAULT_MAX_VOLATILITY_ACCUMULATOR * 2
-            );
+        );
 
         factory.setFeesParametersOnPair(
             wnative,
@@ -541,7 +543,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't update if not the owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.setFeesParametersOnPair(
             wnative,
             usdc,
@@ -582,7 +584,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't set if not the owner
         vm.prank(BOB);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, BOB));
         factory.setFeeRecipient(BOB);
 
         // Can't set to the zero address
@@ -604,7 +606,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't set if not the owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.setFlashLoanFee(DEFAULT_FLASHLOAN_FEE);
 
         // Can't set to the same fee
@@ -664,7 +666,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't open if not the owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.setPresetOpenState(binStep, true);
 
         // Can't set to the same state
@@ -691,7 +693,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't add if not the owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.addQuoteAsset(newToken);
 
         // Can't add if the asset is already a quote asset
@@ -713,7 +715,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't remove if not the owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.removeQuoteAsset(usdc);
 
         // Can't remove if the asset is not a quote asset
@@ -728,7 +730,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Can't force decay if not the owner
         vm.prank(ALICE);
-        vm.expectRevert(abi.encodeWithSelector(IPendingOwnable.PendingOwnable__NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
         factory.forceDecay(pair);
     }
 
@@ -778,5 +780,99 @@ contract LiquidityBinFactoryTest is TestHelper {
         ILBFactory.LBPairInformation memory pair2Info = LBPairsAvailable[1];
         assertEq(address(pair2Info.LBPair), address(pair2), "test_GetAllLBPairs::4");
         assertEq(pair2Info.binStep, 20, "test_GetAllLBPairs::5");
+    }
+
+    function test_setLBHooksParametersOnPair() public {
+        // Can't create if not the right role
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), factory.LB_HOOKS_MANAGER_ROLE()
+            )
+        );
+        factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, bytes32(0), new bytes(0));
+
+        factory.grantRole(factory.LB_HOOKS_MANAGER_ROLE(), address(this));
+
+        vm.expectRevert(ILBFactory.LBFactory__InvalidHooksParameters.selector);
+        factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, bytes32(0), new bytes(0));
+
+        vm.expectRevert(ILBFactory.LBFactory__InvalidHooksParameters.selector);
+        factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, bytes32(uint256(1)), new bytes(0));
+
+        vm.expectRevert(ILBFactory.LBFactory__InvalidHooksParameters.selector);
+        factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, bytes32(uint256(1 << 160)), new bytes(0));
+
+        MockHooks hooks = new MockHooks();
+
+        Hooks.Parameters memory parameters = Hooks.Parameters({
+            hooks: address(hooks),
+            beforeSwap: true,
+            afterSwap: true,
+            beforeFlashLoan: true,
+            afterFlashLoan: true,
+            beforeMint: true,
+            afterMint: true,
+            beforeBurn: true,
+            afterBurn: true,
+            beforeBatchTransferFrom: true,
+            afterBatchTransferFrom: true
+        });
+        bytes32 packedParameters = Hooks.encode(parameters);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, usdt, usdc, DEFAULT_BIN_STEP)
+        );
+        factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, packedParameters, new bytes(0));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBFactory.LBFactory__LBPairNotCreated.selector, usdt, usdc, DEFAULT_BIN_STEP)
+        );
+        factory.removeLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP);
+
+        ILBPair pair = factory.createLBPair(usdt, usdc, ID_ONE, DEFAULT_BIN_STEP);
+
+        hooks.setPair(address(pair));
+
+        factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, packedParameters, new bytes(0));
+
+        assertEq(pair.getLBHooksParameters(), packedParameters, "test_setLBHooksParametersOnPair::1");
+
+        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SameHooksParameters.selector, packedParameters));
+        factory.setLBHooksParametersOnPair(usdt, usdc, DEFAULT_BIN_STEP, packedParameters, new bytes(0));
+
+        factory.removeLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP);
+
+        assertEq(pair.getLBHooksParameters(), bytes32(0), "test_setLBHooksParametersOnPair::2");
+
+        vm.expectRevert(abi.encodeWithSelector(ILBFactory.LBFactory__SameHooksParameters.selector, bytes32(0)));
+        factory.removeLBHooksOnPair(usdt, usdc, DEFAULT_BIN_STEP);
+    }
+
+    function test_AccessControl() public {
+        bytes32 DEFAULT_ADMIN_ROLE = factory.DEFAULT_ADMIN_ROLE();
+        bytes32 LB_HOOKS_MANAGER_ROLE = factory.LB_HOOKS_MANAGER_ROLE();
+
+        assertTrue(factory.hasRole(DEFAULT_ADMIN_ROLE, address(this)), "test_AccessControl::1");
+        assertFalse(factory.hasRole(factory.LB_HOOKS_MANAGER_ROLE(), ALICE), "test_AccessControl::2");
+
+        factory.grantRole(LB_HOOKS_MANAGER_ROLE, ALICE);
+        assertTrue(factory.hasRole(LB_HOOKS_MANAGER_ROLE, ALICE), "test_AccessControl::3");
+
+        factory.revokeRole(LB_HOOKS_MANAGER_ROLE, ALICE);
+        assertFalse(factory.hasRole(LB_HOOKS_MANAGER_ROLE, ALICE), "test_AccessControl::4");
+
+        vm.expectRevert(ILBFactory.LBFactory__CannotGrantDefaultAdminRole.selector);
+        factory.grantRole(bytes32(0), address(this));
+
+        factory.transferOwnership(BOB);
+
+        assertTrue(factory.hasRole(DEFAULT_ADMIN_ROLE, address(this)), "test_AccessControl::5");
+        assertFalse(factory.hasRole(DEFAULT_ADMIN_ROLE, BOB), "test_AccessControl::6");
+
+        vm.prank(BOB);
+        factory.acceptOwnership();
+
+        assertTrue(factory.hasRole(DEFAULT_ADMIN_ROLE, BOB), "test_AccessControl::7");
+        assertFalse(factory.hasRole(DEFAULT_ADMIN_ROLE, address(this)), "test_AccessControl::8");
     }
 }

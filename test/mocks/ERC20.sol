@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
-import {ERC20} from "openzeppelin/token/ERC20/ERC20.sol";
-import {Ownable} from "openzeppelin/access/Ownable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title ERC20Mock
 /// @author Trader Joe
@@ -13,7 +13,7 @@ contract ERC20Mock is ERC20, Ownable {
 
     /// @dev Constructor
     /// @param _decimals The number of decimals for this token
-    constructor(uint8 _decimals) ERC20("ERC20 Mock", "ERC20Mock") {
+    constructor(uint8 _decimals) ERC20("ERC20 Mock", "ERC20Mock") Ownable(msg.sender) {
         decimalsOverride = _decimals;
     }
 

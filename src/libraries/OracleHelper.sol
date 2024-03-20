@@ -210,7 +210,7 @@ library OracleHelper {
             unchecked {
                 (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed) = sample.update(
                     uint40(block.timestamp - lastUpdatedAt),
-                    activeId,
+                    parameters.getActiveId(),
                     parameters.getVolatilityAccumulator(),
                     parameters.getDeltaId(activeId)
                 );

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
 import {ERC20Mock} from "./ERC20.sol";
 
@@ -11,9 +11,10 @@ contract ERC20TransferTaxMock is ERC20Mock {
     /// @dev Constructor
     constructor() ERC20Mock(18) {}
 
-    function _transfer(address from, address to, uint256 amount) internal override {
+    function _update(address from, address to, uint256 amount) internal override {
         uint256 tax = amount / 2;
-        _burn(from, tax);
-        super._transfer(from, to, amount - tax);
+
+        super._update(from, address(0), tax);
+        super._update(from, to, amount - tax);
     }
 }

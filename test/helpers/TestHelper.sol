@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
@@ -17,8 +17,6 @@ import "src/libraries/math/Uint256x256Math.sol";
 import "src/libraries/Constants.sol";
 
 import {PriceHelper} from "src/libraries/PriceHelper.sol";
-
-import "../../src/interfaces/IPendingOwnable.sol";
 
 import "./Utils.sol";
 
@@ -118,7 +116,7 @@ abstract contract TestHelper is Test {
         legacyFactoryV2 = ILBLegacyFactory(AvalancheAddresses.JOE_V2_FACTORY);
 
         // Create factory
-        factory = new LBFactory(DEV, DEFAULT_FLASHLOAN_FEE);
+        factory = new LBFactory(DEV, DEV, DEFAULT_FLASHLOAN_FEE);
         pairImplementation = new LBPair(factory);
 
         // Setup factory

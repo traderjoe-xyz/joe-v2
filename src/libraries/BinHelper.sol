@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.10;
 
-import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {PackedUint128Math} from "./math/PackedUint128Math.sol";
 import {Uint256x256Math} from "./math/Uint256x256Math.sol";
@@ -11,7 +11,6 @@ import {Constants} from "./Constants.sol";
 import {PairParameterHelper} from "./PairParameterHelper.sol";
 import {FeeHelper} from "./FeeHelper.sol";
 import {PriceHelper} from "./PriceHelper.sol";
-import {TokenHelper} from "./TokenHelper.sol";
 
 /**
  * @title Liquidity Book Bin Helper Library
@@ -26,10 +25,11 @@ library BinHelper {
     using SafeCast for uint256;
     using PairParameterHelper for bytes32;
     using FeeHelper for uint128;
-    using TokenHelper for IERC20;
+    using SafeERC20 for IERC20;
 
     error BinHelper__CompositionFactorFlawed(uint24 id);
     error BinHelper__LiquidityOverflow();
+    error BinHelper__MaxLiquidityPerBinExceeded();
 
     /**
      * @dev Returns the amount of tokens that will be received when burning the given amount of liquidity
@@ -78,10 +78,10 @@ library BinHelper {
         (uint256 x, uint256 y) = amountsIn.decode();
 
         uint256 userLiquidity = getLiquidity(x, y, price);
-        if (totalSupply == 0 || userLiquidity == 0) return (userLiquidity, amountsIn);
+        if (userLiquidity == 0) return (0, 0);
 
         uint256 binLiquidity = getLiquidity(binReserves, price);
-        if (binLiquidity == 0) return (userLiquidity, amountsIn);
+        if (binLiquidity == 0 || totalSupply == 0) return (userLiquidity.sqrt(), amountsIn);
 
         shares = userLiquidity.mulDivRoundDown(totalSupply, binLiquidity);
         uint256 effectiveLiquidity = shares.mulDivRoundUp(binLiquidity, totalSupply);
@@ -106,6 +106,10 @@ library BinHelper {
             }
 
             amountsIn = uint128(x).encode(uint128(y));
+        }
+
+        if (getLiquidity(binReserves.add(amountsIn), price) > Constants.MAX_LIQUIDITY_PER_BIN) {
+            revert BinHelper__MaxLiquidityPerBinExceeded();
         }
 
         return (shares, amountsIn);
@@ -229,41 +233,50 @@ library BinHelper {
     ) internal pure returns (bytes32 amountsInWithFees, bytes32 amountsOutOfBin, bytes32 totalFees) {
         uint256 price = activeId.getPriceFromId(binStep);
 
-        uint128 binReserveOut = binReserves.decode(!swapForY);
+        {
+            uint128 binReserveOut = binReserves.decode(!swapForY);
 
-        uint128 maxAmountIn = swapForY
-            ? uint256(binReserveOut).shiftDivRoundUp(Constants.SCALE_OFFSET, price).safe128()
-            : uint256(binReserveOut).mulShiftRoundUp(price, Constants.SCALE_OFFSET).safe128();
+            uint128 maxAmountIn = swapForY
+                ? uint256(binReserveOut).shiftDivRoundUp(Constants.SCALE_OFFSET, price).safe128()
+                : uint256(binReserveOut).mulShiftRoundUp(price, Constants.SCALE_OFFSET).safe128();
 
-        uint128 totalFee = parameters.getTotalFee(binStep);
-        uint128 maxFee = maxAmountIn.getFeeAmount(totalFee);
+            uint128 totalFee = parameters.getTotalFee(binStep);
+            uint128 maxFee = maxAmountIn.getFeeAmount(totalFee);
 
-        maxAmountIn += maxFee;
+            maxAmountIn += maxFee;
 
-        uint128 amountIn128 = amountsInLeft.decode(swapForY);
-        uint128 fee128;
-        uint128 amountOut128;
+            uint128 amountIn128 = amountsInLeft.decode(swapForY);
+            uint128 fee128;
+            uint128 amountOut128;
 
-        if (amountIn128 >= maxAmountIn) {
-            fee128 = maxFee;
+            if (amountIn128 >= maxAmountIn) {
+                fee128 = maxFee;
 
-            amountIn128 = maxAmountIn;
-            amountOut128 = binReserveOut;
-        } else {
-            fee128 = amountIn128.getFeeAmountFrom(totalFee);
+                amountIn128 = maxAmountIn;
+                amountOut128 = binReserveOut;
+            } else {
+                fee128 = amountIn128.getFeeAmountFrom(totalFee);
 
-            uint256 amountIn = amountIn128 - fee128;
+                uint256 amountIn = amountIn128 - fee128;
 
-            amountOut128 = swapForY
-                ? uint256(amountIn).mulShiftRoundDown(price, Constants.SCALE_OFFSET).safe128()
-                : uint256(amountIn).shiftDivRoundDown(Constants.SCALE_OFFSET, price).safe128();
+                amountOut128 = swapForY
+                    ? uint256(amountIn).mulShiftRoundDown(price, Constants.SCALE_OFFSET).safe128()
+                    : uint256(amountIn).shiftDivRoundDown(Constants.SCALE_OFFSET, price).safe128();
 
-            if (amountOut128 > binReserveOut) amountOut128 = binReserveOut;
+                if (amountOut128 > binReserveOut) amountOut128 = binReserveOut;
+            }
+
+            (amountsInWithFees, amountsOutOfBin, totalFees) = swapForY
+                ? (amountIn128.encodeFirst(), amountOut128.encodeSecond(), fee128.encodeFirst())
+                : (amountIn128.encodeSecond(), amountOut128.encodeFirst(), fee128.encodeSecond());
         }
 
-        (amountsInWithFees, amountsOutOfBin, totalFees) = swapForY
-            ? (amountIn128.encodeFirst(), amountOut128.encodeSecond(), fee128.encodeFirst())
-            : (amountIn128.encodeSecond(), amountOut128.encodeFirst(), fee128.encodeSecond());
+        if (
+            getLiquidity(binReserves.add(amountsInWithFees).sub(amountsOutOfBin), price)
+                > Constants.MAX_LIQUIDITY_PER_BIN
+        ) {
+            revert BinHelper__MaxLiquidityPerBinExceeded();
+        }
     }
 
     /**

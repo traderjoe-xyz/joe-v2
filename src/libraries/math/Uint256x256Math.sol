@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.10;
 
+import {BitMath} from "./BitMath.sol";
+
 /**
  * @title Liquidity Book Uint256x256 Math Library
  * @author Trader Joe
@@ -234,5 +236,31 @@ library Uint256x256Math {
                 result = prod0 * inverse;
             }
         }
+    }
+
+    /**
+     * @notice Calculates the square root of x
+     * @dev Credit to OpenZeppelin's Math library under MIT license
+     */
+    function sqrt(uint256 x) internal pure returns (uint256 sqrtX) {
+        if (x == 0) return 0;
+
+        uint256 msb = BitMath.mostSignificantBit(x);
+
+        assembly {
+            sqrtX := shl(shr(1, msb), 1)
+
+            sqrtX := shr(1, add(sqrtX, div(x, sqrtX)))
+            sqrtX := shr(1, add(sqrtX, div(x, sqrtX)))
+            sqrtX := shr(1, add(sqrtX, div(x, sqrtX)))
+            sqrtX := shr(1, add(sqrtX, div(x, sqrtX)))
+            sqrtX := shr(1, add(sqrtX, div(x, sqrtX)))
+            sqrtX := shr(1, add(sqrtX, div(x, sqrtX)))
+            sqrtX := shr(1, add(sqrtX, div(x, sqrtX)))
+
+            x := div(x, sqrtX)
+        }
+
+        return sqrtX < x ? sqrtX : x;
     }
 }

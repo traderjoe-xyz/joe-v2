@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
-import "../../src/libraries/ReentrancyGuard.sol";
-import "../../src/libraries/AddressHelper.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
-contract ReentrancyGuardTest is Test {
+import "../../src/libraries/ReentrancyGuardUpgradeable.sol";
+
+contract ReentrancyGuardUpgradeableTest is Test {
     Foo foo;
 
     function setUp() public {
@@ -15,7 +16,7 @@ contract ReentrancyGuardTest is Test {
     }
 
     function testReentrancyGuard() public {
-        vm.expectRevert(ReentrancyGuard.ReentrancyGuard__ReentrantCall.selector);
+        vm.expectRevert(ReentrancyGuardUpgradeable.ReentrancyGuardReentrantCall.selector);
         foo.callSelf(abi.encodeWithSignature("reentrancyGuarded()"));
     }
 
@@ -24,15 +25,15 @@ contract ReentrancyGuardTest is Test {
     }
 }
 
-contract Foo is ReentrancyGuard {
-    using AddressHelper for address;
+contract Foo is ReentrancyGuardUpgradeable {
+    using Address for address;
 
-    constructor() {
+    constructor() initializer {
         __ReentrancyGuard_init();
     }
 
     function callSelf(bytes memory data) external nonReentrant {
-        address(this).callAndCatch(data);
+        address(this).functionCall(data);
     }
 
     function reentrancyGuarded() external nonReentrant {}

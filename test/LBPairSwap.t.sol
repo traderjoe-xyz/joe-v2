@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
 import "./helpers/TestHelper.sol";
 
@@ -20,7 +20,7 @@ contract LBPairSwapTest is TestHelper {
 
         (uint128 amountIn, uint128 amountOutLeft,) = pairWnative.getSwapIn(amountOut, true);
 
-        assertEq(amountOutLeft, 0, "TestFuzz_SwapInForY::1");
+        assertEq(amountOutLeft, 0, "testFuzz_SwapInForY::1");
 
         deal(address(wnative), ALICE, amountIn);
 
@@ -29,8 +29,8 @@ contract LBPairSwapTest is TestHelper {
         pairWnative.swap(true, ALICE);
         vm.stopPrank();
 
-        assertEq(wnative.balanceOf(ALICE), 0, "TestFuzz_SwapInForY::2");
-        assertEq(usdc.balanceOf(ALICE), amountOut, "TestFuzz_SwapInForY::3");
+        assertEq(wnative.balanceOf(ALICE), 0, "testFuzz_SwapInForY::2");
+        assertEq(usdc.balanceOf(ALICE), amountOut, "testFuzz_SwapInForY::3");
     }
 
     function testFuzz_SwapInForX(uint128 amountOut) public {
@@ -38,7 +38,7 @@ contract LBPairSwapTest is TestHelper {
 
         (uint128 amountIn, uint128 amountOutLeft,) = pairWnative.getSwapIn(amountOut, false);
 
-        assertEq(amountOutLeft, 0, "TestFuzz_SwapInForX::1");
+        assertEq(amountOutLeft, 0, "testFuzz_SwapInForX::1");
 
         deal(address(usdc), ALICE, amountIn);
 
@@ -47,8 +47,8 @@ contract LBPairSwapTest is TestHelper {
         pairWnative.swap(false, ALICE);
         vm.stopPrank();
 
-        assertEq(usdc.balanceOf(ALICE), 0, "TestFuzz_SwapInForX::2");
-        assertEq(wnative.balanceOf(ALICE), amountOut, "TestFuzz_SwapInForX::3");
+        assertEq(usdc.balanceOf(ALICE), 0, "testFuzz_SwapInForX::2");
+        assertEq(wnative.balanceOf(ALICE), amountOut, "testFuzz_SwapInForX::3");
     }
 
     function testFuzz_SwapOutForY(uint128 amountIn) public {
@@ -58,7 +58,7 @@ contract LBPairSwapTest is TestHelper {
 
         vm.assume(amountOut > 0);
 
-        assertEq(amountInLeft, 0, "TestFuzz_SwapOutForY::1");
+        assertEq(amountInLeft, 0, "testFuzz_SwapOutForY::1");
 
         deal(address(wnative), ALICE, amountIn);
 
@@ -67,8 +67,8 @@ contract LBPairSwapTest is TestHelper {
         pairWnative.swap(true, ALICE);
         vm.stopPrank();
 
-        assertEq(wnative.balanceOf(ALICE), 0, "TestFuzz_SwapOutForY::2");
-        assertEq(usdc.balanceOf(ALICE), amountOut, "TestFuzz_SwapOutForY::3");
+        assertEq(wnative.balanceOf(ALICE), 0, "testFuzz_SwapOutForY::2");
+        assertEq(usdc.balanceOf(ALICE), amountOut, "testFuzz_SwapOutForY::3");
     }
 
     function testFuzz_SwapOutForX(uint128 amountIn) public {
@@ -78,7 +78,7 @@ contract LBPairSwapTest is TestHelper {
 
         vm.assume(amountOut > 0);
 
-        assertEq(amountInLeft, 0, "TestFuzz_SwapOutForX::1");
+        assertEq(amountInLeft, 0, "testFuzz_SwapOutForX::1");
 
         deal(address(usdc), ALICE, amountIn);
 
@@ -87,8 +87,8 @@ contract LBPairSwapTest is TestHelper {
         pairWnative.swap(false, ALICE);
         vm.stopPrank();
 
-        assertEq(usdc.balanceOf(ALICE), 0, "TestFuzz_SwapOutForX::2");
-        assertEq(wnative.balanceOf(ALICE), amountOut, "TestFuzz_SwapOutForX::3");
+        assertEq(usdc.balanceOf(ALICE), 0, "testFuzz_SwapOutForX::2");
+        assertEq(wnative.balanceOf(ALICE), amountOut, "testFuzz_SwapOutForX::3");
     }
 
     function test_revert_SwapInsufficientAmountIn() external {

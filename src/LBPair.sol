@@ -1,34 +1,36 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
-import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {BinHelper} from "./libraries/BinHelper.sol";
 import {Clone} from "./libraries/Clone.sol";
 import {Constants} from "./libraries/Constants.sol";
 import {FeeHelper} from "./libraries/FeeHelper.sol";
 import {LiquidityConfigurations} from "./libraries/math/LiquidityConfigurations.sol";
+import {ReentrancyGuardUpgradeable} from "./libraries/ReentrancyGuardUpgradeable.sol";
 import {ILBFactory} from "./interfaces/ILBFactory.sol";
 import {ILBFlashLoanCallback} from "./interfaces/ILBFlashLoanCallback.sol";
 import {ILBPair} from "./interfaces/ILBPair.sol";
-import {LBToken} from "./LBToken.sol";
+import {LBToken, ILBToken} from "./LBToken.sol";
 import {OracleHelper} from "./libraries/OracleHelper.sol";
 import {PackedUint128Math} from "./libraries/math/PackedUint128Math.sol";
 import {PairParameterHelper} from "./libraries/PairParameterHelper.sol";
 import {PriceHelper} from "./libraries/PriceHelper.sol";
-import {ReentrancyGuard} from "./libraries/ReentrancyGuard.sol";
 import {SafeCast} from "./libraries/math/SafeCast.sol";
 import {SampleMath} from "./libraries/math/SampleMath.sol";
 import {TreeMath} from "./libraries/math/TreeMath.sol";
 import {Uint256x256Math} from "./libraries/math/Uint256x256Math.sol";
+import {Hooks} from "./libraries/Hooks.sol";
+import {ILBHooks} from "./interfaces/ILBHooks.sol";
 
 /**
  * @title Liquidity Book Pair
  * @author Trader Joe
  * @notice The Liquidity Book Pair contract is the core contract of the Liquidity Book protocol
  */
-contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
+contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
     using BinHelper for bytes32;
     using FeeHelper for uint128;
     using LiquidityConfigurations for bytes32;
@@ -55,6 +57,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
     uint256 private constant _MAX_TOTAL_FEE = 0.1e18; // 10%
 
+    address public immutable override implementation;
     ILBFactory private immutable _factory;
 
     bytes32 private _parameters;
@@ -67,15 +70,17 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
     TreeMath.TreeUint24 private _tree;
     OracleHelper.Oracle private _oracle;
 
+    bytes32 private _hooksParameters;
+
     /**
      * @dev Constructor for the Liquidity Book Pair contract that sets the Liquidity Book Factory
      * @param factory_ The Liquidity Book Factory
      */
     constructor(ILBFactory factory_) {
         _factory = factory_;
+        implementation = address(this);
 
-        // Disable the initialize function
-        _parameters = bytes32(uint256(1));
+        _disableInitializers();
     }
 
     /**
@@ -99,14 +104,11 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         uint16 protocolShare,
         uint24 maxVolatilityAccumulator,
         uint24 activeId
-    ) external override onlyFactory {
-        bytes32 parameters = _parameters;
-        if (parameters != 0) revert LBPair__AlreadyInitialized();
-
+    ) external override onlyFactory initializer {
         __ReentrancyGuard_init();
 
         _setStaticFeeParameters(
-            parameters.setActiveId(activeId).updateIdReference(),
+            _parameters.setActiveId(activeId).updateIdReference(),
             baseFactor,
             filterPeriod,
             decayPeriod,
@@ -236,6 +238,14 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         variableFeeControl = parameters.getVariableFeeControl();
         protocolShare = parameters.getProtocolShare();
         maxVolatilityAccumulator = parameters.getMaxVolatilityAccumulator();
+    }
+
+    /**
+     * @notice Gets the hooks parameters of the Liquidity Book Pair
+     * @return The hooks parameters of the Liquidity Book Pair
+     */
+    function getLBHooksParameters() external view override returns (bytes32) {
+        return _hooksParameters;
     }
 
     /**
@@ -480,12 +490,20 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @param to The address to send the tokens to
      * @return amountsOut The encoded amounts of token X and token Y sent to `to`
      */
-    function swap(bool swapForY, address to) external override nonReentrant returns (bytes32 amountsOut) {
+    function swap(bool swapForY, address to) external override returns (bytes32 amountsOut) {
+        _nonReentrantBefore();
+
+        bytes32 hooksParameters = _hooksParameters;
+
         bytes32 reserves = _reserves;
         bytes32 protocolFees = _protocolFees;
 
         bytes32 amountsLeft = swapForY ? reserves.receivedX(_tokenX()) : reserves.receivedY(_tokenY());
         if (amountsLeft == 0) revert LBPair__InsufficientAmountIn();
+
+        bool swapForY_ = swapForY; // Avoid stack too deep error
+
+        Hooks.beforeSwap(hooksParameters, msg.sender, to, swapForY_, amountsLeft);
 
         reserves = reserves.add(amountsLeft);
 
@@ -498,11 +516,11 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         while (true) {
             bytes32 binReserves = _bins[activeId];
-            if (!binReserves.isEmpty(!swapForY)) {
+            if (!binReserves.isEmpty(!swapForY_)) {
                 parameters = parameters.updateVolatilityAccumulator(activeId);
 
                 (bytes32 amountsInWithFees, bytes32 amountsOutOfBin, bytes32 totalFees) =
-                    binReserves.getAmounts(parameters, binStep, swapForY, activeId, amountsLeft);
+                    binReserves.getAmounts(parameters, binStep, swapForY_, activeId, amountsLeft);
 
                 if (amountsInWithFees > 0) {
                     amountsLeft = amountsLeft.sub(amountsInWithFees);
@@ -533,7 +551,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             if (amountsLeft == 0) {
                 break;
             } else {
-                uint24 nextId = _getNextNonEmptyBin(swapForY, activeId);
+                uint24 nextId = _getNextNonEmptyBin(swapForY_, activeId);
 
                 if (nextId == 0 || nextId == type(uint24).max) revert LBPair__OutOfLiquidity();
 
@@ -549,11 +567,15 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         parameters = _oracle.update(parameters, activeId);
         _parameters = parameters.setActiveId(activeId);
 
-        if (swapForY) {
+        if (swapForY_) {
             amountsOut.transferY(_tokenY(), to);
         } else {
             amountsOut.transferX(_tokenX(), to);
         }
+
+        _nonReentrantAfter();
+
+        Hooks.afterSwap(hooksParameters, msg.sender, to, swapForY_, amountsOut);
     }
 
     /**
@@ -564,17 +586,17 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @param amounts The encoded amounts of token X and token Y to flash loan
      * @param data Any data that will be passed to the callback function
      */
-    function flashLoan(ILBFlashLoanCallback receiver, bytes32 amounts, bytes calldata data)
-        external
-        override
-        nonReentrant
-    {
+    function flashLoan(ILBFlashLoanCallback receiver, bytes32 amounts, bytes calldata data) external override {
+        _nonReentrantBefore();
+
         if (amounts == 0) revert LBPair__ZeroBorrowAmount();
 
-        bytes32 reservesBefore = _reserves;
-        bytes32 parameters = _parameters;
+        bytes32 hooksParameters = _hooksParameters;
 
+        bytes32 reservesBefore = _reserves;
         bytes32 totalFees = _getFlashLoanFees(amounts);
+
+        Hooks.beforeFlashLoan(hooksParameters, msg.sender, address(receiver), amounts);
 
         amounts.transfer(_tokenX(), _tokenY(), address(receiver));
 
@@ -598,19 +620,16 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         if (balancesAfter.lt(reservesBefore.add(totalFees))) revert LBPair__FlashLoanInsufficientAmount();
 
-        totalFees = balancesAfter.sub(reservesBefore);
-
-        uint24 activeId = parameters.getActiveId();
-        bytes32 protocolFees = totalSupply(activeId) == 0
-            ? totalFees
-            : totalFees.scalarMulDivBasisPointRoundDown(parameters.getProtocolShare());
+        bytes32 feesReceived = balancesAfter.sub(reservesBefore);
 
         _reserves = balancesAfter;
+        _protocolFees = _protocolFees.add(feesReceived);
 
-        _protocolFees = _protocolFees.add(protocolFees);
-        _bins[activeId] = _bins[activeId].add(totalFees.sub(protocolFees));
+        emit FlashLoan(msg.sender, receiver, _parameters.getActiveId(), amounts, feesReceived, feesReceived);
 
-        emit FlashLoan(msg.sender, receiver, activeId, amounts, totalFees, protocolFees);
+        _nonReentrantAfter();
+
+        Hooks.afterFlashLoan(hooksParameters, msg.sender, address(receiver), totalFees, feesReceived);
     }
 
     /**
@@ -632,11 +651,14 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
     function mint(address to, bytes32[] calldata liquidityConfigs, address refundTo)
         external
         override
-        nonReentrant
         notAddressZeroOrThis(to)
         returns (bytes32 amountsReceived, bytes32 amountsLeft, uint256[] memory liquidityMinted)
     {
+        _nonReentrantBefore();
+
         if (liquidityConfigs.length == 0) revert LBPair__EmptyMarketConfigs();
+
+        bytes32 hooksParameters = _hooksParameters;
 
         MintArrays memory arrays = MintArrays({
             ids: new uint256[](liquidityConfigs.length),
@@ -647,16 +669,23 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         bytes32 reserves = _reserves;
 
         amountsReceived = reserves.received(_tokenX(), _tokenY());
+
+        Hooks.beforeMint(hooksParameters, msg.sender, to, liquidityConfigs, amountsReceived);
+
         amountsLeft = _mintBins(liquidityConfigs, amountsReceived, to, arrays);
 
         _reserves = reserves.add(amountsReceived.sub(amountsLeft));
-
-        if (amountsLeft > 0) amountsLeft.transfer(_tokenX(), _tokenY(), refundTo);
 
         liquidityMinted = arrays.liquidityMinted;
 
         emit TransferBatch(msg.sender, address(0), to, arrays.ids, liquidityMinted);
         emit DepositedToBins(msg.sender, to, arrays.ids, arrays.amounts);
+
+        if (amountsLeft > 0) amountsLeft.transfer(_tokenX(), _tokenY(), refundTo);
+
+        _nonReentrantAfter();
+
+        Hooks.afterMint(hooksParameters, msg.sender, to, liquidityConfigs, amountsReceived.sub(amountsLeft));
     }
 
     /**
@@ -671,11 +700,18 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
     function burn(address from, address to, uint256[] calldata ids, uint256[] calldata amountsToBurn)
         external
         override
-        nonReentrant
         checkApproval(from, msg.sender)
         returns (bytes32[] memory amounts)
     {
+        _nonReentrantBefore();
+
         if (ids.length == 0 || ids.length != amountsToBurn.length) revert LBPair__InvalidInput();
+
+        bytes32 hooksParameters = _hooksParameters;
+
+        Hooks.beforeBurn(hooksParameters, msg.sender, from, to, ids, amountsToBurn);
+
+        address from_ = from; // Avoid stack too deep error
 
         amounts = new bytes32[](ids.length);
 
@@ -690,7 +726,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             bytes32 binReserves = _bins[id];
             uint256 supply = totalSupply(id);
 
-            _burn(from, id, amountToBurn);
+            _burn(from_, id, amountToBurn);
 
             bytes32 amountsOutFromBin = binReserves.getAmountOutOfBin(amountToBurn, supply);
 
@@ -711,10 +747,14 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
 
         _reserves = _reserves.sub(amountsOut);
 
+        emit TransferBatch(msg.sender, from_, address(0), ids, amountsToBurn);
+        emit WithdrawnFromBins(msg.sender, to, ids, amounts);
+
         amountsOut.transfer(_tokenX(), _tokenY(), to);
 
-        emit TransferBatch(msg.sender, from, address(0), ids, amountsToBurn);
-        emit WithdrawnFromBins(msg.sender, to, ids, amounts);
+        _nonReentrantAfter();
+
+        Hooks.afterBurn(hooksParameters, msg.sender, from_, to, ids, amountsToBurn);
     }
 
     /**
@@ -739,9 +779,9 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
             _protocolFees = ones;
             _reserves = _reserves.sub(collectedProtocolFees);
 
-            collectedProtocolFees.transfer(_tokenX(), _tokenY(), msg.sender);
-
             emit CollectedProtocolFees(msg.sender, collectedProtocolFees);
+
+            collectedProtocolFees.transfer(_tokenX(), _tokenY(), msg.sender);
         }
     }
 
@@ -749,7 +789,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
      * @notice Increase the length of the oracle used by the pool
      * @param newLength The new length of the oracle
      */
-    function increaseOracleLength(uint16 newLength) external override {
+    function increaseOracleLength(uint16 newLength) external override nonReentrant {
         bytes32 parameters = _parameters;
 
         uint16 oracleId = parameters.getOracleId();
@@ -784,7 +824,7 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
         uint24 variableFeeControl,
         uint16 protocolShare,
         uint24 maxVolatilityAccumulator
-    ) external override onlyFactory {
+    ) external override nonReentrant onlyFactory {
         _setStaticFeeParameters(
             _parameters,
             baseFactor,
@@ -798,15 +838,62 @@ contract LBPair is LBToken, ReentrancyGuard, Clone, ILBPair {
     }
 
     /**
+     * @notice Sets the hooks parameter of the pool
+     * @dev Can only be called by the factory
+     * @param hooksParameters The hooks parameter
+     * @param onHooksSetData The data to be passed to the onHooksSet function of the hooks contract
+     */
+    function setHooksParameters(bytes32 hooksParameters, bytes calldata onHooksSetData)
+        external
+        override
+        nonReentrant
+        onlyFactory
+    {
+        _hooksParameters = hooksParameters;
+
+        ILBHooks hooks = ILBHooks(Hooks.getHooks(hooksParameters));
+
+        emit HooksParametersSet(msg.sender, hooksParameters);
+
+        if (address(hooks) != address(0) && hooks.getLBPair() != this) revert LBPair__InvalidHooks();
+
+        Hooks.onHooksSet(hooksParameters, onHooksSetData);
+    }
+
+    /**
      * @notice Forces the decay of the volatility reference variables
      * @dev Can only be called by the factory
      */
-    function forceDecay() external override onlyFactory {
+    function forceDecay() external override nonReentrant onlyFactory {
         bytes32 parameters = _parameters;
 
         _parameters = parameters.updateIdReference().updateVolatilityReference();
 
         emit ForcedDecay(msg.sender, parameters.getIdReference(), parameters.getVolatilityReference());
+    }
+
+    /**
+     * @notice Overrides the batch transfer function to call the hooks before and after the transfer
+     * @param from The address to transfer from
+     * @param to The address to transfer to
+     * @param ids The ids of the tokens to transfer
+     * @param amounts The amounts of the tokens to transfer
+     */
+    function batchTransferFrom(address from, address to, uint256[] calldata ids, uint256[] calldata amounts)
+        public
+        override(LBToken, ILBToken)
+    {
+        _nonReentrantBefore();
+
+        bytes32 hooksParameters = _hooksParameters;
+
+        Hooks.beforeBatchTransferFrom(hooksParameters, msg.sender, from, to, ids, amounts);
+
+        LBToken.batchTransferFrom(from, to, ids, amounts);
+
+        _nonReentrantAfter();
+
+        Hooks.afterBatchTransferFrom(hooksParameters, msg.sender, from, to, ids, amounts);
     }
 
     /**

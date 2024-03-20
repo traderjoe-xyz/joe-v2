@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
@@ -11,7 +11,7 @@ contract LiquidityConfigurationsTest is Test {
     using PackedUint128Math for uint128;
     using LiquidityConfigurations for bytes32;
 
-    function testFuzz_EncodeParams(uint64 distributionX, uint64 distributionY, uint24 id) external {
+    function testFuzz_EncodeParams(uint64 distributionX, uint64 distributionY, uint24 id) external  pure {
         bytes32 config = LiquidityConfigurations.encodeParams(distributionX, distributionY, id);
 
         assertEq(

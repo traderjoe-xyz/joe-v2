@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 
@@ -46,7 +46,7 @@ contract CoreDeployer is Script {
             vm.createSelectFork(StdChains.getChain(chains[i]).rpcUrl);
 
             vm.broadcast(deployer);
-            LBFactory factory = new LBFactory(deployer, FLASHLOAN_FEE);
+            LBFactory factory = new LBFactory(deployer, deployer, FLASHLOAN_FEE);
             console.log("LBFactory deployed -->", address(factory));
 
             vm.broadcast(deployer);
@@ -55,17 +55,18 @@ contract CoreDeployer is Script {
 
             vm.broadcast(deployer);
             LBRouter router = new LBRouter(
-                factory, 
+                factory,
                 IJoeFactory(deployment.factoryV1),
                 ILBLegacyFactory(deployment.factoryV2),
-                ILBLegacyRouter(deployment.routerV2), 
+                ILBLegacyRouter(deployment.routerV2),
                 IWNATIVE(deployment.wNative)
             );
             console.log("LBRouter deployed -->", address(router));
 
             vm.startBroadcast(deployer);
-            LBQuoter quoter =
-            new LBQuoter(deployment.factoryV1, deployment.factoryV2, address(factory),deployment.routerV2, address(router));
+            LBQuoter quoter = new LBQuoter(
+                deployment.factoryV1, deployment.factoryV2, address(factory), deployment.routerV2, address(router)
+            );
             console.log("LBQuoter deployed -->", address(quoter));
 
             factory.setLBPairImplementation(address(pairImplementation));
@@ -94,7 +95,7 @@ contract CoreDeployer is Script {
                 );
             }
 
-            factory.setPendingOwner(deployment.multisig);
+            factory.transferOwnership(deployment.multisig);
             vm.stopBroadcast();
         }
     }

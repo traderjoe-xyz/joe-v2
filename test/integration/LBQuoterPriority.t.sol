@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
 import "../helpers/TestHelper.sol";
 
@@ -20,11 +20,16 @@ contract LiquidityBinQuoterPriorityTest is Test {
     function setUp() public {
         vm.createSelectFork(vm.rpcUrl("avalanche"), 33313442);
 
-        newQuoter =
-        new LBQuoter(AvalancheAddresses.JOE_V1_FACTORY, AvalancheAddresses.JOE_V2_FACTORY, factory, AvalancheAddresses.JOE_V2_ROUTER, router);
+        newQuoter = new LBQuoter(
+            AvalancheAddresses.JOE_V1_FACTORY,
+            AvalancheAddresses.JOE_V2_FACTORY,
+            factory,
+            AvalancheAddresses.JOE_V2_ROUTER,
+            router
+        );
     }
 
-    function test_QuoteFromAmountIn() public {
+    function test_QuoteFromAmountIn() public view  {
         address[] memory route = new address[](2);
         route[0] = address(AvalancheAddresses.USDT);
         route[1] = address(AvalancheAddresses.USDC);
@@ -95,7 +100,7 @@ contract LiquidityBinQuoterPriorityTest is Test {
         assertEq(newQuote.fees[0], oldQuote.fees[0], "test_QuoteFromAmountIn::24");
     }
 
-    function test_QuoteFromAmounOut() public {
+    function test_QuoteFromAmounOut() public  view {
         address[] memory route = new address[](2);
         route[0] = address(AvalancheAddresses.USDC);
         route[1] = address(AvalancheAddresses.USDT);

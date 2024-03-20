@@ -2,17 +2,17 @@
 
 pragma solidity ^0.8.10;
 
-import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import {ILBHooks} from "./ILBHooks.sol";
 import {ILBPair} from "./ILBPair.sol";
-import {IPendingOwnable} from "./IPendingOwnable.sol";
 
 /**
  * @title Liquidity Book Factory Interface
  * @author Trader Joe
  * @notice Required interface of LBFactory contract
  */
-interface ILBFactory is IPendingOwnable {
+interface ILBFactory {
     error LBFactory__IdenticalAddresses(IERC20 token);
     error LBFactory__QuoteAssetNotWhitelisted(IERC20 quoteAsset);
     error LBFactory__QuoteAssetAlreadyWhitelisted(IERC20 quoteAsset);
@@ -31,6 +31,10 @@ interface ILBFactory is IPendingOwnable {
     error LBFactory__LBPairSafetyCheckFailed(address LBPairImplementation);
     error LBFactory__SameImplementation(address LBPairImplementation);
     error LBFactory__ImplementationNotSet();
+    error LBFactory__SameHooksImplementation(address hooksImplementation);
+    error LBFactory__SameHooksParameters(bytes32 hooksParameters);
+    error LBFactory__InvalidHooksParameters();
+    error LBFactory__CannotGrantDefaultAdminRole();
 
     /**
      * @dev Structure to store the LBPair information, such as:
@@ -161,6 +165,16 @@ interface ILBFactory is IPendingOwnable {
         uint16 protocolShare,
         uint24 maxVolatilityAccumulator
     ) external;
+
+    function setLBHooksParametersOnPair(
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint16 binStep,
+        bytes32 hooksParameters,
+        bytes memory onHooksSetData
+    ) external;
+
+    function removeLBHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep) external;
 
     function setFeeRecipient(address feeRecipient) external;
 

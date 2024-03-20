@@ -1,20 +1,23 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.10;
+pragma solidity ^0.8.20;
 
-import {EnumerableSet} from "openzeppelin/utils/structs/EnumerableSet.sol";
-import {EnumerableMap} from "openzeppelin/utils/structs/EnumerableMap.sol";
-import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Ownable2Step, Ownable} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import {PairParameterHelper} from "./libraries/PairParameterHelper.sol";
 import {Encoded} from "./libraries/math/Encoded.sol";
 import {ImmutableClone} from "./libraries/ImmutableClone.sol";
-import {PendingOwnable} from "./libraries/PendingOwnable.sol";
 import {PriceHelper} from "./libraries/PriceHelper.sol";
 import {SafeCast} from "./libraries/math/SafeCast.sol";
+import {Hooks} from "./libraries/Hooks.sol";
 
 import {ILBFactory} from "./interfaces/ILBFactory.sol";
 import {ILBPair} from "./interfaces/ILBPair.sol";
+import {ILBHooks} from "./interfaces/ILBHooks.sol";
 
 /**
  * @title Liquidity Book Factory
@@ -23,13 +26,15 @@ import {ILBPair} from "./interfaces/ILBPair.sol";
  * Enables setting fee parameters, flashloan fees and LBPair implementation.
  * Unless the `isOpen` is `true`, only the owner of the factory can create pairs.
  */
-contract LBFactory is PendingOwnable, ILBFactory {
+contract LBFactory is Ownable2Step, AccessControl, ILBFactory {
     using SafeCast for uint256;
     using Encoded for bytes32;
     using PairParameterHelper for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
     using EnumerableMap for EnumerableMap.UintToUintMap;
+
+    bytes32 public constant LB_HOOKS_MANAGER_ROLE = keccak256("LB_HOOKS_MANAGER_ROLE");
 
     uint256 private constant _OFFSET_IS_PRESET_OPEN = 255;
 
@@ -67,7 +72,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
      * @param feeRecipient The address of the fee recipient
      * @param flashLoanFee The value of the fee for flash loan
      */
-    constructor(address feeRecipient, uint256 flashLoanFee) {
+    constructor(address feeRecipient, address initialOwner, uint256 flashLoanFee) Ownable(initialOwner) {
         if (flashLoanFee > _MAX_FLASHLOAN_FEE) revert LBFactory__FlashLoanFeeAboveMax(flashLoanFee, _MAX_FLASHLOAN_FEE);
 
         _setFeeRecipient(feeRecipient);
@@ -110,7 +115,7 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Get the address of the LBPair implementation
-     * @return lbPairImplementation
+     * @return lbPairImplementation The address of the LBPair implementation
      */
     function getLBPairImplementation() external view override returns (address lbPairImplementation) {
         return _lbPairImplementation;
@@ -365,6 +370,14 @@ contract LBFactory is PendingOwnable, ILBFactory {
             );
         }
 
+        _lbPairsInfo[tokenA][tokenB][binStep] =
+            LBPairInformation({binStep: binStep, LBPair: pair, createdByOwner: isOwner, ignoredForRouting: false});
+
+        _allLBPairs.push(pair);
+        _availableLBPairBinSteps[tokenA][tokenB].add(binStep);
+
+        emit LBPairCreated(tokenX, tokenY, binStep, pair, _allLBPairs.length - 1);
+
         pair.initialize(
             preset.getBaseFactor(),
             preset.getFilterPeriod(),
@@ -375,18 +388,14 @@ contract LBFactory is PendingOwnable, ILBFactory {
             preset.getMaxVolatilityAccumulator(),
             activeId
         );
-
-        _lbPairsInfo[tokenA][tokenB][binStep] =
-            LBPairInformation({binStep: binStep, LBPair: pair, createdByOwner: isOwner, ignoredForRouting: false});
-
-        _allLBPairs.push(pair);
-        _availableLBPairBinSteps[tokenA][tokenB].add(binStep);
-
-        emit LBPairCreated(tokenX, tokenY, binStep, pair, _allLBPairs.length - 1);
     }
 
     /**
      * @notice Function to set whether the pair is ignored or not for routing, it will make the pair unusable by the router
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The pair doesn't exist
+     * - The ignored state is already in the same state
      * @param tokenX The address of the first token of the pair
      * @param tokenY The address of the second token of the pair
      * @param binStep The bin step in basis point of the pair
@@ -409,6 +418,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Sets the preset parameters of a bin step
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The binStep is lower than the minimum bin step
      * @param binStep The bin step in basis point, used to calculate the price
      * @param baseFactor The base factor, used to calculate the base fee, baseFee = baseFactor * binStep
      * @param filterPeriod The period where the accumulator value is untouched, prevent spam
@@ -456,13 +468,17 @@ contract LBFactory is PendingOwnable, ILBFactory {
             variableFeeControl,
             protocolShare,
             maxVolatilityAccumulator
-            );
+        );
 
         emit PresetOpenStateChanged(binStep, isOpen);
     }
 
     /**
      * @notice Sets if the preset is open or not to be used by users
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The binStep doesn't have a preset
+     * - The preset is already in the same state
      * @param binStep The bin step in basis point, used to calculate the price
      * @param isOpen Whether the preset is open or not
      */
@@ -482,6 +498,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Remove the preset linked to a binStep
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The binStep doesn't have a preset
      * @param binStep The bin step to remove
      */
     function removePreset(uint16 binStep) external override onlyOwner {
@@ -492,6 +511,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to set the fee parameter of a LBPair
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The pair doesn't exist
      * @param tokenX The address of the first token
      * @param tokenY The address of the second token
      * @param binStep The bin step in basis point, used to calculate the price
@@ -531,7 +553,54 @@ contract LBFactory is PendingOwnable, ILBFactory {
     }
 
     /**
+     * @notice Function to set the hooks parameters of a pair
+     * @dev Needs to be called by an address with the LB_HOOKS_MANAGER_ROLE
+     * Reverts if:
+     * - The pair doesn't exist
+     * - The hooks is `address(0)` or the hooks flags are all false
+     * @param tokenX The address of the first token
+     * @param tokenY The address of the second token
+     * @param binStep The bin step in basis point, used to calculate the price
+     * @param hooksParameters The hooks parameters
+     * @param onHooksSetData The data to pass to the onHooksSet function
+     */
+    function setLBHooksParametersOnPair(
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint16 binStep,
+        bytes32 hooksParameters,
+        bytes calldata onHooksSetData
+    ) external override onlyRole(LB_HOOKS_MANAGER_ROLE) {
+        if (Hooks.getHooks(hooksParameters) == address(0) || Hooks.getFlags(hooksParameters) == 0) {
+            revert LBFactory__InvalidHooksParameters();
+        }
+
+        _setLBHooksParametersOnPair(tokenX, tokenY, binStep, hooksParameters, onHooksSetData);
+    }
+
+    /**
+     * @notice Function to remove the hooks contract from the pair
+     * @dev Needs to be called by an address with the LB_HOOKS_MANAGER_ROLE
+     * Reverts if:
+     * - The pair doesn't exist
+     * @param tokenX The address of the first token
+     * @param tokenY The address of the second token
+     * @param binStep The bin step in basis point, used to calculate the price
+     */
+    function removeLBHooksOnPair(IERC20 tokenX, IERC20 tokenY, uint16 binStep)
+        external
+        override
+        onlyRole(LB_HOOKS_MANAGER_ROLE)
+    {
+        _setLBHooksParametersOnPair(tokenX, tokenY, binStep, 0, new bytes(0));
+    }
+
+    /**
      * @notice Function to set the recipient of the fees. This address needs to be able to receive ERC20s
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The feeRecipient is `address(0)`
+     * - The feeRecipient is the same as the current one
      * @param feeRecipient The address of the recipient
      */
     function setFeeRecipient(address feeRecipient) external override onlyOwner {
@@ -540,6 +609,10 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to set the flash loan fee
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The flashLoanFee is the same as the current one
+     * - The flashLoanFee is above the maximum flash loan fee
      * @param flashLoanFee The value of the fee for flash loan
      */
     function setFlashLoanFee(uint256 flashLoanFee) external override onlyOwner {
@@ -554,6 +627,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to add an asset to the whitelist of quote assets
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The quoteAsset is already whitelisted
      * @param quoteAsset The quote asset (e.g: NATIVE, USDC...)
      */
     function addQuoteAsset(IERC20 quoteAsset) external override onlyOwner {
@@ -566,6 +642,9 @@ contract LBFactory is PendingOwnable, ILBFactory {
 
     /**
      * @notice Function to remove an asset from the whitelist of quote assets
+     * @dev Needs to be called by the owner
+     * Reverts if:
+     * - The quoteAsset was not whitelisted
      * @param quoteAsset The quote asset (e.g: NATIVE, USDC...)
      */
     function removeQuoteAsset(IERC20 quoteAsset) external override onlyOwner {
@@ -592,6 +671,11 @@ contract LBFactory is PendingOwnable, ILBFactory {
         emit FeeRecipientSet(oldFeeRecipient, feeRecipient);
     }
 
+    /**
+     * @notice Function to force the decay of the volatility accumulator of a pair
+     * @dev Needs to be called by the owner
+     * @param pair The pair to force the decay
+     */
     function forceDecay(ILBPair pair) external override onlyOwner {
         pair.forceDecay();
     }
@@ -623,5 +707,50 @@ contract LBFactory is PendingOwnable, ILBFactory {
     function _sortTokens(IERC20 tokenA, IERC20 tokenB) private pure returns (IERC20, IERC20) {
         if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
         return (tokenA, tokenB);
+    }
+
+    /**
+     * @notice Internal function to set a hooks contract to the pair
+     * @param tokenX The address of the first token
+     * @param tokenY The address of the second token
+     * @param binStep The bin step in basis point, used to calculate the price
+     * @param hooksParameters The hooks parameters
+     * @param onHooksSetData The data to pass to the onHooksSet function
+     */
+    function _setLBHooksParametersOnPair(
+        IERC20 tokenX,
+        IERC20 tokenY,
+        uint16 binStep,
+        bytes32 hooksParameters,
+        bytes memory onHooksSetData
+    ) internal {
+        ILBPair lbPair = _getLBPairInformation(tokenX, tokenY, binStep).LBPair;
+
+        if (address(lbPair) == address(0)) revert LBFactory__LBPairNotCreated(tokenX, tokenY, binStep);
+        if (lbPair.getLBHooksParameters() == hooksParameters) revert LBFactory__SameHooksParameters(hooksParameters);
+
+        lbPair.setHooksParameters(hooksParameters, onHooksSetData);
+    }
+
+    /**
+     * @notice Returns whether the caller has the role or not, only the owner has the DEFAULT_ADMIN_ROLE
+     * @param role The role to check
+     * @param account The address to check
+     * @return Whether the account has the role or not
+     */
+    function hasRole(bytes32 role, address account) public view override returns (bool) {
+        if (role == DEFAULT_ADMIN_ROLE) return account == owner();
+        return super.hasRole(role, account);
+    }
+
+    /**
+     * @notice Grants a role to an address, the DEFAULT_ADMIN_ROLE can not be granted
+     * @param role The role to grant
+     * @param account The address to grant the role to
+     * @return Whether the role has been granted or not
+     */
+    function _grantRole(bytes32 role, address account) internal override returns (bool) {
+        if (role == DEFAULT_ADMIN_ROLE) revert LBFactory__CannotGrantDefaultAdminRole();
+        return super._grantRole(role, account);
     }
 }

@@ -2,8 +2,9 @@
 
 pragma solidity ^0.8.10;
 
-import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import {Hooks} from "../libraries/Hooks.sol";
 import {ILBFactory} from "./ILBFactory.sol";
 import {ILBFlashLoanCallback} from "./ILBFlashLoanCallback.sol";
 import {ILBToken} from "./ILBToken.sol";
@@ -11,7 +12,6 @@ import {ILBToken} from "./ILBToken.sol";
 interface ILBPair is ILBToken {
     error LBPair__ZeroBorrowAmount();
     error LBPair__AddressZero();
-    error LBPair__AlreadyInitialized();
     error LBPair__EmptyMarketConfigs();
     error LBPair__FlashLoanCallbackFailed();
     error LBPair__FlashLoanInsufficientAmount();
@@ -27,6 +27,7 @@ interface ILBPair is ILBToken {
     error LBPair__ZeroAmountsOut(uint24 id);
     error LBPair__ZeroShares(uint24 id);
     error LBPair__MaxTotalFeeExceeded();
+    error LBPair__InvalidHooks();
 
     struct MintArrays {
         uint256[] ids;
@@ -64,6 +65,8 @@ interface ILBPair is ILBToken {
         uint24 maxVolatilityAccumulator
     );
 
+    event HooksParametersSet(address indexed sender, bytes32 hooksParameters);
+
     event FlashLoan(
         address indexed sender,
         ILBFlashLoanCallback indexed receiver,
@@ -87,6 +90,8 @@ interface ILBPair is ILBToken {
         uint24 maxVolatilityAccumulator,
         uint24 activeId
     ) external;
+
+    function implementation() external view returns (address);
 
     function getFactory() external view returns (ILBFactory factory);
 
@@ -118,6 +123,8 @@ interface ILBPair is ILBToken {
             uint16 protocolShare,
             uint24 maxVolatilityAccumulator
         );
+
+    function getLBHooksParameters() external view returns (bytes32 hooksParameters);
 
     function getVariableFeeParameters()
         external
@@ -173,6 +180,8 @@ interface ILBPair is ILBToken {
         uint16 protocolShare,
         uint24 maxVolatilityAccumulator
     ) external;
+
+    function setHooksParameters(bytes32 hooksParameters, bytes calldata onHooksSetData) external;
 
     function forceDecay() external;
 }

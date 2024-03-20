@@ -63,18 +63,16 @@ contract BinHelperTest is TestHelper {
         uint256 totalSupply
     ) external pure {
         vm.assume(
-            price > 0
+            price > 0 && uint256(binReserveX) + amountInX <= type(uint128).max
+                && uint256(binReserveY) + amountInY <= type(uint128).max
                 && (
-                    binReserveX == 0
-                        || (
-                            price <= type(uint256).max / binReserveX
-                                && price * binReserveX <= type(uint256).max - binReserveY << 128
-                        )
+                    (uint256(binReserveX) + amountInX) == 0
+                        || price <= type(uint256).max / (uint256(binReserveX) + amountInX)
                 )
-                && (
-                    amountInX == 0
-                        || (price <= type(uint256).max / amountInX && price * amountInX <= type(uint256).max - amountInY << 128)
-                )
+                && price * (uint256(binReserveX) + amountInX)
+                    <= type(uint256).max - ((uint256(binReserveY) + amountInY) << 128)
+                && price * (uint256(binReserveX) + amountInX) + ((uint256(binReserveY) + amountInY) << 128)
+                    <= Constants.MAX_LIQUIDITY_PER_BIN
         );
 
         bytes32 binReserves = binReserveX.encode(binReserveY);
@@ -110,6 +108,8 @@ contract BinHelperTest is TestHelper {
                 && price <= type(uint256).max / (uint256(amountX1) + amountX2)
                 && uint256(amountY1) + amountY2 <= type(uint128).max
                 && price * (uint256(amountX1) + amountX2) <= type(uint256).max - ((uint256(amountY1) + amountY2) << 128)
+                && price * (uint256(amountX1) + amountX2) + ((uint256(amountY1) + amountY2) << 128)
+                    <= Constants.MAX_LIQUIDITY_PER_BIN
         );
 
         // exploiter front run the tx and mint the min amount of shares, so the total supply is 2^128
@@ -161,10 +161,12 @@ contract BinHelperTest is TestHelper {
     ) external pure {
         // make sure p*x+y doesn't overflow
         vm.assume(
-            price > 0 && amountXIn > 0 && amountYIn > 0 && price <= type(uint256).max / amountXIn
-                && price * amountXIn <= type(uint256).max - uint256(amountYIn) << 128
-                && (reserveX == 0 || price <= type(uint256).max / reserveX)
-                && price * reserveX <= type(uint256).max - uint256(reserveY) << 128
+            price > 0 && amountXIn > 0 && amountYIn > 0 && uint256(reserveX) + amountXIn <= type(uint128).max
+                && uint256(reserveY) + amountYIn <= type(uint128).max
+                && uint256(reserveX) + amountXIn <= type(uint256).max / price
+                && price * uint256(reserveX + amountXIn) <= type(uint256).max - (uint256(reserveY + amountYIn) << 128)
+                && price * uint256(reserveX + amountXIn) + (uint256(reserveY + amountYIn) << 128)
+                    <= Constants.MAX_LIQUIDITY_PER_BIN
         );
 
         bytes32 binReserves = reserveX.encode(reserveY);
@@ -219,7 +221,7 @@ contract BinHelperTest is TestHelper {
         bool swapForY,
         int16 deltaId,
         uint128 amountIn
-    ) external pure {
+    ) external view {
         bytes32 parameters = bytes32(0).setStaticFeeParameters(
             DEFAULT_BASE_FACTOR,
             DEFAULT_FILTER_PERIOD,
@@ -241,6 +243,19 @@ contract BinHelperTest is TestHelper {
 
             uint128 maxFee = FeeHelper.getFeeAmount(uint128(maxAmountIn), parameters.getTotalFee(DEFAULT_BIN_STEP));
             vm.assume(maxAmountIn <= type(uint128).max - maxFee && amountIn < maxAmountIn + maxFee);
+
+            vm.assume(
+                swapForY
+                    ? uint256(binReserveX) + maxAmountIn + maxFee <= type(uint128).max
+                    : uint256(binReserveY) + maxAmountIn + maxFee <= type(uint128).max
+            );
+
+            vm.assume(
+                binReserveX <= type(uint256).max / price
+                    && price * binReserveX <= type(uint256).max - (uint256(binReserveY) << 128)
+                    && price * binReserveX + (uint256(binReserveY) << 128)
+                        <= Constants.MAX_LIQUIDITY_PER_BIN / 1e18 * (1e18 - parameters.getTotalFee(DEFAULT_BIN_STEP))
+            );
         }
 
         bytes32 reserves = binReserveX.encode(binReserveY);
@@ -296,6 +311,19 @@ contract BinHelperTest is TestHelper {
 
             uint128 maxFee = FeeHelper.getFeeAmount(uint128(maxAmountIn), parameters.getTotalFee(DEFAULT_BIN_STEP));
             vm.assume(maxAmountIn <= type(uint128).max - maxFee && amountIn >= maxAmountIn + maxFee);
+
+            vm.assume(
+                swapForY
+                    ? uint256(binReserveX) + maxAmountIn + maxFee <= type(uint128).max
+                    : uint256(binReserveY) + maxAmountIn + maxFee <= type(uint128).max
+            );
+
+            vm.assume(
+                binReserveX <= type(uint256).max / price
+                    && price * binReserveX <= type(uint256).max - (uint256(binReserveY) << 128)
+                    && price * binReserveX + (uint256(binReserveY) << 128)
+                        <= Constants.MAX_LIQUIDITY_PER_BIN / 1e18 * (1e18 - parameters.getTotalFee(DEFAULT_BIN_STEP))
+            );
         }
 
         bytes32 reserves = binReserveX.encode(binReserveY);

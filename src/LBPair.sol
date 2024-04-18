@@ -46,7 +46,7 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
     using Uint256x256Math for uint256;
 
     modifier onlyFactory() {
-        if (msg.sender != address(_factory)) revert LBPair__OnlyFactory();
+        _onlyFactory();
         _;
     }
 
@@ -928,6 +928,13 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
      */
     function _getNextNonEmptyBin(bool swapForY, uint24 id) internal view returns (uint24) {
         return swapForY ? _tree.findFirstRight(id) : _tree.findFirstLeft(id);
+    }
+
+    /**
+     * @dev Reverts if the caller is not the factory
+     */
+    function _onlyFactory() private view {
+        if (msg.sender != address(_factory)) revert LBPair__OnlyFactory();
     }
 
     /**

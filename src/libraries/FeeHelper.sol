@@ -18,7 +18,7 @@ library FeeHelper {
      * @param fee The fee
      */
     modifier verifyFee(uint128 fee) {
-        if (fee > Constants.MAX_FEE) revert FeeHelper__FeeTooLarge();
+        _verifyFee(fee);
         _;
     }
 
@@ -97,5 +97,13 @@ library FeeHelper {
         unchecked {
             return uint128(uint256(feeAmount) * protocolShare / Constants.BASIS_POINT_MAX);
         }
+    }
+
+    /**
+     * @dev Internal function to check that the fee is not too large
+     * @param fee The fee
+     */
+    function _verifyFee(uint128 fee) private pure {
+        if (fee > Constants.MAX_FEE) revert FeeHelper__FeeTooLarge();
     }
 }

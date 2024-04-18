@@ -42,7 +42,7 @@ abstract contract LBToken is ILBToken {
      * @dev Modifier to check if the address is not zero or the contract itself.
      */
     modifier notAddressZeroOrThis(address account) {
-        if (account == address(0) || account == address(this)) revert LBToken__AddressThisOrZero();
+        _notAddressZeroOrThis(account);
         _;
     }
 
@@ -50,7 +50,7 @@ abstract contract LBToken is ILBToken {
      * @dev Modifier to check if the length of the arrays are equal.
      */
     modifier checkLength(uint256 lengthA, uint256 lengthB) {
-        if (lengthA != lengthB) revert LBToken__InvalidLength();
+        _checkLength(lengthA, lengthB);
         _;
     }
 
@@ -240,5 +240,22 @@ abstract contract LBToken is ILBToken {
 
         _spenderApprovals[owner][spender] = approved;
         emit ApprovalForAll(owner, spender, approved);
+    }
+
+    /**
+     * @dev Reverts if the address is the zero address or the contract itself.
+     * @param account The address to check.
+     */
+    function _notAddressZeroOrThis(address account) internal view {
+        if (account == address(0) || account == address(this)) revert LBToken__AddressThisOrZero();
+    }
+
+    /**
+     * @dev Reverts if the length of the arrays are not equal.
+     * @param lengthA The length of the first array.
+     * @param lengthB The length of the second array.
+     */
+    function _checkLength(uint256 lengthA, uint256 lengthB) internal pure {
+        if (lengthA != lengthB) revert LBToken__InvalidLength();
     }
 }

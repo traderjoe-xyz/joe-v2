@@ -39,7 +39,7 @@ library OracleHelper {
      * @param oracleId The oracle id
      */
     modifier checkOracleId(uint16 oracleId) {
-        if (oracleId == 0) revert OracleHelper__InvalidOracleId();
+        _checkOracleId(oracleId);
         _;
     }
 
@@ -266,5 +266,13 @@ library OracleHelper {
         }
 
         setSample(oracle, oracleId, (sample ^ bytes32(uint256(length))) | bytes32(uint256(newLength)));
+    }
+
+    /**
+     * @dev Checks that the oracle id is valid
+     * @param oracleId The oracle id
+     */
+    function _checkOracleId(uint16 oracleId) private pure {
+        if (oracleId == 0) revert OracleHelper__InvalidOracleId();
     }
 }

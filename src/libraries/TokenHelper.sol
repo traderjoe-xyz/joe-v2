@@ -17,8 +17,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 library TokenHelper {
     error TokenHelper__TransferFailed();
 
-    bytes32 internal constant _MASK_ADDRESS = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
-
     /**
      * @notice Transfers token and reverts if the transfer fails
      * @param token The address of the token
@@ -50,7 +48,7 @@ library TokenHelper {
         assembly {
             mstore(0x00, 0)
 
-            success := call(gas(), and(token, _MASK_ADDRESS), 0, add(data, 0x20), mload(data), 0x00, 0x20)
+            success := call(gas(), token, 0, add(data, 0x20), mload(data), 0x00, 0x20)
 
             switch success
             case 0 {

@@ -82,6 +82,8 @@ abstract contract TestHelper is Test {
     IJoeFactory internal factoryV1;
     ILBLegacyRouter internal legacyRouterV2;
     ILBLegacyFactory internal legacyFactoryV2;
+    ILBRouter internal routerV2_1;
+    ILBFactory internal factoryV2_1;
 
     function setUp() public virtual {
         wnative = WNATIVE(AvalancheAddresses.WNATIVE);
@@ -114,6 +116,8 @@ abstract contract TestHelper is Test {
         factoryV1 = IJoeFactory(AvalancheAddresses.JOE_V1_FACTORY);
         legacyRouterV2 = ILBLegacyRouter(AvalancheAddresses.JOE_V2_ROUTER);
         legacyFactoryV2 = ILBLegacyFactory(AvalancheAddresses.JOE_V2_FACTORY);
+        factoryV2_1 = ILBFactory(AvalancheAddresses.JOE_V2_1_FACTORY);
+        routerV2_1 = ILBRouter(AvalancheAddresses.JOE_V2_1_ROUTER);
 
         // Create factory
         factory = new LBFactory(DEV, DEV, DEFAULT_FLASHLOAN_FEE);
@@ -125,11 +129,18 @@ abstract contract TestHelper is Test {
         setDefaultFactoryPresets(DEFAULT_BIN_STEP);
 
         // Create router
-        router = new LBRouter(factory, factoryV1, legacyFactoryV2, legacyRouterV2, IWNATIVE(address(wnative)));
+        router =
+            new LBRouter(factory, factoryV1, legacyFactoryV2, legacyRouterV2, factoryV2_1, IWNATIVE(address(wnative)));
 
         // Create quoter
         quoter = new LBQuoter(
-            address(factoryV1), address(legacyFactoryV2), address(factory), address(legacyRouterV2), address(router)
+            address(factoryV1),
+            address(legacyFactoryV2),
+            address(factoryV2_1),
+            address(factory),
+            address(legacyRouterV2),
+            address(routerV2_1),
+            address(router)
         );
 
         // Label deployed contracts

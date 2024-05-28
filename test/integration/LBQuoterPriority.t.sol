@@ -23,13 +23,15 @@ contract LiquidityBinQuoterPriorityTest is Test {
         newQuoter = new LBQuoter(
             AvalancheAddresses.JOE_V1_FACTORY,
             AvalancheAddresses.JOE_V2_FACTORY,
+            AvalancheAddresses.JOE_V2_1_FACTORY,
             factory,
             AvalancheAddresses.JOE_V2_ROUTER,
+            AvalancheAddresses.JOE_V2_1_ROUTER,
             router
         );
     }
 
-    function test_QuoteFromAmountIn() public view  {
+    function test_QuoteFromAmountIn() public view {
         address[] memory route = new address[](2);
         route[0] = address(AvalancheAddresses.USDT);
         route[1] = address(AvalancheAddresses.USDC);
@@ -47,7 +49,7 @@ contract LiquidityBinQuoterPriorityTest is Test {
 
         assertEq(newQuote.binSteps[0], oldQuote.binSteps[0], "test_QuoteFromAmountIn::5");
 
-        assertEq(uint8(newQuote.versions[0]), uint8(ILBRouter.Version.V2_1), "test_QuoteFromAmountIn::6");
+        assertEq(uint8(newQuote.versions[0]), uint8(ILBRouter.Version.V2_2), "test_QuoteFromAmountIn::6");
         assertEq(uint8(oldQuote.versions[0]), uint8(ILBRouter.Version.V2), "test_QuoteFromAmountIn::7");
 
         assertEq(newQuote.amounts[0], oldQuote.amounts[0], "test_QuoteFromAmountIn::8");
@@ -80,7 +82,7 @@ contract LiquidityBinQuoterPriorityTest is Test {
 
         assertEq(newQuote.binSteps[0], oldQuote.binSteps[0], "test_QuoteFromAmountIn::17");
 
-        assertEq(uint8(newQuote.versions[0]), uint8(ILBRouter.Version.V2_1), "test_QuoteFromAmountIn::18");
+        assertEq(uint8(newQuote.versions[0]), uint8(ILBRouter.Version.V2_2), "test_QuoteFromAmountIn::18");
         assertEq(uint8(oldQuote.versions[0]), uint8(ILBRouter.Version.V2), "test_QuoteFromAmountIn::19");
 
         assertEq(newQuote.amounts[0], oldQuote.amounts[0], "test_QuoteFromAmountIn::20");
@@ -100,7 +102,7 @@ contract LiquidityBinQuoterPriorityTest is Test {
         assertEq(newQuote.fees[0], oldQuote.fees[0], "test_QuoteFromAmountIn::24");
     }
 
-    function test_QuoteFromAmounOut() public  view {
+    function test_QuoteFromAmounOut() public view {
         address[] memory route = new address[](2);
         route[0] = address(AvalancheAddresses.USDC);
         route[1] = address(AvalancheAddresses.USDT);
@@ -118,7 +120,7 @@ contract LiquidityBinQuoterPriorityTest is Test {
 
         assertEq(newQuote.binSteps[0], oldQuote.binSteps[0], "test_QuoteFromAmounOut::5");
 
-        assertEq(uint8(newQuote.versions[0]), uint8(ILBRouter.Version.V2_1), "test_QuoteFromAmounOut::6");
+        assertEq(uint8(newQuote.versions[0]), uint8(ILBRouter.Version.V2_2), "test_QuoteFromAmounOut::6");
         assertEq(uint8(oldQuote.versions[0]), uint8(ILBRouter.Version.V2), "test_QuoteFromAmounOut::7");
 
         assertEq(newQuote.amounts[0], oldQuote.amounts[0], "test_QuoteFromAmounOut::8");
@@ -151,7 +153,7 @@ contract LiquidityBinQuoterPriorityTest is Test {
 
         assertEq(newQuote.binSteps[0], oldQuote.binSteps[0], "test_QuoteFromAmounOut::17");
 
-        assertEq(uint8(newQuote.versions[0]), uint8(ILBRouter.Version.V2_1), "test_QuoteFromAmounOut::18");
+        assertEq(uint8(newQuote.versions[0]), uint8(ILBRouter.Version.V2_2), "test_QuoteFromAmounOut::18");
         assertEq(uint8(oldQuote.versions[0]), uint8(ILBRouter.Version.V2), "test_QuoteFromAmounOut::19");
 
         assertEq(newQuote.amounts[0], oldQuote.amounts[0], "test_QuoteFromAmounOut::20");

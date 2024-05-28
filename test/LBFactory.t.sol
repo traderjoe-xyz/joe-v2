@@ -467,7 +467,7 @@ contract LiquidityBinFactoryTest is TestHelper {
             path.pairBinSteps[0] = DEFAULT_BIN_STEP;
 
             path.versions = new ILBRouter.Version[](1);
-            path.versions[0] = ILBRouter.Version.V2_1;
+            path.versions[0] = ILBRouter.Version.V2_2;
 
             path.tokenPath = new IERC20[](2);
             path.tokenPath[0] = usdc;

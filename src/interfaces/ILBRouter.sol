@@ -52,7 +52,8 @@ interface ILBRouter {
     enum Version {
         V1,
         V2,
-        V2_1
+        V2_1,
+        V2_2
     }
 
     /**
@@ -104,6 +105,8 @@ interface ILBRouter {
     }
 
     function getFactory() external view returns (ILBFactory);
+
+    function getFactoryV2_1() external view returns (ILBFactory);
 
     function getLegacyFactory() external view returns (ILBLegacyFactory);
 

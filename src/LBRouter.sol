@@ -35,14 +35,15 @@ contract LBRouter is ILBRouter {
     using JoeLibrary for uint256;
     using PackedUint128Math for bytes32;
 
-    ILBFactory private immutable _factory;
+    ILBFactory private immutable _factory2_2;
+    ILBFactory private immutable _factory2_1;
     IJoeFactory private immutable _factoryV1;
     ILBLegacyFactory private immutable _legacyFactory;
     ILBLegacyRouter private immutable _legacyRouter;
     IWNATIVE private immutable _wnative;
 
     modifier onlyFactoryOwner() {
-        if (msg.sender != Ownable(address(_factory)).owner()) revert LBRouter__NotFactoryOwner();
+        if (msg.sender != Ownable(address(_factory2_2)).owner()) revert LBRouter__NotFactoryOwner();
         _;
     }
 
@@ -61,20 +62,23 @@ contract LBRouter is ILBRouter {
 
     /**
      * @notice Constructor
-     * @param factory Address of Joe V2.1 factory
+     * @param factory2_2 Address of Joe V2.2 factory
+     * @param factory2_1 Address of Joe V2.1 factory
      * @param factoryV1 Address of Joe V1 factory
      * @param legacyFactory Address of Joe V2 factory
      * @param legacyRouter Address of Joe V2 router
      * @param wnative Address of WNATIVE
      */
     constructor(
-        ILBFactory factory,
+        ILBFactory factory2_2,
         IJoeFactory factoryV1,
         ILBLegacyFactory legacyFactory,
         ILBLegacyRouter legacyRouter,
+        ILBFactory factory2_1,
         IWNATIVE wnative
     ) {
-        _factory = factory;
+        _factory2_2 = factory2_2;
+        _factory2_1 = factory2_1;
         _factoryV1 = factoryV1;
         _legacyFactory = legacyFactory;
         _legacyRouter = legacyRouter;
@@ -93,7 +97,15 @@ contract LBRouter is ILBRouter {
      * @return lbFactory The address of the factory V2.1
      */
     function getFactory() external view override returns (ILBFactory lbFactory) {
-        return _factory;
+        return _factory2_2;
+    }
+
+    /**
+     * View function to get the factory V2.1 address
+     * @return lbFactory The address of the factory V2.1
+     */
+    function getFactoryV2_1() external view override returns (ILBFactory lbFactory) {
+        return _factory2_1;
     }
 
     /**
@@ -198,7 +210,7 @@ contract LBRouter is ILBRouter {
         override
         returns (ILBPair pair)
     {
-        pair = _factory.createLBPair(tokenX, tokenY, activeId, binStep);
+        pair = _factory2_2.createLBPair(tokenX, tokenY, activeId, binStep);
     }
 
     /**
@@ -226,7 +238,7 @@ contract LBRouter is ILBRouter {
     {
         ILBPair lbPair = ILBPair(
             _getLBPairInformation(
-                liquidityParameters.tokenX, liquidityParameters.tokenY, liquidityParameters.binStep, Version.V2_1
+                liquidityParameters.tokenX, liquidityParameters.tokenY, liquidityParameters.binStep, Version.V2_2
             )
         );
         if (liquidityParameters.tokenX != lbPair.getTokenX()) revert LBRouter__WrongTokenOrder();
@@ -264,7 +276,7 @@ contract LBRouter is ILBRouter {
     {
         ILBPair _LBPair = ILBPair(
             _getLBPairInformation(
-                liquidityParameters.tokenX, liquidityParameters.tokenY, liquidityParameters.binStep, Version.V2_1
+                liquidityParameters.tokenX, liquidityParameters.tokenY, liquidityParameters.binStep, Version.V2_2
             )
         );
         if (liquidityParameters.tokenX != _LBPair.getTokenX()) revert LBRouter__WrongTokenOrder();
@@ -315,7 +327,7 @@ contract LBRouter is ILBRouter {
         address to,
         uint256 deadline
     ) external override ensure(deadline) returns (uint256 amountX, uint256 amountY) {
-        ILBPair _LBPair = ILBPair(_getLBPairInformation(tokenX, tokenY, binStep, Version.V2_1));
+        ILBPair _LBPair = ILBPair(_getLBPairInformation(tokenX, tokenY, binStep, Version.V2_2));
         bool isWrongOrder = tokenX != _LBPair.getTokenX();
 
         if (isWrongOrder) (amountXMin, amountYMin) = (amountYMin, amountXMin);
@@ -351,7 +363,7 @@ contract LBRouter is ILBRouter {
         address payable to,
         uint256 deadline
     ) external override ensure(deadline) returns (uint256 amountToken, uint256 amountNATIVE) {
-        ILBPair lbPair = ILBPair(_getLBPairInformation(token, IERC20(_wnative), binStep, Version.V2_1));
+        ILBPair lbPair = ILBPair(_getLBPairInformation(token, IERC20(_wnative), binStep, Version.V2_2));
 
         {
             bool isNATIVETokenY = IERC20(_wnative) == lbPair.getTokenY();
@@ -754,7 +766,7 @@ contract LBRouter is ILBRouter {
 
     /**
      * @notice Helper function to return the amounts in
-     * @param versions The list of versions (V1, V2 or V2_1)
+     * @param versions The list of versions (V1, V2, V2_1 or V2_2)
      * @param pairs The list of pairs
      * @param tokenPath The swap path
      * @param amountOut The amount out
@@ -829,7 +841,7 @@ contract LBRouter is ILBRouter {
      * @notice Helper function to swap exact tokens for tokens
      * @param amountIn The amount of token sent
      * @param pairs The list of pairs
-     * @param versions The list of versions (V1, V2 or V2_1)
+     * @param versions The list of versions (V1, V2, V2_1 or V2_2)
      * @param tokenPath The swap path using the binSteps following `pairBinSteps`
      * @param to The address of the recipient
      * @return amountOut The amount of token sent to `to`
@@ -891,7 +903,7 @@ contract LBRouter is ILBRouter {
     /**
      * @notice Helper function to swap tokens for exact tokens
      * @param pairs The array of pairs
-     * @param versions The list of versions (V1, V2 or V2_1)
+     * @param versions The list of versions (V1, V2, V2_1 or V2_2)
      * @param tokenPath The swap path using the binSteps following `pairBinSteps`
      * @param amountsIn The list of amounts in
      * @param to The address of the recipient
@@ -950,7 +962,7 @@ contract LBRouter is ILBRouter {
     /**
      * @notice Helper function to swap exact tokens supporting for fee on transfer tokens
      * @param pairs The list of pairs
-     * @param versions The list of versions (V1, V2 or V2_1)
+     * @param versions The list of versions (V1, V2, V2_1 or V2_2)
      * @param tokenPath The swap path using the binSteps following `pairBinSteps`
      * @param to The address of the recipient
      */
@@ -1015,8 +1027,10 @@ contract LBRouter is ILBRouter {
     {
         if (version == Version.V2) {
             lbPair = address(_legacyFactory.getLBPairInformation(tokenX, tokenY, binStep).LBPair);
+        } else if (version == Version.V2_1) {
+            lbPair = address(_factory2_1.getLBPairInformation(tokenX, tokenY, binStep).LBPair);
         } else {
-            lbPair = address(_factory.getLBPairInformation(tokenX, tokenY, binStep).LBPair);
+            lbPair = address(_factory2_2.getLBPairInformation(tokenX, tokenY, binStep).LBPair);
         }
 
         if (lbPair == address(0)) {
@@ -1049,7 +1063,7 @@ contract LBRouter is ILBRouter {
     /**
      * @notice Helper function to return a list of pairs
      * @param pairBinSteps The list of bin steps
-     * @param versions The list of versions (V1, V2 or V2_1)
+     * @param versions The list of versions (V1, V2, V2_1 or V2_2)
      * @param tokenPath The swap path using the binSteps following `pairBinSteps`
      * @return pairs The list of pairs
      */

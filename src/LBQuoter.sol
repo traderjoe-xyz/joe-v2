@@ -23,6 +23,8 @@ import {ILBRouter} from "./interfaces/ILBRouter.sol";
  * @title Liquidity Book Quoter
  * @author Trader Joe
  * @notice Helper contract to determine best path through multiple markets
+ * This contract shouldn't be used on-chain as it consumes a lot of gas
+ * It should be used for off-chain purposes, like calculating the best path for a swap
  */
 contract LBQuoter {
     using Uint256x256Math for uint256;

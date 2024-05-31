@@ -47,7 +47,8 @@ interface ILBRouter {
      * @dev This enum represents the version of the pair requested
      * - V1: Joe V1 pair
      * - V2: LB pair V2. Also called legacyPair
-     * - V2_1: LB pair V2.1 (current version)
+     * - V2_1: LB pair V2.1
+     * - V2_2: LB pair V2.2 (current version)
      */
     enum Version {
         V1,

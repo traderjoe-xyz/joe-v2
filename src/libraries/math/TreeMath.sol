@@ -97,7 +97,7 @@ library TreeMath {
      * It will return type(uint24).max if there is no such id.
      * @param tree The tree
      * @param id The id
-     * @return The first id in the tree that is lower than or equal to the given id
+     * @return The first id in the tree that is lower than the given id
      */
     function findFirstRight(TreeUint24 storage tree, uint24 id) internal view returns (uint24) {
         bytes32 leaves;
@@ -152,7 +152,7 @@ library TreeMath {
      * It will return 0 if there is no such id.
      * @param tree The tree
      * @param id The id
-     * @return The first id in the tree that is higher than or equal to the given id
+     * @return The first id in the tree that is higher than the given id
      */
     function findFirstLeft(TreeUint24 storage tree, uint24 id) internal view returns (uint24) {
         bytes32 leaves;

@@ -1086,15 +1086,15 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
 
             if (fees != 0) {
                 uint256 userLiquidity = amountsIn.sub(fees).getLiquidity(price);
-                uint256 binLiquidity = binReserves.getLiquidity(price);
-
-                shares = userLiquidity.mulDivRoundDown(supply, binLiquidity);
                 bytes32 protocolCFees = fees.scalarMulDivBasisPointRoundDown(parameters.getProtocolShare());
 
                 if (protocolCFees != 0) {
                     amountsInToBin = amountsInToBin.sub(protocolCFees);
                     _protocolFees = _protocolFees.add(protocolCFees);
                 }
+
+                uint256 binLiquidity = binReserves.add(fees.sub(protocolCFees)).getLiquidity(price);
+                shares = userLiquidity.mulDivRoundDown(supply, binLiquidity);
 
                 parameters = _oracle.update(parameters, id);
                 _parameters = parameters;

@@ -76,9 +76,8 @@ library FeeHelper {
         returns (uint128)
     {
         unchecked {
-            uint256 denominator = Constants.SQUARED_PRECISION;
-            // Can't overflow, max(result) = type(uint128).max * 0.1e18 * 1.1e18 / 1e36 <= 2^128 * 0.11e36 / 1e36 < 2^128
-            return uint128(uint256(amountWithFees) * totalFee * (uint256(totalFee) + Constants.PRECISION) / denominator);
+            // Can't overflow, max(result) = type(uint128).max * 0.1e18 / 1.1e18 < 2^128
+            return uint128(uint256(amountWithFees) * totalFee / (uint256(totalFee) + Constants.PRECISION));
         }
     }
 

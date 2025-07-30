@@ -43,9 +43,8 @@ contract FeeHelperTest is Test {
             amountWithFee.getCompositionFee(fee);
         }
 
-        uint256 denominator = 1e36;
         uint256 expectedCompositionFee =
-            (uint256(amountWithFee) * fee).mulDivRoundDown(uint256(fee) + 1e18, denominator);
+            (uint256(amountWithFee)).mulDivRoundDown(uint256(fee), uint256(fee) + 1e18);
 
         uint128 compositionFee = amountWithFee.getCompositionFee(fee);
 

@@ -11,6 +11,12 @@ contract LiquidityConfigurationsTest is Test {
     using PackedUint128Math for uint128;
     using LiquidityConfigurations for bytes32;
 
+    ExternalLiquidityConfigurations private helper;
+
+    function setUp() external {
+        helper = new ExternalLiquidityConfigurations();
+    }
+
     function testFuzz_EncodeParams(uint64 distributionX, uint64 distributionY, uint24 id) external pure {
         bytes32 config = LiquidityConfigurations.encodeParams(distributionX, distributionY, id);
 
@@ -28,13 +34,14 @@ contract LiquidityConfigurationsTest is Test {
 
         if (uint256(config) > type(uint152).max || distributionX > 1e18 || distributionY > 1e18) {
             vm.expectRevert(LiquidityConfigurations.LiquidityConfigurations__InvalidConfig.selector);
+            helper.decodeParams(config);
+        } else {
+            (uint64 _distributionX, uint64 _distributionY, uint24 _id) = LiquidityConfigurations.decodeParams(config);
+
+            assertEq(_distributionX, distributionX, "testFuzz_DecodeParams::1");
+            assertEq(_distributionY, distributionY, "testFuzz_DecodeParams::2");
+            assertEq(_id, id, "testFuzz_DecodeParams::3");
         }
-
-        (uint64 _distributionX, uint64 _distributionY, uint24 _id) = config.decodeParams();
-
-        assertEq(_distributionX, distributionX, "testFuzz_DecodeParams::1");
-        assertEq(_distributionY, distributionY, "testFuzz_DecodeParams::2");
-        assertEq(_id, id, "testFuzz_DecodeParams::3");
     }
 
     function testFuzz_GetAmountsAndId(bytes32 config, bytes32 amounts) external {
@@ -44,20 +51,36 @@ contract LiquidityConfigurationsTest is Test {
 
         if (uint256(config) > type(uint152).max || distributionX > 1e18 || distributionY > 1e18) {
             vm.expectRevert(LiquidityConfigurations.LiquidityConfigurations__InvalidConfig.selector);
+            helper.decodeParams(config);
+        } else {
+            (uint64 distributionX_, uint64 distributionY_, uint24 id_) = LiquidityConfigurations.decodeParams(config);
+
+            (uint128 x1, uint128 x2) = amounts.decode();
+
+            uint128 y1 = uint128(uint256(x1) * distributionX_ / 1e18);
+            uint128 y2 = uint128(uint256(x2) * distributionY_ / 1e18);
+
+            bytes32 amountsInToBin = y1.encode(y2);
+
+            (bytes32 amountsInToBin_, uint24 id_2) = LiquidityConfigurations.getAmountsAndId(config, amounts);
+
+            assertEq(amountsInToBin_, amountsInToBin, "testFuzz_GetAmountsAndId::1");
+            assertEq(id_2, id, "testFuzz_GetAmountsAndId::2");
         }
-
-        (distributionX, distributionY, id) = config.decodeParams();
-
-        (uint128 x1, uint128 x2) = amounts.decode();
-
-        uint128 y1 = uint128(uint256(x1) * distributionX / 1e18);
-        uint128 y2 = uint128(uint256(x2) * distributionY / 1e18);
-
-        bytes32 amountsInToBin = y1.encode(y2);
-
-        (bytes32 _amountsInToBin, uint24 _id) = config.getAmountsAndId(amounts);
-
-        assertEq(_amountsInToBin, amountsInToBin, "testFuzz_GetAmountsAndId::1");
-        assertEq(_id, id, "testFuzz_GetAmountsAndId::2");
     }
+}
+
+contract ExternalLiquidityConfigurations {
+    using LiquidityConfigurations for bytes32;
+
+    function decodeParams(bytes32 config) external pure returns (uint64, uint64, uint24) {
+        return config.decodeParams();
+    }
+
+    function getAmountsAndId(bytes32 config, bytes32 amounts) external pure returns (bytes32, uint24) {
+        return config.getAmountsAndId(amounts);
+    }
+
+    // Exclude from coverage
+    function test() external pure {}
 }

@@ -39,7 +39,7 @@ contract PriceHelperTest is Test {
         vm.assume(price > 340282366920938463463374607431768211455999999999999999999);
 
         vm.expectRevert(Uint256x256Math.Uint256x256Math__MulDivOverflow.selector);
-        PriceHelper.convertDecimalPriceTo128x128(price);
+        math.convertDecimalPriceTo128x128(price);
     }
 
     function testFuzz_Convert128x128PriceToDecimal(uint256 price128x128) external pure {
@@ -105,5 +105,9 @@ contract Math {
 
     function idFromPrice(uint256 price, uint16 binStep) external pure returns (uint24) {
         return PriceHelper.getIdFromPrice(price, binStep);
+    }
+
+    function convertDecimalPriceTo128x128(uint256 price) external pure returns (uint256) {
+        return PriceHelper.convertDecimalPriceTo128x128(price);
     }
 }

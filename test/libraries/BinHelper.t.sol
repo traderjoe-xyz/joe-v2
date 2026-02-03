@@ -18,6 +18,13 @@ contract BinHelperTest is TestHelper {
     using Uint256x256Math for uint256;
     using PairParameterHelper for bytes32;
 
+    ExternalBinHelper private helper;
+
+    function setUp() public override {
+        super.setUp();
+        helper = new ExternalBinHelper();
+    }
+
     function testFuzz_GetAmountOutOfBin(
         uint128 binReserveX,
         uint128 binReserveY,
@@ -47,7 +54,7 @@ contract BinHelperTest is TestHelper {
 
         if (amountInX != 0 && px / amountInX != price || L < px) {
             vm.expectRevert(BinHelper.BinHelper__LiquidityOverflow.selector);
-            amountsIn.getLiquidity(price);
+            helper.getLiquidity(amountsIn, price);
         } else {
             uint256 liquidity = amountsIn.getLiquidity(price);
             assertEq(liquidity, price * amountInX + (uint256(amountInY) << 128), "testFuzz_GetLiquidity::1");
@@ -141,7 +148,7 @@ contract BinHelperTest is TestHelper {
             vm.expectRevert(abi.encodeWithSelector(BinHelper.BinHelper__CompositionFactorFlawed.selector, id));
         }
 
-        amounts.verifyAmounts(activeId, id);
+        helper.verifyAmounts(amounts, activeId, id);
     }
 
     function testFuzz_VerifyAmountsOnActiveId(uint128 amountX, uint128 amountY, uint24 activeId) external pure {
@@ -423,4 +430,17 @@ contract BinHelperTest is TestHelper {
         assertEq(usdc.balanceOf(address(this)), 0, "testFuzz_Transfer::11");
         assertEq(wnative.balanceOf(address(this)), 0, "testFuzz_Transfer::12");
     }
+}
+
+contract ExternalBinHelper {
+    function getLiquidity(bytes32 amounts, uint256 price) external pure returns (uint256) {
+        return BinHelper.getLiquidity(amounts, price);
+    }
+
+    function verifyAmounts(bytes32 amounts, uint24 activeId, uint24 id) external pure {
+        BinHelper.verifyAmounts(amounts, activeId, id);
+    }
+
+    // Exclude from coverage
+    function test() external pure {}
 }

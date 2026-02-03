@@ -9,10 +9,16 @@ import "../../../src/libraries/math/Uint256x256Math.sol";
 contract Uint256x256MathTest is Test {
     using Uint256x256Math for uint256;
 
+    ExternalUint256x256Math private helper;
+
+    function setUp() external {
+        helper = new ExternalUint256x256Math();
+    }
+
     function testFuzz_MulDivRoundDown(uint256 x, uint256 y, uint256 denominator) external {
         if (denominator == 0) {
             vm.expectRevert();
-            x.mulDivRoundDown(y, denominator);
+            helper.mulDivRoundDown(x, y, denominator);
         } else {
             if (x == 0 || y == 0) {
                 assertEq(x.mulDivRoundDown(y, denominator), 0, "testFuzz_MulDivRoundDown::1");
@@ -21,7 +27,7 @@ contract Uint256x256MathTest is Test {
 
                 if (prod1 != 0 && denominator <= prod1) {
                     vm.expectRevert(Uint256x256Math.Uint256x256Math__MulDivOverflow.selector);
-                    x.mulDivRoundDown(y, denominator);
+                    helper.mulDivRoundDown(x, y, denominator);
                 } else {
                     assertEq(
                         x.mulDivRoundDown(y, denominator),
@@ -36,20 +42,21 @@ contract Uint256x256MathTest is Test {
     function testFuzz_MulDivRoundUp(uint256 x, uint256 y, uint256 denominator) external {
         if (denominator == 0) {
             vm.expectRevert();
-            x.mulDivRoundUp(y, denominator);
+            helper.mulDivRoundUp(x, y, denominator);
+            return;
         }
 
         (, uint256 prod1) = _getProds(x, y);
 
         if (prod1 != 0 && denominator <= prod1) {
             vm.expectRevert(Uint256x256Math.Uint256x256Math__MulDivOverflow.selector);
-            x.mulDivRoundDown(y, denominator);
+            helper.mulDivRoundDown(x, y, denominator);
         } else {
             uint256 result = x.mulDivRoundDown(y, denominator);
             if (mulmod(x, y, denominator) != 0) {
                 if (result == type(uint256).max) {
                     vm.expectRevert();
-                    x.mulDivRoundUp(y, denominator);
+                    helper.mulDivRoundUp(x, y, denominator);
                     return;
                 } else {
                     result += 1;
@@ -64,7 +71,7 @@ contract Uint256x256MathTest is Test {
         (, uint256 prod1) = _getProds(x, y);
         if (prod1 >> shift != 0) {
             vm.expectRevert(Uint256x256Math.Uint256x256Math__MulShiftOverflow.selector);
-            x.mulShiftRoundDown(y, shift);
+            helper.mulShiftRoundDown(x, y, shift);
         } else {
             assertEq(x.mulShiftRoundDown(y, shift), x.mulDivRoundDown(y, 1 << shift), "testFuzz_mulShiftRoundDown::1");
         }
@@ -74,7 +81,7 @@ contract Uint256x256MathTest is Test {
         (, uint256 prod1) = _getProds(x, y);
         if (prod1 >> shift != 0) {
             vm.expectRevert(Uint256x256Math.Uint256x256Math__MulShiftOverflow.selector);
-            x.mulShiftRoundUp(y, shift);
+            helper.mulShiftRoundUp(x, y, shift);
         } else {
             assertEq(x.mulShiftRoundUp(y, shift), x.mulDivRoundUp(y, 1 << shift), "testFuzz_mulShiftRoundUp::1");
         }
@@ -83,13 +90,13 @@ contract Uint256x256MathTest is Test {
     function testFuzz_ShiftDivRoundDown(uint256 x, uint8 shift, uint256 denominator) external {
         if (denominator == 0) {
             vm.expectRevert();
-            x.shiftDivRoundDown(shift, denominator);
+            helper.shiftDivRoundDown(x, shift, denominator);
         } else {
             (, uint256 prod1) = _getProds(x, 1 << shift);
 
             if (prod1 != 0 && denominator <= prod1) {
                 vm.expectRevert(Uint256x256Math.Uint256x256Math__MulDivOverflow.selector);
-                x.shiftDivRoundDown(shift, denominator);
+                helper.shiftDivRoundDown(x, shift, denominator);
             } else {
                 assertEq(
                     x.shiftDivRoundDown(shift, denominator),
@@ -103,19 +110,19 @@ contract Uint256x256MathTest is Test {
     function testFuzz_ShiftDivRoundUp(uint256 x, uint8 shift, uint256 denominator) external {
         if (denominator == 0) {
             vm.expectRevert();
-            x.shiftDivRoundUp(shift, denominator);
+            helper.shiftDivRoundUp(x, shift, denominator);
         } else {
             (, uint256 prod1) = _getProds(x, 1 << shift);
 
             if (prod1 != 0 && denominator <= prod1) {
                 vm.expectRevert(Uint256x256Math.Uint256x256Math__MulDivOverflow.selector);
-                x.shiftDivRoundUp(shift, denominator);
+                helper.shiftDivRoundUp(x, shift, denominator);
             } else {
                 uint256 result = _trustedMulDiv(x, 1 << shift, denominator);
                 if (mulmod(x, 1 << shift, denominator) != 0) {
                     if (result == type(uint256).max) {
                         vm.expectRevert();
-                        x.shiftDivRoundUp(shift, denominator);
+                        helper.shiftDivRoundUp(x, shift, denominator);
                         return;
                     } else {
                         result += 1;
@@ -237,4 +244,35 @@ contract Uint256x256MathTest is Test {
             return result;
         }
     }
+}
+
+contract ExternalUint256x256Math {
+    using Uint256x256Math for uint256;
+
+    function mulDivRoundDown(uint256 x, uint256 y, uint256 denominator) external pure returns (uint256) {
+        return x.mulDivRoundDown(y, denominator);
+    }
+
+    function mulDivRoundUp(uint256 x, uint256 y, uint256 denominator) external pure returns (uint256) {
+        return x.mulDivRoundUp(y, denominator);
+    }
+
+    function mulShiftRoundDown(uint256 x, uint256 y, uint8 shift) external pure returns (uint256) {
+        return x.mulShiftRoundDown(y, shift);
+    }
+
+    function mulShiftRoundUp(uint256 x, uint256 y, uint8 shift) external pure returns (uint256) {
+        return x.mulShiftRoundUp(y, shift);
+    }
+
+    function shiftDivRoundDown(uint256 x, uint8 shift, uint256 denominator) external pure returns (uint256) {
+        return x.shiftDivRoundDown(shift, denominator);
+    }
+
+    function shiftDivRoundUp(uint256 x, uint8 shift, uint256 denominator) external pure returns (uint256) {
+        return x.shiftDivRoundUp(shift, denominator);
+    }
+
+    // Exclude from coverage
+    function test() external pure {}
 }

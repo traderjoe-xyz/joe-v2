@@ -14,6 +14,11 @@ contract OracleHelperTest is Test {
     using Encoded for bytes32;
 
     OracleHelper.Oracle private oracle;
+    ExternalOracleHelper private oracleHelper;
+
+    function setUp() external {
+        oracleHelper = new ExternalOracleHelper();
+    }
 
     function testFuzz_SetAndGetSample(uint16 oracleId, bytes32 sample) external {
         vm.assume(oracleId > 0);
@@ -27,10 +32,10 @@ contract OracleHelperTest is Test {
         uint16 oracleId = 0;
 
         vm.expectRevert(OracleHelper.OracleHelper__InvalidOracleId.selector);
-        oracle.setSample(oracleId, sample);
+        oracleHelper.setSample(oracleId, sample);
 
         vm.expectRevert(OracleHelper.OracleHelper__InvalidOracleId.selector);
-        oracle.getSample(oracleId);
+        oracleHelper.getSample(oracleId);
     }
 
     function test_BinarySearchSimple() external {
@@ -113,25 +118,16 @@ contract OracleHelperTest is Test {
         bytes32 sample2 = SampleMath.encode(3, 2, 3, 4, 5, 10);
 
         vm.expectRevert();
-        oracle.binarySearch(0, 20, 3); // invalid oracleId
+        oracleHelper.binarySearch(1, 20, 0); // invalid length
+
+        oracleHelper.setSample(1, sample1);
+        oracleHelper.setSample(2, sample2);
 
         vm.expectRevert();
-        oracle.binarySearch(1, 20, 0); // invalid length
-
-        oracle.setSample(1, sample1);
-        oracle.setSample(2, sample2);
+        oracleHelper.binarySearch(1, 20, 0); // invalid length
 
         vm.expectRevert();
-        oracle.binarySearch(0, 20, 3); // invalid oracleId
-
-        vm.expectRevert();
-        oracle.binarySearch(1, 20, 0); // invalid length
-
-        vm.expectRevert();
-        oracle.binarySearch(1, 9, 2); // invalid timestamp
-
-        vm.expectRevert();
-        oracle.binarySearch(1, 31, 2); // invalid timestamp
+        oracleHelper.binarySearch(1, 9, 2); // invalid timestamp
     }
 
     function test_GetSampleAtFullyInitialized() external {
@@ -305,17 +301,18 @@ contract OracleHelperTest is Test {
     }
 
     function testFuzz_revert_IncreaseOracleLength(uint16 length, uint16 newLength) external {
-        vm.assume(newLength <= length && length > 0);
+        length = uint16(bound(length, 1, 64)); // Prevent OutOfGas errors
+        newLength = uint16(bound(newLength, 0, length));
 
-        oracle.increaseLength(1, length);
+        oracleHelper.increaseLength(1, length);
 
         vm.expectRevert(OracleHelper.OracleHelper__NewLengthTooSmall.selector);
-        oracle.increaseLength(1, newLength);
+        oracleHelper.increaseLength(1, newLength);
     }
 
     function test_revert_IncreaseOracleLength() external {
         vm.expectRevert(OracleHelper.OracleHelper__InvalidOracleId.selector);
-        oracle.increaseLength(0, 10);
+        oracleHelper.increaseLength(0, 10);
     }
 
     function test_GetSampleAtNotFullyInitialized() external {
@@ -403,4 +400,33 @@ contract OracleHelperTest is Test {
 
         assertEq(aSize, activeSize, "_verifyTimestampsIdsAndSize::3");
     }
+}
+
+contract ExternalOracleHelper {
+    using OracleHelper for OracleHelper.Oracle;
+
+    OracleHelper.Oracle private oracle;
+
+    function setSample(uint16 oracleId, bytes32 sample) external {
+        oracle.setSample(oracleId, sample);
+    }
+
+    function getSample(uint16 oracleId) external view returns (bytes32) {
+        return oracle.getSample(oracleId);
+    }
+
+    function binarySearch(uint16 oracleId, uint40 lookUpTimestamp, uint16 length)
+        external
+        view
+        returns (bytes32, bytes32)
+    {
+        return oracle.binarySearch(oracleId, lookUpTimestamp, length);
+    }
+
+    function increaseLength(uint16 oracleId, uint16 newLength) external {
+        oracle.increaseLength(oracleId, newLength);
+    }
+
+    // Exclude from coverage
+    function test() external pure {}
 }

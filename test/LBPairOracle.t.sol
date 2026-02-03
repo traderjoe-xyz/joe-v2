@@ -184,30 +184,44 @@ contract LBPairOracleTest is TestHelper {
         );
     }
 
+    bytes32 private constant PARAMETERS_SLOT = bytes32(uint256(3));
+    bytes32 private constant ORACLE_SLOT_START = bytes32(uint256(10));
+    bytes32 private constant ORACLE_SLOT_END = bytes32(uint256(ORACLE_SLOT_START) + MAX_LENGTH - 1);
+
+    uint16 private constant MAX_LENGTH = 65535;
+    uint256 private constant MAX_LIFETIME_ADD_1 = OracleHelper._MAX_SAMPLE_LIFETIME + 1;
+
     function test_MaxLengthOracle() external {
+        vm.warp(1_000);
+
         deal(address(wnative), BOB, 1e36);
         deal(address(usdc), BOB, 1e36);
 
-        pairWnative.increaseOracleLength(65535);
+        bytes32 parameters = vm.load(address(pairWnative), PARAMETERS_SLOT);
 
-        vm.warp(1_000);
+        vm.store(address(pairWnative), PARAMETERS_SLOT, parameters.setOracleId(1));
+        vm.store(address(pairWnative), ORACLE_SLOT_START, bytes32(uint256(65535)));
+        vm.store(address(pairWnative), ORACLE_SLOT_END, bytes32(uint256(65535)));
 
-        vm.startPrank(BOB);
-        for (uint256 i = 0; i < 65535; i++) {
-            wnative.transfer(address(pairWnative), 1e10);
-            pairWnative.swap(true, BOB);
+        vm.prank(BOB);
+        wnative.transfer(address(pairWnative), 1e10);
+        pairWnative.swap(true, BOB);
 
-            vm.warp(block.timestamp + 121);
-        }
-        vm.stopPrank();
+        vm.warp(block.timestamp + MAX_LIFETIME_ADD_1 * MAX_LENGTH);
+
+        vm.store(address(pairWnative), PARAMETERS_SLOT, parameters.setOracleId(MAX_LENGTH));
+
+        vm.prank(BOB);
+        wnative.transfer(address(pairWnative), 1e10);
+        pairWnative.swap(true, BOB);
 
         (, uint256 size, uint256 activeSize, uint256 lastUpdated, uint256 firstTimestamp) =
             pairWnative.getOracleParameters();
 
-        assertEq(size, 65535, "test_MaxLengthOracle::1");
-        assertEq(activeSize, 65535, "test_MaxLengthOracle::2");
-        assertEq(lastUpdated, block.timestamp - 121, "test_MaxLengthOracle::3");
-        assertEq(firstTimestamp, block.timestamp - 65535 * 121, "test_MaxLengthOracle::4");
+        assertEq(size, MAX_LENGTH, "test_MaxLengthOracle::1");
+        assertEq(activeSize, MAX_LENGTH, "test_MaxLengthOracle::2");
+        assertEq(lastUpdated, block.timestamp, "test_MaxLengthOracle::3");
+        assertEq(firstTimestamp, block.timestamp - MAX_LIFETIME_ADD_1 * MAX_LENGTH, "test_MaxLengthOracle::4");
 
         uint24 activeId = pairWnative.getActiveId();
 
@@ -215,16 +229,16 @@ contract LBPairOracleTest is TestHelper {
             (uint64 cumulativeId1, uint64 cumulativeVolatility1, uint64 cumulativeBinCrossed1) =
                 pairWnative.getOracleSampleAt(uint40(block.timestamp));
             (uint64 cumulativeId2, uint64 cumulativeVolatility2, uint64 cumulativeBinCrossed2) =
-                pairWnative.getOracleSampleAt(uint40(block.timestamp - 121));
+                pairWnative.getOracleSampleAt(uint40(block.timestamp - MAX_LIFETIME_ADD_1));
 
-            assertEq(cumulativeId1, cumulativeId2 + uint64(activeId) * 121, "test_MaxLengthOracle::5");
+            assertEq(cumulativeId1, cumulativeId2 + uint64(activeId) * MAX_LIFETIME_ADD_1, "test_MaxLengthOracle::5");
 
             // True as the active id never changed:
             assertEq(cumulativeVolatility1, 0, "test_MaxLengthOracle::6");
             assertEq(cumulativeBinCrossed1, 0, "test_MaxLengthOracle::7");
             assertEq(cumulativeVolatility2, 0, "test_MaxLengthOracle::8");
             assertEq(cumulativeBinCrossed2, 0, "test_MaxLengthOracle::9");
-            assertEq((cumulativeId1 - cumulativeId2) / 121, activeId, "test_MaxLengthOracle::10");
+            assertEq((cumulativeId1 - cumulativeId2) / MAX_LIFETIME_ADD_1, activeId, "test_MaxLengthOracle::10");
             assertEq(cumulativeBinCrossed1, 0, "test_MaxLengthOracle::11");
 
             (cumulativeId2,,) = pairWnative.getOracleSampleAt(uint40(block.timestamp / 2));
@@ -236,7 +250,7 @@ contract LBPairOracleTest is TestHelper {
         }
 
         // now a swap that moves ids:
-        vm.warp(block.timestamp + 1000 - 121);
+        vm.warp(block.timestamp + MAX_LIFETIME_ADD_1);
 
         vm.prank(BOB);
         usdc.transfer(address(pairWnative), 1e18);
@@ -261,13 +275,11 @@ contract LBPairOracleTest is TestHelper {
 
         assertEq(cumulativeIdPastDay + uint64(activeId) * 3600 * 23, cumulativeIdPastHour, "test_MaxLengthOracle::17");
 
+        assertEq(cumulativeIdPastHour + uint64(activeId) * 3600, cumulativeIdNow, "test_MaxLengthOracle::18");
         assertEq(
-            cumulativeIdPastHour + uint64(activeId) * 2600 + uint64(activeId) * 1000,
-            cumulativeIdNow,
-            "test_MaxLengthOracle::18"
+            cumulativeVolatilityNow, (newActiveId - activeId) * 10_000 * MAX_LIFETIME_ADD_1, "test_MaxLengthOracle::19"
         );
-        assertEq(cumulativeVolatilityNow, (newActiveId - activeId) * 10_000 * 1000, "test_MaxLengthOracle::19");
-        assertEq(cumulativeBinCrossedNow, (newActiveId - activeId) * 1000, "test_MaxLengthOracle::20");
+        assertEq(cumulativeBinCrossedNow, (newActiveId - activeId) * MAX_LIFETIME_ADD_1, "test_MaxLengthOracle::20");
     }
 
     function test_GetOracleParametersEmptyOracle() external view {

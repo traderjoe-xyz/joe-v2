@@ -11,10 +11,16 @@ contract FeeHelperTest is Test {
     using FeeHelper for uint128;
     using Uint256x256Math for uint256;
 
+    ExternalFeeHelper private helper;
+
+    function setUp() external {
+        helper = new ExternalFeeHelper();
+    }
+
     function testFuzz_GetFeeAmountFrom(uint128 amountWithFee, uint128 fee) external {
         if (fee > Constants.MAX_FEE) {
             vm.expectRevert(FeeHelper.FeeHelper__FeeTooLarge.selector);
-            amountWithFee.getFeeAmountFrom(fee);
+            helper.getFeeAmountFrom(amountWithFee, fee);
         } else {
             uint256 expectedFeeAmount = (uint256(amountWithFee) * fee + 1e18 - 1) / 1e18;
             uint128 feeAmount = amountWithFee.getFeeAmountFrom(fee);
@@ -26,7 +32,7 @@ contract FeeHelperTest is Test {
     function testFuzz_GetFeeAmount(uint128 amount, uint128 fee) external {
         if (fee > Constants.MAX_FEE) {
             vm.expectRevert(FeeHelper.FeeHelper__FeeTooLarge.selector);
-            amount.getFeeAmount(fee);
+            helper.getFeeAmount(amount, fee);
         } else {
             uint128 denominator = 1e18 - fee;
             uint256 expectedFeeAmount = (uint256(amount) * fee + denominator - 1) / denominator;
@@ -40,22 +46,22 @@ contract FeeHelperTest is Test {
     function testFuzz_GetCompositionFee(uint128 amountWithFee, uint128 fee) external {
         if (fee > Constants.MAX_FEE) {
             vm.expectRevert(FeeHelper.FeeHelper__FeeTooLarge.selector);
-            amountWithFee.getCompositionFee(fee);
+            helper.getCompositionFee(amountWithFee, fee);
+        } else {
+            uint256 denominator = 1e36;
+            uint256 expectedCompositionFee =
+                (uint256(amountWithFee) * fee).mulDivRoundDown(uint256(fee) + 1e18, denominator);
+
+            uint128 compositionFee = amountWithFee.getCompositionFee(fee);
+
+            assertEq(compositionFee, expectedCompositionFee, "testFuzz_GetCompositionFee::1");
         }
-
-        uint256 denominator = 1e36;
-        uint256 expectedCompositionFee =
-            (uint256(amountWithFee) * fee).mulDivRoundDown(uint256(fee) + 1e18, denominator);
-
-        uint128 compositionFee = amountWithFee.getCompositionFee(fee);
-
-        assertEq(compositionFee, expectedCompositionFee, "testFuzz_GetCompositionFee::1");
     }
 
     function testFuzz_GetProtocolFeeAmount(uint128 amount, uint128 fee) external {
         if (fee > Constants.MAX_PROTOCOL_SHARE) {
             vm.expectRevert(FeeHelper.FeeHelper__ProtocolShareTooLarge.selector);
-            amount.getProtocolFeeAmount(fee);
+            helper.getProtocolFeeAmount(amount, fee);
         } else {
             uint256 expectedProtocolFeeAmount = (uint256(amount) * fee) / 1e4;
             uint128 protocolFeeAmount = amount.getProtocolFeeAmount(fee);
@@ -63,4 +69,25 @@ contract FeeHelperTest is Test {
             assertEq(protocolFeeAmount, expectedProtocolFeeAmount, "testFuzz_GetProtocolFeeAmount::1");
         }
     }
+}
+
+contract ExternalFeeHelper {
+    function getFeeAmountFrom(uint128 amountWithFee, uint128 fee) external pure returns (uint128) {
+        return FeeHelper.getFeeAmountFrom(amountWithFee, fee);
+    }
+
+    function getFeeAmount(uint128 amount, uint128 fee) external pure returns (uint128) {
+        return FeeHelper.getFeeAmount(amount, fee);
+    }
+
+    function getCompositionFee(uint128 amountWithFee, uint128 fee) external pure returns (uint128) {
+        return FeeHelper.getCompositionFee(amountWithFee, fee);
+    }
+
+    function getProtocolFeeAmount(uint128 amount, uint128 fee) external pure returns (uint128) {
+        return FeeHelper.getProtocolFeeAmount(amount, fee);
+    }
+
+    // Exclude from coverage
+    function test() external pure {}
 }

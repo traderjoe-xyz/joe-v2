@@ -600,17 +600,18 @@ contract LBPair is LBToken, ReentrancyGuardUpgradeable, Clone, ILBPair {
 
         amounts.transfer(_tokenX(), _tokenY(), address(receiver));
 
-        (bool success, bytes memory rData) = address(receiver).call(
-            abi.encodeWithSelector(
-                ILBFlashLoanCallback.LBFlashLoanCallback.selector,
-                msg.sender,
-                _tokenX(),
-                _tokenY(),
-                amounts,
-                totalFees,
-                data
-            )
-        );
+        (bool success, bytes memory rData) = address(receiver)
+            .call(
+                abi.encodeWithSelector(
+                    ILBFlashLoanCallback.LBFlashLoanCallback.selector,
+                    msg.sender,
+                    _tokenX(),
+                    _tokenY(),
+                    amounts,
+                    totalFees,
+                    data
+                )
+            );
 
         if (!success || rData.length != 32 || abi.decode(rData, (bytes32)) != Constants.CALLBACK_SUCCESS) {
             revert LBPair__FlashLoanCallbackFailed();

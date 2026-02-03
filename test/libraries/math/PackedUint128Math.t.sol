@@ -10,6 +10,12 @@ contract PackedUint128MathTest is Test {
     using PackedUint128Math for bytes32;
     using PackedUint128Math for uint128;
 
+    ExternalPackedUint128Math private helper;
+
+    function setUp() external {
+        helper = new ExternalPackedUint128Math();
+    }
+
     function testFuzz_Encode(uint128 x1, uint128 x2) external pure {
         assertEq(bytes32(x1 | uint256(x2) << 128), x1.encode(x2), "testFuzz_Encode::1");
     }
@@ -59,22 +65,22 @@ contract PackedUint128MathTest is Test {
         bytes32 y3 = y1 | y2;
 
         vm.expectRevert(PackedUint128Math.PackedUint128Math__AddOverflow.selector);
-        x.add(y1);
+        helper.add(x, y1);
 
         vm.expectRevert(PackedUint128Math.PackedUint128Math__AddOverflow.selector);
-        x.add(y2);
+        helper.add(x, y2);
 
         vm.expectRevert(PackedUint128Math.PackedUint128Math__AddOverflow.selector);
-        x.add(y3);
+        helper.add(x, y3);
 
         vm.expectRevert(PackedUint128Math.PackedUint128Math__AddOverflow.selector);
-        y1.add(x);
+        helper.add(y1, x);
 
         vm.expectRevert(PackedUint128Math.PackedUint128Math__AddOverflow.selector);
-        y2.add(x);
+        helper.add(y2, x);
 
         vm.expectRevert(PackedUint128Math.PackedUint128Math__AddOverflow.selector);
-        y3.add(x);
+        helper.add(y3, x);
     }
 
     function testFuzz_Add(bytes32 x, bytes32 y) external {
@@ -88,7 +94,7 @@ contract PackedUint128MathTest is Test {
             assertEq(x.add(y), bytes32(uint256(x1 + y1) | uint256(x2 + y2) << 128), "testFuzz_Add::1");
         } else {
             vm.expectRevert(PackedUint128Math.PackedUint128Math__AddOverflow.selector);
-            x.add(y);
+            helper.add(x, y);
         }
     }
 
@@ -110,13 +116,13 @@ contract PackedUint128MathTest is Test {
         assertEq(y3.sub(x), y3, "test_SubUnderflow::3");
 
         vm.expectRevert(PackedUint128Math.PackedUint128Math__SubUnderflow.selector);
-        x.sub(y1);
+        helper.sub(x, y1);
 
         vm.expectRevert(PackedUint128Math.PackedUint128Math__SubUnderflow.selector);
-        x.sub(y2);
+        helper.sub(x, y2);
 
         vm.expectRevert(PackedUint128Math.PackedUint128Math__SubUnderflow.selector);
-        x.sub(y3);
+        helper.sub(x, y3);
     }
 
     function testFuzz_Sub(bytes32 x, bytes32 y) external {
@@ -130,7 +136,7 @@ contract PackedUint128MathTest is Test {
             assertEq(x.sub(y), bytes32(uint256(x1 - y1) | uint256(x2 - y2) << 128), "testFuzz_Sub::1");
         } else {
             vm.expectRevert(PackedUint128Math.PackedUint128Math__SubUnderflow.selector);
-            x.sub(y);
+            helper.sub(x, y);
         }
     }
 
@@ -159,7 +165,7 @@ contract PackedUint128MathTest is Test {
 
         if (multipilier > Constants.BASIS_POINT_MAX) {
             vm.expectRevert(PackedUint128Math.PackedUint128Math__MultiplierTooLarge.selector);
-            x.scalarMulDivBasisPointRoundDown(multipilier);
+            helper.scalarMulDivBasisPointRoundDown(x, multipilier);
         } else {
             assertLe(z1, type(uint128).max, "testFuzz_ScalarMulDivBasisPointRoundDown::1");
             assertLe(z2, type(uint128).max, "testFuzz_ScalarMulDivBasisPointRoundDown::2");
@@ -171,4 +177,21 @@ contract PackedUint128MathTest is Test {
             );
         }
     }
+}
+
+contract ExternalPackedUint128Math {
+    function add(bytes32 x, bytes32 y) external pure returns (bytes32) {
+        return PackedUint128Math.add(x, y);
+    }
+
+    function sub(bytes32 x, bytes32 y) external pure returns (bytes32) {
+        return PackedUint128Math.sub(x, y);
+    }
+
+    function scalarMulDivBasisPointRoundDown(bytes32 x, uint128 multiplier) external pure returns (bytes32) {
+        return PackedUint128Math.scalarMulDivBasisPointRoundDown(x, multiplier);
+    }
+
+    // Exclude from coverage
+    function test() external pure {}
 }

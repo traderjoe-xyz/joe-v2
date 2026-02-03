@@ -4,7 +4,6 @@ pragma solidity ^0.8.10;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {Hooks} from "../libraries/Hooks.sol";
 import {ILBFactory} from "./ILBFactory.sol";
 import {ILBFlashLoanCallback} from "./ILBFlashLoanCallback.sol";
 import {ILBToken} from "./ILBToken.sol";

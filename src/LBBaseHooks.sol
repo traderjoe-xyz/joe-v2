@@ -338,8 +338,7 @@ abstract contract LBBaseHooks is ILBHooks {
      */
     function _beforeMint(address sender, address to, bytes32[] calldata liquidityConfigs, bytes32 amountsReceived)
         internal
-        virtual
-    {}
+        virtual {}
 
     /**
      * @notice Internal function to be overridden that is called after minting
@@ -350,8 +349,7 @@ abstract contract LBBaseHooks is ILBHooks {
      */
     function _afterMint(address sender, address to, bytes32[] calldata liquidityConfigs, bytes32 amountsIn)
         internal
-        virtual
-    {}
+        virtual {}
 
     /**
      * @notice Internal function to be overridden that is called before burning

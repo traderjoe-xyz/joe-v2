@@ -4,11 +4,8 @@ pragma solidity ^0.8.10;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {ILBFactory} from "./ILBFactory.sol";
-import {IJoeFactory} from "./IJoeFactory.sol";
 import {ILBLegacyPair} from "./ILBLegacyPair.sol";
 import {ILBToken} from "./ILBToken.sol";
-import {IWNATIVE} from "./IWNATIVE.sol";
 
 /// @title Liquidity Book Router Interface
 /// @author Trader Joe
@@ -167,6 +164,5 @@ interface ILBLegacyRouter {
 
     function sweep(IERC20 token, address to, uint256 amount) external;
 
-    function sweepLBToken(ILBToken _lbToken, address _to, uint256[] calldata _ids, uint256[] calldata _amounts)
-        external;
+    function sweepLBToken(ILBToken _lbToken, address _to, uint256[] calldata _ids, uint256[] calldata _amounts) external;
 }

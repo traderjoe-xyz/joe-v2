@@ -9,6 +9,12 @@ import "../../../src/libraries/math/SampleMath.sol";
 contract SampleMathTest is Test {
     using SampleMath for bytes32;
 
+    ExternalSampleMath private helper;
+
+    function setUp() external {
+        helper = new ExternalSampleMath();
+    }
+
     function testFuzz_GetOracleLength(bytes32 sample) external pure {
         uint256 oracleLength = sample.getOracleLength();
         assertLe(oracleLength, type(uint16).max, "testFuzz_GetOracleLength::1");
@@ -51,7 +57,7 @@ contract SampleMathTest is Test {
 
         if (sampleCreation > type(uint40).max - sampleLifetime) {
             vm.expectRevert();
-            sample.getSampleLastUpdate();
+            helper.getSampleLastUpdate(sample);
         } else {
             uint40 sampleLastUpdate = sample.getSampleLastUpdate();
             assertEq(sampleLastUpdate, sampleCreation + sampleLifetime, "testFuzz_GetSampleLastUpdate::1");
@@ -78,14 +84,10 @@ contract SampleMathTest is Test {
         assertEq(sample.getSampleCreation(), createdAt, "testFuzz_encode::6");
     }
 
-    function testFuzz_GetWeightedAverage(bytes32 sample1, bytes32 sample2, uint40 weight1, uint40 weight2) external {
-        uint256 totalWeight = uint256(weight1) + weight2;
-
-        if (totalWeight == 0) {
-            vm.expectRevert();
-            sample1.getWeightedAverage(sample2, weight1, weight2);
-        }
-
+    function testFuzz_GetWeightedAverage(bytes32 sample1, bytes32 sample2, uint40 weight1, uint40 weight2)
+        external
+        pure
+    {
         (uint256 wAverageId, uint256 wAverageVolatility, uint256 wAverageBinCrossed) = (0, 0, 0);
 
         {
@@ -97,25 +99,28 @@ contract SampleMathTest is Test {
             uint256 cVol2 = sample2.getCumulativeVolatility();
             uint256 cBin2 = sample2.getCumulativeBinCrossed();
 
-            wAverageId = (cId1 * weight1 + cId2 * weight2) / totalWeight;
-            wAverageVolatility = (cVol1 * weight1 + cVol2 * weight2) / totalWeight;
-            wAverageBinCrossed = (cBin1 * weight1 + cBin2 * weight2) / totalWeight;
+            if (weight2 == 0) {
+                wAverageId = cId1;
+                wAverageVolatility = cVol1;
+                wAverageBinCrossed = cBin1;
+            } else if (weight1 == 0) {
+                wAverageId = cId2;
+                wAverageVolatility = cVol2;
+                wAverageBinCrossed = cBin2;
+            } else {
+                uint256 totalWeight = uint256(weight1) + weight2;
+                wAverageId = (cId1 * weight1 + cId2 * weight2) / totalWeight;
+                wAverageVolatility = (cVol1 * weight1 + cVol2 * weight2) / totalWeight;
+                wAverageBinCrossed = (cBin1 * weight1 + cBin2 * weight2) / totalWeight;
+            }
         }
 
-        if (
-            wAverageId > type(uint64).max || wAverageVolatility > type(uint64).max
-                || wAverageBinCrossed > type(uint64).max
-        ) {
-            vm.expectRevert();
+        (uint64 weightedAverageId, uint64 weightedAverageVolatility, uint64 weightedAverageBinCrossed) =
             sample1.getWeightedAverage(sample2, weight1, weight2);
-        } else {
-            (uint64 weightedAverageId, uint64 weightedAverageVolatility, uint64 weightedAverageBinCrossed) =
-                sample1.getWeightedAverage(sample2, weight1, weight2);
 
-            assertEq(weightedAverageId, wAverageId, "testFuzz_GetWeightedAverage::1");
-            assertEq(weightedAverageVolatility, wAverageVolatility, "testFuzz_GetWeightedAverage::2");
-            assertEq(weightedAverageBinCrossed, wAverageBinCrossed, "testFuzz_GetWeightedAverage::3");
-        }
+        assertEq(weightedAverageId, wAverageId, "testFuzz_GetWeightedAverage::1");
+        assertEq(weightedAverageVolatility, wAverageVolatility, "testFuzz_GetWeightedAverage::2");
+        assertEq(weightedAverageBinCrossed, wAverageBinCrossed, "testFuzz_GetWeightedAverage::3");
     }
 
     function testFuzz_update(uint40 deltaTime, uint24 activeId, uint24 volatilityAccumulator, uint24 binCrossed)
@@ -151,7 +156,7 @@ contract SampleMathTest is Test {
                 || uint64(deltaTime) * binCrossed > type(uint64).max - currentCumulativeBinCrossed
         ) {
             vm.expectRevert();
-            sample.update(deltaTime, activeId, volatilityAccumulator, binCrossed);
+            helper.update(sample, deltaTime, activeId, volatilityAccumulator, binCrossed);
         } else {
             (uint64 cumulativeId, uint64 cumulativeVolatility, uint64 cumulativeBinCrossed) =
                 sample.update(deltaTime, activeId, volatilityAccumulator, binCrossed);
@@ -171,4 +176,29 @@ contract SampleMathTest is Test {
             );
         }
     }
+}
+
+contract ExternalSampleMath {
+    function getSampleLastUpdate(bytes32 sample) external pure returns (uint40) {
+        return SampleMath.getSampleLastUpdate(sample);
+    }
+
+    function getWeightedAverage(bytes32 sample1, bytes32 sample2, uint40 weight1, uint40 weight2)
+        external
+        pure
+        returns (uint64, uint64, uint64)
+    {
+        return SampleMath.getWeightedAverage(sample1, sample2, weight1, weight2);
+    }
+
+    function update(bytes32 sample, uint40 deltaTime, uint24 activeId, uint24 volatilityAccumulator, uint24 binCrossed)
+        external
+        pure
+        returns (uint64, uint64, uint64)
+    {
+        return SampleMath.update(sample, deltaTime, activeId, volatilityAccumulator, binCrossed);
+    }
+
+    // Exclude from coverage
+    function test() external pure {}
 }

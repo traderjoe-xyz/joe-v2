@@ -70,7 +70,7 @@ contract TestImmutableClone is Test {
     function test_CloneDeterministicTooBig() public {
         bytes memory b = new bytes(0xffc8 + 1);
         vm.expectRevert(ImmutableClone.PackedDataTooBig.selector);
-        ImmutableClone.cloneDeterministic(address(1), b, bytes32(0));
+        this.cloneDeterministic(address(1), b, bytes32(0));
     }
 }
 

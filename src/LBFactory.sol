@@ -17,7 +17,6 @@ import {Hooks} from "./libraries/Hooks.sol";
 
 import {ILBFactory} from "./interfaces/ILBFactory.sol";
 import {ILBPair} from "./interfaces/ILBPair.sol";
-import {ILBHooks} from "./interfaces/ILBHooks.sol";
 
 /**
  * @title Liquidity Book Factory
@@ -73,7 +72,9 @@ contract LBFactory is Ownable2Step, AccessControl, ILBFactory {
      * @param flashLoanFee The value of the fee for flash loan
      */
     constructor(address feeRecipient, address initialOwner, uint256 flashLoanFee) Ownable(initialOwner) {
-        if (flashLoanFee > _MAX_FLASHLOAN_FEE) revert LBFactory__FlashLoanFeeAboveMax(flashLoanFee, _MAX_FLASHLOAN_FEE);
+        if (flashLoanFee > _MAX_FLASHLOAN_FEE) {
+            revert LBFactory__FlashLoanFeeAboveMax(flashLoanFee, _MAX_FLASHLOAN_FEE);
+        }
 
         _setFeeRecipient(feeRecipient);
 
@@ -443,15 +444,16 @@ contract LBFactory is Ownable2Step, AccessControl, ILBFactory {
     ) external override onlyOwner {
         if (binStep < _MIN_BIN_STEP) revert LBFactory__BinStepTooLow(binStep);
 
-        bytes32 preset = bytes32(0).setStaticFeeParameters(
-            baseFactor,
-            filterPeriod,
-            decayPeriod,
-            reductionFactor,
-            variableFeeControl,
-            protocolShare,
-            maxVolatilityAccumulator
-        );
+        bytes32 preset = bytes32(0)
+            .setStaticFeeParameters(
+                baseFactor,
+                filterPeriod,
+                decayPeriod,
+                reductionFactor,
+                variableFeeControl,
+                protocolShare,
+                maxVolatilityAccumulator
+            );
 
         if (isOpen) {
             preset = preset.setBool(true, _OFFSET_IS_PRESET_OPEN);
@@ -619,7 +621,9 @@ contract LBFactory is Ownable2Step, AccessControl, ILBFactory {
         uint256 oldFlashLoanFee = _flashLoanFee;
 
         if (oldFlashLoanFee == flashLoanFee) revert LBFactory__SameFlashLoanFee(flashLoanFee);
-        if (flashLoanFee > _MAX_FLASHLOAN_FEE) revert LBFactory__FlashLoanFeeAboveMax(flashLoanFee, _MAX_FLASHLOAN_FEE);
+        if (flashLoanFee > _MAX_FLASHLOAN_FEE) {
+            revert LBFactory__FlashLoanFeeAboveMax(flashLoanFee, _MAX_FLASHLOAN_FEE);
+        }
 
         _flashLoanFee = flashLoanFee;
         emit FlashLoanFeeSet(oldFlashLoanFee, flashLoanFee);

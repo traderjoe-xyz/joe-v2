@@ -42,6 +42,7 @@ interface ILBRouter {
     error LBRouter__WrongNativeLiquidityParameters(
         address tokenX, address tokenY, uint256 amountX, uint256 amountY, uint256 msgValue
     );
+    error LBRouter__InsufficientLiquidityMinted(uint256 liquidityMinted);
 
     /**
      * @dev This enum represents the version of the pair requested
@@ -131,9 +132,7 @@ interface ILBRouter {
         view
         returns (uint128 amountInLeft, uint128 amountOut, uint128 fee);
 
-    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
-        external
-        returns (ILBPair pair);
+    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep) external returns (ILBPair pair);
 
     function addLiquidity(LiquidityParameters calldata liquidityParameters)
         external
@@ -248,6 +247,5 @@ interface ILBRouter {
 
     function sweep(IERC20 token, address to, uint256 amount) external;
 
-    function sweepLBToken(ILBToken _lbToken, address _to, uint256[] calldata _ids, uint256[] calldata _amounts)
-        external;
+    function sweepLBToken(ILBToken _lbToken, address _to, uint256[] calldata _ids, uint256[] calldata _amounts) external;
 }

@@ -9,6 +9,8 @@ import "../../src/libraries/PairParameterHelper.sol";
 contract PairParameterHelperTest is Test {
     using PairParameterHelper for bytes32;
 
+    ExternalPairParameterHelper private helper;
+
     struct StaticFeeParameters {
         uint16 baseFactor;
         uint16 filterPeriod;
@@ -17,6 +19,10 @@ contract PairParameterHelperTest is Test {
         uint24 variableFeeControl;
         uint16 protocolShare;
         uint24 maxVolatilityAccumulator;
+    }
+
+    function setUp() external {
+        helper = new ExternalPairParameterHelper();
     }
 
     function testFuzz_StaticFeeParametersDirtyBits(bytes32 params, StaticFeeParameters memory sfp) external pure {
@@ -99,7 +105,8 @@ contract PairParameterHelperTest is Test {
         );
 
         vm.expectRevert(PairParameterHelper.PairParametersHelper__InvalidParameter.selector);
-        params.setStaticFeeParameters(
+        helper.setStaticFeeParameters(
+            params,
             sfp.baseFactor,
             sfp.filterPeriod,
             sfp.decayPeriod,
@@ -138,7 +145,7 @@ contract PairParameterHelperTest is Test {
         vm.assume(volatilityReference > Encoded.MASK_UINT20);
 
         vm.expectRevert(PairParameterHelper.PairParametersHelper__InvalidParameter.selector);
-        params.setVolatilityReference(volatilityReference);
+        helper.setVolatilityReference(params, volatilityReference);
     }
 
     function testFuzz_SetVolatilityAccumulator(bytes32 params, uint24 volatilityAccumulator) external pure {
@@ -158,7 +165,7 @@ contract PairParameterHelperTest is Test {
         vm.assume(volatilityAccumulator > Encoded.MASK_UINT20);
 
         vm.expectRevert(PairParameterHelper.PairParametersHelper__InvalidParameter.selector);
-        params.setVolatilityAccumulator(volatilityAccumulator);
+        helper.setVolatilityAccumulator(params, volatilityAccumulator);
     }
 
     function testFuzz_SetActiveId(bytes32 params, uint24 activeId) external pure {
@@ -193,7 +200,7 @@ contract PairParameterHelperTest is Test {
             assertEq(params.getTotalFee(binStep), baseFee + variableFee, "testFuzz_getBaseAndVariableFees::3");
         } else {
             vm.expectRevert(SafeCast.SafeCast__Exceeds128Bits.selector);
-            params.getTotalFee(binStep);
+            helper.getTotalFee(params, binStep);
         }
     }
 
@@ -229,7 +236,7 @@ contract PairParameterHelperTest is Test {
 
         if (newVolAccumulator > Encoded.MASK_UINT20) {
             vm.expectRevert(PairParameterHelper.PairParametersHelper__InvalidParameter.selector);
-            params.updateVolatilityReference();
+            helper.updateVolatilityReference(params);
         } else {
             bytes32 newParams = params.updateVolatilityReference();
 
@@ -242,7 +249,7 @@ contract PairParameterHelperTest is Test {
         }
     }
 
-    function testFuzz_UpdateVolatilityAccumulator(bytes32 params, uint24 activeId) external pure  {
+    function testFuzz_UpdateVolatilityAccumulator(bytes32 params, uint24 activeId) external pure {
         uint256 idReference = params.getIdReference();
         uint256 deltaId = activeId > idReference ? activeId - idReference : idReference - activeId;
 
@@ -273,14 +280,14 @@ contract PairParameterHelperTest is Test {
         vm.warp(previousTime);
 
         params = params.setStaticFeeParameters(
-            sfp.baseFactor,
-            sfp.filterPeriod,
-            sfp.decayPeriod,
-            sfp.reductionFactor,
-            sfp.variableFeeControl,
-            sfp.protocolShare,
-            sfp.maxVolatilityAccumulator
-        ).updateTimeOfLastUpdate(block.timestamp);
+                sfp.baseFactor,
+                sfp.filterPeriod,
+                sfp.decayPeriod,
+                sfp.reductionFactor,
+                sfp.variableFeeControl,
+                sfp.protocolShare,
+                sfp.maxVolatilityAccumulator
+            ).updateTimeOfLastUpdate(block.timestamp);
 
         vm.warp(time);
 
@@ -317,7 +324,7 @@ contract PairParameterHelperTest is Test {
         vm.warp(time);
 
         vm.expectRevert();
-        params.updateReferences(block.timestamp);
+        helper.updateReferences(params, block.timestamp);
     }
 
     function testFuzz_UpdateVolatilityParameters(
@@ -336,14 +343,14 @@ contract PairParameterHelperTest is Test {
         vm.warp(previousTime);
 
         params = params.setStaticFeeParameters(
-            sfp.baseFactor,
-            sfp.filterPeriod,
-            sfp.decayPeriod,
-            sfp.reductionFactor,
-            sfp.variableFeeControl,
-            sfp.protocolShare,
-            sfp.maxVolatilityAccumulator
-        ).updateTimeOfLastUpdate(block.timestamp);
+                sfp.baseFactor,
+                sfp.filterPeriod,
+                sfp.decayPeriod,
+                sfp.reductionFactor,
+                sfp.variableFeeControl,
+                sfp.protocolShare,
+                sfp.maxVolatilityAccumulator
+            ).updateTimeOfLastUpdate(block.timestamp);
 
         vm.warp(time);
 
@@ -369,4 +376,55 @@ contract PairParameterHelperTest is Test {
             "testFuzz_UpdateVolatilityParameters::5"
         );
     }
+}
+
+contract ExternalPairParameterHelper {
+    using PairParameterHelper for bytes32;
+
+    function setStaticFeeParameters(
+        bytes32 params,
+        uint16 baseFactor,
+        uint16 filterPeriod,
+        uint16 decayPeriod,
+        uint16 reductionFactor,
+        uint24 variableFeeControl,
+        uint16 protocolShare,
+        uint24 maxVolatilityAccumulator
+    ) external pure returns (bytes32) {
+        // Fix for stack too deep error
+        bytes32 params_ = params;
+
+        return params_.setStaticFeeParameters(
+            baseFactor,
+            filterPeriod,
+            decayPeriod,
+            reductionFactor,
+            variableFeeControl,
+            protocolShare,
+            maxVolatilityAccumulator
+        );
+    }
+
+    function setVolatilityReference(bytes32 params, uint24 volatilityReference) external pure returns (bytes32) {
+        return params.setVolatilityReference(volatilityReference);
+    }
+
+    function setVolatilityAccumulator(bytes32 params, uint24 volatilityAccumulator) external pure returns (bytes32) {
+        return params.setVolatilityAccumulator(volatilityAccumulator);
+    }
+
+    function updateVolatilityReference(bytes32 params) external pure returns (bytes32) {
+        return params.updateVolatilityReference();
+    }
+
+    function updateReferences(bytes32 params, uint256 timestamp) external pure returns (bytes32) {
+        return params.updateReferences(timestamp);
+    }
+
+    function getTotalFee(bytes32 params, uint16 binStep) external pure returns (uint128) {
+        return params.getTotalFee(binStep);
+    }
+
+    // Exclude from coverage
+    function test() external pure {}
 }

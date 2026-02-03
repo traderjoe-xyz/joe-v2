@@ -362,7 +362,9 @@ contract LBPairHooksTest is TestHelper {
 
         assertEq(
             keccak256(hooks.afterData()),
-            keccak256(abi.encodeWithSelector(ILBHooks.afterBatchTransferFrom.selector, ALICE, ALICE, BOB, ids, amounts)),
+            keccak256(
+                abi.encodeWithSelector(ILBHooks.afterBatchTransferFrom.selector, ALICE, ALICE, BOB, ids, amounts)
+            ),
             "test_BeforeAfterBatchTransferFromHooks::2"
         );
 

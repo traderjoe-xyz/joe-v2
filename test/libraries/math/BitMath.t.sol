@@ -64,7 +64,7 @@ contract BitMathTest is Test {
         }
     }
 
-    function testFuzz_ClosestBitLeft(uint256 x, uint8 bit) external pure  {
+    function testFuzz_ClosestBitLeft(uint256 x, uint8 bit) external pure {
         uint256 cbl = x.closestBitLeft(bit);
 
         if (cbl == type(uint256).max) {

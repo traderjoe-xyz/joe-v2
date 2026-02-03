@@ -242,7 +242,7 @@ contract PairParameterHelperTest is Test {
         }
     }
 
-    function testFuzz_UpdateVolatilityAccumulator(bytes32 params, uint24 activeId) external pure  {
+    function testFuzz_UpdateVolatilityAccumulator(bytes32 params, uint24 activeId) external pure {
         uint256 idReference = params.getIdReference();
         uint256 deltaId = activeId > idReference ? activeId - idReference : idReference - activeId;
 
@@ -273,14 +273,14 @@ contract PairParameterHelperTest is Test {
         vm.warp(previousTime);
 
         params = params.setStaticFeeParameters(
-            sfp.baseFactor,
-            sfp.filterPeriod,
-            sfp.decayPeriod,
-            sfp.reductionFactor,
-            sfp.variableFeeControl,
-            sfp.protocolShare,
-            sfp.maxVolatilityAccumulator
-        ).updateTimeOfLastUpdate(block.timestamp);
+                sfp.baseFactor,
+                sfp.filterPeriod,
+                sfp.decayPeriod,
+                sfp.reductionFactor,
+                sfp.variableFeeControl,
+                sfp.protocolShare,
+                sfp.maxVolatilityAccumulator
+            ).updateTimeOfLastUpdate(block.timestamp);
 
         vm.warp(time);
 
@@ -336,14 +336,14 @@ contract PairParameterHelperTest is Test {
         vm.warp(previousTime);
 
         params = params.setStaticFeeParameters(
-            sfp.baseFactor,
-            sfp.filterPeriod,
-            sfp.decayPeriod,
-            sfp.reductionFactor,
-            sfp.variableFeeControl,
-            sfp.protocolShare,
-            sfp.maxVolatilityAccumulator
-        ).updateTimeOfLastUpdate(block.timestamp);
+                sfp.baseFactor,
+                sfp.filterPeriod,
+                sfp.decayPeriod,
+                sfp.reductionFactor,
+                sfp.variableFeeControl,
+                sfp.protocolShare,
+                sfp.maxVolatilityAccumulator
+            ).updateTimeOfLastUpdate(block.timestamp);
 
         vm.warp(time);
 

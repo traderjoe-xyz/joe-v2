@@ -4,7 +4,6 @@ pragma solidity ^0.8.10;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {ILBHooks} from "./ILBHooks.sol";
 import {ILBPair} from "./ILBPair.sol";
 
 /**
@@ -131,9 +130,7 @@ interface ILBFactory {
 
     function setLBPairImplementation(address lbPairImplementation) external;
 
-    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep)
-        external
-        returns (ILBPair pair);
+    function createLBPair(IERC20 tokenX, IERC20 tokenY, uint24 activeId, uint16 binStep) external returns (ILBPair pair);
 
     function setLBPairIgnored(IERC20 tokenX, IERC20 tokenY, uint16 binStep, bool ignored) external;
 

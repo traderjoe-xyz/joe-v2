@@ -213,9 +213,8 @@ contract OracleHelperTest is Test {
 
         oracle.setSample(inputs.oracleId, sample);
 
-        bytes32 parameters = bytes32(0).setOracleId(inputs.oracleId).setActiveId(inputs.previousActiveId).set(
-            inputs.volatility, Encoded.MASK_UINT20, PairParameterHelper.OFFSET_VOL_ACC
-        );
+        bytes32 parameters = bytes32(0).setOracleId(inputs.oracleId).setActiveId(inputs.previousActiveId)
+            .set(inputs.volatility, Encoded.MASK_UINT20, PairParameterHelper.OFFSET_VOL_ACC);
 
         vm.warp(inputs.timestamp);
 
@@ -262,9 +261,8 @@ contract OracleHelperTest is Test {
 
         oracle.setSample(inputs.oracleId, sample);
 
-        bytes32 parameters = bytes32(0).setOracleId(inputs.oracleId).setActiveId(inputs.previousActiveId).set(
-            inputs.volatility, Encoded.MASK_UINT20, PairParameterHelper.OFFSET_VOL_ACC
-        );
+        bytes32 parameters = bytes32(0).setOracleId(inputs.oracleId).setActiveId(inputs.previousActiveId)
+            .set(inputs.volatility, Encoded.MASK_UINT20, PairParameterHelper.OFFSET_VOL_ACC);
 
         vm.warp(inputs.timestamp);
 
@@ -321,9 +319,8 @@ contract OracleHelperTest is Test {
     }
 
     function test_GetSampleAtNotFullyInitialized() external {
-        bytes32 parameters = bytes32(0).setOracleId(1).setActiveId(1000).set(
-            1000, Encoded.MASK_UINT20, PairParameterHelper.OFFSET_VOL_ACC
-        );
+        bytes32 parameters = bytes32(0).setOracleId(1).setActiveId(1000)
+            .set(1000, Encoded.MASK_UINT20, PairParameterHelper.OFFSET_VOL_ACC);
         oracle.increaseLength(parameters.getOracleId(), 3);
         _verifyTimestampsIdsAndSize(parameters, 1, hex"030101", 1); // id : 1, oracle: 3 1 1, activeSize: 1
 

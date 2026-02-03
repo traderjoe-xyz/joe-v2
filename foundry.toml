@@ -22,4 +22,8 @@ avalanche = { key = "${SNOWTRACE_API_KEY}", chain = 43114 }
 arbitrum_goerli = { key = "${ARBISCAN_API_KEY}", chain = 421613 }
 fuji = { key = "${SNOWTRACE_API_KEY}", chain = 43113 }
 
+[lint]
+exclude_lints = ["mixed-case-function", "mixed-case-variable", "unsafe-typecast", "incorrect-shift", "screaming-snake-case-const", "screaming-snake-case-immutable", "unwrapped-modifier-logic", "pascal-case-struct"]
+ignore = ["./test/**/*", "./script/**/*"]
+
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

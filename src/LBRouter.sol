@@ -4,15 +4,11 @@ pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import {BinHelper} from "./libraries/BinHelper.sol";
 import {Constants} from "./libraries/Constants.sol";
-import {Encoded} from "./libraries/math/Encoded.sol";
-import {FeeHelper} from "./libraries/FeeHelper.sol";
 import {JoeLibrary} from "./libraries/JoeLibrary.sol";
 import {LiquidityConfigurations} from "./libraries/math/LiquidityConfigurations.sol";
 import {PackedUint128Math} from "./libraries/math/PackedUint128Math.sol";
 import {TokenHelper, IERC20} from "./libraries/TokenHelper.sol";
-import {Uint256x256Math} from "./libraries/math/Uint256x256Math.sol";
 
 import {IJoePair} from "./interfaces/IJoePair.sol";
 import {ILBPair} from "./interfaces/ILBPair.sol";

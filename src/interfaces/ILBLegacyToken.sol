@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.10;
 
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 /// @title Liquidity Book V2 Token Interface
 /// @author Trader Joe
@@ -35,6 +35,5 @@ interface ILBLegacyToken is IERC165 {
 
     function safeTransferFrom(address from, address to, uint256 id, uint256 amount) external;
 
-    function safeBatchTransferFrom(address from, address to, uint256[] calldata id, uint256[] calldata amount)
-        external;
+    function safeBatchTransferFrom(address from, address to, uint256[] calldata id, uint256[] calldata amount) external;
 }

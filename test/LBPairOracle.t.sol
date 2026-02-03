@@ -170,7 +170,7 @@ contract LBPairOracleTest is TestHelper {
         dt = block.timestamp - dt;
 
         (previousCumulativeId, previousCumulativeVolatility, previousCumulativeBinCrossed) =
-            (cumulativeId, cumulativeVolatility, cumulativeBinCrossed);
+        (cumulativeId, cumulativeVolatility, cumulativeBinCrossed);
 
         (cumulativeId, cumulativeVolatility, cumulativeBinCrossed) =
             pairWnative.getOracleSampleAt(uint40(block.timestamp));

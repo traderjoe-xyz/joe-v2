@@ -380,8 +380,12 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         // Check splitted in two to avoid stack too deep errors
         {
-            (uint256 baseFactorView, uint256 filterPeriodView, uint256 decayPeriodView, uint256 reductionFactorView,,,,)
-            = factory.getPreset(binStep);
+            (
+                uint256 baseFactorView,
+                uint256 filterPeriodView,
+                uint256 decayPeriodView,
+                uint256 reductionFactorView,,,,
+            ) = factory.getPreset(binStep);
 
             assertEq(baseFactorView, baseFactor, "testFuzz_SetPreset::6");
             assertEq(filterPeriodView, filterPeriod, "testFuzz_SetPreset::7");
@@ -391,10 +395,7 @@ contract LiquidityBinFactoryTest is TestHelper {
 
         {
             (
-                ,
-                ,
-                ,
-                ,
+                ,,,,
                 uint256 variableFeeControlView,
                 uint256 protocolShareView,
                 uint256 maxVolatilityAccumulatorView,

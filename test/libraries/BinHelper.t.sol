@@ -65,10 +65,8 @@ contract BinHelperTest is TestHelper {
         vm.assume(
             price > 0 && uint256(binReserveX) + amountInX <= type(uint128).max
                 && uint256(binReserveY) + amountInY <= type(uint128).max
-                && (
-                    (uint256(binReserveX) + amountInX) == 0
-                        || price <= type(uint256).max / (uint256(binReserveX) + amountInX)
-                )
+                && ((uint256(binReserveX) + amountInX) == 0
+                    || price <= type(uint256).max / (uint256(binReserveX) + amountInX))
                 && price * (uint256(binReserveX) + amountInX)
                     <= type(uint256).max - ((uint256(binReserveY) + amountInY) << 128)
                 && price * (uint256(binReserveX) + amountInX) + ((uint256(binReserveY) + amountInY) << 128)
@@ -104,7 +102,8 @@ contract BinHelperTest is TestHelper {
     ) external pure {
         vm.assume(
             price > 0 && amountX1 > 0 && amountY1 > 0 && amountX2 > 0 && amountY2 > 0
-                && uint256(amountX1) + amountX2 <= type(uint128).max && uint256(amountY1) + amountY2 <= type(uint128).max
+                && uint256(amountX1) + amountX2 <= type(uint128).max
+                && uint256(amountY1) + amountY2 <= type(uint128).max
                 && price <= type(uint256).max / (uint256(amountX1) + amountX2)
                 && uint256(amountY1) + amountY2 <= type(uint128).max
                 && price * (uint256(amountX1) + amountX2) <= type(uint256).max - ((uint256(amountY1) + amountY2) << 128)
@@ -127,8 +126,8 @@ contract BinHelperTest is TestHelper {
         uint256 userReceivedY = shares.mulDivRoundDown(binReserves.decodeY(), totalSupply);
 
         uint256 receivedInY = userReceivedX.mulShiftRoundDown(price, Constants.SCALE_OFFSET) + userReceivedY;
-        uint256 sentInY =
-            price.mulShiftRoundDown(effectiveAmountsIn.decodeX(), Constants.SCALE_OFFSET) + effectiveAmountsIn.decodeY();
+        uint256 sentInY = price.mulShiftRoundDown(effectiveAmountsIn.decodeX(), Constants.SCALE_OFFSET)
+            + effectiveAmountsIn.decodeY();
 
         assertApproxEqAbs(receivedInY, sentInY, ((price - 1) >> 128) + 2, "testFuzz_TryExploitShares::1");
     }
@@ -186,15 +185,16 @@ contract BinHelperTest is TestHelper {
 
         (amountXIn, amountYIn) = amountsIn.decode();
 
-        bytes32 parameters = bytes32(0).setStaticFeeParameters(
-            DEFAULT_BASE_FACTOR,
-            DEFAULT_FILTER_PERIOD,
-            DEFAULT_DECAY_PERIOD,
-            DEFAULT_REDUCTION_FACTOR,
-            DEFAULT_VARIABLE_FEE_CONTROL,
-            DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
-        );
+        bytes32 parameters = bytes32(0)
+            .setStaticFeeParameters(
+                DEFAULT_BASE_FACTOR,
+                DEFAULT_FILTER_PERIOD,
+                DEFAULT_DECAY_PERIOD,
+                DEFAULT_REDUCTION_FACTOR,
+                DEFAULT_VARIABLE_FEE_CONTROL,
+                DEFAULT_PROTOCOL_SHARE,
+                DEFAULT_MAX_VOLATILITY_ACCUMULATOR
+            );
 
         bytes32 compositionFees = binReserves.getCompositionFees(parameters, binStep, amountsIn, totalSupply, shares);
 
@@ -221,16 +221,17 @@ contract BinHelperTest is TestHelper {
         bool swapForY,
         int16 deltaId,
         uint128 amountIn
-    ) external view {
-        bytes32 parameters = bytes32(0).setStaticFeeParameters(
-            DEFAULT_BASE_FACTOR,
-            DEFAULT_FILTER_PERIOD,
-            DEFAULT_DECAY_PERIOD,
-            DEFAULT_REDUCTION_FACTOR,
-            DEFAULT_VARIABLE_FEE_CONTROL,
-            DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
-        );
+    ) external pure {
+        bytes32 parameters = bytes32(0)
+            .setStaticFeeParameters(
+                DEFAULT_BASE_FACTOR,
+                DEFAULT_FILTER_PERIOD,
+                DEFAULT_DECAY_PERIOD,
+                DEFAULT_REDUCTION_FACTOR,
+                DEFAULT_VARIABLE_FEE_CONTROL,
+                DEFAULT_PROTOCOL_SHARE,
+                DEFAULT_MAX_VOLATILITY_ACCUMULATOR
+            );
 
         uint24 activeId = uint24(uint256(int256(uint256(ID_ONE)) + deltaId));
         uint256 price = PriceHelper.getPriceFromId(activeId, DEFAULT_BIN_STEP);
@@ -290,15 +291,16 @@ contract BinHelperTest is TestHelper {
         int16 deltaId,
         uint128 amountIn
     ) external pure {
-        bytes32 parameters = bytes32(0).setStaticFeeParameters(
-            DEFAULT_BASE_FACTOR,
-            DEFAULT_FILTER_PERIOD,
-            DEFAULT_DECAY_PERIOD,
-            DEFAULT_REDUCTION_FACTOR,
-            DEFAULT_VARIABLE_FEE_CONTROL,
-            DEFAULT_PROTOCOL_SHARE,
-            DEFAULT_MAX_VOLATILITY_ACCUMULATOR
-        );
+        bytes32 parameters = bytes32(0)
+            .setStaticFeeParameters(
+                DEFAULT_BASE_FACTOR,
+                DEFAULT_FILTER_PERIOD,
+                DEFAULT_DECAY_PERIOD,
+                DEFAULT_REDUCTION_FACTOR,
+                DEFAULT_VARIABLE_FEE_CONTROL,
+                DEFAULT_PROTOCOL_SHARE,
+                DEFAULT_MAX_VOLATILITY_ACCUMULATOR
+            );
 
         uint24 activeId = uint24(uint256(int256(uint256(ID_ONE)) + deltaId));
         uint256 price = PriceHelper.getPriceFromId(activeId, DEFAULT_BIN_STEP);

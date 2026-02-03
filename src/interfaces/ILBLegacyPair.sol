@@ -200,10 +200,7 @@ interface ILBLegacyPair is ILBLegacyToken {
 
     function getBin(uint24 id) external view returns (uint256 reserveX, uint256 reserveY);
 
-    function pendingFees(address account, uint256[] memory ids)
-        external
-        view
-        returns (uint256 amountX, uint256 amountY);
+    function pendingFees(address account, uint256[] memory ids) external view returns (uint256 amountX, uint256 amountY);
 
     function swap(bool sentTokenY, address to) external returns (uint256 amountXOut, uint256 amountYOut);
 

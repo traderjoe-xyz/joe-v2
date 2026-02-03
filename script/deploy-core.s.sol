@@ -113,9 +113,7 @@ contract CoreDeployer is Script {
         StdChains.setChain(
             "arbitrum_one_goerli",
             StdChains.ChainData({
-                name: "Arbitrum One Goerli",
-                chainId: 421613,
-                rpcUrl: vm.envString("ARBITRUM_TESTNET_RPC_URL")
+                name: "Arbitrum One Goerli", chainId: 421613, rpcUrl: vm.envString("ARBITRUM_TESTNET_RPC_URL")
             })
         );
     }

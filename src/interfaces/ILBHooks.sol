@@ -3,8 +3,6 @@ pragma solidity ^0.8.10;
 
 import {ILBPair} from "./ILBPair.sol";
 
-import {Hooks} from "../libraries/Hooks.sol";
-
 interface ILBHooks {
     function getLBPair() external view returns (ILBPair);
 

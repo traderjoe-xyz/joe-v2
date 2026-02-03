@@ -454,7 +454,9 @@ contract LBRouter is ILBRouter {
         verifyPathValidity(path)
         returns (uint256 amountOut)
     {
-        if (path.tokenPath[0] != IERC20(_wnative)) revert LBRouter__InvalidTokenPath(address(path.tokenPath[0]));
+        if (path.tokenPath[0] != IERC20(_wnative)) {
+            revert LBRouter__InvalidTokenPath(address(path.tokenPath[0]));
+        }
 
         address[] memory pairs = _getPairs(path.pairBinSteps, path.versions, path.tokenPath);
 
@@ -548,7 +550,9 @@ contract LBRouter is ILBRouter {
         verifyPathValidity(path)
         returns (uint256[] memory amountsIn)
     {
-        if (path.tokenPath[0] != IERC20(_wnative)) revert LBRouter__InvalidTokenPath(address(path.tokenPath[0]));
+        if (path.tokenPath[0] != IERC20(_wnative)) {
+            revert LBRouter__InvalidTokenPath(address(path.tokenPath[0]));
+        }
 
         address[] memory pairs = _getPairs(path.pairBinSteps, path.versions, path.tokenPath);
         amountsIn = _getAmountsIn(path.versions, pairs, path.tokenPath, amountOut);
@@ -761,6 +765,12 @@ contract LBRouter is ILBRouter {
 
             amountXLeft = amountsLeft.decodeX();
             amountYLeft = amountsLeft.decodeY();
+
+            for (uint256 i = 0; i < depositIds.length; i++) {
+                if (liquidityMinted[i] < Constants.MIN_LIQUIDITY_PER_BIN) {
+                    revert LBRouter__InsufficientLiquidityMinted(liquidityMinted[i]);
+                }
+            }
         }
     }
 
